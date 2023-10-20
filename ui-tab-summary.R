@@ -20,7 +20,7 @@ tabItem(
         ) # end of box
       ),
       column(
-        width = 4,
+        width = 6,
         box(
           title = paste("Download Count Files"),
           width = 12,
@@ -32,14 +32,7 @@ tabItem(
             choices = c()),
           downloadButton("downloadTable", "Download Selected Count File")
         ), # end of box
-        box(
-          title = "Compare Multiple DE Tests!",
-          width = 12,
-          solidHeader = TRUE,
-          status = "primary",
-          tags$p("Do you want to compare the results in this DE test with other DE tests you have run? Then, good news, because there is an app for just that! Head to https://fgcz-shiny.uzh.ch/multiDEG to find out more!"),
-          h4("Try the MultiDEG app:", a("MultiDEG", href="https://fgcz-shiny.uzh.ch/multiDEG/", target = "_blank"))
-        ),
+        uiOutput(outputId = "linkToMultiDEG"),
         uiOutput(outputId = "referencesText"),
       ),
       column(
@@ -53,7 +46,7 @@ tabItem(
         ), # end of box
         box(
           title = c("Group Colours"),
-          width = 4, 
+          width = 6, 
           solidHeader = TRUE,
           status = "primary",
           # Colour picker for each of the groups in Condition:
