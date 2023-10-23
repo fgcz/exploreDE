@@ -84,11 +84,11 @@ if(inputDataReactive()$dataType == "RNASeq") {
       }, {
       er <- ora[[input$oraType]][[input$oraDirection]]
       if (input$tabs == "oraTab") {
-        if (nrow(er@result) == 0) {
+        if (is.null(er) || nrow(er@result) == 0) {
           showModal(modalDialog(title = "No ORA Results", "There are no results for this selection."))
         }
       }
-      if (nrow(er@result) != 0) {
+      if (!is.null(er) && nrow(er@result) != 0) {
         er@result$Label <- ""
         for (i in seq_along(er@result$Description)) {
           desc <- er@result$Description[i]
@@ -117,7 +117,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$selectedTable_ORA_rows_selected
     }, {
       er <- ora[[input$oraType]][[input$oraDirection]]
-      if (nrow(er) >= 2) {
+      if (!is.null(er) && nrow(er@result) >=2) {
         er@result$Label <- ""
         for (i in seq_along(er@result$Description)) {
           desc <- er@result$Description[i]
@@ -135,7 +135,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
         log2RatioORA <- sort(log2RatioORA, decreasing = T)
         er@result$geneID <- er@result$geneName
         
-        if (nrow(er) >= 2) {
+        if (!is.null(er) && nrow(er@result) >= 2) {
           cn <- enrichplot::cnetplot(
             x = er,
             color.params = list(foldChange = log2RatioORA),

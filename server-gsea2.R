@@ -75,11 +75,11 @@ if(inputDataReactive()$dataType == "RNASeq") {
     observeEvent(input$gseaType, {
       er <- gsea[[input$gseaType]]
       if (input$tabs == "gseaTab") {
-        if (nrow(er@result) == 0) {
+        if (is.null(er) || nrow(er@result) == 0) {
           showModal(modalDialog(title = "No GSEA Results", "There are no results for this selection."))
         }
       }
-      if (nrow(er@result) != 0) {
+      if (!is.null(er) && nrow(er@result) != 0) {
         er@result$Label <- ""
         for (i in seq_along(er@result$Description)) {
           desc <- er@result$Description[i]
@@ -117,7 +117,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$selectedTable_GSEA_rows_selected
     }, {
       er <- gsea[[input$gseaType]]
-      if (nrow(er) >= 2) {
+      if (!is.null(er) && nrow(er@result) >= 2) {
         er@result$Label <- ""
         for (i in seq_along(er@result$Description)) {
           desc <- er@result$Description[i]

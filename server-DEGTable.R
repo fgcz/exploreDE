@@ -27,7 +27,7 @@ if (inputDataReactive()$dataType == "RNASeq") {
     "gene_id", "gene_name", "description", "type", "log2Ratio", "pValue", "fdr", "TPM_mean", paste0("TPM_", inputDataReactive()$param$sampleGroup, "_Mean"), paste0("TPM_", inputDataReactive()$param$refGroup, "_Mean")
   )
   colNamesToPlotR <- c(
-    "Entrez ID", "Gene Symbol", "Type", "Description", "Log2 Ratio", "Raw p-value", "FDR", "Mean TPM", paste0(inputDataReactive()$param$sampleGroup, " Mean TPM"), paste0(inputDataReactive()$param$refGroup, " Mean TPM")
+    "Entrez ID", "Gene Symbol", "Description", "Type", "Log2 Ratio", "Raw p-value", "FDR", "Mean TPM", paste0(inputDataReactive()$param$sampleGroup, " Mean TPM"), paste0(inputDataReactive()$param$refGroup, " Mean TPM")
   )
   # Output the interactive data table
   output$degTable <- DT::renderDataTable({
