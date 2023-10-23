@@ -72,6 +72,7 @@ observeEvent(
     }
     
     if (inputDataReactive()$dataType == "proteomics") {
+      req(!is.null(input$contrastSelected))
       seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
       seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, log2Ratio, pValue, fdr)
       
