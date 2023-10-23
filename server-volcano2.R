@@ -60,7 +60,7 @@ observeEvent(
     input$pTypeVolcano
     input$contrastSelected
     inputDataReactive()
-  }, ignoreInit = TRUE, ignoreNULL = TRUE, 
+  }, ignoreInit = FALSE, ignoreNULL = TRUE, 
   {
     if (inputDataReactive()$dataType == "RNASeq") {
       seqAnno <- inputDataReactive()$seqAnno
@@ -89,12 +89,12 @@ observeEvent(
     updateNumericInput(
       session = session,
       inputId = "yLimVolcano",
-      value = round(max(-log10(seqAnnoFilt[[pTypeVolcano]])))
+      value = ceiling(max(-log10(seqAnnoFilt[[pTypeVolcano]]))*1.1)
     )
     updateNumericInput(
       session = session,
       inputId = "xLimVolcano",
-      value = round(max(seqAnnoFilt[["log2Ratio"]]))
+      value = ceiling(max(seqAnnoFilt[["log2Ratio"]])*1.1)
     )
   }
 )
