@@ -11,10 +11,10 @@ tabItem(
         collapsible = TRUE,
         collapsed = TRUE,
         tags$p(
-          "Select a GO Term to plot. All the genes in that pathway will be displayed.
+          "Select a GO Term to plot. All the features in that pathway will be displayed.
           Cells are coloured by log2 fold change, and have stars denoting p-value. 
           You can change whether the raw or adjusted p-values are displayed. You can
-          also only display genes with a p-value of <= 0.05."
+          also only display features with a p-value of <= 0.05."
         )
       ),
       box(
@@ -42,15 +42,15 @@ tabItem(
         ),
         checkboxInput(
           inputId = "degOnlyGoTile",
-          label = "Only show genes with significant p-values?",
+          label = "Only show features with significant p-values?",
           value = FALSE
         ),
         hr(style = "border-top: 1px solid #000000;"), 
         h4("GO Tile Plot display settings"),
-        # Select whether to cluster the rows (genes):
+        # Select whether to cluster the rows (features):
         checkboxInput(
           inputId = "clusterRowsGoTile",
-          label = "Cluster genes?",
+          label = "Cluster features?",
           value = TRUE
         ),
         tags$b("Turn off/on names of rows/columns"),

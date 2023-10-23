@@ -50,8 +50,8 @@ tabItem(
           tags$p(
             "Exciting new feature alert! You can now click on any feature in this table, 
             and they will automatically be added to the boxplots tab. So you can
-            sort for genes based on name, type, TPM, log2 fold change,
-            whatever you like, and visualise those genes instantly!"),
+            sort for features based on name, type, TPM, log2 fold change,
+            whatever you like, and visualise those features instantly!"),
           DT::dataTableOutput("degTable")
         )
       ) 

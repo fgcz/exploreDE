@@ -25,7 +25,7 @@ updateSelectInput(
 updateSelectInput(
   session = session,
   inputId = "boxplotFactor2",
-  choices = c("None", "Gene", inputDataReactive()$factors),
+  choices = c("None", "Feature", inputDataReactive()$factors),
   selected = "None"
 )
 
@@ -110,15 +110,15 @@ genesReactive <- eventReactive({
 observeEvent({genesReactive()}, {
   output$geneBucket1 <- renderUI({
     bucket_list(
-      header = "Drag and drop genes in order to be plotted",
+      header = "Drag and drop features in order to be plotted",
       group_name = "bucket_list_group",
       orientation = "horizontal",
       add_rank_list(
-        text = "Include these genes in this order",
+        text = "Include these features in this order",
         labels = genesReactive()$genes,
         input_id = "keepBucketBoxplot"),
       add_rank_list(
-        text = "Exclude these genes",
+        text = "Exclude these features",
         labels = NULL,
         input_id = "excludeBucketBoxplot")
     )
@@ -182,7 +182,7 @@ boxplotCountsReactive <- eventReactive({
         countsBoxplotMelt$variable <- factor(countsBoxplotMelt$variable, genesToPlot)
 
         # Add vector of custom shapes for compatibility with ggprism
-        if (!input$boxplotFactor2 == "None" & !input$boxplotFactor2 == "Gene") {
+        if (!input$boxplotFactor2 == "None" & !input$boxplotFactor2 == "Feature") {
           shapes <- c(rep(c(15,16,17,18,8), times = 10 ))[1:nlevels(as.factor(countsBoxplot[[input$boxplotFactor2]]))]
           names(shapes) <- levels(as.factor(countsBoxplot[[input$boxplotFactor2]]))
           countsBoxplotMelt$shapes <- shapes[match(as.character(countsBoxplotMelt[[input$boxplotFactor2]]), names(shapes))]
@@ -388,7 +388,7 @@ observeEvent({
           g <- g + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$boxplotMeanLine, show.legend = FALSE)
         }
         if (input$boxplotShowPoint) {
-          if (input$boxplotFactor2 == "None" | input$boxplotFactor2 == "Gene") {
+          if (input$boxplotFactor2 == "None" | input$boxplotFactor2 == "Feature") {
             g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, shape = 21, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9)
           } else {
             g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1, shape = input$boxplotFactor2), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9)
@@ -450,7 +450,7 @@ observeEvent({
           g <- g + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$boxplotMeanLine, show.legend = FALSE)
         }
         if (input$boxplotShowPoint) {
-          if (input$boxplotFactor2 == "None" | input$boxplotFactor2 == "Gene") {
+          if (input$boxplotFactor2 == "None" | input$boxplotFactor2 == "Feature") {
             g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, shape = 21, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9)
           } else {
             g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1, shape = input$boxplotFactor2), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9)

@@ -41,15 +41,15 @@ updateSelectizeInput(
 observeEvent({genesReactive()}, {
   output$geneBucket3 <- renderUI({
     bucket_list(
-      header = "Drag and drop genes in order to be plotted",
+      header = "Drag and drop features in order to be plotted",
       group_name = "bucket_list_group",
       orientation = "horizontal",
       add_rank_list(
-        text = "Include these genes in this order",
+        text = "Include these features in this order",
         labels = genesReactive()$genes,
         input_id = "keepBucketHeatmap"),
       add_rank_list(
-        text = "Exclude these genes",
+        text = "Exclude these features",
         labels = NULL,
         input_id = "excludeBucketHeatmap")
     )
@@ -107,7 +107,7 @@ updateSelectInput(
 
 if (inputDataReactive()$dataType == "RNASeq") {
   output$heatmapGOUI <- renderUI({
-    helpText("You can also plot the expression of genes annotated to a given GO term (again, irrespective of p-value from the DE test).")
+    helpText("You can also plot the expression of features annotated to a given GO term (again, irrespective of p-value from the DE test).")
     selectizeInput(
       inputId = "heatmapGoInput",
       choices = c(),
@@ -337,7 +337,7 @@ observeEvent(
 
           # Show number of genes on plot (changes depending on settings applied)
           output[[paste0("hGN", sig)]] <- renderText({
-            paste0("Number of genes per settings chosen: ", nrow(heatmapResults[[sig]]$matrix))
+            paste0("Number of features per settings chosen: ", nrow(heatmapResults[[sig]]$matrix))
           })
 
         }) # end of lapply
