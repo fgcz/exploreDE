@@ -85,7 +85,8 @@ inputDataReactive <- reactive({
       sa <- rowData(se)[[paste0("constrast_", con)]]
       sa <- sa[order(sa$p.value),]
       sa <- sa %>% dplyr::select(any_of(c("protein_Id", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides")))
-      colnames(sa) <- c("gene_name", "gene_symbol", "log2Ratio", "pValue", "fdr", "description", "nrPeptides")
+      colnames(sa)[grep(paste(c("protein_Id", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
+      # colnames(sa) <- c("gene_name", "gene_symbol", "log2Ratio", "pValue", "fdr", "description", "nrPeptides")
       sa
     }), contrasts)
     
