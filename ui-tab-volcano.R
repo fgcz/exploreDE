@@ -62,12 +62,16 @@ tabItem(
           ),
           tabPanel(
             title = "Figure settings",
-            checkboxInput(inputId = "showBorderVolcano", label = "Show cell border?", value = TRUE),
-            checkboxInput(inputId = "showLinesVolcano", label = "Show grid lines?", value = TRUE),
-            checkboxInput(inputId = "showAxesVolcano", label = "Show axes lines?", value = TRUE),
-            checkboxInput(inputId = "boldVolcano", label = "Use bold font?", value = TRUE),
+            splitLayout(
+              checkboxInput(inputId = "showBorderVolcano", label = "Show cell border?", value = TRUE),
+              checkboxInput(inputId = "showAxesVolcano", label = "Show axes lines?", value = TRUE),
+              checkboxInput(inputId = "boldVolcano", label = "Use bold font?", value = TRUE)
+              # checkboxInput(inputId = "showLinesVolcano", label = "Show grid lines?", value = TRUE),
+            ),
+            
             sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 3, step = 0.5, width = "33%", ticks = FALSE),
             sliderInput(inputId = "alphaVolcano", label = "Point alpha", min = 0.1, max = 1, value = 0.8, step = 0.1, width = "33%", ticks = FALSE),
+            numericInput(inputId = "geneLabelSizeVolcano", label = "Gene Label Size", min = 4, max = 30, value = 12, step = 0.5),
             numericInput(inputId = "textSizeVolcano", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5),
             numericInput(inputId = "figWidthVolcano", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10),
             numericInput(inputId = "figHeightVolcano", label = "Figure Height", min = 100, max = 2000, value = 600, step = 10)

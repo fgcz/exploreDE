@@ -210,8 +210,8 @@ inputDataReactive <- reactive({
         countList[[i]] <- countList[[i]][which(rownames(countList[[i]]) %in% seqAnno$gene_id), ]
         rownames(countList[[i]]) <- seqAnno$gene_name[match(rownames(countList[[i]]), seqAnno$gene_id)]
       } else if(param$featureLevel == "isoform") {
-        countList[[i]] <- countList[[i]][rownames(countList[[i]]) %in% seqAnnoFilt$transcript_id, ]
-        rownames(countList[[i]]) <- seqAnnoFilt$gene_name[match(rownames(countList[[i]]), seqAnnoFilt$transcript_id)] %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
+        countList[[i]] <- countList[[i]][rownames(countList[[i]]) %in% seqAnno$transcript_id, ]
+        rownames(countList[[i]]) <- seqAnno$gene_name[match(rownames(countList[[i]]), seqAnno$transcript_id)] %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
       }
     }
     vstCountMatrix <- varianceStabilizingTransformation(round(assay(se)))
@@ -220,9 +220,9 @@ inputDataReactive <- reactive({
       vstCountMatrix <- vstCountMatrix[match(rownames(vstCountMatrix), seqAnno$gene_id), ]
       rownames(vstCountMatrix) <- seqAnno$gene_name
     } else if (param$featureLevel == "isoform") {
-      vstCountMatrix <- vstCountMatrix[which(rownames(vstCountMatrix) %in% seqAnnoFilt$transcript_id), ]
-      vstCountMatrix <- vstCountMatrix[match(rownames(vstCountMatrix), seqAnnoFilt$transcript_id), ]
-      rownames(vstCountMatrix) <- seqAnnoFilt$gene_name %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
+      vstCountMatrix <- vstCountMatrix[which(rownames(vstCountMatrix) %in% seqAnno$transcript_id), ]
+      vstCountMatrix <- vstCountMatrix[match(rownames(vstCountMatrix), seqAnno$transcript_id), ]
+      rownames(vstCountMatrix) <- seqAnno$gene_name %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
     }
     countList[["VST"]] <- vstCountMatrix
     for (count in names(countList)) {

@@ -268,7 +268,7 @@ observeEvent(
     input$boxKeepBucketGenes
     input$showBorderVolcano
     volcanoResultsList()
-  }, 
+  },
   {
     volcanoTable <- volcanoResultsList()$volcanoTable
     volcanoColours <- volcanoResultsList()$volcanoColours
@@ -280,7 +280,7 @@ observeEvent(
       volcanoHighlights$Status <- "Highlighted"
       volcanoTable <- volcanoTable[which(!volcanoTable$gene_name %in% input$boxKeepBucketGenes), ]
     }
-    
+
     # Create the MA plot
     if (input$volcanoShowGenes == TRUE & length(input$boxKeepBucketGenes) >= 1) {
       maplot <- ggplot(volcanoTable, aes(x = Log2_Mean, y = log2Ratio_full))
@@ -297,14 +297,14 @@ observeEvent(
         theme_prism(base_size = input$textSizeVolcano) +
         xlab("Log2 Normalised Mean") + ylab("Log2 Ratio") +
         geom_label_repel(
-          data = volcanoHighlights, 
+          data = volcanoHighlights,
           aes(label = genelabels),
           force = 2,
           nudge_y = 0.2,
           nudge_x = 0.2,
           color = "black",
           size = (input$textSizeVolcano / 3),
-          max.overlaps = 500, 
+          max.overlaps = 500,
           fontface = "bold"
         )
     } else {
@@ -319,7 +319,7 @@ observeEvent(
       maplot <- maplot +
         theme_prism(base_size = input$textSizeVolcano) +
         xlab("Log2 Normalised Mean") + ylab("Log2 Ratio")
-      
+
     }
     output$MAPlot <- renderPlot({
       maplot
@@ -341,10 +341,10 @@ observeEvent(
     output$MABrushTable <- renderDataTable({
       volcanoTableFullMA <- volcanoTableFull %>% dplyr::select(gene_name, description, log2Ratio_full, Log2_Mean, log10p_full, Status)
       DT::datatable(
-        data = brushedPoints(volcanoTableFullMA, input$MABrush), 
+        data = brushedPoints(volcanoTableFullMA, input$MABrush),
         colnames = c("Gene name", "Description", "Log2 Ratio", "Log2 Mean", "-Log10p", "Status"),
-        filter = "top", 
-        caption = "Click and drag over dots on the volcano plot to see those genes in this table.", 
+        filter = "top",
+        caption = "Click and drag over dots on the volcano plot to see those genes in this table.",
         rownames = F) %>%
         DT::formatSignif(c("log2Ratio_full", "log10p_full", "Log2_Mean"), digits = 3) %>%
         DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
@@ -352,7 +352,7 @@ observeEvent(
         DT::formatStyle(columns = c("log10p_full"), color = styleInterval(cuts = -log10(as.numeric(input$pThresholdVolcano)), values = c("black", "green")), fontWeight = "bold") %>%
         DT::formatStyle(columns = "Status", color = styleEqual(levels = names(volcanoColours), values = as.character(volcanoColours)), fontWeight = "bold")
     })
-    
+
     # Create the volcano plot
     volcanoStatic <- ggplot(
       data = volcanoTable, aes(x = log2Ratio, y = log10p)
@@ -413,7 +413,7 @@ observeEvent(
         strip.text.x = element_text(size = input$textSizeVolcano),
         strip.text.y = element_text(size = input$textSizeVolcano)
       )
-    
+
     if (input$volcanoShowGenes == TRUE & length(input$boxKeepBucketGenes) >= 1) {
       if (input$showBorderVolcano) {
         volcanoStatic <- volcanoStatic + geom_point(data = volcanoHighlights, aes(x = log2Ratio, y = log10p, fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = 0.9, pch = 21)
@@ -424,21 +424,21 @@ observeEvent(
       }
       volcanoStatic <- volcanoStatic +
         geom_label_repel(
-          data = volcanoHighlights, 
+          data = volcanoHighlights,
           aes(label = genelabels),
           force = 3,
           nudge_y = 0.2,
           nudge_x = 0.2,
           color = "black",
           size = (input$textSizeVolcano / 3),
-          max.overlaps = 500, 
+          max.overlaps = 500,
           fontface = "bold"
         )
     }
-    if (!input$showLinesVolcano) {
-      volcanoStatic <- volcanoStatic +
-        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-    }
+    # if (!input$showLinesVolcano) {
+    #   volcanoStatic <- volcanoStatic +
+    #     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    # }
     if (!input$showAxesVolcano) {
       volcanoStatic <- volcanoStatic +
         theme(
@@ -462,7 +462,7 @@ observeEvent(
           axis.ticks = element_line(linewidth = 1.3)
         )
     }
-    
+
     # Render the static plot
     output$volcanoStatic <- renderPlot(
       {
@@ -471,14 +471,14 @@ observeEvent(
       width = as.numeric(input$figWidthVolcano),
       height = as.numeric(input$figHeightVolcano)
     )
-    
+
     output$volcanoBrushTable <- renderDataTable({
       volcanoTableFull2 <- volcanoTableFull %>% dplyr::select(gene_name, description, log2Ratio, log2Ratio_full, log10p, log10p_full, Status)
       DT::datatable(
-        data = brushedPoints(volcanoTableFull2, input$volcanoBrush), 
+        data = brushedPoints(volcanoTableFull2, input$volcanoBrush),
         colnames = c("Gene name", "Description", "Log2 Ratio (plot)", "Log2 Ratio (full)", "-Log10p (plot)", "-Log10p (full)", "Status"),
-        filter = "top", 
-        caption = "Click and drag over dots on the volcano plot to see those genes in this table.", 
+        filter = "top",
+        caption = "Click and drag over dots on the volcano plot to see those genes in this table.",
         rownames = F) %>%
         DT::formatSignif(c("log2Ratio", "log2Ratio_full", "log10p", "log10p_full"), digits = 3) %>%
         DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
@@ -486,7 +486,7 @@ observeEvent(
         DT::formatStyle(columns = c("log10p", "log10p_full"), color = styleInterval(cuts = -log10(as.numeric(input$pThresholdVolcano)), values = c("black", "green")), fontWeight = "bold") %>%
         DT::formatStyle(columns = "Status", color = styleEqual(levels = names(volcanoColours), values = as.character(volcanoColours)), fontWeight = "bold")
     })
-    
+
     # Download button for the plot
     output$dlVolcanoPlotButton <- downloadHandler(
       filename = function() {
@@ -502,7 +502,7 @@ observeEvent(
         )
       }
     )
-    
+
     output$dlVolcanoDFButton <- downloadHandler(
       filename = function() {
         paste0(design, "_volcano.xlsx")

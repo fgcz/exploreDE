@@ -142,6 +142,11 @@ input$alphaVolcano <- 0.8
 input$volcanoGenes <- inputDataReactive()$genes[1:5]
 input$volcanoGenesText <- inputDataReactive()$genes[8:9]
 input$volcanoShowGenes <- TRUE
+input$showBorderVolcano <- TRUE
+input$boxKeepBucketGenes <- inputDataReactive()$genes[1:5]
+input$dotSizeVolcano <- 3
+input$yLimVolcano <- 25
+input$xLimVolcano <- 30
 
 input$oraType <- "BP"
 input$oraDirection <- "upGenes"
