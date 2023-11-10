@@ -5,13 +5,52 @@ factorNames <- inputDataReactive()$factorNames
 countList <- inputDataReactive()$countList
 factorLevels <- inputDataReactive()$factorLevels
 
-lapply(seq_along(factorLevels), function(i) {
-  updateSelectInput(
-    session = session, 
-    inputId = paste0("GroupColour", i),
-    label = factorLevels[[i]]
-  )
+#  "Paired", "Set1", "Set2", "Set3", "Dark2"), 
+colourPaletteList <- list(
+  "House colours" = c(
+    "indianred2", "steelblue3", "chartreuse4", "grey30", 
+    "goldenrod3", "indianred4", "royalblue4", "mediumorchid3",
+    "turquoise4", "darkolivegreen", "thistle4", "darkorange3", 
+    "hotpink2", "burlywood3", "cadetblue4", "chocolate4", "firebrick"
+  ),
+  "Paired" = brewer.pal(12, "Paired"),
+  "Set1" = brewer.pal(9, "Set1"),
+  "Set2" = brewer.pal(8, "Set2"),
+  "Set3" = brewer.pal(12, "Set3"),
+  "Dark2" = brewer.pal(8, "Dark2")
+)
+
+# Colour picker for each of the groups in Condition:
+observeEvent(input$colourPalette, {
+  output$colourPickerUI <- renderUI({
+    lapply(seq_along(factorLevels), function(i) {
+      colourpicker::colourInput(
+        inputId = paste0("GroupColour", names(factorLevels)[[i]]),
+        label = factorLevels[[i]],
+        value =  rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[i],
+        palette = "square",
+        closeOnClick = TRUE,
+        returnName = TRUE
+      )
+    })
+  })
 })
+
+# lapply(factorLevels, function(fl) {
+#   updateSelectInput(
+#     session = session, 
+#     inputId = paste0("GroupColour", fl),
+#     label = fl
+#   )
+# })
+
+# lapply(seq_along(factorLevels), function(i) {
+#   updateSelectInput(
+#     session = session,
+#     inputId = paste0("GroupColour", i),
+#     label = factorLevels[[i]]
+#   )
+# })
 
 observeEvent(inputDataReactive()$dataType, {
   if (inputDataReactive()$dataType == "RNASeq") {

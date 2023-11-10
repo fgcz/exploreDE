@@ -4,7 +4,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
   factors <- inputDataReactive()$factors
   countList <- inputDataReactive()$countList
   factorLevels <- inputDataReactive()$factorLevels
-  colourList <- inputDataReactive()$colourList
+  # colourList <- inputDataReactive()$colourList
   param <- inputDataReactive()$param
   design <- inputDataReactive()$design
   allPathways <- inputDataReactive()$allPathways

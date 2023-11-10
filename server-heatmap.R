@@ -10,7 +10,7 @@ if (inputDataReactive()$dataType == "proteomics") {
     ))
   })
 } else if (inputDataReactive()$dataType == "RNASeq") {
-  groupingNameHeatmap <- reactive(return(list("gn" = param$groupingName)))
+  groupingNameHeatmap <- reactive(return(list("gn" = inputDataReactive()$param$groupingName)))
 }
 
 if (inputDataReactive()$dataType == "proteomics") {
@@ -158,8 +158,8 @@ observeEvent(
     input$heatmapColourRed
     input$heatmapColourWhite
     input$heatmapColourBlue
-    lapply(seq_along(inputDataReactive()$colourList), function (i) {
-      input[[paste0("GroupColour", i)]]
+    lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
+      input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
     input$contrastSelected
     groupingNameHeatmap()
@@ -186,8 +186,10 @@ observeEvent(
           pTypeHeatmap <- "fdr"
         }
 
+        # get the metadata for plotting
         datasetHeatmap <- inputDataReactive()$dataset
         datasetHeatmap <- datasetHeatmap[which(datasetHeatmap[[groupingNameHeatmap()$gn]] %in% input$hmKeepBucket), ]
+        
         # Set the factor levels per the bucket list order
         datasetHeatmap[[groupingNameHeatmap()$gn]] <- factor(datasetHeatmap[[groupingNameHeatmap()$gn]], input$hmKeepBucket)
         datasetHeatmap <- datasetHeatmap[order(datasetHeatmap[[groupingNameHeatmap()$gn]]), ]
@@ -261,14 +263,17 @@ observeEvent(
           ha <- paste0("HeatmapAnnotation('", groupingNameHeatmap()$gn, "' = datasetHeatmap[['", groupingNameHeatmap()$gn,"']],", p1,")")
         }
         ha <- eval(parse(text = ha))
-        colourListHeatmap <- inputDataReactive()$colourList
-        for (i in seq_along(inputDataReactive()$factorLevels)){
-          colourListHeatmap[i] <- paste0(col2hex(input[[paste0("GroupColour", i)]]), "FF")
-        }
-        for (i in c(groupingNameHeatmap()$gn, input$heatmapFactor2)) {
-          for (j in levels(as.factor(datasetHeatmap[,i]))) {
-            ha@anno_list[[i]]@color_mapping@full_col[[j]] <- colourListHeatmap[[j]]
-            ha@anno_list[[i]]@fun@var_env$color_mapping@full_col[[j]] <- colourListHeatmap[[j]]
+        
+        colourListHeatmap <- setNames(lapply(inputDataReactive()$factors, function(f) {
+          setNames(lapply(unique(datasetHeatmap[[f]]), function(k) {
+            paste0(col2hex(input[[paste0("GroupColour", f, "__", k)]]), "FF")
+          }), levels(datasetHeatmap[[f]]))
+        }), inputDataReactive()$factors)
+        
+        for (f in c(groupingNameHeatmap()$gn, input$heatmapFactor2)) {
+          for (l in levels(as.factor(datasetHeatmap[,f]))) {
+            ha@anno_list[[f]]@color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
+            ha@anno_list[[f]]@fun@var_env$color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
           }
         }
         # Draw the heatmaps

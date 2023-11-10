@@ -49,22 +49,14 @@ tabItem(
           width = 6, 
           solidHeader = TRUE,
           status = "primary",
-          # Colour picker for each of the groups in Condition:
-          lapply(1:50, function(i) {
-            colourpicker::colourInput(
-              inputId = paste0("GroupColour", i),
-              label = "",
-              value =  rep(c(
-                "indianred", "steelblue", "chartreuse4", "gray30", 
-                "goldenrod3", "indianred4", "royalblue4", "mediumorchid3",
-                "turquoise4", "darkolivegreen", "thistle4", "darkorange3", 
-                "hotpink2", "burlywood3", "cadetblue4", "chocolate4", "firebrick"
-              ), times = 5)[i],
-              palette = "square",
-              closeOnClick = TRUE,
-              returnName = TRUE
-            )
-          })
+          selectInput(
+            inputId = "colourPalette", 
+            label = "Colour Palette",
+            choices = c("House colours", "Paired", "Set1", "Set2", "Set3", "Dark2"), 
+            selected = "House colours", 
+            multiple = TRUE
+            ),
+          uiOutput(outputId = "colourPickerUI", inline = T)
         )
       ) # end of column
     )

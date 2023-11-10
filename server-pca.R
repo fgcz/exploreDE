@@ -64,8 +64,8 @@ observeEvent(
     input$showAxesPCA
     input$boldPCA
     input$pcaShowNames
-    lapply(seq_along(inputDataReactive()$colourList), function(i) {
-      input[[paste0("GroupColour", i)]]
+    lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
+      input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
     input$contrastSelected
   },
@@ -75,15 +75,9 @@ observeEvent(
       {
         
         # Get the colours for the condition levels
-        colourListPCA <- inputDataReactive()$colourList
-        for (i in seq_along(inputDataReactive()$factorLevels)) {
-          colourListPCA[i] <- paste0(col2hex(input[[paste0("GroupColour", i)]]), "FF")
-        }
-        coloursPCA <- NULL
-        for (i in levels(as.factor(inputDataReactive()$dataset[[input$pcaFactor1]]))) {
-          coloursPCA[i] <- colourListPCA[i]
-        }
-        coloursPCA <- coloursPCA[names(coloursPCA) %in% input$pcaGroups]
+        coloursPCA <- setNames(lapply(input$pcaGroups, function(k) {
+          paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, "__", k)]]), "FF")
+        }), input$pcaGroups)
 
         # Keep only the groups selected:
         datasetPCA <- inputDataReactive()$dataset

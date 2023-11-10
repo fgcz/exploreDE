@@ -117,14 +117,7 @@ inputDataReactive <- reactive({
         levels(as.factor(dataset[, factors[i]])))
     }
     factorLevels <- unlist(factorLevels)
-    
-    # And make an empty list of colours for each element
-    colourList <- list()
-    for (i in factors) {
-      for (l in levels(as.factor(dataset[, i]))) {
-        colourList[l] <- NA
-      }
-    }
+    names(factorLevels) <- factorLevels %>% gsub("\\ |\\:", "_", .)
     
     # Return the final list
     return(list(
@@ -137,8 +130,7 @@ inputDataReactive <- reactive({
       "factorNames" = factorNames,
       "countList" = countList,
       "genes" = genes,
-      "factorLevels" = factorLevels,
-      "colourList" = colourList
+      "factorLevels" = factorLevels
       )
     )
   }
@@ -184,6 +176,8 @@ inputDataReactive <- reactive({
         levels(as.factor(dataset[, factorNs[i]])))
     }
     factorLevels <- unlist(factorLevels)
+    names(factorLevels) <- factorLevels %>% gsub("\\ |\\:", "_", .)
+    
     # If there's only one factor, duplicate it so everything that expects a 
     # second factor doesn't break: 
     if (length(factors) == 1) {
@@ -245,14 +239,7 @@ inputDataReactive <- reactive({
     # get contrast 
     design <- param$comparison
     designLevels <- design %>% strsplit(split = "--over--") %>% .[[1]]
-
-    # Get colours 
-    colourList <- list()
-    for (i in factorNs) {
-      for (l in levels(as.factor(dataset[, i]))) {
-        colourList[l] <- NA
-      }
-    }
+    
     allPathwaysDEG <- c(
       unique(unlist(strsplit(x = c(seqAnno$`GO BP`), "; "))),
       unique(unlist(strsplit(x = c(seqAnno$`GO MF`), "; "))),
@@ -284,7 +271,6 @@ inputDataReactive <- reactive({
         "countList" = countList,
         "genes" = genes,
         "factorLevels" = factorLevels,
-        "colourList" = colourList,
         "allPathways" = allPathways,
         "ora" = ora,
         "oraHTML" = oraHTML,
@@ -307,7 +293,6 @@ inputDataReactive <- reactive({
         "countList" = countList,
         "genes" = genes,
         "factorLevels" = factorLevels,
-        "colourList" = colourList,
         "allPathways" = allPathways
         )
       )

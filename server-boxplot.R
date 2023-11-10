@@ -286,28 +286,6 @@ boxplotCountsReactive <- eventReactive({
     })
 })
 
-coloursReactive <- eventReactive({
-  input$boxplotFactor1
-  input$boxKeepBucket
-  lapply(seq_along(inputDataReactive()$colourList), function (i) {
-    input[[paste0("GroupColour", i)]]
-  })
-  }, {
-    # Get the colours from the sidebar
-    colourListBoxplot <- list()
-    for (i in seq_along(inputDataReactive()$factorLevels)){
-      colourListBoxplot[i] <- paste0(col2hex(input[[paste0("GroupColour", i)]]), "FF")
-    }
-    colours <- NULL
-    for (i in levels(as.factor(inputDataReactive()$dataset[[input$boxplotFactor1]]))) {
-      colours[i] <- colourListBoxplot[i]
-    }
-    colours <- colours[names(colours) %in% input$boxKeepBucket]
-    return(list(
-      "colours" = colours
-    ))
-})
-
 themes <- list(
   "Prism" = theme_prism(),
   "Minimal" = theme_minimal(),
@@ -318,6 +296,8 @@ themes <- list(
 
 observeEvent({
   boxplotCountsReactive()
+  input$boxplotFactor1
+  input$boxKeepBucket
   input$boxplotYLimLFC
   input$figHeightBoxplot
   input$figWidthBoxplot
@@ -345,8 +325,8 @@ observeEvent({
   input$boxplotShowPTipSizeA
   input$boxplotShowPTipSizeB
   input$boxplotShowPDodge
-  lapply(seq_along(inputDataReactive()$colourList), function(i) {
-    input[[paste0("GroupColour", i)]]
+  lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
+    input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
   })
 }, ignoreNULL = FALSE, ignoreInit = TRUE, {
   tryCatch({
@@ -360,15 +340,9 @@ observeEvent({
     genesToPlot <- levels(as.factor(countsBoxplotMelt$variable))
 
     # Get the colours for the condition levels
-    colourListBoxplot <- inputDataReactive()$colourList
-    for (i in seq_along(inputDataReactive()$factorLevels)) {
-      colourListBoxplot[i] <- paste0(col2hex(input[[paste0("GroupColour", i)]]), "FF")
-    }
-    coloursBoxplot <- NULL
-    for (i in levels(as.factor(inputDataReactive()$dataset[[input$boxplotFactor1]]))) {
-      coloursBoxplot[i] <- colourListBoxplot[i]
-    }
-    coloursBoxplot <- coloursBoxplot[names(coloursBoxplot) %in% input$boxKeepBucket]
+    coloursBoxplot <- setNames(lapply(input$boxKeepBucket, function(k) {
+      paste0(col2hex(input[[paste0("GroupColour", input$boxplotFactor1, "__", k)]]), "FF")
+    }), input$boxKeepBucket)
     
     if (inputDataReactive()$dataType == "proteomics") {
       designLevels <- input$contrastSelected %>% strsplit("_vs_") %>% .[[1]]

@@ -1,6 +1,11 @@
 input <- list()
 names(inputDataReactive())
 
+input$colourPalette <- c("Dark2", "Paired")
+for (i in seq_along(inputDataReactive()$factorLevels)) {
+  input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]] <- rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[i]
+}
+
 for (i in seq_along(1:50)) {
   input[[paste0("GroupColour", i)]] <- rep(RColorBrewer::brewer.pal(12, "Paired"), 10)[i]
 }
@@ -95,6 +100,7 @@ if (inputDataReactive()$dataType == "proteomics") {
 
 input$heatmapScale <- "Continuous"
 input$pTypeHeatmap <- "Raw"
+# input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[3]])))
 input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[1]])))
 input$heatmapCounts <- names(inputDataReactive()$countList)[2]
 
