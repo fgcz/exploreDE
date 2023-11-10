@@ -158,6 +158,8 @@ observeEvent(
     input$heatmapColourRed
     input$heatmapColourWhite
     input$heatmapColourBlue
+    input$showClusterColDend
+    input$showClusterRowDend
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
@@ -301,6 +303,8 @@ observeEvent(
             cluster_rows = input$clusterRowsHeatmap,
             show_column_names = input$colnamesHeatmap,
             show_row_names = input$geneNamesHeatmap,
+            show_column_dend = input$showClusterColDend, 
+            show_row_dend = input$showClusterRowDend,
             row_dend_width = unit(3, "cm"),
             column_dend_height = unit(2, "cm"),
             col = heatmapColours,

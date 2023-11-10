@@ -139,6 +139,8 @@ input$heatmapLimitCHigh <- 1e5
 input$heatmapLimitCMid <- 1e4
 input$heatmapLimitCLow <- 1e3
 input$heatmapFactor2 <- "None"
+input$showClusterColDend <- TRUE
+input$showClusterRowDend <- TRUE
 
 input$pTypeVolcano <- "FDR"
 input$lfcVolcano <- 0.5
