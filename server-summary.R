@@ -5,11 +5,13 @@ factorNames <- inputDataReactive()$factorNames
 countList <- inputDataReactive()$countList
 factorLevels <- inputDataReactive()$factorLevels
 
-#  "Paired", "Set1", "Set2", "Set3", "Dark2"), 
+n <- 60
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 colourPaletteList <- list(
   "House colours" = c(
-    "indianred2", "steelblue3", "chartreuse4", "grey30", 
-    "goldenrod3", "indianred4", "royalblue4", "mediumorchid3",
+    "indianred3", "steelblue4", "chartreuse4", "grey30", 
+    "goldenrod3", "firebrick4", "royalblue4", "mediumorchid3",
     "turquoise4", "darkolivegreen", "thistle4", "darkorange3", 
     "hotpink2", "burlywood3", "cadetblue4", "chocolate4", "firebrick"
   ),
@@ -17,8 +19,19 @@ colourPaletteList <- list(
   "Set1" = brewer.pal(9, "Set1"),
   "Set2" = brewer.pal(8, "Set2"),
   "Set3" = brewer.pal(12, "Set3"),
-  "Dark2" = brewer.pal(8, "Dark2")
+  "Dark2" = brewer.pal(8, "Dark2"),
+  "Dealer's choice" = sample(col_vector, 20)
 )
+
+output$colourPaletteUI <- renderUI({
+  selectInput(
+    inputId = "colourPalette", 
+    label = "Colour Palette",
+    choices = names(colourPaletteList), 
+    selected = names(colourPaletteList)[1],
+    multiple = TRUE
+  )
+})
 
 # Colour picker for each of the groups in Condition:
 observeEvent(input$colourPalette, {

@@ -49,13 +49,7 @@ tabItem(
           width = 6, 
           solidHeader = TRUE,
           status = "primary",
-          selectInput(
-            inputId = "colourPalette", 
-            label = "Colour Palette",
-            choices = c("House colours", "Paired", "Set1", "Set2", "Set3", "Dark2"), 
-            selected = "House colours", 
-            multiple = TRUE
-            ),
+          uiOutput("colourPaletteUI"),
           uiOutput(outputId = "colourPickerUI", inline = T)
         )
       ) # end of column
