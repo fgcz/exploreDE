@@ -69,9 +69,9 @@ if (inputDataReactive()$dataType == "RNASeq") {
     seqAnnoReactive$sa = inputDataReactive()$seqAnnoList[[input$contrastSelected]]
     seqAnnoReactive$sa <- seqAnnoReactive$sa %>% dplyr::select("gene_name", "log2Ratio", "pValue", "fdr")
     seqAnnoReactive$saF <- seqAnnoReactive$sa
+    design <- input$contrastSelected
+    output$boxplotDesign <- renderText({design})
   }, ignoreInit = T, ignoreNULL = T)
-  design <- input$contrastSelected
-  output$boxplotDesign <- renderText({design})
 }
 
 genesReactive <- eventReactive({

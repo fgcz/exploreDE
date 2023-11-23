@@ -143,12 +143,32 @@ if (inputDataReactive()$dataType == "proteomics") {
         )
       })
       
-      colsToPlot1 <- c(
-        "gene_name", "description", "nrPeptides", "log2Ratio", "pValue", "fdr"
-      )
-      colNamesToPlot1 <- c(
-        "Protein ID", "Description", "Number of peptides", "Log2 Ratio", "Raw p-value", "FDR"
-      )
+      colsToPlot1 <- colnames(seqAnnoDEG %>% dplyr::select(any_of(c("gene_name", "description", "nrPeptides", "log2Ratio", "pValue", "fdr"))))
+      colNamesToPlot1 <- unlist(lapply(colsToPlot1, function(col) {
+        if (col == "gene_name") {
+          "Protein ID"
+        } else if (col == "description") {
+          "Description"
+        } else if (col == "nrPeptides") {
+          "Number of peptides"
+        } else if (col == "log2Ratio") {
+          "Log2 Ratio"
+        } else if (col == "pValue") {
+          "Raw p-value"
+        } else if (col == "fdr") {
+          "FDR"
+        }
+      }))
+      
+      # sa <- sa %>% dplyr::select(any_of(c("protein_Id", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides")))
+      # colnames(sa)[grep(paste(c("protein_Id", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
+      # 
+      # colsToPlot1 <- c(
+      #   "gene_name", "description", "nrPeptides", "log2Ratio", "pValue", "fdr"
+      # )
+      # colNamesToPlot1 <- c(
+      #   "Protein ID", "Description", "Number of peptides", "Log2 Ratio", "Raw p-value", "FDR"
+      # )
       
       # Output the interactive data table
       output$degTable <- DT::renderDataTable({

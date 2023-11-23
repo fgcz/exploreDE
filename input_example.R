@@ -1,6 +1,20 @@
 input <- list()
 names(inputDataReactive())
 
+colourPaletteList <- list(
+  "House colours" = c(
+    "indianred3", "steelblue4", "chartreuse4", "grey30", 
+    "goldenrod3", "firebrick4", "royalblue4", "mediumorchid3",
+    "turquoise4", "darkolivegreen", "thistle4", "darkorange3", 
+    "hotpink2", "burlywood3", "cadetblue4", "chocolate4", "firebrick"
+  ),
+  "Paired" = brewer.pal(12, "Paired"),
+  "Set1" = brewer.pal(9, "Set1"),
+  "Set2" = brewer.pal(8, "Set2"),
+  "Set3" = brewer.pal(12, "Set3"),
+  "Dark2" = brewer.pal(8, "Dark2")
+)
+
 input$colourPalette <- c("Dark2", "Paired")
 for (i in seq_along(inputDataReactive()$factorLevels)) {
   input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]] <- rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[i]
