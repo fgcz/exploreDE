@@ -92,7 +92,11 @@ inputDataReactive <- reactive({
     
     # Prepare the metadata
     dataset <- as.data.frame(colData(se))
-    dataset$names <- rownames(dataset)
+    if (any(grepl("Name", colnames(dataset)))) {
+      dataset$names <- dataset$Name
+    } else {
+      dataset$names <- rownames(dataset)
+    }
     
     # Get the main columns from the metadata that are plottable 
     factors <- colnames(dataset)[grep("Name|names|channel|raw.file", colnames(dataset), invert = T)]
