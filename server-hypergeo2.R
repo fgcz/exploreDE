@@ -142,6 +142,13 @@ if(inputDataReactive()$dataType == "RNASeq") {
             showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
             cex.params = list(category_label = (input$textSizeORA / 15), gene_label = (input$textSizeORA / 18), gene_node = (input$textSizeORA / 16), category_node = (input$textSizeORA / 13))
           )
+          if (input$oraDirection == "upGenes") {
+            cn <- cn + scale_color_gradientn(name = "fold change", colours = c("white", "firebrick4"))
+          } else if (input$oraDirection == "downGenes") {
+            cn <- cn + scale_color_gradientn(name = "fold change", colours = c("royalblue4", "white"))
+          } else if (input$oraDirection == "bothGenes") {
+            cn <- cn + scale_colour_gradient2(name = "fold change", low = "royalblue4", mid = "white", high = "firebrick4")
+          }
           hp <- enrichplot::heatplot(
             x = er,
             foldChange = log2RatioORA,
