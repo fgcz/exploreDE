@@ -151,6 +151,7 @@ tabItem(
               tabPanel(
                 paste0(sig, " Genes"),
                 downloadButton(outputId = paste0("dlHeatmap", sig, "Button"), label = paste0("Download ", sig, " Heatmap (PDF)")),
+                downloadButton(outputId = paste0("dlHeatmap", sig, "ButtonPNG"), label = paste0("Download ", sig, " Heatmap (PNG)")),
                 downloadButton(outputId = paste0("dlHeatmap", sig, "DFButton"), label = paste0("Download ", sig, " Heatmap Results (Excel)")),
                 br(),
                 plotOutput(paste0("heatmap", sig), inline = TRUE),

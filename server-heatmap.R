@@ -304,7 +304,8 @@ observeEvent(
             show_column_names = input$colnamesHeatmap,
             show_row_names = input$geneNamesHeatmap,
             show_column_dend = input$showClusterColDend, 
-            show_row_dend = input$showClusterRowDend,
+            show_row_dend = input$showClusterRowDend, 
+            use_raster = TRUE,
             row_dend_width = unit(3, "cm"),
             column_dend_height = unit(2, "cm"),
             col = heatmapColours,
@@ -331,6 +332,16 @@ observeEvent(
             },
             content = function(file) {
               pdf(file = file, width = as.numeric(input$figWidthHeatmap/70), height = as.numeric(input$figHeightHeatmap/70))
+              draw(heatmap, merge_legend = TRUE)
+              dev.off()
+            }
+          )
+          output[[paste0("dlHeatmap", sig, "ButtonPNG")]] <- downloadHandler(
+            filename = function() {
+              paste0(design, "_", sig, "_heatmap.png")
+            },
+            content = function(file) {
+              png(filename = file, width = as.numeric(input$figWidthHeatmap)/60, height = as.numeric(input$figHeightHeatmap)/60, units = "in", res = 600)
               draw(heatmap, merge_legend = TRUE)
               dev.off()
             }
