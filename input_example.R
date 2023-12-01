@@ -23,7 +23,8 @@ for (i in seq_along(inputDataReactive()$factorLevels)) {
 for (i in seq_along(1:50)) {
   input[[paste0("GroupColour", i)]] <- rep(RColorBrewer::brewer.pal(12, "Paired"), 10)[i]
 }
-
+input$selectedTable_ORA_rows_selected <- 1:5
+input$textSizeORA <- 12
 input$degTable_rows_selected <- c(12,68)
 input$featureCalcPType <- "Raw"
 input$featureCalcPValue <- 0.05
@@ -152,9 +153,11 @@ input$heatmapLimitCPaletteRev <- FALSE
 input$heatmapLimitCHigh <- 1e5
 input$heatmapLimitCMid <- 1e4
 input$heatmapLimitCLow <- 1e3
-input$heatmapFactor2 <- "None"
+input$heatmapFactor2 <- ""
 input$showClusterColDend <- TRUE
 input$showClusterRowDend <- TRUE
+input$heatmapGoInput <- "GO:0042254 ribosome biogenesis"
+input$heatmapGoExpr <- 0.05
 
 input$pTypeVolcano <- "FDR"
 input$lfcVolcano <- 0.5

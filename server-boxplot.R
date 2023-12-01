@@ -331,6 +331,7 @@ observeEvent({
 }, ignoreNULL = FALSE, ignoreInit = TRUE, {
   tryCatch({
 
+    req(boxplotCountsReactive()$countsBoxplotMelt)
     datasetBoxplot <- boxplotCountsReactive()$datasetBoxplot
     countsBoxplot <- boxplotCountsReactive()$countsBoxplot
     countsBoxplotMelt <- boxplotCountsReactive()$countsBoxplotMelt

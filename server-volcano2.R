@@ -111,7 +111,6 @@ volcanoResultsList <- eventReactive(
     input$volcanoShowGenes
     input$boxKeepBucketGenes
     input$contrastSelected
-    # genesReactive()
     lapply(1:8, function(i) {
       input[[paste0("volcanoColour", i)]]
     })

@@ -86,7 +86,6 @@ inputDataReactive <- reactive({
       sa <- sa[order(sa$p.value),]
       sa <- sa %>% dplyr::select(any_of(c("protein_Id", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides")))
       colnames(sa)[grep(paste(c("protein_Id", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
-      # colnames(sa) <- c("gene_name", "gene_symbol", "log2Ratio", "pValue", "fdr", "description", "nrPeptides")
       sa
     }), contrasts)
     
@@ -94,10 +93,6 @@ inputDataReactive <- reactive({
     dataset <- as.data.frame(colData(se))
     dataset$names <- dataset$Name
     rownames(dataset) <- dataset$Name
-    # if (any(grepl("Name", colnames(dataset)))) {
-    # } else {
-    #   dataset$names <- rownames(dataset)
-    # }
     
     # Get the main columns from the metadata that are plottable 
     factors <- colnames(dataset)[grep("Name|names|channel|raw.file", colnames(dataset), invert = T)]

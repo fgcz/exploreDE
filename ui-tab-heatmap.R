@@ -110,7 +110,9 @@ tabItem(
           ),
           tabPanel(
             title = "GO heatmap",
-            uiOutput("heatmapGOUI")
+            helpText("You can also plot the expression of features annotated to a given GO term (again, irrespective of p-value from the DE test)."),
+            uiOutput("heatmapGOUI1"),
+            uiOutput("heatmapGOUI2")
           ),
           tabPanel(
             title = "Figure settings",
@@ -147,9 +149,9 @@ tabItem(
         # 3 x heatmaps: Both, up, and down regulated features:
         do.call(tabsetPanel, c(
           id = "sig",
-          lapply(c("Both", "Up", "Down", "Custom", "GO"), function(sig) {
+          lapply(c("Both Directions", "Up-Regulated", "Down-Regulated", "Custom", "GO"), function(sig) {
               tabPanel(
-                paste0(sig, " Genes"),
+                paste0(sig, " Features"),
                 downloadButton(outputId = paste0("dlHeatmap", sig, "Button"), label = paste0("Download ", sig, " Heatmap (PDF)")),
                 downloadButton(outputId = paste0("dlHeatmap", sig, "ButtonPNG"), label = paste0("Download ", sig, " Heatmap (PNG)")),
                 downloadButton(outputId = paste0("dlHeatmap", sig, "DFButton"), label = paste0("Download ", sig, " Heatmap Results (Excel)")),
