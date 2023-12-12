@@ -234,7 +234,8 @@ volcanoResultsList <- eventReactive(
         
         return(list(
           "volcanoTable" = volcanoTable,
-          "volcanoColours" = volcanoColours
+          "volcanoColours" = volcanoColours,
+          "design" = design
         ))
       },
       error = function(e) {
@@ -261,11 +262,16 @@ observeEvent(
     input$volcanoLabelAllDown
     input$volcanoAnnotationHighlightColour
     input$volcanoLabelMaxOverlap
+    input$showLinesVolcano
+    input$geneLabelSizeVolcano
+    input$geneLabelNudgeVolcanoX
+    input$geneLabelNudgeVolcanoY
     volcanoResultsList()
   },
   {
     volcanoTable <- volcanoResultsList()$volcanoTable
     volcanoColours <- volcanoResultsList()$volcanoColours
+    design <- volcanoResultsList()$design
 
     volcanoTableFull <- volcanoTable
     volcanoTableFull$Label <- NA
@@ -291,9 +297,9 @@ observeEvent(
       maplot <- maplot + geom_label_repel(
           aes(label = Label, colour = Status),
           force = 2,
-          nudge_y = 0.2,
-          nudge_x = 0.2, 
-          size = (input$textSizeVolcano / 3),
+          nudge_y = as.numeric(input$geneLabelNudgeVolcanoY)/10,
+          nudge_x = as.numeric(input$geneLabelNudgeVolcanoX)/10, 
+          size = (input$geneLabelSizeVolcano / 3),
           max.overlaps = input$volcanoLabelMaxOverlap,
           fontface = "bold", 
           show.legend = F
@@ -352,9 +358,9 @@ observeEvent(
         geom_label_repel(
           aes(label = Label, colour = Status),
           force = 3,
-          nudge_y = 0.2,
-          nudge_x = 0.2,
-          size = (input$textSizeVolcano / 3),
+          nudge_y = as.numeric(input$geneLabelNudgeVolcanoY)/10,
+          nudge_x = as.numeric(input$geneLabelNudgeVolcanoX)/10,
+          size = (input$geneLabelSizeVolcano / 3),
           max.overlaps = input$volcanoLabelMaxOverlap,
           fontface = "bold",
           show.legend = F
@@ -374,28 +380,28 @@ observeEvent(
     )
     volcanoStatic <- volcanoStatic + theme(
         axis.text.x = element_text(
-          colour = "grey20", size = input$textSizeVolcano, angle = 0, hjust = .5,
+          colour = "black", size = input$textSizeVolcano, angle = 0, hjust = .5,
           vjust = .5, face = "plain"
         ),
         axis.text.y = element_text(
-          colour = "grey20", size = input$textSizeVolcano, angle = 0, hjust = 1,
+          colour = "black", size = input$textSizeVolcano, angle = 0, hjust = 1,
           vjust = 0.5, face = "plain"
         ),
         axis.title.x = element_text(
-          colour = "grey20", size = input$textSizeVolcano, angle = 0, hjust = .5,
+          colour = "black", size = input$textSizeVolcano, angle = 0, hjust = .5,
           vjust = 0, face = "plain"
         ),
         axis.title.y = element_text(
-          colour = "grey20", size = input$textSizeVolcano, angle = 90,
+          colour = "black", size = input$textSizeVolcano, angle = 90,
           hjust = .5, vjust = .5, face = "plain"
         ),
         legend.text = element_text(
-          colour = "grey20", size = input$textSizeVolcano
+          colour = "black", size = input$textSizeVolcano
         ),
         legend.title = element_text(
-          colour = "grey20", size = input$textSizeVolcano
+          colour = "black", size = input$textSizeVolcano
         ),
-        title = element_text(colour = "grey20", size = input$textSizeVolcano),
+        title = element_text(colour = "black", size = input$textSizeVolcano),
         strip.text = element_text(size = input$textSizeVolcano),
         strip.text.x = element_text(size = input$textSizeVolcano),
         strip.text.y = element_text(size = input$textSizeVolcano)
@@ -422,6 +428,15 @@ observeEvent(
           axis.title.x = element_blank(),
           axis.title.y = element_blank(),
           panel.border = element_blank()
+        )
+    }
+    if (!input$showLinesVolcano) {
+      volcanoStatic <- volcanoStatic +
+        theme(
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_blank(),
+          panel.grid.minor.y = element_blank()
         )
     }
 

@@ -47,14 +47,11 @@ tabItem(
             numericInput(inputId = "xLimVolcano", label = "x axis (log2 FC) limits (both +/-)", value = 5, min = 1, max = 20, step = 0.5),
             numericInput(inputId = "yLimVolcano", label = "y axis (-log 10 p-value) limits", value = 50, min = 10, max = 250, step = 10),
             hr(style = "border-top: 1px solid #000000;"), h4("Volcano plot annotation"),
-            checkboxInput(inputId = "volcanoAnnotationHighlightColour", label = "Use special highlight colour?", value = F),
             h5("Use this checkbox to turn on/off all annotations:"),
             checkboxInput(inputId = "volcanoShowGenes", label = "Annotate volcano?", value = TRUE),
             h5("Label all up and/or down regulated features (based on current settings)?"),
             checkboxInput(inputId = "volcanoLabelAllUp", label = "Label all Up", value = FALSE),
             checkboxInput(inputId = "volcanoLabelAllDown", label = "Label all Down", value = FALSE),
-            numericInput(inputId = "volcanoLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 25, step = 1, width = "50%"),
-            helpText("Increasing the number of overlapping labels will label more genes, but can take a *very* long time to generate"),
             helpText("You can both label all up/down features and select specific features."),
             tags$b("Annotate volcano plot with specific features?"),
             selectizeInput(inputId = "volcanoGenes", label = "Select features to annotate", choices = "", selected = "", multiple = TRUE),
@@ -66,6 +63,7 @@ tabItem(
               them in order or into the exclude bucket."),
             uiOutput("geneBucket2"),
             hr(style = "border-top: 1px solid #000000;"), h4("Volcano colours"),
+            checkboxInput(inputId = "volcanoAnnotationHighlightColour", label = "Use special highlight colour?", value = F),
             uiOutput("volcanoColourPicker")
           ),
           tabPanel(
@@ -73,14 +71,18 @@ tabItem(
             splitLayout(
               checkboxInput(inputId = "showBorderVolcano", label = "Show cell border?", value = TRUE),
               checkboxInput(inputId = "showAxesVolcano", label = "Show axes lines?", value = TRUE),
-              checkboxInput(inputId = "boldVolcano", label = "Use bold font?", value = TRUE)
-              # checkboxInput(inputId = "showLinesVolcano", label = "Show grid lines?", value = TRUE),
+              checkboxInput(inputId = "boldVolcano", label = "Use bold font?", value = TRUE),
+              checkboxInput(inputId = "showLinesVolcano", label = "Show grid lines?", value = TRUE)
             ),
             
-            sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 3, step = 0.5, width = "33%", ticks = FALSE),
-            sliderInput(inputId = "alphaVolcano", label = "Point alpha", min = 0.1, max = 1, value = 0.8, step = 0.1, width = "33%", ticks = FALSE),
-            numericInput(inputId = "geneLabelSizeVolcano", label = "Gene Label Size", min = 4, max = 30, value = 12, step = 0.5),
-            numericInput(inputId = "textSizeVolcano", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5),
+            sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 3, step = 0.5, width = "33%", ticks = TRUE),
+            sliderInput(inputId = "alphaVolcano", label = "Point alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "33%", ticks = TRUE),
+            numericInput(inputId = "volcanoLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 10, step = 1, width = "33%"),
+            helpText("Increasing the number of overlapping labels will label more genes, but can take a *very* long time to generate"),
+            sliderInput(inputId = "geneLabelNudgeVolcanoX", label = "Nudge Gene Labels X", min = -10, max = 10, value = 0, step = 1, width = "33%", ticks = TRUE),
+            sliderInput(inputId = "geneLabelNudgeVolcanoY", label = "Nudge Gene Labels Y", min = -10, max = 10, value = 0, step = 1, width = "33%", ticks = TRUE),
+            sliderInput(inputId = "geneLabelSizeVolcano", label = "Gene Label Size", min = 4, max = 30, value = 12, step = 0.5, width = "33%", ticks = TRUE),
+            sliderInput(inputId = "textSizeVolcano", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "33%", ticks = TRUE),
             numericInput(inputId = "figWidthVolcano", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10),
             numericInput(inputId = "figHeightVolcano", label = "Figure Height", min = 100, max = 2000, value = 600, step = 10)
           ),
