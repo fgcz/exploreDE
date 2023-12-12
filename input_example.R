@@ -160,7 +160,7 @@ input$heatmapGoInput <- "GO:0042254 ribosome biogenesis"
 input$heatmapGoExpr <- 0.05
 
 input$pTypeVolcano <- "FDR"
-input$lfcVolcano <- 0.5
+input$lfcVolcano <- 0.25
 input$pThresholdVolcano <- 0.05
 input$textSizeVolcano <- 12
 input$alphaVolcano <- 0.8
@@ -172,6 +172,10 @@ input$boxKeepBucketGenes <- inputDataReactive()$genes[1:5]
 input$dotSizeVolcano <- 3
 input$yLimVolcano <- 25
 input$xLimVolcano <- 30
+input$volcanoLabelAllUp <- TRUE
+input$volcanoLabelAllDown <- TRUE
+input$volcanoAnnotationHighlightColour <- FALSE
+input$volcanoLabelMaxOverlap <- 50
 
 input$oraType <- "BP"
 input$oraDirection <- "upGenes"

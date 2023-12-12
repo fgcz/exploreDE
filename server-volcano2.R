@@ -164,14 +164,6 @@ volcanoResultsList <- eventReactive(
         # Get the -log10 of the p-value:
         volcanoTable["log10p"] <- -log10(as.numeric(volcanoTable[[pTypeVolcano]]))
         
-        # Get the gene labels for plotting
-        volcanoTable$genelabels <- ""
-        volcanoTable$genelabels[which(
-          volcanoTable$gene_name %in% input$boxKeepBucketGenes
-        )] <- volcanoTable$gene_name[which(
-          volcanoTable$gene_name %in% input$boxKeepBucketGenes
-        )]
-        
         # Get the -log10p of p-value threshold as a single value:
         log10p <- -log10(as.numeric(input$pThresholdVolcano))
         
@@ -199,9 +191,7 @@ volcanoResultsList <- eventReactive(
         volcanoTable[which(volcanoTable["log10p"] >= log10p & volcanoTable["log2Ratio"] >= as.numeric(input$lfcVolcano)), "Status"] <- "FoldChange&SignificantUp"
         # LFC & p-value down:
         volcanoTable[which(volcanoTable["log10p"] >= log10p & volcanoTable["log2Ratio"] <= -as.numeric(input$lfcVolcano)), "Status"] <- "FoldChange&SignificantDown"
-        # Highlighted
-        vc2 <- volcanoTable
-        vc2 <- vc2[order(vc2$log10p, decreasing = TRUE), c("gene_name", "description", "log2Ratio", pTypeVolcano, "log10p", "Status")]
+        # table(volcanoTable$Status)
         
         # Set limits of data frame to x/y-axes limits
         volcanoTable$log10p_full <- volcanoTable$log10p
@@ -228,7 +218,7 @@ volcanoResultsList <- eventReactive(
         # Results table
         output$volcanoOverviewTable <- DT::renderDataTable({
           DT::datatable(
-            data = vc2,
+            data = volcanoTable[,c("gene_name", "description", "log2Ratio", pTypeVolcano, "log10p", "Status")],
             filter = "top",
             class = "cell-border stripe",
             rownames = FALSE,
@@ -237,7 +227,8 @@ volcanoResultsList <- eventReactive(
             DT::formatSignif(columns = c("log10p", pTypeVolcano, "log2Ratio"), digits = 3) %>%
             DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
             DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
-            DT::formatStyle(columns = c("log10p", pTypeVolcano), color = styleInterval(cuts = log10p, values = c("black", "green")), fontWeight = "bold") %>%
+            DT::formatStyle(columns = "log10p", color = styleInterval(cuts = log10p, values = c("black", "green")), fontWeight = "bold") %>%
+            DT::formatStyle(columns = "fdr", color = styleInterval(cuts = input$pThresholdVolcano, values = c("green", "black")), fontWeight = "bold") %>%
             DT::formatStyle(columns = "Status", color = styleEqual(levels = names(volcanoColours), values = as.character(volcanoColours)), fontWeight = "bold")
         })
         
@@ -266,60 +257,56 @@ observeEvent(
     input$volcanoShowGenes
     input$boxKeepBucketGenes
     input$showBorderVolcano
+    input$volcanoLabelAllUp
+    input$volcanoLabelAllDown
+    input$volcanoAnnotationHighlightColour
+    input$volcanoLabelMaxOverlap
     volcanoResultsList()
   },
   {
     volcanoTable <- volcanoResultsList()$volcanoTable
     volcanoColours <- volcanoResultsList()$volcanoColours
 
-    # Get a df of the highlighted genes so we can make them bigger
     volcanoTableFull <- volcanoTable
-    if (input$volcanoShowGenes == TRUE & length(input$boxKeepBucketGenes) >= 1) {
-      volcanoHighlights <- volcanoTable[which(volcanoTable$gene_name %in% input$boxKeepBucketGenes), ]
-      volcanoHighlights$Status <- "Highlighted"
-      volcanoTable <- volcanoTable[which(!volcanoTable$gene_name %in% input$boxKeepBucketGenes), ]
+    volcanoTableFull$Label <- NA
+    if (input$volcanoShowGenes & input$volcanoLabelAllUp) {
+      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChange&SignificantUp")] <- volcanoTableFull$gene_name[which(volcanoTableFull$Status == "FoldChange&SignificantUp")]
+    }
+    if (input$volcanoShowGenes & input$volcanoLabelAllDown) {
+      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChange&SignificantDown")] <- volcanoTableFull$gene_name[which(volcanoTableFull$Status == "FoldChange&SignificantDown")]
+    }
+    if (input$volcanoShowGenes & length(input$boxKeepBucketGenes) >= 1) {
+      volcanoTableFull$Label[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)] <- volcanoTableFull$gene_name[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)]
+      if (input$volcanoAnnotationHighlightColour) {
+        volcanoTableFull$Status[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)] <- "Highlighted"
+      }
     }
 
     # Create the MA plot
-    if (input$volcanoShowGenes == TRUE & length(input$boxKeepBucketGenes) >= 1) {
-      maplot <- ggplot(volcanoTable, aes(x = Log2_Mean, y = log2Ratio_full))
-      if (input$showBorderVolcano) {
-        maplot <- maplot + geom_point(data = volcanoHighlights, aes(y = log2Ratio_full, x = Log2_Mean, fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = 0.9, pch = 21)
-        maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status))
-        maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-      } else {
-        maplot <- maplot + geom_point(data = volcanoHighlights, aes(y = log2Ratio_full, x = Log2_Mean, colour = Status), size = as.numeric(input$dotSizeVolcano), alpha = 0.9, pch = 16)
-        maplot <- maplot + geom_point(pch = 16, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(colour = Status))
-        maplot <- maplot + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-      }
-      maplot <- maplot +
-        theme_prism(base_size = input$textSizeVolcano) +
-        xlab("Log2 Normalised Mean") + ylab("Log2 Ratio") +
-        geom_label_repel(
-          data = volcanoHighlights,
-          aes(label = genelabels),
+    maplot <- ggplot(volcanoTableFull, aes(x = Log2_Mean, y = log2Ratio_full))
+    maplot <- maplot +
+      theme_prism(base_size = input$textSizeVolcano) +
+      xlab("Log2 Normalised Mean") + ylab("Log2 Ratio")
+    if (input$volcanoShowGenes == TRUE) {
+      maplot <- maplot + geom_label_repel(
+          aes(label = Label, colour = Status),
           force = 2,
           nudge_y = 0.2,
-          nudge_x = 0.2,
-          color = "black",
+          nudge_x = 0.2, 
           size = (input$textSizeVolcano / 3),
-          max.overlaps = 500,
-          fontface = "bold"
-        )
+          max.overlaps = input$volcanoLabelMaxOverlap,
+          fontface = "bold", 
+          show.legend = F
+      ) + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+    } 
+    if (input$showBorderVolcano) {
+      maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status))
+      maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     } else {
-      maplot <- ggplot(volcanoTable, aes(x = Log2_Mean, y = log2Ratio_full))
-      if (input$showBorderVolcano) {
-        maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status))
-        maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-      } else {
-        maplot <- maplot + geom_point(pch = 16, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(colour = Status))
-        maplot <- maplot + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-      }
-      maplot <- maplot +
-        theme_prism(base_size = input$textSizeVolcano) +
-        xlab("Log2 Normalised Mean") + ylab("Log2 Ratio")
-
+      maplot <- maplot + geom_point(pch = 16, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(colour = Status))
+      maplot <- maplot + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     }
+    maplot <- maplot + guides()
     output$MAPlot <- renderPlot({
       maplot
     }, height = as.numeric(input$figHeightVolcano)/1.5, width = as.numeric(input$figWidthVolcano)*1.2)
@@ -354,8 +341,25 @@ observeEvent(
 
     # Create the volcano plot
     volcanoStatic <- ggplot(
-      data = volcanoTable, aes(x = log2Ratio, y = log10p)
+      data = volcanoTableFull, aes(x = log2Ratio, y = log10p)
     )
+    volcanoStatic <- volcanoStatic + ylim(0, input$yLimVolcano) + xlim(-input$xLimVolcano, input$xLimVolcano)
+    volcanoStatic <- volcanoStatic + theme_bw()
+    volcanoStatic <- volcanoStatic + geom_vline(xintercept = c(-as.numeric(input$lfcVolcano), as.numeric(input$lfcVolcano)), col = "black", linetype = "dashed")
+    volcanoStatic <- volcanoStatic + geom_hline(yintercept = -log10(as.numeric(input$pThresholdVolcano)), col = "black", linetype = "dashed")
+    if (input$volcanoShowGenes) {
+      volcanoStatic <- volcanoStatic +
+        geom_label_repel(
+          aes(label = Label, colour = Status),
+          force = 3,
+          nudge_y = 0.2,
+          nudge_x = 0.2,
+          size = (input$textSizeVolcano / 3),
+          max.overlaps = input$volcanoLabelMaxOverlap,
+          fontface = "bold",
+          show.legend = F
+        ) + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+    }
     if (input$showBorderVolcano) {
       volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21)
       volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
@@ -367,24 +371,8 @@ observeEvent(
       x = "Log2 Fold Change",
       y = "-log10 P-value",
       fill = "Significance"
-    ) +
-      ylim(0, input$yLimVolcano) +
-      xlim(-input$xLimVolcano, input$xLimVolcano) +
-      theme_bw() +
-      geom_vline(
-        xintercept = c(
-          -as.numeric(input$lfcVolcano),
-          as.numeric(input$lfcVolcano)
-        ),
-        col = "black",
-        linetype = "dashed"
-      ) +
-      geom_hline(
-        yintercept = -log10(as.numeric(input$pThresholdVolcano)),
-        col = "black",
-        linetype = "dashed"
-      ) +
-      theme(
+    )
+    volcanoStatic <- volcanoStatic + theme(
         axis.text.x = element_text(
           colour = "grey20", size = input$textSizeVolcano, angle = 0, hjust = .5,
           vjust = .5, face = "plain"
@@ -413,31 +401,17 @@ observeEvent(
         strip.text.y = element_text(size = input$textSizeVolcano)
       )
 
-    if (input$volcanoShowGenes == TRUE & length(input$boxKeepBucketGenes) >= 1) {
-      if (input$showBorderVolcano) {
-        volcanoStatic <- volcanoStatic + geom_point(data = volcanoHighlights, aes(x = log2Ratio, y = log10p, fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = 0.9, pch = 21)
-        volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-      } else {
-        volcanoStatic <- volcanoStatic + geom_point(data = volcanoHighlights, aes(x = log2Ratio, y = log10p, colour = Status), size = as.numeric(input$dotSizeVolcano), alpha = 0.9, pch = 16)
-        volcanoStatic <- volcanoStatic + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-      }
+    if (input$boldVolcano) {
       volcanoStatic <- volcanoStatic +
-        geom_label_repel(
-          data = volcanoHighlights,
-          aes(label = genelabels),
-          force = 3,
-          nudge_y = 0.2,
-          nudge_x = 0.2,
-          color = "black",
-          size = (input$textSizeVolcano / 3),
-          max.overlaps = 500,
-          fontface = "bold"
+        theme(
+          axis.title.x = element_text(face = "bold"),
+          axis.title.y = element_text(face = "bold"),
+          axis.text.x = element_text(face = "bold"),
+          axis.text.y = element_text(face = "bold"),
+          panel.border = element_rect(linewidth = 1.5),
+          axis.ticks = element_line(linewidth = 1.3)
         )
     }
-    # if (!input$showLinesVolcano) {
-    #   volcanoStatic <- volcanoStatic +
-    #     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-    # }
     if (!input$showAxesVolcano) {
       volcanoStatic <- volcanoStatic +
         theme(
@@ -448,17 +422,6 @@ observeEvent(
           axis.title.x = element_blank(),
           axis.title.y = element_blank(),
           panel.border = element_blank()
-        )
-    }
-    if (input$boldVolcano) {
-      volcanoStatic <- volcanoStatic +
-        theme(
-          axis.title.x = element_text(face = "bold"),
-          axis.title.y = element_text(face = "bold"),
-          axis.text.x = element_text(face = "bold"),
-          axis.text.y = element_text(face = "bold"),
-          panel.border = element_rect(linewidth = 1.5),
-          axis.ticks = element_line(linewidth = 1.3)
         )
     }
 
