@@ -32,7 +32,7 @@ input$featureCalcLFC <- 0
 
 input$pcaFactor1 <- inputDataReactive()$factors[1]
 input$pcaGroups <- inputDataReactive()$designLevels
-input$pcaCounts <- "Normalised + Log2"
+input$pcaCounts <- names(inputDataReactive()$countList)[2]
 input$pcaBatch <- NULL
 input$pcaTopN <- 2000
 input$pcaCentre = TRUE 
@@ -176,6 +176,10 @@ input$volcanoLabelAllUp <- TRUE
 input$volcanoLabelAllDown <- TRUE
 input$volcanoAnnotationHighlightColour <- FALSE
 input$volcanoLabelMaxOverlap <- 50
+input$geneLabelSizeVolcano <- 12
+input$showLinesVolcano <- TRUE
+input$geneLabelNudgeVolcanoX <- 2
+input$geneLabelNudgeVolcanoY <- 2
 
 input$oraType <- "BP"
 input$oraDirection <- "upGenes"
