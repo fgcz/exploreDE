@@ -152,16 +152,15 @@ boxplotCountsReactive <- eventReactive({
           countsBoxplot <- limma::removeBatchEffect(countsBoxplot, datasetBoxplot[[input$boxplotBatch[i]]])
         }
       }
-      # if (inputDataReactive()$dataType == "proteomics") {
-      #   rownames(countsBoxplot) <- gsub("\\~.*", "", rownames(countsBoxplot))
-      # }
+      if (inputDataReactive()$dataType == "proteomics") {
+        rownames(countsBoxplot) <- gsub("\\~.*", "", rownames(countsBoxplot))
+      }
       countsBoxplot <- as.data.frame(t(countsBoxplot))
       countsBoxplot$names <- rownames(countsBoxplot)
 
       if (length(genesToPlot) >= 1) {
-        # countsBoxplot <- countsBoxplot %>% dplyr::select(names, genesToPlot)
-        countsBoxplot <- countsBoxplot[,c(grep(paste(c("names", genesToPlot), collapse = "|"), colnames(countsBoxplot)))]
-        
+        countsBoxplot <- countsBoxplot %>% dplyr::select(names, genesToPlot)
+
         # Add the metadata
         countsBoxplot <- left_join(countsBoxplot, datasetBoxplot)
 
@@ -174,13 +173,13 @@ boxplotCountsReactive <- eventReactive({
           input$boxKeepBucket)
 
         # melt the table
-        countsBoxplotMelt <- countsBoxplot#[, colnames(countsBoxplot) %in% c(inputDataReactive()$factorNames, "names", genesToPlot)]
-        countsBoxplotMelt <- reshape2:::melt.data.frame(data = countsBoxplotMelt)
-        # countsBoxplotMelt$variable <- as.factor(x = countsBoxplotMelt$variable)
+        countsBoxplotMelt <- countsBoxplot[, colnames(countsBoxplot) %in% c(inputDataReactive()$factorNames, "names", genesToPlot)]
+        countsBoxplotMelt <- reshape2::melt(data = countsBoxplotMelt)
+        countsBoxplotMelt$variable <- as.factor(x = countsBoxplotMelt$variable)
 
         # Force the order of the genes as factor so the order the genes are
         # selected by the user is respected by the facet wrap
-        countsBoxplotMelt$variable <- reorder(x = countsBoxplotMelt$variable, levels = genesToPlot)
+        countsBoxplotMelt$variable <- factor(countsBoxplotMelt$variable, genesToPlot)
 
         # Add vector of custom shapes for compatibility with ggprism
         if (!input$boxplotFactor2 == "None" & !input$boxplotFactor2 == "Feature") {

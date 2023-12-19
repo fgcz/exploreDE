@@ -23,8 +23,9 @@ if (!is.null(dataUrl)) {
     dataDir <- paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl)
   }
 } else {
-  dataDir <- "/srv/gstore/projects/p23793/o23960_EdgeR_RIVA-Ibru-6h--over--RIVA-DMSO_2022-09-02--16-54-00/RIVA-Ibru-6h--over--RIVA-DMSO"
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p3000/bfabric/Proteomics/SummarizedExperiment/2023/2023-09/2023-09-29/workunit_294156/2363303.rds"
+  # dataDir <- "/srv/gstore/projects/p23793/o23960_EdgeR_RIVA-Ibru-6h--over--RIVA-DMSO_2022-09-02--16-54-00/RIVA-Ibru-6h--over--RIVA-DMSO"
+  # dataDir <- "/srv/gstore/projects/p33319/o33456_EdgeR_TreatedTconv--over--CtrlTconv_2023-12-18--14-40-03/TreatedTconv--over--CtrlTconv"
+  dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p3000/bfabric/Proteomics/SummarizedExperiment/2023/2023-09/2023-09-29/workunit_294156/2363303.rds"
   # dataDir <- "p3000/bfabric/Proteomics/SummarizedExperiment/2023/2023-09/2023-09-29/workunit_294156/2363303.rds"
 }
 
@@ -84,14 +85,8 @@ inputDataReactive <- reactive({
     seqAnnoList <- setNames(lapply(contrasts, function(con) {
       sa <- rowData(se)[[paste0("constrast_", con)]]
       sa <- sa[order(sa$p.value),]
-      if (any(grepl("site", colnames(sa), ignore.case = T))) {
-        sa[["site"]] <- gsub("\\~", ".", sa[["site"]])
-        sa <- sa %>% dplyr::select(any_of(c("site", "protein_Id", "description", "diff", "p.value", "FDR", "nrPeptides")))
-        colnames(sa)[grep(paste(c("site", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
-      } else {
-        sa <- sa %>% dplyr::select(any_of(c("protein_Id", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides")))
-        colnames(sa)[grep(paste(c("protein_Id", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
-      }
+      sa <- sa %>% dplyr::select(any_of(c("protein_Id", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides")))
+      colnames(sa)[grep(paste(c("protein_Id", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
       sa
     }), contrasts)
     
@@ -107,10 +102,7 @@ inputDataReactive <- reactive({
     # Currently only transformed counts available
     countList <- setNames(lapply(names(assays(se)), function(ass) {
       x <- assay(se, ass)
-      rownames(x) <- rownames(x) %>% 
-        gsub("\\~lfq\\~light", "", .) %>%
-        gsub(".*\\~lfq\\~", "" ,.) %>%
-        gsub("\\~", ".", .)
+      rownames(x) <- gsub("\\~.*", "", rownames(x))
       x
     }), names(assays(se)))
     
@@ -239,7 +231,7 @@ inputDataReactive <- reactive({
       seqAnno[[paste0(count, "_", param$refGroup, "_Mean")]] <- rowMeans(cts[ , isRef, drop=FALSE])[seqAnno$gene_name]
     }
     
-    # makme the sample names an actual column to make it easier to bind to things:
+    # make the sample names an actual column to make it easier to bind to things:
     dataset$names <- rownames(dataset)
     
     # get the list of genes to go in as input options:
