@@ -23,9 +23,9 @@ if (!is.null(dataUrl)) {
     dataDir <- paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl)
   }
 } else {
-  # dataDir <- "/srv/gstore/projects/p23793/o23960_EdgeR_RIVA-Ibru-6h--over--RIVA-DMSO_2022-09-02--16-54-00/RIVA-Ibru-6h--over--RIVA-DMSO"
+  dataDir <- "/srv/gstore/projects/p23793/o23960_EdgeR_RIVA-Ibru-6h--over--RIVA-DMSO_2022-09-02--16-54-00/RIVA-Ibru-6h--over--RIVA-DMSO"
   # dataDir <- "/srv/gstore/projects/p33319/o33456_EdgeR_TreatedTconv--over--CtrlTconv_2023-12-18--14-40-03/TreatedTconv--over--CtrlTconv"
-  dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p3000/bfabric/Proteomics/SummarizedExperiment/2023/2023-09/2023-09-29/workunit_294156/2363303.rds"
+  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p3000/bfabric/Proteomics/SummarizedExperiment/2023/2023-09/2023-09-29/workunit_294156/2363303.rds"
   # dataDir <- "https://fgcz-ms.uzh.ch/public/jStore/o33038/Proteomics/SummarizedExperiment/2023/2023-11/2023-11-30/o33038_TMTphospho_multiplexed__PhosphoEnriched_o33281_multiPlex_dataset/SummarizedExperiment.rds"
   # dataDir <- "p3000/bfabric/Proteomics/SummarizedExperiment/2023/2023-09/2023-09-29/workunit_294156/2363303.rds"
 }
