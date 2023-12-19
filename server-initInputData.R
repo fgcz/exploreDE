@@ -26,6 +26,7 @@ if (!is.null(dataUrl)) {
   # dataDir <- "/srv/gstore/projects/p23793/o23960_EdgeR_RIVA-Ibru-6h--over--RIVA-DMSO_2022-09-02--16-54-00/RIVA-Ibru-6h--over--RIVA-DMSO"
   # dataDir <- "/srv/gstore/projects/p33319/o33456_EdgeR_TreatedTconv--over--CtrlTconv_2023-12-18--14-40-03/TreatedTconv--over--CtrlTconv"
   dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p3000/bfabric/Proteomics/SummarizedExperiment/2023/2023-09/2023-09-29/workunit_294156/2363303.rds"
+  # dataDir <- "https://fgcz-ms.uzh.ch/public/jStore/o33038/Proteomics/SummarizedExperiment/2023/2023-11/2023-11-30/o33038_TMTphospho_multiplexed__PhosphoEnriched_o33281_multiPlex_dataset/SummarizedExperiment.rds"
   # dataDir <- "p3000/bfabric/Proteomics/SummarizedExperiment/2023/2023-09/2023-09-29/workunit_294156/2363303.rds"
 }
 
@@ -85,7 +86,12 @@ inputDataReactive <- reactive({
     seqAnnoList <- setNames(lapply(contrasts, function(con) {
       sa <- rowData(se)[[paste0("constrast_", con)]]
       sa <- sa[order(sa$p.value),]
-      sa <- sa %>% dplyr::select(any_of(c("protein_Id", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides")))
+      sa <- sa %>% dplyr::select(any_of(c("protein_Id", "site", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides")))
+      if (any(grepl("site", colnames(sa)))) {
+        sa$site <- gsub("\\~", ".", sa$site)
+        sa <- sa %>% dplyr::select(-protein_Id)
+        colnames(sa)[grep("site", colnames(sa))] <- "protein_Id"
+      }
       colnames(sa)[grep(paste(c("protein_Id", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
       sa
     }), contrasts)
@@ -102,7 +108,13 @@ inputDataReactive <- reactive({
     # Currently only transformed counts available
     countList <- setNames(lapply(names(assays(se)), function(ass) {
       x <- assay(se, ass)
-      rownames(x) <- gsub("\\~.*", "", rownames(x))
+      if (any(grepl("site", colnames(rowData(se)[[1]])))) {
+        rownames(x) <- gsub("\\~", ".", rownames(x))
+        rownames(x) <- gsub("\\.lfq\\.light", "", rownames(x))
+        rownames(x) <- gsub(".*lfq\\.", "", rownames(x))
+      } else {
+        rownames(x) <- gsub("\\~.*", "", rownames(x))
+      }
       x
     }), names(assays(se)))
     
