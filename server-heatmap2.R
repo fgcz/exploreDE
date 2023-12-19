@@ -177,6 +177,9 @@ observeEvent(
     input$heatmapColourBlue
     input$showClusterColDend
     input$showClusterRowDend
+    input$heatmapDPI
+    input$heatmapDownloadFormat
+    input$heatmapFilename
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
@@ -338,27 +341,23 @@ observeEvent(
           )
           
           # download button for the heatmaps
-          output[[paste0("dlHeatmap", sig, "Button")]] <- downloadHandler(
+          output$dlHeatmapButton <- downloadHandler(
             filename = function() {
-              paste0(design, "_", sig, "_heatmap.pdf")
+              paste(input$heatmapFilename, input$heatmapDownloadFormat, sep = ".")
             },
             content = function(file) {
-              pdf(file = file, width = as.numeric(input$figWidthHeatmap/70), height = as.numeric(input$figHeightHeatmap/70))
+              if (input$heatmapDownloadFormat == "PDF") {
+                pdf(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
+              } else if (input$heatmapDownloadFormat == "SVG") {
+                svg(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
+              } else if (input$heatmapDownloadFormat == "PNG") {
+                png(filename = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60), units = "in", res = as.numeric(input$heatmapDPI))
+              }
               draw(heatmap, merge_legend = TRUE)
               dev.off()
             }
           )
-          output[[paste0("dlHeatmap", sig, "ButtonPNG")]] <- downloadHandler(
-            filename = function() {
-              paste0(design, "_", sig, "_heatmap.png")
-            },
-            content = function(file) {
-              png(filename = file, width = as.numeric(input$figWidthHeatmap)/60, height = as.numeric(input$figHeightHeatmap)/60, units = "in", res = 600)
-              draw(heatmap, merge_legend = TRUE)
-              dev.off()
-            }
-          )
-          output[[paste0("dlHeatmap", sig, "DFButton")]] <- downloadHandler(
+          output$dlHeatmapDFButton <- downloadHandler(
             filename = function() {
               paste0(design, "_", sig, "_heatmap.xlsx")
             },

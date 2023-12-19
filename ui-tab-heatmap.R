@@ -133,7 +133,18 @@ tabItem(
             numericInput(inputId = "textSizeHeatmap", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5),
             numericInput(inputId = "figWidthHeatmap", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10),
             numericInput(inputId = "figHeightHeatmap", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10)
-          )
+          ),
+          tabPanel(
+            title = "Download Settings",
+            helpText("Which ever heatmap you are currently viewing (e.g., both, up, or down) will be the one downloaded."),
+            selectInput(inputId = "heatmapDownloadFormat", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+            # numericInput(inputId = "heatmapDownloadWidth", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10),
+            # numericInput(inputId = "heatmapDownloadHeight", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10),
+            selectInput(inputId = "heatmapDPI", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
+            textInput(inputId = "heatmapFilename", label = "Enter filename", value = "heatmap", placeholder = "up_regulated_heatmap"),
+            downloadButton(outputId = "dlHeatmapButton", label = "Download Heatmap"),
+            downloadButton(outputId = "dlHeatmapDFButton", label = "Download Counts (Excel)"),
+            )
         )
       )
     ), 
@@ -152,10 +163,6 @@ tabItem(
           lapply(c("Both Directions", "Up-Regulated", "Down-Regulated", "Custom", "GO"), function(sig) {
               tabPanel(
                 paste0(sig, " Features"),
-                downloadButton(outputId = paste0("dlHeatmap", sig, "Button"), label = paste0("Download ", sig, " Heatmap (PDF)")),
-                downloadButton(outputId = paste0("dlHeatmap", sig, "ButtonPNG"), label = paste0("Download ", sig, " Heatmap (PNG)")),
-                downloadButton(outputId = paste0("dlHeatmap", sig, "DFButton"), label = paste0("Download ", sig, " Heatmap Results (Excel)")),
-                br(),
                 plotOutput(paste0("heatmap", sig), inline = TRUE),
                 br(),
                 textOutput(paste0(sig, "HeatmapZeroMeanMessage"))

@@ -133,6 +133,9 @@ input$textSizeGoTile <- 12
 input$figWidthGoTile <- 400
 input$figHeightGoTile <- 800
 
+input$heatmapDPI <- 600
+input$heatmapDownloadFormat <- "PDF"
+input$heatmapFilename <- "both_regulated_heatmap"
 input$heatmapLimitD <- 2
 input$heatmapColourRed <- "#801717"
 input$heatmapColourWhite <- "#FFFFFF"
