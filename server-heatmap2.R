@@ -231,7 +231,7 @@ observeEvent(
           # Subtract the gene row mean from each sample
           countsHeatmap <- sweep(countsHeatmap, 1, rowMeans(countsHeatmap, na.rm = T))
           heatmapColours <- colorRamp2(
-            breaks = c(inputcheatmapLimitD, 0, -input$heatmapLimitD),
+            breaks = c(input$heatmapLimitD, 0, -input$heatmapLimitD),
             colors = c(input$heatmapColourRed, input$heatmapColourWhite, input$heatmapColourBlue)
           )
           at <- c(-input$heatmapLimitD, 0, input$heatmapLimitD)
