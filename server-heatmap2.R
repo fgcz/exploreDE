@@ -231,7 +231,7 @@ observeEvent(
           # Subtract the gene row mean from each sample
           countsHeatmap <- sweep(countsHeatmap, 1, rowMeans(countsHeatmap, na.rm = T))
           heatmapColours <- colorRamp2(
-            breaks = c(input$heatmapLimitD, 0, -input$heatmapLimitD),
+            breaks = c(inputcheatmapLimitD, 0, -input$heatmapLimitD),
             colors = c(input$heatmapColourRed, input$heatmapColourWhite, input$heatmapColourBlue)
           )
           at <- c(-input$heatmapLimitD, 0, input$heatmapLimitD)
@@ -394,13 +394,13 @@ observeEvent(
           
           if(!is.null(input$keepBucketHeatmap)) {
             hmCustomMatrix <- hmCustomMatrix[rownames(hmCustomMatrix) %in% input$keepBucketHeatmap, ] %>% as.matrix()
-            zeroGeneMeansCustom <- rownames(hmCustomMatrix)[which(rowSums(hmCustomMatrix, na.rm = T) == 0)]
+            #zeroGeneMeansCustom <- rownames(hmCustomMatrix)[which(rowSums(hmCustomMatrix, na.rm = T) == 0)]
             # if (length(zeroGeneMeansCustom) >= 1) {
             #   output[[paste0("CustomHeatmapZeroMeanMessage")]] <- renderText({
             #     c("The following features have been excluded because they have no mean calculated: ", zeroGeneMeansCustom)
             #   })
             # }
-            hmCustomMatrix <- hmCustomMatrix[which(!rownames(hmCustomMatrix) %in% zeroGeneMeansCustom),]
+            #hmCustomMatrix <- hmCustomMatrix[which(!rownames(hmCustomMatrix) %in% zeroGeneMeansCustom),]
             
             # Output heatmaps
             output$heatmapCustom <- renderPlot(
