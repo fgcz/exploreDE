@@ -293,6 +293,13 @@ observeEvent(
     maplot <- maplot +
       theme_prism(base_size = input$textSizeVolcano) +
       xlab("Log2 Normalised Mean") + ylab("Log2 Ratio")
+    if (input$showBorderVolcano) {
+      maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status))
+      maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+    } else {
+      maplot <- maplot + geom_point(pch = 16, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(colour = Status))
+      maplot <- maplot + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+    }
     if (input$volcanoShowGenes == TRUE) {
       maplot <- maplot + geom_label_repel(
           aes(label = Label, colour = Status),
@@ -305,13 +312,6 @@ observeEvent(
           show.legend = F
       ) + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     } 
-    if (input$showBorderVolcano) {
-      maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status))
-      maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-    } else {
-      maplot <- maplot + geom_point(pch = 16, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(colour = Status))
-      maplot <- maplot + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-    }
     maplot <- maplot + guides()
     output$MAPlot <- renderPlot({
       maplot
@@ -353,6 +353,13 @@ observeEvent(
     volcanoStatic <- volcanoStatic + theme_bw()
     volcanoStatic <- volcanoStatic + geom_vline(xintercept = c(-as.numeric(input$lfcVolcano), as.numeric(input$lfcVolcano)), col = "black", linetype = "dashed")
     volcanoStatic <- volcanoStatic + geom_hline(yintercept = -log10(as.numeric(input$pThresholdVolcano)), col = "black", linetype = "dashed")
+    if (input$showBorderVolcano) {
+      volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21)
+      volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+    } else {
+      volcanoStatic <- volcanoStatic + geom_point(aes(colour = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 16)
+      volcanoStatic <- volcanoStatic + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+    }
     if (input$volcanoShowGenes) {
       volcanoStatic <- volcanoStatic +
         geom_label_repel(
@@ -365,13 +372,6 @@ observeEvent(
           fontface = "bold",
           show.legend = F
         ) + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-    }
-    if (input$showBorderVolcano) {
-      volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21)
-      volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-    } else {
-      volcanoStatic <- volcanoStatic + geom_point(aes(colour = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 16)
-      volcanoStatic <- volcanoStatic + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     }
     volcanoStatic <- volcanoStatic + labs(
       x = "Log2 Fold Change",
