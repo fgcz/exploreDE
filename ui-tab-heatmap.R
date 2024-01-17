@@ -142,8 +142,6 @@ tabItem(
             # numericInput(inputId = "heatmapDownloadHeight", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10),
             selectInput(inputId = "heatmapDPI", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
             textInput(inputId = "heatmapFilename", label = "Enter filename", value = "heatmap", placeholder = "up_regulated_heatmap"),
-            downloadButton(outputId = "dlHeatmapButton", label = "Download Heatmap"),
-            downloadButton(outputId = "dlHeatmapDFButton", label = "Download Counts (Excel)"),
             )
         )
       )
@@ -163,6 +161,8 @@ tabItem(
           lapply(c("Both Directions", "Up-Regulated", "Down-Regulated", "Custom", "GO"), function(sig) {
               tabPanel(
                 paste0(sig, " Features"),
+                downloadButton(outputId = paste0("dlHeatmapButton", sig), label = "Download Heatmap"),
+                downloadButton(outputId = paste0("dlHeatmapDFButton", sig), label = "Download Counts (Excel)"), br(),
                 plotOutput(paste0("heatmap", sig), inline = TRUE),
                 br(),
                 textOutput(paste0(sig, "HeatmapZeroMeanMessage"))

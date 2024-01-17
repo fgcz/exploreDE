@@ -334,16 +334,16 @@ observeEvent(
           # Output heatmaps
           output[[paste0("heatmap", sig)]] <- renderPlot(
             {
-              draw(heatmap, merge_legend = TRUE)
+              draw(heatmap, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
             },
             width = as.numeric(input$figWidthHeatmap),
             height = as.numeric(input$figHeightHeatmap)
           )
           
           # download button for the heatmaps
-          output$dlHeatmapButton <- downloadHandler(
+          output[[paste("dlHeatmapButton", sig)]] <- downloadHandler(
             filename = function() {
-              paste(input$heatmapFilename, input$heatmapDownloadFormat, sep = ".")
+              paste(input$heatmapFilename, sig, input$heatmapDownloadFormat, sep = ".")
             },
             content = function(file) {
               if (input$heatmapDownloadFormat == "PDF") {
@@ -353,17 +353,14 @@ observeEvent(
               } else if (input$heatmapDownloadFormat == "PNG") {
                 png(filename = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60), units = "in", res = as.numeric(input$heatmapDPI))
               }
-              draw(heatmap, merge_legend = TRUE)
+              draw(heatmap, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
               dev.off()
             }
           )
-          output$dlHeatmapDFButton <- downloadHandler(
-            filename = function() {
-              paste0(design, "_", sig, "_heatmap.xlsx")
-            },
-            content = function(file) {
-              openxlsx::write.xlsx((as.data.frame(countsHeatmapSig) %>% rownames_to_column("gene_name")), file = file)
-            }
+          countsHeatmapSigDL <- as.data.frame(countsHeatmapSig) %>% rownames_to_column("gene_name")
+          output[[paste0("dlHeatmapDFButton", sig)]] <- downloadHandler(
+            filename = function() { paste0(design, "_", sig, "_heatmap_counts.xlsx") },
+            content = function(file) { openxlsx::write.xlsx(countsHeatmapSigDL, file = file) }
           )
           
           # Show number of genes on plot (changes depending on settings applied)
@@ -416,33 +413,30 @@ observeEvent(
                   col = heatmapColours,
                   column_title = paste("Custom heatmap")
                 )
-                draw(ch, merge_legend = TRUE)
+                draw(ch, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
+                output[[paste("dlHeatmapButtonCustom")]] <- downloadHandler(
+                  filename = function() {
+                    paste(input$heatmapFilename, "Custom", input$heatmapDownloadFormat, sep = ".")
+                  },
+                  content = function(file) {
+                    if (input$heatmapDownloadFormat == "PDF") {
+                      pdf(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
+                    } else if (input$heatmapDownloadFormat == "SVG") {
+                      svg(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
+                    } else if (input$heatmapDownloadFormat == "PNG") {
+                      png(filename = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60), units = "in", res = as.numeric(input$heatmapDPI))
+                    }
+                    draw(ch, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
+                    dev.off()
+                  }
+                )
               },
               width = as.numeric(input$figWidthHeatmap),
               height = as.numeric(input$figHeightHeatmap)
             )
-            output[[paste0("dlHeatmapCustomButton")]] <- downloadHandler(
-              filename = function() {
-                paste0(design, "_Custom_heatmap.pdf")
-              },
-              content = function(file) {
-                pdf(file = file, width = as.numeric(input$figWidthHeatmap)/70, height = as.numeric(input$figHeightHeatmap)/70)
-                draw(ComplexHeatmap::Heatmap(
-                  matrix = hmCustomMatrix,
-                  top_annotation = ha,
-                  name = input$heatmapCounts,
-                  cluster_columns = input$clusterColsHeatmap,
-                  cluster_rows = input$clusterRowsHeatmap,
-                  show_column_names = input$colnamesHeatmap,
-                  col = hmCustomColours,
-                  column_title = paste("Custom heatmap")
-                ), merge_legend = TRUE)
-                dev.off()
-              }
-            )
           }
         })
-        output[[paste0("dlHeatmapCustomDFButton")]] <- downloadHandler(
+        output[[paste0("dlHeatmapDFButtonCustom")]] <- downloadHandler(
           filename = function() {
             paste0(design, "_Custom_heatmap.xlsx")
           },
@@ -466,44 +460,35 @@ observeEvent(
                 hmGOMatrix <- hmGOMatrix[abs(rowMedians(hmGOMatrix)) >= input$heatmapGoExpr, ]
                 
                 # Output heatmaps
+                gh <- ComplexHeatmap::Heatmap(
+                  matrix = hmGOMatrix,
+                  top_annotation = ha,
+                  name = input$heatmapCounts,
+                  cluster_columns = input$clusterColsHeatmap,
+                  cluster_rows = input$clusterRowsHeatmap,
+                  show_column_names = input$colnamesHeatmap,
+                  show_row_names = input$geneNamesHeatmap,
+                  col = heatmapColours,
+                  column_title = sub("\\s+", "\n", input$heatmapGoInput)
+                )
                 output$heatmapGO <- renderPlot(
                   {
-                    gh <- ComplexHeatmap::Heatmap(
-                      matrix = hmGOMatrix,
-                      top_annotation = ha,
-                      name = input$heatmapCounts,
-                      cluster_columns = input$clusterColsHeatmap,
-                      cluster_rows = input$clusterRowsHeatmap,
-                      show_column_names = input$colnamesHeatmap,
-                      show_row_names = input$geneNamesHeatmap,
-                      col = heatmapColours,
-                      column_title = sub("\\s+", "\n", input$heatmapGoInput)
-                    )
-                    draw(gh, merge_legend = TRUE)
+                    draw(gh, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
                   },
                   width = as.numeric(input$figWidthHeatmap),
                   height = as.numeric(input$figHeightHeatmap)
                 )
-                output[[paste0("dlHeatmapGOButton")]] <- downloadHandler(
+                output[[paste("dlHeatmapButtonGO")]] <- downloadHandler(
                   filename = function() {
                     paste0(design, "_GO_heatmap.pdf")
                   },
                   content = function(file) {
                     pdf(file = file, width = as.numeric(input$figWidthHeatmap)/70, height = as.numeric(input$figHeightHeatmap)/70)
-                    draw(ComplexHeatmap::Heatmap(
-                      matrix = hmGOMatrix,
-                      top_annotation = ha,
-                      name = input$heatmapCounts,
-                      cluster_columns = input$clusterColsHeatmap,
-                      cluster_rows = input$clusterRowsHeatmap,
-                      show_column_names = input$colnamesHeatmap,
-                      col = hmCustomColours,
-                      column_title = sub("\\s+", "\n", input$heatmapGoInput)
-                    ), merge_legend = TRUE)
+                    draw(gh, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
                     dev.off()
                   }
                 )
-                output[[paste0("dlHeatmapGODFButton")]] <- downloadHandler(
+                output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(
                   filename = function() {
                     paste0(design, "_GO_heatmap.xlsx")
                   },
