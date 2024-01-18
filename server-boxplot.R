@@ -282,7 +282,7 @@ boxplotCountsReactive <- eventReactive({
     ))
     },
     error = function(e) {
-      cat("ERROR :", conditionMessage(e), "\n")
+      cat("ERROR in boxplotCountsReactive:", conditionMessage(e), "\n")
     })
 })
 

@@ -38,6 +38,8 @@ if(!exists("dataDir")) {
   stop()
 }
 
+message(paste("dataDir: ", dataDir))
+
 # Import proteomics data from pStore
 if (grepl("rds", dataDir)) {
   se <- readRDS(url(dataDir))
