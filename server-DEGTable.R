@@ -103,8 +103,9 @@ if (inputDataReactive()$dataType == "proteomics") {
           paste0(design, "full_results_file.xlsx")
         },
         content = function(file) {
-          tableToWrite <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
+          # tableToWrite <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
           # colnames(tableToWrite) <- c("protein_Id", "fasta.id", "diff", "p.value", "FDR", "description", "nrPeptides")
+          tableToWrite <- as.data.frame(rowData(se)[[grep(input$contrastSelected, names(rowData(se)))]])
           openxlsx::write.xlsx(tableToWrite, file = file)
         }
       )
