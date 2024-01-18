@@ -38,8 +38,6 @@ if(!exists("dataDir")) {
   stop()
 }
 
-message(paste("dataDir: ", dataDir))
-
 # Import proteomics data from pStore
 if (grepl("rds", dataDir)) {
   se <- readRDS(url(dataDir))
@@ -146,7 +144,7 @@ inputDataReactive <- reactive({
       "countList" = countList,
       "genes" = genes,
       "factorLevels" = factorLevels
-      )
+    )
     )
   }
   
@@ -291,7 +289,7 @@ inputDataReactive <- reactive({
         "oraHTML" = oraHTML,
         "gsea" = gsea,
         "gseaHTML" = gseaHTML
-        )
+      )
       )
     } else {
       return(list(
@@ -309,7 +307,7 @@ inputDataReactive <- reactive({
         "genes" = genes,
         "factorLevels" = factorLevels,
         "allPathways" = allPathways
-        )
+      )
       )
     }
   }

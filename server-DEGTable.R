@@ -104,7 +104,7 @@ if (inputDataReactive()$dataType == "proteomics") {
         },
         content = function(file) {
           tableToWrite <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
-          colnames(tableToWrite) <- c("protein_Id", "fasta.id", "diff", "p.value", "FDR", "description", "nrPeptides")
+          # colnames(tableToWrite) <- c("protein_Id", "fasta.id", "diff", "p.value", "FDR", "description", "nrPeptides")
           openxlsx::write.xlsx(tableToWrite, file = file)
         }
       )
