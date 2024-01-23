@@ -1,3 +1,4 @@
+# Update a bunch of input options ----
 updateSelectInput(
   session = session, 
   inputId = "boxplotCounts", 
@@ -56,6 +57,7 @@ observeEvent({
   })
 })
 
+# Extract the appropriate data ----
 if (inputDataReactive()$dataType == "RNASeq") {
   seqAnnoReactive <- reactiveValues("sa" = inputDataReactive()$seqAnno, "saF" = NULL)
   seqAnnoReactive$saF <- seqAnnoReactive$sa[which(seqAnnoReactive$sa$usedInTest),]
@@ -74,6 +76,8 @@ if (inputDataReactive()$dataType == "RNASeq") {
   }, ignoreInit = T, ignoreNULL = T)
 }
 
+# The main part of the gene bucket lives here ----
+# It listens in on DEG table, volcano, and heatmap tabs, in addition to this tab
 genesReactive <- eventReactive({
   input$boxplotGenes
   input$boxplotGenesText
@@ -125,6 +129,8 @@ observeEvent({genesReactive()}, {
   })
 })
 
+# Generate a reactive list of the count data to be plotted ----
+# We do this so we can make aesthetic changes to the plot without having to recalculate the required boxplots and results 
 boxplotCountsReactive <- eventReactive({
   input$keepBucketBoxplot
   input$boxplotFactor1
@@ -134,10 +140,10 @@ boxplotCountsReactive <- eventReactive({
   input$boxplotCounts
   input$contrastSelected
   input$boxplotShowPHeight
-  }, ignoreNULL = FALSE, ignoreInit = TRUE, {
+  }, ignoreNULL = FALSE, ignoreInit = FALSE, {
 
+    req(!is.null(input$keepBucketBoxplot))
     tryCatch({
-      
       if (inputDataReactive()$dataType == "proteomics") {
         designLevels <- input$contrastSelected %>% strsplit("_vs_") %>% .[[1]]
       }
@@ -325,13 +331,14 @@ observeEvent({
   input$boxplotShowPTipSizeA
   input$boxplotShowPTipSizeB
   input$boxplotShowPDodge
+  input$boxplotPointBorder
   lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
     input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
   })
 }, ignoreNULL = FALSE, ignoreInit = TRUE, {
   tryCatch({
 
-    req(boxplotCountsReactive()$countsBoxplotMelt)
+    req(!is.null(boxplotCountsReactive()$countsBoxplotMelt))
     datasetBoxplot <- boxplotCountsReactive()$datasetBoxplot
     countsBoxplot <- boxplotCountsReactive()$countsBoxplot
     countsBoxplotMelt <- boxplotCountsReactive()$countsBoxplotMelt
@@ -364,9 +371,9 @@ observeEvent({
         }
         if (input$boxplotShowPoint) {
           if (input$boxplotFactor2 == "None" | input$boxplotFactor2 == "Feature") {
-            g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, shape = 21, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9)
+            g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, shape = 21, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$boxplotPointBorder)
           } else {
-            g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1, shape = input$boxplotFactor2), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9)
+            g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1, shape = input$boxplotFactor2), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$boxplotPointBorder)
             g <- g + scale_shape_manual(values = c(rep(c(21,22,23,24,25), times = 10))[1:nlevels(as.factor(countsBoxplotMelt[[input$boxplotFactor2]]))]) 
             g <- g + guides(
               fill = guide_legend(override.aes = list(shape = 21)), 
@@ -561,7 +568,7 @@ observeEvent({
       }
     )
 
-    if (length(genesToPlot) > 1) {
+    if (length(genesToPlot) >= 1) {
       output$boxplotBrushTable <- renderTable({
         brushedPoints(countsBoxplotMelt, input$boxplotBrush)
       })

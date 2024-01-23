@@ -117,8 +117,8 @@ volcanoResultsList <- eventReactive(
   },
   ignoreInit = TRUE, ignoreNULL = FALSE, 
   {
-    tryCatch(
-      {
+    # tryCatch(
+    #   {
         if (inputDataReactive()$dataType == "RNASeq") {
           seqAnno <- inputDataReactive()$seqAnno
           design <- inputDataReactive()$design
@@ -154,6 +154,7 @@ volcanoResultsList <- eventReactive(
           "FoldChange&SignificantUp" = 1,
           "FoldChange&SignificantDown" = 1
         )
+        req(!is.null(input[[paste0("volcanoColour1")]]))
         for (i in 1:8) {
           volcanoColours[[i]] <- input[[paste0("volcanoColour", i)]]
         }
@@ -222,7 +223,7 @@ volcanoResultsList <- eventReactive(
             filter = "top",
             class = "cell-border stripe",
             rownames = FALSE,
-            colnames = c("Gene Symbol", "Description", "Log2 Ratio", pTypeVolcano, paste("-log10", pTypeVolcano), "Significance")
+            colnames = c("Feature Symbol", "Description", "Log2 Ratio", pTypeVolcano, paste("-log10", pTypeVolcano), "Significance")
           ) %>%
             DT::formatSignif(columns = c("log10p", pTypeVolcano, "log2Ratio"), digits = 3) %>%
             DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
@@ -237,11 +238,11 @@ volcanoResultsList <- eventReactive(
           "volcanoColours" = volcanoColours,
           "design" = design
         ))
-      },
-      error = function(e) {
-        cat("ERROR :", conditionMessage(e), "\n")
-      }
-    )
+    #   },
+    #   error = function(e) {
+    #     cat("ERROR :", conditionMessage(e), "\n")
+    #   }
+    # )
   }
 )
 
@@ -266,6 +267,7 @@ observeEvent(
     input$geneLabelSizeVolcano
     input$geneLabelNudgeVolcanoX
     input$geneLabelNudgeVolcanoY
+    input$volcanoPointBorder
     volcanoResultsList()
   },
   {
@@ -294,7 +296,7 @@ observeEvent(
       theme_prism(base_size = input$textSizeVolcano) +
       xlab("Log2 Normalised Mean") + ylab("Log2 Ratio")
     if (input$showBorderVolcano) {
-      maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status))
+      maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status), stroke = input$volcanoPointBorder)
       maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     } else {
       maplot <- maplot + geom_point(pch = 16, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(colour = Status))
@@ -334,9 +336,9 @@ observeEvent(
       volcanoTableFullMA <- volcanoTableFull %>% dplyr::select(gene_name, description, log2Ratio_full, Log2_Mean, log10p_full, Status)
       DT::datatable(
         data = brushedPoints(volcanoTableFullMA, input$MABrush),
-        colnames = c("Gene name", "Description", "Log2 Ratio", "Log2 Mean", "-Log10p", "Status"),
+        colnames = c("Feature name", "Description", "Log2 Ratio", "Log2 Mean", "-Log10p", "Status"),
         filter = "top",
-        caption = "Click and drag over dots on the volcano plot to see those genes in this table.",
+        caption = "Click and drag over dots on the volcano plot to see those features in this table.",
         rownames = F) %>%
         DT::formatSignif(c("log2Ratio_full", "log10p_full", "Log2_Mean"), digits = 3) %>%
         DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
@@ -354,7 +356,7 @@ observeEvent(
     volcanoStatic <- volcanoStatic + geom_vline(xintercept = c(-as.numeric(input$lfcVolcano), as.numeric(input$lfcVolcano)), col = "black", linetype = "dashed")
     volcanoStatic <- volcanoStatic + geom_hline(yintercept = -log10(as.numeric(input$pThresholdVolcano)), col = "black", linetype = "dashed")
     if (input$showBorderVolcano) {
-      volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21)
+      volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21, stroke = input$volcanoPointBorder)
       volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     } else {
       volcanoStatic <- volcanoStatic + geom_point(aes(colour = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 16)
@@ -453,9 +455,9 @@ observeEvent(
       volcanoTableFull2 <- volcanoTableFull %>% dplyr::select(gene_name, description, log2Ratio, log2Ratio_full, log10p, log10p_full, Status)
       DT::datatable(
         data = brushedPoints(volcanoTableFull2, input$volcanoBrush),
-        colnames = c("Gene name", "Description", "Log2 Ratio (plot)", "Log2 Ratio (full)", "-Log10p (plot)", "-Log10p (full)", "Status"),
+        colnames = c("Feature name", "Description", "Log2 Ratio (plot)", "Log2 Ratio (full)", "-Log10p (plot)", "-Log10p (full)", "Status"),
         filter = "top",
-        caption = "Click and drag over dots on the volcano plot to see those genes in this table.",
+        caption = "Click and drag over dots on the volcano plot to see those features in this table.",
         rownames = F) %>%
         DT::formatSignif(c("log2Ratio", "log2Ratio_full", "log10p", "log10p_full"), digits = 3) %>%
         DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%

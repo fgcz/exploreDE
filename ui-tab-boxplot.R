@@ -110,6 +110,7 @@ tabItem(
               sliderInput(inputId = "boxplotPointAlpha", label = "Point alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "80%"),
             ),
             splitLayout(
+              sliderInput(inputId = "boxplotPointBorder", label = "Point border", min = 0, max = 1, value = 0.5, step = 0.1, width = "80%"),
               sliderInput(inputId = "boxplotBoxAlpha", label = "Box/violin alpha", min = 0.1, max = 1, value = 0.2, step = 0.1, width = "80%"),
               sliderInput(inputId = "boxplotMeanLine", label = "Mean bar width", min = 0, max = 1, value = 0.5, step = 0.1, width = "80%")
             ),

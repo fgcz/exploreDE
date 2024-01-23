@@ -70,13 +70,15 @@ tabItem(
             title = "Figure settings",
             splitLayout(
               checkboxInput(inputId = "showBorderVolcano", label = "Show cell border?", value = TRUE),
-              checkboxInput(inputId = "showAxesVolcano", label = "Show axes lines?", value = TRUE),
+              checkboxInput(inputId = "showAxesVolcano", label = "Show axes lines?", value = TRUE)
+            ),
+            splitLayout(
               checkboxInput(inputId = "boldVolcano", label = "Use bold font?", value = TRUE),
               checkboxInput(inputId = "showLinesVolcano", label = "Show grid lines?", value = TRUE)
             ),
-            
             sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 3, step = 0.5, width = "33%", ticks = TRUE),
             sliderInput(inputId = "alphaVolcano", label = "Point alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "33%", ticks = TRUE),
+            sliderInput(inputId = "volcanoPointBorder", label = "Point border", min = 0, max = 1, value = 0.3, step = 0.1, width = "33%"),
             numericInput(inputId = "volcanoLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 10, step = 1, width = "33%"),
             helpText("Increasing the number of overlapping labels will label more genes, but can take a *very* long time to generate"),
             sliderInput(inputId = "geneLabelNudgeVolcanoX", label = "Nudge Gene Labels X", min = -10, max = 10, value = 0, step = 1, width = "33%", ticks = TRUE),

@@ -222,7 +222,9 @@ inputDataReactive <- reactive({
         rownames(countList[[i]]) <- seqAnno$gene_name[match(rownames(countList[[i]]), seqAnno$transcript_id)] %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
       }
     }
-    vstCountMatrix <- varianceStabilizingTransformation(round(assay(se)))
+    forVST <- as.matrix(assay(se))
+    mode(forVST) <- "integer"
+    vstCountMatrix <- varianceStabilizingTransformation(forVST)
     if(param$featureLevel == "gene") {
       vstCountMatrix <- vstCountMatrix[which(rownames(vstCountMatrix) %in% seqAnno$gene_id), ]
       vstCountMatrix <- vstCountMatrix[match(rownames(vstCountMatrix), seqAnno$gene_id), ]

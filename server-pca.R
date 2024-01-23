@@ -71,14 +71,15 @@ observeEvent(
   },
   ignoreInit = TRUE, ignoreNULL = FALSE,
   {
-    tryCatch(
-      {
+    req(!is.null(inputDataReactive()$dataset))
+    # tryCatch(
+    #   {
         
         # Get the colours for the condition levels
         coloursPCA <- setNames(lapply(input$pcaGroups, function(k) {
           paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, "__", k)]]), "FF")
         }), input$pcaGroups)
-
+        
         # Keep only the groups selected:
         datasetPCA <- inputDataReactive()$dataset
         datasetPCA <- datasetPCA[datasetPCA[[input$pcaFactor1]] %in% input$pcaGroups, ]
@@ -92,7 +93,10 @@ observeEvent(
         # Get the n genes with greatest standard deviation for the PCA plot
         countsPCA <- countsPCA[rownames(datasetPCA), ]
         countsPCA <- countsPCA[, names(head(sort(sapply(countsPCA, sd), decreasing = TRUE), n = input$pcaTopN))]
-
+        
+        req(length(dim(countsPCA)) == 2)
+        req(ncol(countsPCA) > 2)
+        
         # Get the PCA results
         pcaResults <- prcomp(countsPCA, center = input$pcaCentre, scale. = input$pcaScale)
         pc_eigenvalues <- pcaResults$sdev^2
@@ -281,8 +285,8 @@ observeEvent(
           brushedPoints(pc_scores[, c("sample", factorNames, input$pcaX, input$pcaY)], input$pcaBrush)
         })
         
-      },
-      error = function(e) {
-        cat("ERROR :", conditionMessage(e), "\n")
-      })
+      # },
+      # error = function(e) {
+      #   cat("ERROR :", conditionMessage(e), "\n")
+      # })
   })

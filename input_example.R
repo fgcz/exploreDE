@@ -78,6 +78,7 @@ input$boxplotShowPBracketSize <- 3
 input$boxplotShowPTipSizeA <- 0
 input$boxplotShowPTipSizeB <- 1
 input$boxplotShowPDodge <- 1
+input$boxplotPointBorder <- 0.5
 
 input$boxplotGenes <- inputDataReactive()$genes[1:5]
 input$boxplotGenesText <- inputDataReactive()$genes[6:10]
@@ -179,6 +180,7 @@ input$volcanoLabelAllUp <- TRUE
 input$volcanoLabelAllDown <- TRUE
 input$volcanoAnnotationHighlightColour <- FALSE
 input$volcanoLabelMaxOverlap <- 50
+input$volcanoPointBorder <- 0.5
 
 input$oraType <- "BP"
 input$oraDirection <- "upGenes"
