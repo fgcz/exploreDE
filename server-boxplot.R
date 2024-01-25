@@ -208,9 +208,9 @@ boxplotCountsReactive <- eventReactive({
               x$fdr <- seqAnnoReactive$saF$fdr[seqAnnoReactive$saF$gene_name == g]
             }
           } else if (inputDataReactive()$dataType == "proteomics") {
-            x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[seqAnnoReactive$saF$gene_name == g]
-            x$pValue <- seqAnnoReactive$saF$pValue[seqAnnoReactive$saF$gene_name == g]
-            x$fdr <- seqAnnoReactive$saF$fdr[seqAnnoReactive$saF$gene_name == g]
+            x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[which(seqAnnoReactive$saF$gene_name == g)]
+            x$pValue <- seqAnnoReactive$saF$pValue[which(seqAnnoReactive$saF$gene_name == g)]
+            x$fdr <- seqAnnoReactive$saF$fdr[which(seqAnnoReactive$saF$gene_name == g)]
           }
           x <- add_significance(
             x,
