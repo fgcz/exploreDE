@@ -341,9 +341,9 @@ observeEvent(
           )
           
           # download button for the heatmaps
-          output[[paste("dlHeatmapButton", sig)]] <- downloadHandler(
+          output[[paste0("dlHeatmapButton", sig)]] <- downloadHandler(
             filename = function() {
-              paste(input$heatmapFilename, sig, input$heatmapDownloadFormat, sep = ".")
+              paste(input$heatmapFilename, sig, tolower(input$heatmapDownloadFormat), sep = ".")
             },
             content = function(file) {
               if (input$heatmapDownloadFormat == "PDF") {
