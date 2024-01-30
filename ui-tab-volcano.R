@@ -37,7 +37,6 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        h4("Volcano plot settings"),
         tabsetPanel(
           tabPanel(
             title = "Main settings",
@@ -68,26 +67,38 @@ tabItem(
           ),
           tabPanel(
             title = "Figure settings",
+            h4("Plot settings"),
             splitLayout(
-              checkboxInput(inputId = "showBorderVolcano", label = "Show cell border?", value = TRUE),
-              checkboxInput(inputId = "showAxesVolcano", label = "Show axes lines?", value = TRUE)
+              sliderInput(inputId = "figWidthVolcano", label = "Width", min = 100, max = 2000, value = 800, step = 10, width = "85%"),
+              sliderInput(inputId = "figHeightVolcano", label = "Height", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
+              sliderInput(inputId = "textSizeVolcano", label = "Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = TRUE)
             ),
             splitLayout(
-              checkboxInput(inputId = "boldVolcano", label = "Use bold font?", value = TRUE),
-              checkboxInput(inputId = "showLinesVolcano", label = "Show grid lines?", value = TRUE)
+              sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 3, step = 0.5, width = "85%", ticks = TRUE),
+              sliderInput(inputId = "alphaVolcano", label = "Dot alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "85%", ticks = TRUE),
+              sliderInput(inputId = "volcanoPointBorder", label = "Dot border", min = 0, max = 1, value = 0.2, step = 0.1, width = "85%"),
             ),
-            sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 3, step = 0.5, width = "33%", ticks = TRUE),
-            sliderInput(inputId = "alphaVolcano", label = "Point alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "33%", ticks = TRUE),
-            sliderInput(inputId = "volcanoPointBorder", label = "Point border", min = 0, max = 1, value = 0.3, step = 0.1, width = "33%"),
+            br(),
+            splitLayout(
+              checkboxInput(inputId = "showAxesVolcano", label = "Axes lines?", value = TRUE),
+              checkboxInput(inputId = "boldVolcano", label = "Bold?", value = TRUE),
+              checkboxInput(inputId = "showLinesVolcano", label = "Grid lines?", value = TRUE)
+            ),
+            hr(style = "border-top: 1px solid #000000;"), h4("Annotation settings"),
             numericInput(inputId = "volcanoLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 10, step = 1, width = "33%"),
             helpText("Increasing the number of overlapping labels will label more genes, but can take a *very* long time to generate"),
-            sliderInput(inputId = "geneLabelNudgeVolcanoX", label = "Nudge Gene Labels X", min = -10, max = 10, value = 0, step = 1, width = "33%", ticks = TRUE),
-            sliderInput(inputId = "geneLabelNudgeVolcanoY", label = "Nudge Gene Labels Y", min = -10, max = 10, value = 0, step = 1, width = "33%", ticks = TRUE),
-            sliderInput(inputId = "geneLabelSizeVolcano", label = "Gene Label Size", min = 4, max = 30, value = 12, step = 0.5, width = "33%", ticks = TRUE),
-            sliderInput(inputId = "textSizeVolcano", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "33%", ticks = TRUE),
-            numericInput(inputId = "figWidthVolcano", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10),
-            numericInput(inputId = "figHeightVolcano", label = "Figure Height", min = 100, max = 2000, value = 600, step = 10)
+            splitLayout(
+              sliderInput(inputId = "geneLabelNudgeVolcanoX", label = "Nudge Labels X", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
+              sliderInput(inputId = "geneLabelNudgeVolcanoY", label = "Nudge Labels Y", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
+              sliderInput(inputId = "geneLabelSizeVolcano", label = "Label Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = TRUE)
+            )
           ),
+          tabPanel(
+            title = "Download settings",
+            selectInput(inputId = "downloadFormatVolcano", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+            selectInput(inputId = "dpiVolcano", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
+            textInput(inputId = "filnameVolcano", label = "Enter filename", value = "Volcano")
+          )
         )
       )
     ),
@@ -100,8 +111,6 @@ tabItem(
         status = "primary",
         collapsible = TRUE,
         collapsed = TRUE,
-        # tableOutput(outputId = "volcanoOverview"),
-        # br(),
         DT::dataTableOutput("volcanoOverviewTable")
       ),
       box(
@@ -110,7 +119,7 @@ tabItem(
         solidHeader = TRUE,
         status = "primary",
         textOutput("volcanoDesign"), br(),
-        downloadButton(outputId = "dlVolcanoPlotButton", HTML("Download Volcano Plot (PDF)")),
+        downloadButton(outputId = "dlVolcanoPlotButton", HTML("Download Volcano Plot")),
         downloadButton(outputId = "dlVolcanoDFButton", HTML("Download Volcano Results Table (Excel)")),
         br(), br(),
         plotOutput("volcanoStatic", inline = TRUE, brush = "volcanoBrush"),

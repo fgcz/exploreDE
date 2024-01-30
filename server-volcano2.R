@@ -258,7 +258,6 @@ observeEvent(
     input$dotSizeVolcano
     input$volcanoShowGenes
     input$boxKeepBucketGenes
-    input$showBorderVolcano
     input$volcanoLabelAllUp
     input$volcanoLabelAllDown
     input$volcanoAnnotationHighlightColour
@@ -268,6 +267,9 @@ observeEvent(
     input$geneLabelNudgeVolcanoX
     input$geneLabelNudgeVolcanoY
     input$volcanoPointBorder
+    input$downloadFormatVolcano 
+    input$dpiVolcano 
+    input$filnameVolcano
     volcanoResultsList()
   },
   {
@@ -295,13 +297,8 @@ observeEvent(
     maplot <- maplot +
       theme_prism(base_size = input$textSizeVolcano) +
       xlab("Log2 Normalised Mean") + ylab("Log2 Ratio")
-    if (input$showBorderVolcano) {
-      maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status), stroke = input$volcanoPointBorder)
-      maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-    } else {
-      maplot <- maplot + geom_point(pch = 16, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(colour = Status))
-      maplot <- maplot + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-    }
+    maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status), stroke = input$volcanoPointBorder)
+    maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     if (input$volcanoShowGenes == TRUE) {
       maplot <- maplot + geom_label_repel(
           aes(label = Label, colour = Status),
@@ -355,13 +352,8 @@ observeEvent(
     volcanoStatic <- volcanoStatic + theme_bw()
     volcanoStatic <- volcanoStatic + geom_vline(xintercept = c(-as.numeric(input$lfcVolcano), as.numeric(input$lfcVolcano)), col = "black", linetype = "dashed")
     volcanoStatic <- volcanoStatic + geom_hline(yintercept = -log10(as.numeric(input$pThresholdVolcano)), col = "black", linetype = "dashed")
-    if (input$showBorderVolcano) {
-      volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21, stroke = input$volcanoPointBorder)
-      volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-    } else {
-      volcanoStatic <- volcanoStatic + geom_point(aes(colour = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 16)
-      volcanoStatic <- volcanoStatic + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-    }
+    volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21, stroke = input$volcanoPointBorder)
+    volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     if (input$volcanoShowGenes) {
       volcanoStatic <- volcanoStatic +
         geom_label_repel(
@@ -469,19 +461,21 @@ observeEvent(
     # Download button for the plot
     output$dlVolcanoPlotButton <- downloadHandler(
       filename = function() {
-        paste0(design, "_volcano.pdf")
+        paste(input$filnameVolcano, design, tolower(input$downloadFormatVolcano), sep = ".")
       },
       content = function(file) {
-        ggsave(
-          filename = file,
-          plot = volcanoStatic,
-          width = (as.numeric(input$figWidthVolcano) / 3.2),
-          height = (as.numeric(input$figHeightVolcano) / 3.2),
-          limitsize = FALSE, units = "mm"
-        )
+        if (input$downloadFormatVolcano == "PDF") {
+          pdf(file = file, width = as.numeric(input$figWidthVolcano/80), height = as.numeric(input$figHeightVolcano/80))
+        } else if (input$downloadFormatVolcano == "SVG") {
+          svg(file = file, width = as.numeric(input$figWidthVolcano/80), height = as.numeric(input$figHeightVolcano/80))
+        } else if (input$downloadFormatVolcano == "PNG") {
+          png(filename = file, width = as.numeric(input$figWidthVolcano/80), height = as.numeric(input$figHeightVolcano/80), units = "in", res = as.numeric(input$dpiVolcano))
+        }
+        print(volcanoStatic)
+        dev.off()
       }
     )
-
+    
     output$dlVolcanoDFButton <- downloadHandler(
       filename = function() {
         paste0(design, "_volcano.xlsx")
