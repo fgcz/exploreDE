@@ -46,6 +46,23 @@ input$pcaShowNames <- TRUE
 input$showLinesPCA <- TRUE
 input$showAxesPCA <- TRUE
 input$boldPCA <- TRUE
+input$pcaLog2 <- TRUE
+input$figWidthPCA <- 600
+input$figHeightPCA <- 600
+input$textSizePCA <- 12
+input$dotSizePCA <- 3
+input$alphaPCA <- 0.9
+input$dotBorderPCA <- 0.2
+input$showAxesPCA <- TRUE
+input$boldPCA <- TRUE
+input$showLinesPCA <- TRUE
+input$pcaLabelMaxOverlap <- 10
+input$geneLabelNudgePCAX <- 0
+input$geneLabelNudgePCAY <- 0
+input$geneLabelSizePCA <- 12
+input$downloadFormatPCA <- "PDF"
+input$dpiPCA <- 600
+input$filnamePCA <- "PCA"
 
 input$boxplotFactor1 <- inputDataReactive()$factors[1]
 input$keepBucketBoxplot <- inputDataReactive()$genes[1:5]
@@ -171,7 +188,6 @@ input$alphaVolcano <- 0.8
 input$volcanoGenes <- inputDataReactive()$genes[1:5]
 input$volcanoGenesText <- inputDataReactive()$genes[8:9]
 input$volcanoShowGenes <- TRUE
-input$showBorderVolcano <- TRUE
 input$boxKeepBucketGenes <- inputDataReactive()$genes[1:5]
 input$dotSizeVolcano <- 3
 input$yLimVolcano <- 25
@@ -181,6 +197,9 @@ input$volcanoLabelAllDown <- TRUE
 input$volcanoAnnotationHighlightColour <- FALSE
 input$volcanoLabelMaxOverlap <- 50
 input$volcanoPointBorder <- 0.5
+input$downloadFormatVolcano <- "PDF"
+input$dpiVolcano <- 600
+input$filnameVolcano <- "Volcano"
 
 input$oraType <- "BP"
 input$oraDirection <- "upGenes"

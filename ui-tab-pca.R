@@ -41,29 +41,63 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Main settings",
-            numericInput(inputId = "pcaTopN", label = "Calculate PCA based on top n features ranked by standard deviation", value = 2000, min = 2, max = 1e5, step = 1),
-            checkboxInput(inputId = "pcaCentre", label = "Centre PCA?", value = TRUE),
-            checkboxInput(inputId = "pcaScale", label = "Scale PCA?", value = FALSE),
-            selectInput(inputId = "pcaX", label = "PC for x axis", choices = "PC1", selected = "PC1"),
-            selectInput(inputId = "pcaY", label = "PC for y axis", choices = "PC2", selected = "PC2"),
-            selectInput(inputId = "pcaFactor1", label = "Select which factor to colour the samples by", choices = "", selected = ""),
-            checkboxGroupInput(inputId = "pcaGroups", label = "Select groups to plot", choices = "", selected = ""),
-            selectInput(inputId = "pcaFactor2", label = "Select which factor to shape the samples by", choices = "", selected = ""),
-            selectInput(inputId = "pcaCounts", label = "Select count method to plot", choices = "", selected = ""),
-            selectInput(inputId = "pcaBatch", label = "Apply a batch-correction to the counts?", choices = "", multiple = TRUE),
-            ),
-          tabPanel(
-            title = "Figure settings",
+            numericInput(inputId = "pcaTopN", label = "Use top n features ranked by SD", value = 2000, min = 2, max = 1e5, step = 1, width = "75%"),
+            hr(style = "border-top: 0.1px solid #000000;"),
+            selectInput(inputId = "pcaX", label = "PC for x axis", choices = "PC1", selected = "PC1", width = "75%"),
+            selectInput(inputId = "pcaY", label = "PC for y axis", choices = "PC2", selected = "PC2", width = "75%"),
+            hr(style = "border-top: 0.1px solid #000000;"),
+            selectInput(inputId = "pcaFactor1", label = "Colour by", choices = "", selected = "", width = "75%"),
+            selectInput(inputId = "pcaFactor2", label = "Shape by", choices = "", selected = "", width = "75%"),
+            hr(style = "border-top: 0.1px solid #000000;"),
+            selectInput(inputId = "pcaCounts", label = "Counts to plot", choices = "", selected = "", width = "75%"),
+            selectInput(inputId = "pcaBatch", label = "Batch-correct by", choices = "", multiple = TRUE, width = "75%"),
+            checkboxInput(inputId = "pcaLog2", label = "Log2 counts?", value = TRUE),
+            helpText("Log2 only applies to non-logged RNA counts, e.g., TPM, FPKM"),
+            hr(style = "border-top: 0.1px solid #000000;"),
             tags$b("Show sample names on PCA?"),
             checkboxInput(inputId = "pcaShowNames", label = "Show sample names", value = FALSE),
+            helpText("Not seeing labels? Try changing the max overlap in the figure settings tab."),
             tags$b("Keep PCA axes proportional to variance?"),
             checkboxInput(inputId = "pcaAxesProp", label = "Keep axes proportional", value = TRUE),
-            checkboxInput(inputId = "showLinesPCA", label = "Show grid lines?", value = TRUE),
-            checkboxInput(inputId = "showAxesPCA", label = "Show axes lines?", value = TRUE),
-            checkboxInput(inputId = "boldPCA", label = "Use bold font?", value = TRUE),
-            numericInput(inputId = "textSizePCA", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5),
-            numericInput(inputId = "figWidthPCA", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10),
-            numericInput(inputId = "figHeightPCA", label = "Figure Height", min = 100, max = 2000, value = 600, step = 10)
+            tags$b("Centre and/or scale counts?"),
+            checkboxInput(inputId = "pcaCentre", label = "Centre PCA?", value = TRUE),
+            checkboxInput(inputId = "pcaScale", label = "Scale PCA?", value = FALSE),
+            hr(style = "border-top: 0.1px solid #000000;"),
+            checkboxGroupInput(inputId = "pcaGroups", label = "Select groups to plot", choices = "", selected = "")
+          ),
+          tabPanel(
+            title = "Figure settings",
+            h4("Plot settings"),
+            splitLayout(
+              sliderInput(inputId = "figWidthPCA", label = "Width", min = 100, max = 2000, value = 800, step = 10, width = "85%"),
+              sliderInput(inputId = "figHeightPCA", label = "Height", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
+              sliderInput(inputId = "textSizePCA", label = "Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = TRUE)
+            ),
+            splitLayout(
+              sliderInput(inputId = "dotSizePCA", label = "Dot size", min = 1, max = 10, value = 5, step = 0.5, width = "85%", ticks = TRUE),
+              sliderInput(inputId = "alphaPCA", label = "Dot alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "85%", ticks = TRUE),
+              sliderInput(inputId = "dotBorderPCA", label = "Dot border", min = 0, max = 1, value = 0.2, step = 0.1, width = "85%"),
+            ),
+            br(),
+            splitLayout(
+              checkboxInput(inputId = "showAxesPCA", label = "Axes lines?", value = TRUE),
+              checkboxInput(inputId = "boldPCA", label = "Bold?", value = TRUE),
+              checkboxInput(inputId = "showLinesPCA", label = "Grid lines?", value = TRUE)
+            ),
+            hr(style = "border-top: 1px solid #000000;"), h4("Annotation settings"),
+            numericInput(inputId = "pcaLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 10, step = 1, width = "33%"),
+            helpText("Increasing the number of overlapping labels will label more genes, but can take a *very* long time to generate"),
+            splitLayout(
+              sliderInput(inputId = "geneLabelNudgePCAX", label = "Nudge Labels X", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
+              sliderInput(inputId = "geneLabelNudgePCAY", label = "Nudge Labels Y", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
+              sliderInput(inputId = "geneLabelSizePCA", label = "Label Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = TRUE)
+            )
+          ),
+          tabPanel(
+            title = "Download settings",
+            selectInput(inputId = "downloadFormatPCA", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+            selectInput(inputId = "dpiPCA", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
+            textInput(inputId = "filnamePCA", label = "Enter filename", value = "PCA")
           )
         ),
       ) # end of box
@@ -76,11 +110,11 @@ tabItem(
         solidHeader = TRUE,
         status = "primary",
         textOutput("pcaDesign"),
-        downloadButton(outputId = "dlPCAPlotButton", label = "Download PCA Plot (PDF)"),
+        downloadButton(outputId = "dlPCAPlotButton", label = "Download PCA Plot"),
         downloadButton(outputId = "dlPCAPlotDFButton", HTML("Download PCA Coords Table (Excel)")),
         br(), br(),
         plotOutput(outputId = "pcaStatic", inline = TRUE, brush = "pcaBrush"),
-        tableOutput("pcaBrushTable"),
+        DT::dataTableOutput("pcaBrushTable")
       ),
       box(
         title = "Scree Plot",

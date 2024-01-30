@@ -414,9 +414,9 @@ observeEvent(
                   column_title = paste("Custom heatmap")
                 )
                 draw(ch, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
-                output[[paste("dlHeatmapButtonCustom")]] <- downloadHandler(
+                output[["dlHeatmapButtonCustom"]] <- downloadHandler(
                   filename = function() {
-                    paste(input$heatmapFilename, "Custom", input$heatmapDownloadFormat, sep = ".")
+                    paste(input$heatmapFilename, "Custom", tolower(input$heatmapDownloadFormat), sep = ".")
                   },
                   content = function(file) {
                     if (input$heatmapDownloadFormat == "PDF") {
