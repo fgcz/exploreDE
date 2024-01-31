@@ -23,6 +23,7 @@ library("rstatix")
 library("gridExtra")
 library("shinylogs")
 library("parallel")
+library("plyr")
 reactiveConsole(TRUE)
 
 ui = dashboardPage(
