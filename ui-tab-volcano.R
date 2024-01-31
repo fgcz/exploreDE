@@ -86,7 +86,7 @@ tabItem(
             ),
             hr(style = "border-top: 1px solid #000000;"), h4("Annotation settings"),
             numericInput(inputId = "volcanoLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 10, step = 1, width = "33%"),
-            helpText("Increasing the number of overlapping labels will label more genes, but can take a *very* long time to generate"),
+            helpText("Increasing the number of overlapping labels will label more features, but can take a *very* long time to generate"),
             splitLayout(
               sliderInput(inputId = "geneLabelNudgeVolcanoX", label = "Nudge Labels X", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
               sliderInput(inputId = "geneLabelNudgeVolcanoY", label = "Nudge Labels Y", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
