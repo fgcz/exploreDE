@@ -81,6 +81,8 @@ tabItem(
               choices = "",
               selected = ""
               ),
+            checkboxInput(inputId = "boxplotCountsLog", label = "Log2 Counts?", value = FALSE),
+            helpText("Only applies to counts that are not already on a log2 scale."),
             selectInput(
               inputId = "boxplotBatch", 
               label = "Apply a batch-correction to the counts?", 

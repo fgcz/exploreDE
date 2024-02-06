@@ -140,9 +140,12 @@ boxplotCountsReactive <- eventReactive({
   input$boxplotCounts
   input$contrastSelected
   input$boxplotShowPHeight
-  }, ignoreNULL = FALSE, ignoreInit = FALSE, {
+  input$boxplotCountsLog
+  }, ignoreNULL = FALSE, ignoreInit = TRUE, {
     
-    req(nchar(input$keepBucketBoxplot) >= 2)
+    req(length(input$keepBucketBoxplot) >= 1)
+    req(!is.null(input$boxplotFactor1))
+    req(input$boxKeepBucket[[1]] %in% inputDataReactive()$dataset[[input$boxplotFactor1]])
     
     if (inputDataReactive()$dataType == "proteomics") {
       designLevels <- input$contrastSelected %>% strsplit("_vs_") %>% .[[1]]
@@ -153,6 +156,14 @@ boxplotCountsReactive <- eventReactive({
 
     # Get the count data
     countsBoxplot <- inputDataReactive()$countList[[input$boxplotCounts]]
+    if (input$boxplotCountsLog) {
+      if (inputDataReactive()$dataType == "RNASeq") {
+        if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
+          countsBoxplot <- log2(countsBoxplot+1)
+        }
+      }
+    }
+    
     if (!is.null(input$boxplotBatch)) {
       for (i in seq_along(input$boxplotBatch)) {
         countsBoxplot <- limma::removeBatchEffect(countsBoxplot, datasetBoxplot[[input$boxplotBatch[i]]])
@@ -282,7 +293,7 @@ boxplotCountsReactive <- eventReactive({
     "cbSum" = cbSum,
     "cbSumList" = cbSumList
   ))
-
+    
 })
 
 themes <- list(
@@ -294,9 +305,10 @@ themes <- list(
 )
 
 observeEvent({
-  # boxplotCountsReactive()
-  input$boxplotFactor1
-  input$boxKeepBucket
+  boxplotCountsReactive()
+  # input$boxplotFactor1
+  # input$boxKeepBucket
+  # input$keepBucketBoxplot
   input$boxplotYLimLFC
   input$figHeightBoxplot
   input$figWidthBoxplot
@@ -328,10 +340,10 @@ observeEvent({
   lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
     input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
   })
-  input$keepBucketBoxplot
-}, ignoreNULL = FALSE, ignoreInit = TRUE, {
+}, ignoreNULL = FALSE, ignoreInit = FALSE, {
 
-  req(nchar(input$keepBucketBoxplot) >= 2)
+  req(!is.null(boxplotCountsReactive()$countsBoxplotMelt))
+  # req(length(input$keepBucketBoxplot) >= 1)
   datasetBoxplot <- boxplotCountsReactive()$datasetBoxplot
   countsBoxplot <- boxplotCountsReactive()$countsBoxplot
   countsBoxplotMelt <- boxplotCountsReactive()$countsBoxplotMelt
@@ -380,7 +392,15 @@ observeEvent({
       g <- g + scale_fill_grey()
     }
     g <- g + themes[[input$boxplotThemeChoice]]
-    g <- g + labs(y = paste(input$boxplotCounts, "Counts"))
+    if (input$boxplotCountsLog) {
+      if (inputDataReactive()$dataType == "RNASeq") {
+        if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
+          g <- g + labs(y = paste(input$boxplotCounts, "Counts (Log2)"))
+        }
+      }
+    } else {
+      g <- g + labs(y = paste(input$boxplotCounts, "Counts"))
+    }
     g <- g + theme(
       axis.text.x = element_blank(),
       axis.text.y = element_text(colour = "grey20", size = input$textSizeBoxplot, angle = 0, hjust = 1, vjust = 0.5, face = "bold"),
@@ -462,7 +482,15 @@ observeEvent({
           )
       }
       g <- g + themes[[input$boxplotThemeChoice]]
-      g <- g + labs(y = paste(input$boxplotCounts, "Counts"))
+      if (input$boxplotCountsLog) {
+        if (inputDataReactive()$dataType == "RNASeq") {
+          if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
+            g <- g + labs(y = paste(input$boxplotCounts, "Counts (Log2)"))
+          }
+        }
+      } else {
+        g <- g + labs(y = paste(input$boxplotCounts, "Counts"))
+      }
       g <- g + ggtitle(gene)
       g <- g + theme(
         axis.title.x = element_blank(),
@@ -503,7 +531,15 @@ observeEvent({
     } else {
       b <- b + geom_bar(stat="identity", color="black", position = position_dodge(), alpha = input$boxplotBoxAlpha)
     }
-    b <- b + labs(y = paste(input$boxplotCounts, "Counts"), fill = input$boxplotFactor1)
+    if (input$boxplotCountsLog) {
+      if (inputDataReactive()$dataType == "RNASeq") {
+        if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
+          b <- b + labs(y = paste(input$boxplotCounts, "Counts (Log2)"), fill = input$boxplotFactor1)
+        }
+      }
+    } else {
+      b <- b + labs(y = paste(input$boxplotCounts, "Counts"), fill = input$boxplotFactor1)
+    }
     if (!isTRUE(input$boxplotGrey)) {
       barColours <- colorRampPalette(brewer.pal(8, "Set2"))(length(names(cbSumList)))
       b <- b + scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot))
