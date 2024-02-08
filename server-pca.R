@@ -94,6 +94,7 @@ observeEvent(
     datasetPCA <- inputDataReactive()$dataset
     datasetPCA <- datasetPCA[datasetPCA[[input$pcaFactor1]] %in% input$pcaGroups, ]
     countsPCA <- inputDataReactive()$countList[[input$pcaCounts]]
+    countsPCA <- countsPCA[,rownames(datasetPCA)]
     if (input$pcaLog2) {
       if (input$pcaCounts %in% c("TPM", "FPKM", "Raw", "Normalised")) {
         countsPCA <- log2(countsPCA+1)
@@ -106,7 +107,6 @@ observeEvent(
     }
     countsPCA <- as.data.frame(t(countsPCA))
     # Get the n genes with greatest standard deviation for the PCA plot
-    countsPCA <- countsPCA[rownames(datasetPCA), ]
     countsPCA <- countsPCA[, names(head(sort(sapply(countsPCA, sd), decreasing = TRUE), n = input$pcaTopN))]
     
     req(length(dim(countsPCA)) == 2)
