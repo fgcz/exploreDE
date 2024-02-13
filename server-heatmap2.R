@@ -148,6 +148,17 @@ observeEvent(inputDataReactive(), {
   }
 })
 
+if (inputDataReactive()$dataType == "proteomics") {
+  req(!is.null(inputDataReactive()$seqAnnoList))
+  if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+    output$nrPeptidesHeatmapUI <- renderUI({
+      sliderInput(inputId = "nrPeptideHeatmap", label = "Minimum number of peptides", min = 0, max = 20, value = 1, step = 1, width = "85%")
+    })
+  } else {
+    output$nrPeptidesHeatmapUI <- renderUI({ NULL })
+  }
+}
+
 observeEvent(
   {
     input$figHeightHeatmap
@@ -180,6 +191,7 @@ observeEvent(
     input$heatmapDPI
     input$heatmapDownloadFormat
     input$heatmapFilename
+    input$nrPeptideHeatmap
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
@@ -193,6 +205,9 @@ observeEvent(
           design <- input$contrastSelected
           seqAnnoHeatmap <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
           seqAnnoHeatmap[["usedInTest"]] = TRUE
+          if (!is.null(input$nrPeptideHeatmap)) {
+            seqAnnoHeatmap <- seqAnnoHeatmap[which(seqAnnoHeatmap$nrPeptides >= input$nrPeptideHeatmap),]
+          }
         } else {
           seqAnnoHeatmap <- inputDataReactive()$seqAnno
           param <- inputDataReactive()$param

@@ -63,7 +63,8 @@ tabItem(
             checkboxInput(inputId = "pcaCentre", label = "Centre PCA?", value = TRUE),
             checkboxInput(inputId = "pcaScale", label = "Scale PCA?", value = FALSE),
             hr(style = "border-top: 0.1px solid #000000;"),
-            checkboxGroupInput(inputId = "pcaGroups", label = "Select groups to plot", choices = "", selected = "")
+            checkboxGroupInput(inputId = "pcaGroups", label = "Select groups to plot", choices = "", selected = ""),
+            uiOutput(outputId = "nrPeptidesPCAUI")
           ),
           tabPanel(
             title = "Figure settings",

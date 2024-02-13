@@ -86,14 +86,17 @@ genesReactive <- eventReactive({
   input$volcanoGenesText
   input$heatmapGenes
   input$heatmapGenesText
+  input$volcanoBrush
 }, ignoreNULL = FALSE, ignoreInit = TRUE, {
 
+  # Get all the genes that have been selected from the drop-downs of a respective tab
   genesList1 <- setNames(lapply(c("boxplotGenes", "volcanoGenes", "heatmapGenes"), function(geneList) {
     if(!is.null(input[[geneList]])) {
       input[[geneList]]
     }
   }), c("boxplotGenes", "volcanoGenes", "heatmapGenes"))
-
+  
+  # Get all the genes that have been typed into the textbox of a respective tab
   genesList2 <- setNames(lapply(c(
     "boxplotGenesText", "volcanoGenesText", "heatmapGenesText"
   ), function(geneText) {
@@ -102,9 +105,15 @@ genesReactive <- eventReactive({
     }
   }), c("boxplotGenesText", "volcanoGenesText", "heatmapGenesText"))
 
+  # Get the genes that were click-selected in the DE table 
   degMATable <- seqAnnoReactive$sa[order(seqAnnoReactive$sa$pValue), ]
   degMATable <- degMATable$gene_name[input$degTable_rows_selected]
-  genesUnlist <- unique(unlist(c(genesList1, genesList2, degMATable)))
+  
+  # Get the genes that were selected using the brush tool in the volcano tab
+  volcanoBrushGenes <- brushedPoints(volcanoResultsList()$volcanoTable, input$volcanoBrush)
+  volcanoBrushGenes <- volcanoBrushGenes$gene_name
+  
+  genesUnlist <- unique(unlist(c(genesList1, genesList2, degMATable, volcanoBrushGenes)))
   genesUnlist <- genesUnlist[!genesUnlist == ""]
   return(list(
     "genes" = genesUnlist

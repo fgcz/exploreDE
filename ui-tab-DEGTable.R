@@ -48,10 +48,7 @@ tabItem(
             label = "Download Selected DE Results"),
           br(), br(), 
           tags$p(
-            "Exciting new feature alert! You can now click on any feature in this table, 
-            and they will automatically be added to the boxplots tab. So you can
-            sort for features based on name, type, TPM, log2 fold change,
-            whatever you like, and visualise those features instantly!"),
+            "You can click on any feature in this table, and they will automatically be added to the selected features buckets in volcano, heatmaps, and boxplot tabs. So you can sort for features based on name, type, TPM, log2 fold change, whatever you like, and visualise those features instantly!"),
           DT::dataTableOutput("degTable")
         )
       ) 

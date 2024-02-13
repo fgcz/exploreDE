@@ -96,6 +96,7 @@ input$boxplotShowPTipSizeA <- 0
 input$boxplotShowPTipSizeB <- 1
 input$boxplotShowPDodge <- 1
 input$boxplotPointBorder <- 0.5
+input$boxplotCountsLog <- FALSE
 
 input$boxplotGenes <- inputDataReactive()$genes[1:5]
 input$boxplotGenesText <- inputDataReactive()$genes[6:10]

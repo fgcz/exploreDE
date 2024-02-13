@@ -100,6 +100,17 @@ observeEvent(
   }
 )
 
+if (inputDataReactive()$dataType == "proteomics") {
+  req(!is.null(inputDataReactive()$seqAnnoList))
+  if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+    output$nrPeptidesVolcanoUI <- renderUI({
+      sliderInput(inputId = "nrPeptideVolcano", label = "Minimum number of peptides", min = 0, max = 20, value = 1, step = 1, width = "85%")
+    })
+  } else {
+    output$nrPeptidesVolcanoUI <- renderUI({ NULL })
+  }
+}
+
 # Volcano Plot Output ----
 volcanoResultsList <- eventReactive(
   {
@@ -111,6 +122,7 @@ volcanoResultsList <- eventReactive(
     input$volcanoShowGenes
     input$boxKeepBucketGenes
     input$contrastSelected
+    input$nrPeptideVolcano
     lapply(1:8, function(i) {
       input[[paste0("volcanoColour", i)]]
     })
@@ -130,6 +142,9 @@ volcanoResultsList <- eventReactive(
         
         if (inputDataReactive()$dataType == "proteomics") {
           seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
+          if (!is.null(input$nrPeptideVolcano)) {
+            seqAnnoFilt <- seqAnnoFilt[which(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano),]
+          }
           seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, description, log2Ratio, pValue, fdr)
           
           output$volcanoDesign <- renderText({

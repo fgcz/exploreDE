@@ -44,6 +44,17 @@ observeEvent(input[["pcaFactor1"]], ignoreInit = T, {
   )
 })
 
+if (inputDataReactive()$dataType == "proteomics") {
+  req(!is.null(inputDataReactive()$seqAnnoList))
+  if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+    output$nrPeptidesPCAUI <- renderUI({
+      sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 1, step = 1, width = "85%")
+    })
+  } else {
+    output$nrPeptidesPCAUI <- renderUI({ NULL })
+  }
+}
+
 observeEvent(
   {
     input$pcaFactor1
@@ -75,6 +86,7 @@ observeEvent(
     input$downloadFormatPCA
     input$dpiPCA
     input$filnamePCA
+    input$nrPeptidePCA
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
@@ -95,6 +107,14 @@ observeEvent(
     datasetPCA <- datasetPCA[datasetPCA[[input$pcaFactor1]] %in% input$pcaGroups, ]
     countsPCA <- inputDataReactive()$countList[[input$pcaCounts]]
     countsPCA <- countsPCA[,rownames(datasetPCA)]
+    
+    # If proteomics and minimum number of peptides selected, subset the counts
+    if (inputDataReactive()$dataType == "proteomics") {
+      if (!is.null(input$nrPeptideVolcano)) {
+        countsPCA <- countsPCA[which(rownames(countsPCA) %in% inputDataReactive()$seqAnnoList[[1]]$gene_name[which(inputDataReactive()$seqAnnoList[[1]]$nrPeptides >= input$nrPeptidePCA)]), ]
+      }
+    }
+    
     if (input$pcaLog2) {
       if (input$pcaCounts %in% c("TPM", "FPKM", "Raw", "Normalised")) {
         countsPCA <- log2(countsPCA+1)
