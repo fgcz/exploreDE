@@ -48,7 +48,7 @@ if (inputDataReactive()$dataType == "proteomics") {
   req(!is.null(inputDataReactive()$seqAnnoList))
   if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
     output$nrPeptidesPCAUI <- renderUI({
-      sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 1, step = 1, width = "85%")
+      sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
     })
   } else {
     output$nrPeptidesPCAUI <- renderUI({ NULL })
