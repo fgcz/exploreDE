@@ -24,6 +24,7 @@ library("gridExtra")
 library("shinylogs")
 library("parallel")
 library("plyr")
+library("shinycssloaders")
 reactiveConsole(TRUE)
 
 ui = dashboardPage(

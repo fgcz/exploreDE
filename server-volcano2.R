@@ -111,6 +111,20 @@ if (inputDataReactive()$dataType == "proteomics") {
   }
 }
 
+volcanoGenesReactive <- reactiveValues(Results = NULL)
+
+observeEvent({
+  input$volcanoBrush
+  }, ignoreNULL = FALSE, ignoreInit = TRUE, {
+    # Get the genes that were selected using the brush tool in the volcano tab
+    volcanoBrushGenes <- brushedPoints(volcanoResultsList()$volcanoTable, input$volcanoBrush)
+    volcanoBrushGenes <- volcanoBrushGenes$gene_name
+    volcanoGenesReactive$volcanoBrushGenes = volcanoBrushGenes
+    # return(list(
+    #   "volcanoBrushGenes" = volcanoBrushGenes
+    # ))
+})
+
 # Volcano Plot Output ----
 volcanoResultsList <- eventReactive(
   {

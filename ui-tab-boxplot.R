@@ -182,10 +182,13 @@ tabItem(
               label = paste("Download Boxplot (PDF)")
             ),
             br(), br(),
-            plotOutput(
-              outputId = "boxplotStatic", 
-              inline = TRUE, 
-              brush = "boxplotBrush"
+            withSpinner(
+              plotOutput(
+                outputId = "boxplotStatic", 
+                inline = TRUE, 
+                brush = "boxplotBrush"
+              ),
+              color="#19a7cf"
             ),
             DT::dataTableOutput(outputId = "boxplotBrushTable")
           ),

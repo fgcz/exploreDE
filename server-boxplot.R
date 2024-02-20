@@ -1,4 +1,6 @@
 # Update a bunch of input options ----
+output$boxplotStatic <- renderPlot({NULL})
+
 updateSelectInput(
   session = session, 
   inputId = "boxplotCounts", 
@@ -86,7 +88,7 @@ genesReactive <- eventReactive({
   input$volcanoGenesText
   input$heatmapGenes
   input$heatmapGenesText
-  input$volcanoBrush
+  volcanoGenesReactive$volcanoBrushGenes
 }, ignoreNULL = FALSE, ignoreInit = TRUE, {
 
   # Get all the genes that have been selected from the drop-downs of a respective tab
@@ -109,9 +111,10 @@ genesReactive <- eventReactive({
   degMATable <- seqAnnoReactive$sa[order(seqAnnoReactive$sa$pValue), ]
   degMATable <- degMATable$gene_name[input$degTable_rows_selected]
   
-  # Get the genes that were selected using the brush tool in the volcano tab
-  volcanoBrushGenes <- brushedPoints(volcanoResultsList()$volcanoTable, input$volcanoBrush)
-  volcanoBrushGenes <- volcanoBrushGenes$gene_name
+  volcanoBrushGenes <- NULL
+  if (!is.null(volcanoGenesReactive$volcanoBrushGenes)) {
+    volcanoBrushGenes = volcanoGenesReactive$volcanoBrushGenes
+  }
   
   genesUnlist <- unique(unlist(c(genesList1, genesList2, degMATable, volcanoBrushGenes)))
   genesUnlist <- genesUnlist[!genesUnlist == ""]
