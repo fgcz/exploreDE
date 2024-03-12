@@ -336,10 +336,10 @@ observeEvent(
     volcanoTableFull <- volcanoTable
     volcanoTableFull$Label <- NA
     if (input$volcanoShowGenes & input$volcanoLabelAllUp) {
-      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChange&SignificantUp")] <- volcanoTableFull$gene_name[which(volcanoTableFull$Status == "FoldChange&SignificantUp")]
+      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantUp")] <- volcanoTableFull$gene_name[which(volcanoTableFull$Status == "FoldChangeSignificantUp")]
     }
     if (input$volcanoShowGenes & input$volcanoLabelAllDown) {
-      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChange&SignificantDown")] <- volcanoTableFull$gene_name[which(volcanoTableFull$Status == "FoldChange&SignificantDown")]
+      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantDown")] <- volcanoTableFull$gene_name[which(volcanoTableFull$Status == "FoldChangeSignificantDown")]
     }
     if (input$volcanoShowGenes & length(input$boxKeepBucketGenes) >= 1) {
       volcanoTableFull$Label[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)] <- volcanoTableFull$gene_name[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)]
