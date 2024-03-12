@@ -344,7 +344,7 @@ observeEvent(
     if (input$volcanoShowGenes & length(input$boxKeepBucketGenes) >= 1) {
       volcanoTableFull$Label[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)] <- volcanoTableFull$gene_name[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)]
       if (input$volcanoAnnotationHighlightColour) {
-        volcanoTableFull$Status[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)] <- "Highlighted"
+        volcanoTableFull$Status[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)] <- "Highlight"
       }
     }
 
@@ -356,7 +356,8 @@ observeEvent(
     maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status), stroke = input$volcanoPointBorder)
     maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     if (input$volcanoShowGenes == TRUE) {
-      maplot <- maplot + geom_label_repel(
+      maplot <- maplot + 
+        geom_label_repel(
           aes(label = Label, colour = Status),
           force = 2,
           nudge_y = as.numeric(input$geneLabelNudgeVolcanoY)/10,
@@ -365,7 +366,8 @@ observeEvent(
           max.overlaps = input$volcanoLabelMaxOverlap,
           fontface = "bold",
           show.legend = F
-      ) + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+      ) + 
+        scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     }
     maplot <- maplot + guides()
     output$MAPlot <- renderPlot({
