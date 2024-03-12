@@ -103,8 +103,6 @@ if (inputDataReactive()$dataType == "proteomics") {
           paste0(design, "full_results_file.xlsx")
         },
         content = function(file) {
-          # tableToWrite <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
-          # colnames(tableToWrite) <- c("protein_Id", "fasta.id", "diff", "p.value", "FDR", "description", "nrPeptides")
           tableToWrite <- as.data.frame(rowData(se)[[grep(input$contrastSelected, names(rowData(se)))]])
           openxlsx::write.xlsx(tableToWrite, file = file)
         }
@@ -144,7 +142,7 @@ if (inputDataReactive()$dataType == "proteomics") {
         )
       })
       
-      colsToPlot1 <- colnames(seqAnnoDEG %>% dplyr::select(any_of(c("gene_name", "description", "nrPeptides", "log2Ratio", "pValue", "fdr"))))
+      colsToPlot1 <- colnames(seqAnnoDEG %>% dplyr::select(any_of(c("gene_name", "description", "nrPeptides", "modelName", "log2Ratio", "pValue", "fdr"))))
       colNamesToPlot1 <- unlist(lapply(colsToPlot1, function(col) {
         if (col == "gene_name") {
           "Protein ID"
@@ -152,6 +150,8 @@ if (inputDataReactive()$dataType == "proteomics") {
           "Description"
         } else if (col == "nrPeptides") {
           "Number of peptides"
+        } else if (col == "modelName") {
+          "Imputed Model"
         } else if (col == "log2Ratio") {
           "Log2 Ratio"
         } else if (col == "pValue") {
@@ -173,7 +173,7 @@ if (inputDataReactive()$dataType == "proteomics") {
       
       # Output the interactive data table
       output$degTable <- DT::renderDataTable({
-        DT::datatable(
+        dt1 <- DT::datatable(
           data = seqAnnoDEG %>% dplyr::select(all_of(colsToPlot1)),
           filter = "top",
           class = "cell-border stripe",
@@ -185,11 +185,14 @@ if (inputDataReactive()$dataType == "proteomics") {
           DT::formatSignif(columns = "log2Ratio", digits = 5) %>%
           DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
           DT::formatStyle(columns = c("pValue", "fdr"), color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")
+        if ("modelName" %in% colnames(seqAnnoDEG)) {
+          dt1 <- dt1 %>% DT::formatStyle(columns = "modelName", color = styleEqual(levels = c("Linear_Model_moderated", "Imputed_Mean_moderated"), values = c("black", "darkblue")))
+        }
+        dt1
       })
       
       observeEvent(input$degTable_rows_selected, {
         seqAnnoDEGSelected <- seqAnnoDEG[input$degTable_rows_selected, ]
-        colnames(seqAnnoDEGSelected) <- c("protein_Id", "fasta.id", "diff", "p.value", "FDR", "description", "nrPeptides")
         output$dlDEGTable2 <- downloadHandler(
           filename = function() {
             paste0("selected_result_", design, ".xlsx")

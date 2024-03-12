@@ -207,3 +207,29 @@ input$oraDirection <- "upGenes"
 input$gseaType <- "BP"
 input$selectedTable_GSEA_rows_selected <- c(1,2,3,4)
 input$textSizeGSEA <- 12
+
+input$nrPeptideVolcano <- 2
+input$showImputedVolcano <- TRUE
+input$highlightImputedVolcano <- TRUE
+
+
+volcanoColoursDefault <- c(
+  "Highlight" = "goldenrod3",
+  "NotSignificant" = "grey30",
+  "SignificantUp" = "pink",
+  "SignificantDown" = "lightblue",
+  "FoldChangeUp" = "pink3",
+  "FoldChangeDown" = "lightblue4",
+  "FoldChangeSignificantUp" = "firebrick4",
+  "FoldChangeSignificantDown" = "dodgerblue4"
+)
+
+if (inputDataReactive()$dataType == "proteomics") {
+  req(!is.null(inputDataReactive()$seqAnnoList))
+  if("modelName" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+    volcanoColoursDefault <- c(volcanoColoursDefault, "Imputed" = "darkturquoise")
+  }
+}
+for (x in names(volcanoColoursDefault)) {
+  input[[paste0("volcanoColour", x) ]] <- as.character(volcanoColoursDefault[x])
+}

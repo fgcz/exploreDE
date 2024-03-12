@@ -11,16 +11,23 @@ volcanoColoursDefault <- c(
   "SignificantDown" = "lightblue",
   "FoldChangeUp" = "pink3",
   "FoldChangeDown" = "lightblue4",
-  "FoldChange&SignificantUp" = "firebrick4",
-  "FoldChange&SignificantDown" = "dodgerblue4"
+  "FoldChangeSignificantUp" = "firebrick4",
+  "FoldChangeSignificantDown" = "dodgerblue4"
 )
 
+if (inputDataReactive()$dataType == "proteomics") {
+  req(!is.null(inputDataReactive()$seqAnnoList))
+  if("modelName" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+    volcanoColoursDefault <- c(volcanoColoursDefault, "Imputed" = "burlywood3")
+  }
+}
+
 output$volcanoColourPicker <- renderUI({
-  lapply(seq_along(volcanoColoursDefault), function(i) {
+  lapply(names(volcanoColoursDefault), function(x) {
     colourpicker::colourInput(
-      inputId = paste0("volcanoColour", i),
-      label = names(volcanoColoursDefault)[i],
-      value = as.character(volcanoColoursDefault[i]),
+      inputId = paste0("volcanoColour", x),
+      label = x,
+      value = as.character(volcanoColoursDefault[x]),
       closeOnClick = TRUE,
       returnName = TRUE
     )
@@ -60,7 +67,7 @@ observeEvent(
     input$pTypeVolcano
     input$contrastSelected
     inputDataReactive()
-  }, ignoreInit = FALSE, ignoreNULL = TRUE, 
+  }, ignoreInit = FALSE, ignoreNULL = TRUE,
   {
     if (inputDataReactive()$dataType == "RNASeq") {
       seqAnno <- inputDataReactive()$seqAnno
@@ -70,23 +77,23 @@ observeEvent(
       })
       seqAnnoFilt <- seqAnno[which(seqAnno$usedInTest),]
     }
-    
+
     if (inputDataReactive()$dataType == "proteomics") {
       req(!is.null(input$contrastSelected))
       seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
       seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, log2Ratio, pValue, fdr)
-      
+
       output$volcanoDesign <- renderText({
         input$contrastSelected
       })
     }
-    
+
     if (input$pTypeVolcano == "Raw") {
       pTypeVolcano <- "pValue"
     } else {
       pTypeVolcano <- "fdr"
     }
-    
+
     updateNumericInput(
       session = session,
       inputId = "yLimVolcano",
@@ -102,12 +109,25 @@ observeEvent(
 
 if (inputDataReactive()$dataType == "proteomics") {
   req(!is.null(inputDataReactive()$seqAnnoList))
+
   if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
     output$nrPeptidesVolcanoUI <- renderUI({
       sliderInput(inputId = "nrPeptideVolcano", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
     })
   } else {
     output$nrPeptidesVolcanoUI <- renderUI({ NULL })
+  }
+
+  if("modelName" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+    output$showImputedVolcanoUI <- renderUI({
+      checkboxInput(inputId = "showImputedVolcano", label = "Include imputed features?", value = TRUE)
+    })
+    output$highlightImputedVolcanoUI <- renderUI({
+      checkboxInput(inputId = "highlightImputedVolcano", label = "Highlight imputed features?", value = FALSE)
+    })
+  } else {
+    output$showImputedVolcanoUI <- renderUI({NULL})
+    output$highlightImputedVolcanoUI <- renderUI({NULL})
   }
 }
 
@@ -120,9 +140,6 @@ observeEvent({
     volcanoBrushGenes <- brushedPoints(volcanoResultsList()$volcanoTable, input$volcanoBrush)
     volcanoBrushGenes <- volcanoBrushGenes$gene_name
     volcanoGenesReactive$volcanoBrushGenes = volcanoBrushGenes
-    # return(list(
-    #   "volcanoBrushGenes" = volcanoBrushGenes
-    # ))
 })
 
 # Volcano Plot Output ----
@@ -137,11 +154,13 @@ volcanoResultsList <- eventReactive(
     input$boxKeepBucketGenes
     input$contrastSelected
     input$nrPeptideVolcano
-    lapply(1:8, function(i) {
-      input[[paste0("volcanoColour", i)]]
+    input$showImputedVolcano
+    input$highlightImputedVolcano
+    lapply(names(volcanoColoursDefault), function(x) {
+      input[[paste0("volcanoColour", x)]]
     })
   },
-  ignoreInit = TRUE, ignoreNULL = FALSE, 
+  ignoreInit = TRUE, ignoreNULL = FALSE,
   {
     # tryCatch(
     #   {
@@ -153,50 +172,50 @@ volcanoResultsList <- eventReactive(
           })
           seqAnnoFilt <- seqAnno[which(seqAnno$usedInTest),]
         }
-        
+
         if (inputDataReactive()$dataType == "proteomics") {
           seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
           if (!is.null(input$nrPeptideVolcano)) {
             seqAnnoFilt <- seqAnnoFilt[which(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano),]
           }
-          seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, description, log2Ratio, pValue, fdr)
-          
+          if (!is.null(input$showImputedVolcano)) {
+            if (!input$showImputedVolcano) {
+              seqAnnoFilt <- seqAnnoFilt[grep("^Linear", seqAnnoFilt$modelName),]
+            }
+          }
+          if (!is.null(input$highlightImputedVolcano)) {
+            if (input$highlightImputedVolcano) {
+              seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, description, log2Ratio, pValue, fdr, modelName)
+            }
+          } else {
+            seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, description, log2Ratio, pValue, fdr)
+          }
+
           output$volcanoDesign <- renderText({
             input$contrastSelected
           })
         }
-        
+
         if (input$pTypeVolcano == "Raw") {
           pTypeVolcano <- "pValue"
         } else {
           pTypeVolcano <- "fdr"
         }
-        
+
         # Get the colours
-        volcanoColours <- c(
-          "Highlighted" = 1,
-          "NotSignificant" = 1,
-          "SignificantUp" = 1,
-          "SignificantDown" = 1,
-          "FoldChangeUp" = 1,
-          "FoldChangeDown" = 1,
-          "FoldChange&SignificantUp" = 1,
-          "FoldChange&SignificantDown" = 1
-        )
-        req(!is.null(input[[paste0("volcanoColour1")]]))
-        for (i in 1:8) {
-          volcanoColours[[i]] <- input[[paste0("volcanoColour", i)]]
-        }
-        
+        volcanoColours <- unlist(setNames(lapply(names(volcanoColoursDefault), function(x) {
+          input[[paste0("volcanoColour", x)]]
+        }), names(volcanoColoursDefault)))
+
         # Create table of gene names, LFC, and p-value selected by user:
         volcanoTable <- seqAnnoFilt[, c("gene_name", "description", "log2Ratio", pTypeVolcano)]
-        
+
         # Get the -log10 of the p-value:
         volcanoTable["log10p"] <- -log10(as.numeric(volcanoTable[[pTypeVolcano]]))
-        
+
         # Get the -log10p of p-value threshold as a single value:
         log10p <- -log10(as.numeric(input$pThresholdVolcano))
-        
+
         # Get mean log2 count for MA plot
         if (inputDataReactive()$dataType == "RNASeq") {
           rMs <- rowMeans(inputDataReactive()$countList$`Normalised + Log2`)
@@ -205,7 +224,7 @@ volcanoResultsList <- eventReactive(
           names(rMs) <- names(rMs) %>% gsub("\\~.*", "", .)
         }
         volcanoTable$Log2_Mean <- rMs[match(volcanoTable$gene_name, names(rMs))]
-        
+
         # Determine what significance Status each gene is and label accordingly
         ## Not significant:
         volcanoTable["Status"] <- "NotSignificant"
@@ -218,11 +237,17 @@ volcanoResultsList <- eventReactive(
         ## LFC down only:
         volcanoTable[which(volcanoTable["log10p"] < log10p & volcanoTable["log2Ratio"] <= -as.numeric(input$lfcVolcano)), "Status"] <- "FoldChangeDown"
         # LFC & p-value up:
-        volcanoTable[which(volcanoTable["log10p"] >= log10p & volcanoTable["log2Ratio"] >= as.numeric(input$lfcVolcano)), "Status"] <- "FoldChange&SignificantUp"
+        volcanoTable[which(volcanoTable["log10p"] >= log10p & volcanoTable["log2Ratio"] >= as.numeric(input$lfcVolcano)), "Status"] <- "FoldChangeSignificantUp"
         # LFC & p-value down:
-        volcanoTable[which(volcanoTable["log10p"] >= log10p & volcanoTable["log2Ratio"] <= -as.numeric(input$lfcVolcano)), "Status"] <- "FoldChange&SignificantDown"
+        volcanoTable[which(volcanoTable["log10p"] >= log10p & volcanoTable["log2Ratio"] <= -as.numeric(input$lfcVolcano)), "Status"] <- "FoldChangeSignificantDown"
         # table(volcanoTable$Status)
-        
+
+        if (!is.null(input$highlightImputedVolcano)) {
+          if (input$highlightImputedVolcano) {
+            volcanoTable[which(volcanoTable$gene_name %in% seqAnnoFilt$gene_name[grep("^Imputed", seqAnnoFilt$modelName)]), "Status"] <- "Imputed"
+          }
+        }
+
         # Set limits of data frame to x/y-axes limits
         volcanoTable$log10p_full <- volcanoTable$log10p
         volcanoTable$log2Ratio_full <- volcanoTable$log2Ratio
@@ -230,7 +255,7 @@ volcanoResultsList <- eventReactive(
         volcanoTable$log10p[volcanoTable$log10p > as.numeric(input$yLimVolcano)] <- as.numeric(input$yLimVolcano)
         volcanoTable$log2Ratio[volcanoTable$log2Ratio > as.numeric(input$xLimVolcano)] <- as.numeric(input$xLimVolcano)
         volcanoTable$log2Ratio[volcanoTable$log2Ratio < -as.numeric(input$xLimVolcano)] <- -as.numeric(input$xLimVolcano)
-        
+
         # Summary table
         output$volcanoOverview <- function() {
           table(as.factor(volcanoTable$Status)) %>%
@@ -244,7 +269,7 @@ volcanoResultsList <- eventReactive(
               position = "left"
             )
         }
-        
+
         # Results table
         output$volcanoOverviewTable <- DT::renderDataTable({
           DT::datatable(
@@ -261,7 +286,7 @@ volcanoResultsList <- eventReactive(
             DT::formatStyle(columns = "fdr", color = styleInterval(cuts = input$pThresholdVolcano, values = c("green", "black")), fontWeight = "bold") %>%
             DT::formatStyle(columns = "Status", color = styleEqual(levels = names(volcanoColours), values = as.character(volcanoColours)), fontWeight = "bold")
         })
-        
+
         return(list(
           "volcanoTable" = volcanoTable,
           "volcanoColours" = volcanoColours,
@@ -296,12 +321,14 @@ observeEvent(
     input$geneLabelNudgeVolcanoX
     input$geneLabelNudgeVolcanoY
     input$volcanoPointBorder
-    input$downloadFormatVolcano 
-    input$dpiVolcano 
+    input$downloadFormatVolcano
+    input$dpiVolcano
     input$filnameVolcano
     volcanoResultsList()
-  },
+  }, ignoreInit = TRUE, ignoreNULL = FALSE, 
   {
+    
+    req(!is.null(volcanoResultsList()$volcanoColours))
     volcanoTable <- volcanoResultsList()$volcanoTable
     volcanoColours <- volcanoResultsList()$volcanoColours
     design <- volcanoResultsList()$design
@@ -333,13 +360,13 @@ observeEvent(
           aes(label = Label, colour = Status),
           force = 2,
           nudge_y = as.numeric(input$geneLabelNudgeVolcanoY)/10,
-          nudge_x = as.numeric(input$geneLabelNudgeVolcanoX)/10, 
+          nudge_x = as.numeric(input$geneLabelNudgeVolcanoX)/10,
           size = (input$geneLabelSizeVolcano / 3),
           max.overlaps = input$volcanoLabelMaxOverlap,
-          fontface = "bold", 
+          fontface = "bold",
           show.legend = F
       ) + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
-    } 
+    }
     maplot <- maplot + guides()
     output$MAPlot <- renderPlot({
       maplot
@@ -504,7 +531,7 @@ observeEvent(
         dev.off()
       }
     )
-    
+
     output$dlVolcanoDFButton <- downloadHandler(
       filename = function() {
         paste0(design, "_volcano.xlsx")

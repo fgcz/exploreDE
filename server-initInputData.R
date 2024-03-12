@@ -86,7 +86,7 @@ inputDataReactive <- reactive({
     seqAnnoList <- setNames(lapply(contrasts, function(con) {
       sa <- rowData(se)[[paste0("constrast_", con)]]
       sa <- sa[order(sa$p.value),]
-      sa <- sa %>% dplyr::select(any_of(c("protein_Id", "site", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides")))
+      sa <- sa %>% dplyr::select(any_of(c("protein_Id", "site", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides", "modelName")))
       if (any(grepl("site", colnames(sa)))) {
         sa$site <- gsub("\\~", ".", sa$site)
         sa <- sa %>% dplyr::select(-protein_Id)
