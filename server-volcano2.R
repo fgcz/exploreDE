@@ -102,7 +102,7 @@ observeEvent(
     updateNumericInput(
       session = session,
       inputId = "xLimVolcano",
-      value = ceiling(max(seqAnnoFilt[["log2Ratio"]])*1.1)
+      value = ceiling(max(abs(seqAnnoFilt[["log2Ratio"]]))*1.1)
     )
   }
 )
@@ -251,11 +251,11 @@ volcanoResultsList <- eventReactive(
         # Set limits of data frame to x/y-axes limits
         volcanoTable$log10p_full <- volcanoTable$log10p
         volcanoTable$log2Ratio_full <- volcanoTable$log2Ratio
-        volcanoTable$log10p[which(volcanoTable$log10p == "Inf")] <- max(volcanoTable$log10p[which(volcanoTable$log10p < Inf)])
+        #volcanoTable$log10p[which(volcanoTable$log10p == "Inf")] <- max(volcanoTable$log10p[which(volcanoTable$log10p < Inf)])
         volcanoTable$log10p[volcanoTable$log10p > as.numeric(input$yLimVolcano)] <- as.numeric(input$yLimVolcano)
-        volcanoTable$log2Ratio[volcanoTable$log2Ratio > as.numeric(input$xLimVolcano)] <- as.numeric(input$xLimVolcano)
-        volcanoTable$log2Ratio[volcanoTable$log2Ratio < -as.numeric(input$xLimVolcano)] <- -as.numeric(input$xLimVolcano)
-
+        volcanoTable$log2Ratio <- shrinkToRange(volcanoTable$log2Ratio, 
+                                                theRange = c(-as.numeric(input$xLimVolcano), as.numeric(input$xLimVolcano)))
+        
         # Summary table
         output$volcanoOverview <- function() {
           table(as.factor(volcanoTable$Status)) %>%
