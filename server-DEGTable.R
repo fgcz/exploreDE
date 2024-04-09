@@ -1,5 +1,25 @@
 req(!is.null(inputDataReactive()$dataType))
 
+observeEvent({
+  genesReactive()
+}, {
+  output$geneBucketDEG <- renderUI({
+    bucket_list(
+      header = "",
+      group_name = "bucket_list_group",
+      orientation = "horizontal",
+      add_rank_list(
+        text = "Include these features in this order",
+        labels = genesReactive()$genes,
+        input_id = "boxKeepBucketGenes"),
+      add_rank_list(
+        text = "Exclude these features",
+        labels = NULL,
+        input_id = "boxExcludeBucketGenes")
+    )
+  })
+})
+
 if (inputDataReactive()$dataType == "RNASeq") {
   
   # Create the download link in XLSX format:

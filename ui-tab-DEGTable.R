@@ -36,7 +36,7 @@ tabItem(
         width = 12,
         box(
           title = "Results Table",
-          width = NULL,
+          width = 9,
           solidHeader = TRUE,
           status = "primary",
           textOutput("DEGDesign"), br(),
@@ -50,6 +50,13 @@ tabItem(
           tags$p(
             "You can click on any feature in this table, and they will automatically be added to the selected features buckets in volcano, heatmaps, and boxplot tabs. So you can sort for features based on name, type, TPM, log2 fold change, whatever you like, and visualise those features instantly!"),
           DT::dataTableOutput("degTable")
+        ),
+        box(
+          title = "Feature Bucket",
+          width = 3,
+          solidHeader = TRUE,
+          status = "primary",
+          uiOutput("geneBucketDEG"),
         )
       ) 
     ) 

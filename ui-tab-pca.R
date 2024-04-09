@@ -41,6 +41,7 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Main settings",
+            helpText("The PCA plot is completely separate from the DE test and will be identical in other live reports from the same dataset, it's just here for convenience."),
             numericInput(inputId = "pcaTopN", label = "Use top n features ranked by SD", value = 2000, min = 2, max = 1e5, step = 1, width = "75%"),
             hr(style = "border-top: 0.1px solid #000000;"),
             selectInput(inputId = "pcaX", label = "PC for x axis", choices = "PC1", selected = "PC1", width = "75%"),
