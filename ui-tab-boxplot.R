@@ -88,12 +88,10 @@ tabItem(
               label = "Apply a batch-correction to the counts?", 
               choices = c(), 
               multiple = TRUE),
-            hr(style = "border-top: 1px solid #000000;"), h4("Re-order selected features"),
-            tags$p(
-              "Features will be added to this bucket as you select them from the DE table 
-              tab and from the inputs in this tab. You can use this bucket to quickly 
-              re-order and exclude these features as you need to by dragging and dropping 
-              them in order or into the exclude bucket."),
+            hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
+            h5(
+              "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly 
+              include/exclude these features from the plots as you need to by dragging and dropping them in order or into the exclude bucket."),
             uiOutput("geneBucket1"),
             hr(style = "border-top: 1px solid #000000;"),
             uiOutput("bucket")

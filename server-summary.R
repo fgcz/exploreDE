@@ -5,16 +5,30 @@ factorNames <- inputDataReactive()$factorNames
 countList <- inputDataReactive()$countList
 factorLevels <- inputDataReactive()$factorLevels
 
+catalystCols <- c(
+  "#DC050C", "#FB8072", "#1965B0", "#7BAFDE", "#882E72", "#B17BA6", 
+  "#FF7B00", "#FDC362", "#E7298A", "#E78AC3", "#33A02C", "#B2DF8A", 
+  "#55A1B1", "#8DD3C7", "#A6761D", "#E6AB02", "#7570B3", "#BEAED4", 
+  "#666666", "#999999", "#aa8282", "#d4b7b7", "#8600bf", "#ba5ce3", 
+  "#808000", "#aeae5c", "#1e90ff", "#00bfff", "#56ff0d", "#ffff00"
+)
+catalystCols <- c(catalystCols[c(seq(1,30, by = 2), seq(2, 30, by = 2))])
+cc2 <- catalystCols
+cc2 <- colorspace::darken(cc2, 0.4)
+catalystCols <- c(catalystCols, cc2)
+catalystCols <- paste0(catalystCols, "FF")
+
 n <- 60
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 colourPaletteList <- list(
-  "House colours" = c(
-    "indianred3", "steelblue4", "chartreuse4", "grey30", 
-    "goldenrod3", "firebrick4", "royalblue4", "mediumorchid3",
-    "turquoise4", "darkolivegreen", "thistle4", "darkorange3", 
-    "hotpink2", "burlywood3", "cadetblue4", "chocolate4", "firebrick"
-  ),
+  # "House colours" = c(
+  #   "indianred3", "steelblue4", "chartreuse4", "grey30", 
+  #   "goldenrod3", "firebrick4", "royalblue4", "mediumorchid3",
+  #   "turquoise4", "darkolivegreen", "thistle4", "darkorange3", 
+  #   "hotpink2", "burlywood3", "cadetblue4", "chocolate4", "firebrick"
+  # ),
+  "Catalyst colours" = catalystCols,
   "Paired" = brewer.pal(12, "Paired"),
   "Set1" = brewer.pal(9, "Set1"),
   "Set2" = brewer.pal(8, "Set2"),

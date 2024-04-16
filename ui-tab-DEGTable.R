@@ -49,7 +49,8 @@ tabItem(
           br(), br(), 
           tags$p(
             "You can click on any feature in this table, and they will automatically be added to the selected features buckets in volcano, heatmaps, and boxplot tabs. So you can sort for features based on name, type, TPM, log2 fold change, whatever you like, and visualise those features instantly!"),
-          DT::dataTableOutput("degTable")
+          DT::dataTableOutput("degTable"),
+          style = "overflow-y: scroll;"
         ),
         box(
           title = "Feature Bucket",

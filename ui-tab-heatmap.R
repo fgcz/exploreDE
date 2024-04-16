@@ -102,11 +102,10 @@ tabItem(
             helpText("This allows you to plot the expression of any feature detected, irrespective of the DE test."),
             selectInput(inputId = "heatmapGenes", label = "Select features for custom heatmap:", multiple = TRUE, choices = "", selected = ""),
             textAreaInput(inputId = "heatmapGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1),
+            hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
             h5(
-              "Features will be added to this bucket as you select them from the DE table 
-              tab and from the inputs in this tab. You can use this bucket to quickly 
-              re-order and exclude these features as you need to by dragging and dropping 
-              them in order or into the exclude bucket."),
+              "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly 
+              include/exclude these features from the custom heatmap as you need to by dragging and dropping them in order or into the exclude bucket."),
             uiOutput("geneBucket3")
           ),
           tabPanel(
@@ -128,9 +127,9 @@ tabItem(
             checkboxInput(inputId = "geneNamesHeatmap", label = "Show feature names?", value = TRUE),
             uiOutput("heatmapFactors"),
             checkboxGroupInput(inputId = "heatmapFactor2", label = "Select which additional factors should be displayed", choices = "", selected = ""),
-            colourpicker::colourInput(inputId = "heatmapColourRed", label = "Heatmap Red (+)", value = "#801717"),
+            colourpicker::colourInput(inputId = "heatmapColourRed", label = "Heatmap Red (+)", value = "darkred"),
             colourpicker::colourInput(inputId = "heatmapColourWhite", label = "Heatmap White (0)", value = "#FFFFFF"),
-            colourpicker::colourInput(inputId = "heatmapColourBlue", label = "Heatmap Blue (-)", value = "#113D69"),
+            colourpicker::colourInput(inputId = "heatmapColourBlue", label = "Heatmap Blue (-)", value = "deepskyblue4"),
             numericInput(inputId = "textSizeHeatmap", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5),
             numericInput(inputId = "figWidthHeatmap", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10),
             numericInput(inputId = "figHeightHeatmap", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10)

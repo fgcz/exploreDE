@@ -1,3 +1,4 @@
+
 req(!is.null(inputDataReactive()$dataType))
 
 if (inputDataReactive()$dataType == "proteomics") {
@@ -6,13 +7,13 @@ if (inputDataReactive()$dataType == "proteomics") {
 
 volcanoColoursDefault <- c(
   "Highlight" = "goldenrod3",
-  "NotSignificant" = "grey30",
-  "SignificantUp" = "pink",
-  "SignificantDown" = "lightblue",
-  "FoldChangeUp" = "pink3",
-  "FoldChangeDown" = "lightblue4",
-  "FoldChangeSignificantUp" = "firebrick4",
-  "FoldChangeSignificantDown" = "dodgerblue4"
+  "NotSignificant" = "grey60",
+  "SignificantUp" = "lightcoral",
+  "SignificantDown" = "steelblue",
+  "FoldChangeUp" = "lightpink2",
+  "FoldChangeDown" = "skyblue",
+  "FoldChangeSignificantUp" = "firebrick3",
+  "FoldChangeSignificantDown" = "deepskyblue4"
 )
 
 if (inputDataReactive()$dataType == "proteomics") {
@@ -253,9 +254,9 @@ volcanoResultsList <- eventReactive(
         volcanoTable$log2Ratio_full <- volcanoTable$log2Ratio
         #volcanoTable$log10p[which(volcanoTable$log10p == "Inf")] <- max(volcanoTable$log10p[which(volcanoTable$log10p < Inf)])
         volcanoTable$log10p[volcanoTable$log10p > as.numeric(input$yLimVolcano)] <- as.numeric(input$yLimVolcano)
-        volcanoTable$log2Ratio <- shrinkToRange(volcanoTable$log2Ratio, 
+        volcanoTable$log2Ratio <- shrinkToRange(volcanoTable$log2Ratio,
                                                 theRange = c(-as.numeric(input$xLimVolcano), as.numeric(input$xLimVolcano)))
-        
+
         # Summary table
         output$volcanoOverview <- function() {
           table(as.factor(volcanoTable$Status)) %>%
@@ -325,9 +326,9 @@ observeEvent(
     input$dpiVolcano
     input$filnameVolcano
     volcanoResultsList()
-  }, ignoreInit = TRUE, ignoreNULL = FALSE, 
+  }, ignoreInit = TRUE, ignoreNULL = FALSE,
   {
-    
+
     req(!is.null(volcanoResultsList()$volcanoColours))
     volcanoTable <- volcanoResultsList()$volcanoTable
     volcanoColours <- volcanoResultsList()$volcanoColours
@@ -356,7 +357,7 @@ observeEvent(
     maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status), stroke = input$volcanoPointBorder)
     maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     if (input$volcanoShowGenes == TRUE) {
-      maplot <- maplot + 
+      maplot <- maplot +
         geom_label_repel(
           aes(label = Label, colour = Status),
           force = 2,
@@ -366,7 +367,7 @@ observeEvent(
           max.overlaps = input$volcanoLabelMaxOverlap,
           fontface = "bold",
           show.legend = F
-      ) + 
+      ) +
         scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     }
     maplot <- maplot + guides()

@@ -90,7 +90,6 @@ observeEvent(
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
-    input$contrastSelected
   },
   ignoreInit = TRUE, ignoreNULL = FALSE,
   {
