@@ -115,7 +115,11 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$textSizeORA
       input$nodeSizeORA
       input$selectedTable_ORA_rows_selected
+      input$showGeneLabelsORA
     }, {
+      
+      req(!is.null(input$selectedTable_ORA_rows_selected))
+      
       er <- ora[[input$oraType]][[input$oraDirection]]
       if (!is.null(er) && nrow(er@result) >=2) {
         er@result$Label <- ""
@@ -134,12 +138,17 @@ if(inputDataReactive()$dataType == "RNASeq") {
         names(log2RatioORA) <- metadata(se)$enrichInput$seqAnno$gene_name[metadata(se)$enrichInput$seqAnno$gene_id %in% sigGeneIds]
         log2RatioORA <- sort(log2RatioORA, decreasing = T)
         er@result$geneID <- er@result$geneName
+        nl <- "category"
+        if (input$showGeneLabelsORA) {
+          nl <- "all"
+        }
         
         if (!is.null(er) && nrow(er@result) >= 2) {
           cn <- enrichplot::cnetplot(
             x = er,
             color.params = list(foldChange = log2RatioORA),
             showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
+            node_label = nl,
             cex.params = list(category_label = (input$textSizeORA / 15), gene_label = (input$textSizeORA / 18), gene_node = (input$textSizeORA / 16), category_node = (input$textSizeORA / 13))
           )
           if (input$oraDirection == "upGenes") {
@@ -147,7 +156,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
           } else if (input$oraDirection == "downGenes") {
             cn <- cn + scale_color_gradientn(name = "fold change", colours = c("deepskyblue4", "white"))
           } else if (input$oraDirection == "bothGenes") {
-            cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick3")
+            cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick3", midpoint = 0)
           }
           hp <- enrichplot::heatplot(
             x = er,
@@ -167,11 +176,26 @@ if(inputDataReactive()$dataType == "RNASeq") {
             theme(
               axis.text.y = element_text(
                 vjust = -0.01, size = input$textSizeORA))
+          dp <- enrichplot::dotplot(
+            er,
+            x = "GeneRatio",
+            showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
+            title = paste(input$oraType, input$oraDirection)
+          )
+          dp <- dp +
+            scale_y_discrete(
+              labels = rev(
+                er@result$Label[
+                  match(dp$plot_env$df$ID, er@result$ID)])) +
+            theme(
+              axis.text.y = element_text(
+                vjust = -0.01, size = input$textSizeORA))
         }
         
         return(list(
           "cnetplot" = cn,
           "barplot" = bp,
+          "dotplot" = dp,
           "heatmap" = hp
         ))
       }
@@ -183,9 +207,9 @@ if(inputDataReactive()$dataType == "RNASeq") {
         input$figHeightORA
         input$figWidthORA
         oraPlotList()
-      }, {
+      }, ignoreNULL = FALSE, {
         
-        # Network plot 
+        # Network plot
         output$cnetPlot_ORA <- renderPlot(
           {
             oraPlotList()[["cnetplot"]]
@@ -203,8 +227,8 @@ if(inputDataReactive()$dataType == "RNASeq") {
             dev.off()
           }
         )
-        
-        # bar plot 
+
+        # bar plot
         output$barPlot_ORA <- renderPlot(
           {
             oraPlotList()[["barplot"]]
@@ -222,7 +246,26 @@ if(inputDataReactive()$dataType == "RNASeq") {
             dev.off()
           }
         )
-        
+
+        # Dot plot
+        output$dotPlot_ORA <- renderPlot(
+          {
+            oraPlotList()[["dotplot"]]
+          },
+          width = as.numeric(input$figWidthORA),
+          height = as.numeric(input$figHeightORA)
+        )
+        output$dlDotPlot_ORA <- downloadHandler(
+          filename = function() {
+            paste0(design, "ORA_", input$oraType, "_dot.pdf")
+          },
+          content = function(file) {
+            pdf(file = file, width = (as.numeric(input$figWidthORA)/50), height = (as.numeric(input$figHeightORA)/50), )
+            print(oraPlotList()[["dotplot"]])
+            dev.off()
+          }
+        )
+
         # Heatmap
         output$heatmap_ORA <- renderPlot(
           {
@@ -241,7 +284,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
             dev.off()
           }
         )
-        
+
       }
     )
   }

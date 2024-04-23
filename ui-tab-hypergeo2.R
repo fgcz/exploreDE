@@ -100,6 +100,12 @@ tabItem(
             plotOutput(outputId = "barPlot_ORA", inline = TRUE)
           ),
           tabPanel(
+            title = "Dot plot",
+            downloadButton(outputId = "dlDotPlot_ORA", label = paste("Download Dot Plot: PDF")),
+            br(), br(),
+            plotOutput(outputId = "dotPlot_ORA", inline = TRUE)
+          ),
+          tabPanel(
             title = "Heatmap",
             downloadButton(outputId = "dlHeatmap_ORA", label = paste("Download Heatmap: PDF")),
             br(), br(),
@@ -114,25 +120,26 @@ tabItem(
         collapsible = TRUE,
         collapsed = FALSE,
         status = "primary",
-        numericInput(
+        checkboxInput(inputId = "showGeneLabelsORA", label = "Show gene names?", value = TRUE, width = "33%"),
+        sliderInput(
           inputId = "textSizeORA",
           label = "Figure Font Size", min = 4, max = 30,
-          value = 12, step = 0.5
+          value = 12, step = 0.5, width = "33%"
         ),
-        numericInput(
+        sliderInput(
           inputId = "figWidthORA",
           label = "Figure Width", min = 100, max = 2000,
-          value = 600, step = 10
+          value = 600, step = 10, width = "33%"
         ),
-        numericInput(
+        sliderInput(
           inputId = "figHeightORA",
           label = "Figure Height", min = 100, max = 2000,
-          value = 400, step = 10
+          value = 400, step = 10, width = "33%"
         ),
-        numericInput(
+        sliderInput(
           inputId = "nodeSizeORA",
           label = "Network Plot Node Size", min = 1, max = 30,
-          value = 12, step = 0.5
+          value = 12, step = 0.5, width = "33%"
         ),
       )
     )
