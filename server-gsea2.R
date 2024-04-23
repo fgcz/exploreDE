@@ -161,7 +161,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
           showCategory = er@result$Description[input$selectedTable_GSEA_rows_selected],
           cex.params = list(category_label = (input$textSizeGSEA / 15), gene_label = (input$textSizeGSEA / 18), gene_node = (input$textSizeGSEA / 16), category_node = (input$textSizeGSEA / 13))
         )
-        cn <- cn + scale_colour_gradient2(name = "fold change", low = "royalblue4", mid = "white", high = "firebrick4")
+        cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick3")
         hp <- enrichplot::heatplot(
           x = er,
           foldChange = log2RatioGSEA,
