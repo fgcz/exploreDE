@@ -74,7 +74,7 @@ observeEvent(groupingNameHeatmap(), {
   })
   updateCheckboxGroupInput(
     session = session,
-    inputId = "heatmapFactor2",
+    inputId = "heatmapFactors",
     choices = inputDataReactive()$factors,
     selected = groupingNameHeatmap()$gn
   )
@@ -83,7 +83,7 @@ observeEvent(groupingNameHeatmap(), {
 if (inputDataReactive()$dataType == "proteomics") {
   observeEvent(
     input$heatmapProteomicsColumnSelect,{
-      updateCheckboxGroupInput(session = session, inputId = "heatmapFactor2", selected = input$heatmapProteomicsColumnSelect)
+      updateCheckboxGroupInput(session = session, inputId = "heatmapFactors", selected = input$heatmapProteomicsColumnSelect)
     })
 }
 
@@ -177,7 +177,7 @@ observeEvent(
     input$heatmapLimitCPaletteRev
     input$heatmapGeneNumber
     input$hmKeepBucket
-    input$heatmapFactor2
+    input$heatmapFactors
     input$heatmapCounts
     input$clusterRowsHeatmap
     input$clusterColsHeatmap
@@ -298,13 +298,13 @@ observeEvent(
           }), unique(datasetHeatmap[[f]]))
         }), inputDataReactive()$factors)
         
-        if (any(input$heatmapFactor2 != "")) {
-          p1 <- paste(lapply(input$heatmapFactor2, function(g) {
+        if (any(input$heatmapFactors != "")) {
+          p1 <- paste(lapply(input$heatmapFactors, function(g) {
             paste0("'", g, "' = datasetHeatmap[['", g, "']]")
           }), collapse = ",")
-          ha <- paste0("HeatmapAnnotation(", p1, ")")
+          ha <- paste0("HeatmapAnnotation(", p1, ", show_legend = T)")
           ha <- eval(parse(text = ha))
-          for (f in c(input$heatmapFactor2)) {
+          for (f in c(input$heatmapFactors)) {
             for (l in levels(as.factor(datasetHeatmap[, f]))) {
               ha@anno_list[[f]]@color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
               ha@anno_list[[f]]@fun@var_env$color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
@@ -329,6 +329,8 @@ observeEvent(
             countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
           } 
           
+          rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
+          
           heatmap <- ComplexHeatmap::Heatmap(
             matrix = countsHeatmapSig,
             top_annotation = ha,
@@ -349,7 +351,7 @@ observeEvent(
           # Output heatmaps
           output[[paste0("heatmap", sig)]] <- renderPlot(
             {
-              draw(heatmap, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
+              draw(heatmap, merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
             },
             width = as.numeric(input$figWidthHeatmap),
             height = as.numeric(input$figHeightHeatmap)

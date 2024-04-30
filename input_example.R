@@ -137,6 +137,8 @@ input$pTypeHeatmap <- "Raw"
 # input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[3]])))
 input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[1]])))
 input$heatmapCounts <- names(inputDataReactive()$countList)[2]
+input$xCoord <- 10
+input$yCoord <- 10
 
 input$goTileInput <- "GO:0042254 ribosome biogenesis"
 input$pTypeGoTile <- "FDR"
@@ -153,6 +155,7 @@ input$figWidthGoTile <- 400
 input$figHeightGoTile <- 800
 
 input$heatmapDPI <- 600
+input$heatmapFactors <- inputDataReactive()$factors
 input$heatmapDownloadFormat <- "PDF"
 input$heatmapFilename <- "both_regulated_heatmap"
 input$heatmapLimitD <- 2

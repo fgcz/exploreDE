@@ -193,9 +193,9 @@ inputDataReactive <- reactive({
     
     # If there's only one factor, duplicate it so everything that expects a 
     # second factor doesn't break: 
-    if (length(factors) == 1) {
-      factors <- c(factors, factors)
-    }
+    # if (length(factors) == 1) {
+    #   factors <- c(factors, factors)
+    # }
     
     # The app doesn't like empty strings in the factor columns, so for now, add "None" to those entries 
     dataset <- dataset %>% mutate_all(~ifelse(. == "", "None", .))

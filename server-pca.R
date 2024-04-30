@@ -27,13 +27,13 @@ lapply(c(1:2), function(i) {
     choices = c("None", inputDataReactive()$factors),
     selected = selected
   )
-  updateCheckboxGroupInput(
-    session = session,
-    inputId = paste0("pcaGroups"),
-    choices = levels(as.factor(inputDataReactive()$dataset[, inputDataReactive()$factors[i]])),
-    selected = levels(as.factor(inputDataReactive()$dataset[, inputDataReactive()$factors[i]]))
-  )
 })
+updateCheckboxGroupInput(
+  session = session,
+  inputId = paste0("pcaGroups"),
+  choices = levels(as.factor(inputDataReactive()$dataset[, inputDataReactive()$factors[1]])),
+  selected = levels(as.factor(inputDataReactive()$dataset[, inputDataReactive()$factors[1]]))
+)
 
 observeEvent(input[["pcaFactor1"]], ignoreInit = T, {
   updateCheckboxGroupInput(
