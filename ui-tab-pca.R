@@ -59,7 +59,7 @@ tabItem(
             checkboxInput(inputId = "pcaShowNames", label = "Show sample names", value = FALSE),
             helpText("Not seeing labels? Try changing the max overlap in the figure settings tab."),
             tags$b("Keep PCA axes proportional to variance?"),
-            checkboxInput(inputId = "pcaAxesProp", label = "Keep axes proportional", value = TRUE),
+            checkboxInput(inputId = "pcaAxesProp", label = "Keep axes proportional", value = FALSE),
             tags$b("Centre and/or scale counts?"),
             checkboxInput(inputId = "pcaCentre", label = "Centre PCA?", value = TRUE),
             checkboxInput(inputId = "pcaScale", label = "Scale PCA?", value = FALSE),

@@ -157,8 +157,13 @@ observe({
   # Proteomics: Create metadata table
   if (inputDataReactive()$dataType == "proteomics") {
     output$settingsTable <- function() {
+      if ("contrasts" %in% names(metadata(inputDataReactive()$se))) {
+        contrastSummary <- as.data.frame(metadata(inputDataReactive()$se)$contrasts)
+      } else {
+        contrastSummary <- as.data.frame(metadata(inputDataReactive()$se))
+      }
       kable(
-        as.data.frame(metadata(inputDataReactive()$se)),
+        contrastSummary,
         row.names = FALSE,
         format = "html"
         ) %>%
