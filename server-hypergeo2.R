@@ -99,10 +99,21 @@ if(inputDataReactive()$dataType == "RNASeq") {
           er@result$Label[i] <- label
         }
         output$selectedTable_ORA <- DT::renderDataTable({
+          oraDfToShow <- as.data.frame(er)[, c("Label", "GeneRatio", "geneName")]
+          oraDfToShow$geneNumber <- sapply(strsplit(as.character(oraDfToShow$GeneRatio), "/"), function(x) as.numeric(x[1]))
+          
           DT::datatable(
-            data = as.data.frame(er)[, c("Label", "GeneRatio", "geneName")],
+            data = oraDfToShow,
             filter = "top", class = "cell-border stripe",
-            rownames = FALSE, caption = "Click pathways in this table to add them to the figures on the right"
+            rownames = FALSE, caption = "Click pathways in this table to add them to the figures on the right",
+            options = list(
+              columnDefs = list(
+                # Hide the numeric column used for sorting
+                list(visible = FALSE, targets = c(grep("geneNumber", colnames(oraDfToShow))-1)),
+                # Specify the column you want to display and make sortable based on the hidden one
+                list(orderData = c(grep("geneNumber", colnames(oraDfToShow))-1), targets = c(grep("GeneRatio", colnames(oraDfToShow))-1))
+              )
+            ),
           ) %>%
             DT::formatStyle(
               columns = colnames(.$x$data), `font-size` = "12px"
