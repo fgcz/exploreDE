@@ -302,6 +302,42 @@ observeEvent(
         dev.off()
       }
     )
+    # Paired Plot 
+    pairedPlot <- ggpairs(
+      data = pc_scores, 
+      columns = 2:6, 
+      aes_string(fill = input$pcaFactor1, alpha = input$alphaPCA), 
+      upper = list(continuous = wrap("points", alpha = input$alphaPCA, size = input$dotSizePCA, alpha = input$alphaPCA, pch = 21, stroke = input$dotBorderPCA)),
+      lower = list(continuous = wrap("points", alpha = input$alphaPCA, size = input$dotSizePCA, alpha = input$alphaPCA, pch = 21, stroke = input$dotBorderPCA)),
+      diag = list(continuous = wrap("densityDiag", size = 0.3), discrete = "barDiag", na = "naDiag")
+      ) + 
+      theme_bw(base_size = input$textSizePCA) + 
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+      scale_colour_manual(values = as.character(coloursPCA), breaks = names(coloursPCA)) +
+      scale_fill_manual(values = as.character(coloursPCA), breaks = names(coloursPCA))
+    output$pcaPaired <- renderPlot(
+      {
+        pairedPlot
+      },
+    width = as.numeric(input$figWidthPCA),
+    height = as.numeric(input$figHeightPCA)
+    )
+    output$dlPCAPairButton <- downloadHandler(
+      filename = function() {
+        paste(input$filnamePCA, ".paired.", design, tolower(input$downloadFormatPCA), sep = ".")
+      },
+      content = function(file) {
+        if (input$downloadFormatPCA == "PDF") {
+          pdf(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
+        } else if (input$downloadFormatPCA == "SVG") {
+          svg(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
+        } else if (input$downloadFormatPCA == "PNG") {
+          png(filename = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80), units = "in", res = as.numeric(input$dpiPCA))
+        }
+        print(pairedPlot)
+        dev.off()
+      }
+    )
     
     output$dlPCAPlotDFButton <- downloadHandler(
       filename = function() {

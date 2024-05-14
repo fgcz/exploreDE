@@ -25,6 +25,7 @@ library("shinylogs")
 library("parallel")
 library("plyr")
 library("shinycssloaders")
+library("GGally")
 reactiveConsole(TRUE)
 
 ui = dashboardPage(

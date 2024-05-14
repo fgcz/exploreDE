@@ -110,12 +110,23 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        textOutput("pcaDesign"),
-        downloadButton(outputId = "dlPCAPlotButton", label = "Download PCA Plot"),
-        downloadButton(outputId = "dlPCAPlotDFButton", HTML("Download PCA Coords Table (Excel)")),
-        br(), br(),
-        plotOutput(outputId = "pcaStatic", inline = TRUE, brush = "pcaBrush"),
-        DT::dataTableOutput("pcaBrushTable")
+        tabsetPanel(
+          tabPanel(
+            title = "PCA Plot",
+            textOutput("pcaDesign"),
+            downloadButton(outputId = "dlPCAPlotButton", label = "Download PCA Plot"),
+            downloadButton(outputId = "dlPCAPlotDFButton", HTML("Download PCA Coords Table (Excel)")),
+            br(), br(),
+            plotOutput(outputId = "pcaStatic", inline = TRUE, brush = "pcaBrush"),
+            DT::dataTableOutput("pcaBrushTable")
+          ),
+          tabPanel(
+            title = "Paired Plot",
+            downloadButton(outputId = "dlPCAPairButton", label = "Download Paired Plot"),
+            br(),br(),
+            plotOutput(outputId = "pcaPaired", inline = TRUE),
+          )
+        )
       ),
       box(
         title = "Scree Plot",
