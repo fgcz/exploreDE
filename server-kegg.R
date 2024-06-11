@@ -1,14 +1,12 @@
 if(inputDataReactive()$dataType == "RNASeq") {
 
   se <- inputDataReactive()$se
-  sp <- inputDataReactive()$sp
-  # seqAnno <- inputDataReactive()$seqAnno
   param <- inputDataReactive()$param
   design <- inputDataReactive()$design
   
   output$keggPlotDesign <- renderText({design})
   
-  sp <- ezRun::getSpecies(param$refBuild)
+  spp <- ezRun::getSpecies(param$refBuild)
   
   observeEvent(input$tabs, {
     if (input$tabs == "keggTab") {
@@ -38,14 +36,15 @@ if(inputDataReactive()$dataType == "RNASeq") {
         require("pathview")
         
         switch(
-          sp,
+          spp,
           "Human" = {spp = "hsa"},
           "Mouse" = {spp = "mmu"}
         )
         
-        gD <- metadata(se)$enrichInput$log2Ratio[names(metadata(se)$enrichInput$log2Ratio) %in% inputDataReactive()$seqAnno$gene_id[
+        gD <- metadata(se)$enrichInput$log2Ratio[
+          names(metadata(se)$enrichInput$log2Ratio) %in% inputDataReactive()$seqAnno$gene_id[
           which(inputDataReactive()$seqAnno[[pTypeKEGG]] <= as.numeric(input$pThresholdKEGG) & abs(inputDataReactive()$seqAnno$log2Ratio) >= as.numeric(input$lfcKEGG))
-        ]
+          ]
         ]
         
         outfile <- paste0(input$keggInput, ".pathview.png")
