@@ -79,7 +79,14 @@ ui = dashboardPage(
     )
   ), 
   dashboardBody(
-    tags$head(tags$link(rel = "shortcut icon", href = "sushi.png")),
+    tags$head(
+      tags$link(rel = "shortcut icon", href = "sushi.png"),
+      tags$head(tags$style(HTML("
+                              .shiny-split-layout > div {
+                                overflow: visible;
+                              }
+                              ")))
+      ),
     use_waiter(),
     tabItems(
       source("ui-tab-summary.R", local = TRUE)$value,

@@ -27,7 +27,7 @@ tabItem(
           solidHeader = TRUE,
           status = "primary",
           h4("Download App Data"),
-          helpText("App data will download as a qs file, which can be imported with `qs::qread()`"),
+          helpText("App data will download as a qs file, which can be imported into R with `qs::qread()`"),
           downloadButton("downloadData", "Download app data"),
           hr(style = "border-top: 1px solid #000000;"), h4("Download App Settings"),
           helpText("Download all the app settings as either an Excel sheet, or as a qs file of the settings as a list."),
@@ -48,7 +48,7 @@ tabItem(
         width = 12,
         box(
           title = paste("Input dataset"),
-          width = NULL,
+          width = 6,
           solidHeader = TRUE,
           status = "primary",
           helpText("The list of samples that are included in the entire dataset, and their factor columns."),
@@ -56,7 +56,7 @@ tabItem(
         ),
         box(
           title = c("Group Colours"),
-          width = NULL,
+          width = 6,
           solidHeader = TRUE,
           status = "primary",
           uiOutput("colourPaletteUI"),

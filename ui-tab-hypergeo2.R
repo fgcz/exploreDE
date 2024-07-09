@@ -64,8 +64,10 @@ tabItem(
           label = "Download ORA Results File"
         ),
         br(), br(),
-        selectInput(inputId = "oraType", label = "Select GO to view", choices = c("BP", "MF", "CC"), selected = "BP", width = "25%"),
-        selectInput(inputId = "oraDirection", label = "Select Direction to view", choices = c("upGenes", "downGenes", "bothGenes"), selected = "upGenes", width = "25%"),
+        splitLayout(
+          selectInput(inputId = "oraType", label = "Select GO to view", choices = c("BP", "MF", "CC"), selected = "BP", width = "85%"),
+          selectInput(inputId = "oraDirection", label = "Select Direction to view", choices = c("upGenes", "downGenes", "bothGenes"), selected = "upGenes", width = "85%")
+        ),
         DT::dataTableOutput(outputId = "selectedTable_ORA"),
         style = "overflow-y: scroll;"
       )),
@@ -86,6 +88,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        helpText("Click on pathways in the table on the left for them to be added to the figures here."),
         tabsetPanel(
           tabPanel(
             title = "Network plot",

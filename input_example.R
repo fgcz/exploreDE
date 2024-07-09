@@ -236,3 +236,8 @@ if (inputDataReactive()$dataType == "proteomics") {
 for (x in names(volcanoColoursDefault)) {
   input[[paste0("volcanoColour", x) ]] <- as.character(volcanoColoursDefault[x])
 }
+
+input$pTypeKEGG <- "FDR"
+input$pThresholdKEGG <- 0.05
+input$lfcKEGG <- 0.5
+input$keggLimitColour <- 1
