@@ -84,7 +84,7 @@ observeEvent(inputDataReactive()$dataType, {
     output$linkToMultiDEG <- renderUI({
       box(
         title = "Compare Multiple DE Tests!",
-        width = 12,
+        width = NULL,
         solidHeader = TRUE,
         status = "primary",
         tags$p("Do you want to compare the results in this DE test with other DE tests you have run? Then, good news, because there is an app for just that! Head to https://fgcz-shiny.uzh.ch/multiDEG to find out more!"),
@@ -94,7 +94,7 @@ observeEvent(inputDataReactive()$dataType, {
     output$referencesText <- renderUI({
       box(
         title = "Cite us!",
-        width = 12, 
+        width = NULL, 
         solidHeader = TRUE,
         status = "primary",
         tags$p("If you plan to publish results generated in SUSHI, and/or figures from this app, please consider citing us!"),
@@ -109,7 +109,7 @@ observeEvent(inputDataReactive()$dataType, {
     output$referencesText <- renderUI({
       box(
         title = "Cite us!",
-        width = 12, 
+        width = NULL, 
         solidHeader = TRUE,
         status = "primary",
         tags$p("If you plan to publish results generated in b-fabric and prolfqua, and/or figures from this app, please consider citing us!"),
@@ -155,7 +155,7 @@ observe({
   )
   
   # Download all currently selected inputs 
-  output$downloadInputs <- downloadHandler(
+  output$downloadInputsE <- downloadHandler(
     filename = function() {
       "Input_Options.xlsx"
     },
@@ -165,6 +165,14 @@ observe({
       x <- rownames_to_column(x, "Input")
       colnames(x)[[2]] <- "Value"
       writexl::write_xlsx(x, path = file)
+    }
+  )
+  output$downloadInputsR <- downloadHandler(
+    filename = function() {
+      "Input_Options.qs"
+    },
+    content = function(file) { 
+      qs::qsave(x = reactiveValuesToList(input), file = file, nthreads = 8)
     }
   )
   
