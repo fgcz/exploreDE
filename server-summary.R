@@ -154,6 +154,30 @@ observe({
     }
   )
   
+  # Download all currently selected inputs 
+  output$downloadInputs <- downloadHandler(
+    filename = function() {
+      "Input_Options.xlsx"
+    },
+    content = function(file) { 
+      x <- reactiveValuesToList(input)
+      x <- data.frame(unlist(x))
+      x <- rownames_to_column(x, "Input")
+      colnames(x)[[2]] <- "Value"
+      writexl::write_xlsx(x, path = file)
+    }
+  )
+  
+  # Download current reactive data
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste0("exploreDE_Data_", format(Sys.time(), "%Y-%m-%d_%H.%M.%S"), ".qs")
+    },
+    content = function(file) { 
+      qs::qsave(x = inputDataReactive(), file = file, nthreads = 8)
+    }
+  )
+  
   # Proteomics: Create metadata table
   if (inputDataReactive()$dataType == "proteomics") {
     output$settingsTable <- function() {

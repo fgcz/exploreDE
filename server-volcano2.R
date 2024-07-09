@@ -143,6 +143,10 @@ observeEvent({
     volcanoGenesReactive$volcanoBrushGenes = volcanoBrushGenes
 })
 
+observeEvent(input$lfcVolcano, ignoreInit = T, {
+  showNotification("Volcano log2FC threshold changed")
+})
+
 # Volcano Plot Output ----
 volcanoResultsList <- eventReactive(
   {

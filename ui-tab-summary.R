@@ -15,23 +15,25 @@ tabItem(
           uiOutput(outputId = "proteomicsContrastSelectorUI", inline = T),
           tableOutput("settingsTable"),
           br(), 
-          # h5("Threshold"),
           tableOutput("summaryTable")
-        ) # end of box
+        )
       ),
       column(
         width = 6,
         box(
-          title = paste("Download Count Files"),
+          title = paste("Download Files"),
           width = 12,
           solidHeader = TRUE,
           status = "primary",
+          downloadButton("downloadInputs", "Download all input options"), br(),br(),
+          downloadButton("downloadData", "Download app data"), br(),
+          helpText("App data will download as a qs file, which can be imported with `qs::qread()`"), br(),
           selectizeInput(
             inputId = "downloadCount", 
             "Select Count Table", 
             choices = c()),
-          downloadButton("downloadTable", "Download Selected Count File")
-        ), # end of box
+          downloadButton("downloadTable", "Download selected count file")
+        ),
         uiOutput(outputId = "linkToMultiDEG"),
         uiOutput(outputId = "referencesText"),
       ),
@@ -43,7 +45,7 @@ tabItem(
           solidHeader = TRUE,
           status = "primary",
           tableOutput("inputTable")
-        ), # end of box
+        ),
         box(
           title = c("Group Colours"),
           width = 6, 
@@ -52,7 +54,7 @@ tabItem(
           uiOutput("colourPaletteUI"),
           uiOutput(outputId = "colourPickerUI", inline = T)
         )
-      ) # end of column
+      )
     )
-  ) # end of fluid page
-) # end of tabItem: parameters
+  )
+)

@@ -91,7 +91,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
         }
         output$selectedTable_GSEA <- DT::renderDataTable({
           DT::datatable(
-            data = as.data.frame(er)[, c("Label", "enrichmentScore", "geneName")],
+            data = as.data.frame(er)[, c("Label", "enrichmentScore", "NES", "geneName")],
             filter = "top", class = "cell-border stripe",
             rownames = FALSE, caption = "Click pathways in this table to add them to the figures on the right"
           ) %>%
@@ -99,11 +99,11 @@ if(inputDataReactive()$dataType == "RNASeq") {
               columns = colnames(.$x$data), `font-size` = "12px"
             ) %>%
             DT::formatSignif(
-              columns = c("enrichmentScore"),
+              columns = c("enrichmentScore", "NES"),
               digits = 3
             ) %>%
             DT::formatStyle(
-              columns = c("enrichmentScore"),
+              columns = c("enrichmentScore", "NES"),
               color = styleInterval(cuts = 0, values = c("blue", "darkorange")),
               fontWeight = "bold"
             )
