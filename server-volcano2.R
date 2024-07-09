@@ -54,7 +54,7 @@ observeEvent({
       add_rank_list(
         text = "Include these features in this order",
         labels = genesReactive()$genes,
-        input_id = "boxKeepBucketGenes"),
+        input_id = "volcanoKeepBucketGenes"),
       add_rank_list(
         text = "Exclude these features",
         labels = NULL,
@@ -156,7 +156,7 @@ volcanoResultsList <- eventReactive(
     input$pTypeVolcano
     input$pThresholdVolcano
     input$volcanoShowGenes
-    input$boxKeepBucketGenes
+    input$volcanoKeepBucketGenes
     input$contrastSelected
     input$nrPeptideVolcano
     input$showImputedVolcano
@@ -316,7 +316,7 @@ observeEvent(
     input$alphaVolcano
     input$dotSizeVolcano
     input$volcanoShowGenes
-    input$boxKeepBucketGenes
+    input$volcanoKeepBucketGenes
     input$volcanoLabelAllUp
     input$volcanoLabelAllDown
     input$volcanoAnnotationHighlightColour
@@ -346,10 +346,10 @@ observeEvent(
     if (input$volcanoShowGenes & input$volcanoLabelAllDown) {
       volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantDown")] <- volcanoTableFull$gene_name[which(volcanoTableFull$Status == "FoldChangeSignificantDown")]
     }
-    if (input$volcanoShowGenes & length(input$boxKeepBucketGenes) >= 1) {
-      volcanoTableFull$Label[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)] <- volcanoTableFull$gene_name[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)]
+    if (input$volcanoShowGenes & length(input$volcanoKeepBucketGenes) >= 1) {
+      volcanoTableFull$Label[which(volcanoTableFull$gene_name %in% input$volcanoKeepBucketGenes)] <- volcanoTableFull$gene_name[which(volcanoTableFull$gene_name %in% input$volcanoKeepBucketGenes)]
       if (input$volcanoAnnotationHighlightColour) {
-        volcanoTableFull$Status[which(volcanoTableFull$gene_name %in% input$boxKeepBucketGenes)] <- "Highlight"
+        volcanoTableFull$Status[which(volcanoTableFull$gene_name %in% input$volcanoKeepBucketGenes)] <- "Highlight"
       }
     }
 

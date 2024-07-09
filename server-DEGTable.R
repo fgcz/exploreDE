@@ -11,7 +11,7 @@ observeEvent({
       add_rank_list(
         text = "Include these features in this order",
         labels = genesReactive()$genes,
-        input_id = "boxKeepBucketGenes"),
+        input_id = "degKeepBucketGenes"),
       add_rank_list(
         text = "Exclude these features",
         labels = NULL,
