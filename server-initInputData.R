@@ -223,7 +223,7 @@ inputDataReactive <- reactive({
       }
     }
     forVST <- as.matrix(assay(se, "counts"))
-    # mode(forVST) <- "integer"
+    mode(forVST) <- "integer"
     vstCountMatrix <- varianceStabilizingTransformation(forVST)
     if(param$featureLevel == "gene") {
       vstCountMatrix <- vstCountMatrix[intersect(rownames(vstCountMatrix), seqAnno$gene_id), ]
