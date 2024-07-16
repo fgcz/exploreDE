@@ -131,6 +131,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$oraMaxOver
       input$oraDodgeY
       input$oraDodgeX
+      input$nodeBorderORA
     }, {
       
       req(!is.null(input$selectedTable_ORA_rows_selected))
@@ -179,12 +180,15 @@ if(inputDataReactive()$dataType == "RNASeq") {
           cd2 <- cn$data
           cd2$name[is.na(cd2$color)] <- NA
           cn <- cn + 
-            geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21)
+            geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderORA)
           if (input$showGeneLabelsORA) {
             cn <- cn +
-              geom_text_repel(data = cd2, aes(label = name, x = x, y = y), size = input$textSizeORA/4, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10)
+              geom_text_repel(
+                data = cd2, aes(label = name, x = x, y = y), size = input$textSizeORA/3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10,
+                fontface = "bold", color = "black", bg.color = "white", bg.r = .15)
           }
-          cn <- cn + geom_label_repel(data = cd1, aes(label = name, x = x, y = y), size = input$textSizeORA/4, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10)
+          cn <- cn + geom_label_repel(
+            data = cd1, aes(label = name, x = x, y = y), size = input$textSizeORA/3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10, fontface = "bold")
           cn
           hp <- enrichplot::heatplot(
             x = er,
@@ -251,7 +255,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
             paste0(design, "ORA_", input$oraType, "_network.pdf")
           },
           content = function(file) {
-            pdf(file = file, width = (as.numeric(input$figWidthORA)/50), height = (as.numeric(input$figHeightORA)/50), )
+            pdf(file = file, width = (as.numeric(input$figWidthORA)/80), height = (as.numeric(input$figHeightORA)/80))
             print(oraPlotList()[["cnetplot"]])
             dev.off()
           }

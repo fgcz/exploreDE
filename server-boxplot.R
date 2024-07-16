@@ -462,9 +462,9 @@ observeEvent({
       }
       if (input$boxplotShowPoint) {
         if (input$boxplotFactor2 == "None" | input$boxplotFactor2 == "Feature") {
-          g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, shape = 21, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9)
+          g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, shape = 21, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$boxplotPointBorder)
         } else {
-          g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1, shape = input$boxplotFactor2), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9)
+          g <- g + geom_beeswarm(aes_string(fill = input$boxplotFactor1, shape = input$boxplotFactor2), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$boxplotPointBorder)
           g <- g + scale_shape_manual(values = c(rep(c(21,22,23,24,25), times = 10))[1:nlevels(as.factor(cbmList[[gene]][[input$boxplotFactor2]]))]) 
           g <- g + guides(
             fill = guide_legend(override.aes = list(shape = 21)), 
