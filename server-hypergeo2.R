@@ -160,6 +160,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
         }
         
         if (!is.null(er) && nrow(er@result) >= 2) {
+          # Draw the main plot 
           cn <- enrichplot::cnetplot(
             x = er,
             color.params = list(foldChange = log2RatioORA),
@@ -167,30 +168,36 @@ if(inputDataReactive()$dataType == "RNASeq") {
             node_label = "none",
             cex.params = list(category_label = (input$textSizeORA / 15), gene_label = (input$textSizeORA / 18), gene_node = input$nodeSizeORA/10, category_node = input$nodeSizeORA/8)
           )
+          # Set the colour limits to the user-specified values 
           cn$data$color[!is.na(cn$data$color) & cn$data$color > input$scaleLimORA] <- input$scaleLimORA
           cn$data$color[!is.na(cn$data$color) & cn$data$color < -input$scaleLimORA] <- -input$scaleLimORA
+          # Add our own geom_points on top 
+          cn <- cn + geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderORA)
+          # Get two copies of the plot data table so we can get gene and node labels and modify them for plotting 
+          cd1 <- cn$data
+          cd1$name[!is.na(cd1$color)] <- NA
+          cd1$Label <- NA
+          cd1$Label[1:length(input$selectedTable_ORA_rows_selected)] <- er@result$Label[input$selectedTable_ORA_rows_selected]
+          cd2 <- cn$data
+          cd2$name[is.na(cd2$color)] <- NA
+          # Some reason, enrichplot changed the default such that up is blue and down is red. We prefer the opposite... 
           if (input$oraDirection == "upGenes") {
-            cn <- cn + scale_color_gradientn(name = "fold change", colours = c("white", "firebrick3"))
+            cn <- cn + scale_color_gradientn(name = "fold change", colours = c("white", "firebrick"))
           } else if (input$oraDirection == "downGenes") {
             cn <- cn + scale_color_gradientn(name = "fold change", colours = c("deepskyblue4", "white"))
           } else if (input$oraDirection == "bothGenes") {
-            cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick3", midpoint = 0)
+            cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick", midpoint = 0)
           }
-          cd1 <- cn$data
-          cd1$name[!is.na(cd1$color)] <- NA
-          cd2 <- cn$data
-          cd2$name[is.na(cd2$color)] <- NA
-          cn <- cn + 
-            geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderORA)
+          # Add gene and node labels in that order 
           if (input$showGeneLabelsORA) {
             cn <- cn +
               geom_text_repel(
                 data = cd2, aes(label = name, x = x, y = y), size = input$textSizeORA/3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10,
-                fontface = "bold", color = "black", bg.color = "white", bg.r = .15)
+                fontface = "bold", color = "black", bg.color = "white", bg.r = .15, na.rm = T)
           }
           cn <- cn + geom_label_repel(
-            data = cd1, aes(label = name, x = x, y = y), size = input$textSizeORA/3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10, fontface = "bold")
-          cn
+            data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeORA/3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10, fontface = "bold", show.legend = F, fill = alpha(c("white"),0.5), na.rm = T)
+          
           hp <- enrichplot::heatplot(
             x = er,
             foldChange = log2RatioORA,
@@ -206,6 +213,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
               labels = rev(
                 er@result$Label[
                   match(bp$plot_env$df$ID, er@result$ID)])) +
+            theme_prism() +
             theme(
               axis.text.y = element_text(
                 vjust = -0.01, size = input$textSizeORA))
@@ -220,6 +228,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
               labels = rev(
                 er@result$Label[
                   match(dp$plot_env$df$ID, er@result$ID)])) +
+            theme_prism() +
             theme(
               axis.text.y = element_text(
                 vjust = -0.01, size = input$textSizeORA))
