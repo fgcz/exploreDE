@@ -124,26 +124,40 @@ tabItem(
         collapsed = FALSE,
         status = "primary",
         checkboxInput(inputId = "showGeneLabelsORA", label = "Show gene names?", value = TRUE, width = "33%"),
-        sliderInput(
-          inputId = "textSizeORA",
-          label = "Figure Font Size", min = 4, max = 30,
-          value = 12, step = 0.5, width = "33%"
+        splitLayout(
+          sliderInput(
+            inputId = "scaleLimORA",
+            label = "Scale colour limit (+/-)",
+            min = 1, max = 10, value = 5, step = 0.5, width = "85%"
+          ),
+          sliderInput(
+            inputId = "textSizeORA",
+            label = "Figure Font Size", min = 4, max = 30,
+            value = 12, step = 0.5, width = "85%"
+          ),
+          sliderInput(
+            inputId = "nodeSizeORA",
+            label = "Network Plot Node Size", min = 1, max = 30,
+            value = 12, step = 0.5, width = "85%"
+          )
         ),
-        sliderInput(
-          inputId = "figWidthORA",
-          label = "Figure Width", min = 100, max = 2000,
-          value = 600, step = 10, width = "33%"
+        splitLayout(
+          sliderInput(inputId = "oraMaxOver", label = "Label max overlaps", min = 0, max = 100, value = 10, step = 5, width = "85%"),
+          sliderInput(inputId = "oraDodgeY", label = "Label dodge y", min = 0, max = 10, value = 0, step = 1, width = "85%"),
+          sliderInput(inputId = "oraDodgeX", label = "Label dodge x", min = 0, max = 10, value = 0, step = 1, width = "85%")
         ),
-        sliderInput(
-          inputId = "figHeightORA",
-          label = "Figure Height", min = 100, max = 2000,
-          value = 400, step = 10, width = "33%"
-        ),
-        sliderInput(
-          inputId = "nodeSizeORA",
-          label = "Network Plot Node Size", min = 1, max = 30,
-          value = 12, step = 0.5, width = "33%"
-        ),
+        splitLayout(
+          sliderInput(
+            inputId = "figHeightORA",
+            label = "Figure Height", min = 100, max = 2000,
+            value = 400, step = 10, width = "85%"
+          ),
+          sliderInput(
+            inputId = "figWidthORA",
+            label = "Figure Width", min = 100, max = 2000,
+            value = 600, step = 10, width = "85%"
+          )
+        )
       )
     )
   )

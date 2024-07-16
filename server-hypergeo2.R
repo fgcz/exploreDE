@@ -127,6 +127,10 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$nodeSizeORA
       input$selectedTable_ORA_rows_selected
       input$showGeneLabelsORA
+      input$scaleLimORA
+      input$oraMaxOver
+      input$oraDodgeY
+      input$oraDodgeX
     }, {
       
       req(!is.null(input$selectedTable_ORA_rows_selected))
@@ -159,9 +163,10 @@ if(inputDataReactive()$dataType == "RNASeq") {
             x = er,
             color.params = list(foldChange = log2RatioORA),
             showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
-            node_label = nl,
-            cex.params = list(category_label = (input$textSizeORA / 15), gene_label = (input$textSizeORA / 18), gene_node = (input$textSizeORA / 16), category_node = (input$textSizeORA / 13))
+            node_label = "none",
+            cex.params = list(category_label = (input$textSizeORA / 15), gene_label = (input$textSizeORA / 18), gene_node = input$nodeSizeORA/10, category_node = input$nodeSizeORA/8)
           )
+          cn$data$color[!is.na(cn$data$color) & cn$data$color > input$scaleLimORA] <- input$scaleLimORA
           if (input$oraDirection == "upGenes") {
             cn <- cn + scale_color_gradientn(name = "fold change", colours = c("white", "firebrick3"))
           } else if (input$oraDirection == "downGenes") {
@@ -169,6 +174,18 @@ if(inputDataReactive()$dataType == "RNASeq") {
           } else if (input$oraDirection == "bothGenes") {
             cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick3", midpoint = 0)
           }
+          cd1 <- cn$data
+          cd1$name[!is.na(cd1$color)] <- NA
+          cd2 <- cn$data
+          cd2$name[is.na(cd2$color)] <- NA
+          cn <- cn + 
+            geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21)
+          if (input$showGeneLabelsORA) {
+            cn <- cn +
+              geom_text_repel(data = cd2, aes(label = name, x = x, y = y), size = input$textSizeORA/4, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10)
+          }
+          cn <- cn + geom_label_repel(data = cd1, aes(label = name, x = x, y = y), size = input$textSizeORA/4, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10)
+          cn
           hp <- enrichplot::heatplot(
             x = er,
             foldChange = log2RatioORA,
@@ -204,6 +221,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
         }
         
         return(list(
+          "er" = er,
           "cnetplot" = cn,
           "barplot" = bp,
           "dotplot" = dp,
