@@ -241,3 +241,9 @@ input$pTypeKEGG <- "FDR"
 input$pThresholdKEGG <- 0.05
 input$lfcKEGG <- 0.5
 input$keggLimitColour <- 1
+
+
+input$boxplotShowConditions <- TRUE
+input$boxplotConditionAngle <- 45
+input$boxplotConditionFormat <- TRUE
+input$boxplotMeanBarFront <- TRUE

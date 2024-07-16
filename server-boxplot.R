@@ -349,6 +349,10 @@ observeEvent({
   input$boxplotShowPTipSizeB
   input$boxplotShowPDodge
   input$boxplotPointBorder
+  input$boxplotMeanBarFront
+  input$boxplotShowConditions
+  input$boxplotConditionAngle
+  input$boxplotConditionFormat
   lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
     input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
   })
@@ -382,7 +386,7 @@ observeEvent({
     if (input$boxplotShowViolin & !input$boxplotShowBox) {
       g <- g + geom_violin(aes_string(fill = input$boxplotFactor1), alpha = input$boxplotBoxAlpha)
     }
-    if (input$boxplotShowMeanBar) {
+    if (input$boxplotShowMeanBar & !input$boxplotMeanBarFront) {
       g <- g + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$boxplotMeanLine, show.legend = FALSE)
     }
     if (input$boxplotShowPoint) {
@@ -397,13 +401,25 @@ observeEvent({
         )
       }
     }
+    if (input$boxplotShowMeanBar & input$boxplotMeanBarFront) {
+      g <- g + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$boxplotMeanLine, show.legend = FALSE)
+    }
     if (!input$boxplotGrey) {
       g <- g + scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot))
     } else {
       g <- g + scale_colour_grey()
       g <- g + scale_fill_grey()
     }
-    g <- g + themes[[input$boxplotThemeChoice]]
+    # g <- g + themes[[input$boxplotThemeChoice]]
+    g <- g + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle)
+    if (input$boxplotConditionFormat) {
+      xlabs <- levels(countsBoxplotMelt[[input$boxplotFactor1]])
+      xlabs <- gsub("\\_|\\.|\\ |\\/", "\n", xlabs)
+      g <- g + scale_x_discrete(labels = xlabs)
+    }
+    if (!input$boxplotShowConditions) {
+      g <- g + theme(axis.text.x = element_blank())
+    }
     if (input$boxplotCountsLog) {
       if (inputDataReactive()$dataType == "RNASeq") {
         if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
@@ -413,16 +429,6 @@ observeEvent({
     } else {
       g <- g + labs(y = paste(input$boxplotCounts, "Counts"))
     }
-    g <- g + theme(
-      axis.text.x = element_blank(),
-      axis.text.y = element_text(colour = "grey20", size = input$textSizeBoxplot, angle = 0, hjust = 1, vjust = 0.5, face = "bold"),
-      axis.title.x = element_text(colour = "grey20", size = input$textSizeBoxplot, angle = 0, hjust = .5, vjust = 0, face = "bold"),
-      axis.title.y = element_text(colour = "grey20", size = input$textSizeBoxplot, angle = 90, hjust = .5, vjust = .5, face = "bold"),
-      legend.text = element_text(colour = "black", size = input$textSizeBoxplot),
-      legend.title = element_text(colour = "black", size = input$textSizeBoxplot),
-      title = element_text(colour = "black", size = input$textSizeBoxplot),
-      strip.text = element_text(size = input$textSizeBoxplot, face = "bold")
-    )
     g <- g + facet_wrap(~variable, scales = "free", ncol = input$boxplotNCol)
     if (input$boxplotVertLines) {
       g <- g + geom_vline(xintercept = seq_along(input$boxKeepBucket)[-length(seq_along(input$boxKeepBucket))]+0.5, linetype = "dashed", alpha = 0.7)
@@ -451,7 +457,7 @@ observeEvent({
       if (input$boxplotShowViolin & !input$boxplotShowBox) {
         g <- g + geom_violin(aes_string(fill = input$boxplotFactor1), alpha = input$boxplotBoxAlpha)
       }
-      if (input$boxplotShowMeanBar) {
+      if (input$boxplotShowMeanBar & !input$boxplotMeanBarFront) {
         g <- g + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$boxplotMeanLine, show.legend = FALSE)
       }
       if (input$boxplotShowPoint) {
@@ -465,6 +471,9 @@ observeEvent({
             shape = guide_legend(override.aes = list(shape = c(rep(c(16,15,18,17,25), times = 10))[1:nlevels(as.factor(cbmList[[gene]][[input$boxplotFactor2]]))]))
           )
         }
+      }
+      if (input$boxplotShowMeanBar & input$boxplotMeanBarFront) {
+        g <- g + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$boxplotMeanLine, show.legend = FALSE)
       }
       if (!isTRUE(input$boxplotGrey)) {
         g <- g + scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot))
@@ -493,7 +502,16 @@ observeEvent({
           vjust = -0.01
           )
       }
-      g <- g + themes[[input$boxplotThemeChoice]]
+      g <- g + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle)
+      if (input$boxplotConditionFormat) {
+        xlabs <- levels(cbmList[[gene]][[input$boxplotFactor1]])
+        xlabs <- gsub("\\_|\\.|\\ |\\/", "\n", xlabs)
+        g <- g + scale_x_discrete(labels = xlabs)
+      }
+      if (!input$boxplotShowConditions) {
+        g <- g + theme(axis.text.x = element_blank())
+      }
+      g <- g + theme(axis.title = element_blank())
       if (input$boxplotCountsLog) {
         if (inputDataReactive()$dataType == "RNASeq") {
           if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
@@ -504,15 +522,6 @@ observeEvent({
         g <- g + labs(y = paste(input$boxplotCounts, "Counts"))
       }
       g <- g + ggtitle(gene)
-      g <- g + theme(
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_text(colour = "grey20", size = input$textSizeBoxplot, angle = 0, hjust = 1, vjust = 0.5, face = "bold"),
-        axis.title.y = element_blank(),
-        legend.text = element_text(colour = "black", size = input$textSizeBoxplot),
-        legend.title = element_text(colour = "black", size = input$textSizeBoxplot),
-        title = element_text(colour = "black", size = input$textSizeBoxplot)
-      )
       if (input$boxplotVertLines) {
         g <- g + geom_vline(xintercept = seq_along(input$boxKeepBucket)[-length(seq_along(input$boxKeepBucket))]+0.5, linetype = "dashed", alpha = 0.7)
       }
@@ -580,17 +589,17 @@ observeEvent({
         )
     }
     b <- b + geom_errorbar(aes(ymin = value-sd, ymax = value+sd), width = .2, position = position_dodge(.9))
-    b <- b + themes[[input$boxplotThemeChoice]]
     b <- b + ggtitle(gene)
-    b <- b + theme(
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_text(colour = "black", size = input$textSizeBoxplot, angle = 0, hjust = 1, vjust = 0.5, face = "bold"),
-      legend.text = element_text(colour = "black", size = input$textSizeBoxplot),
-      legend.title = element_text(colour = "black", size = input$textSizeBoxplot),
-      title = element_text(colour = "black", size = input$textSizeBoxplot)
-    )
+    b <- b + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle)
+    if (input$boxplotConditionFormat) {
+      xlabs <- levels(cbmList[[gene]][[input$boxplotFactor1]])
+      xlabs <- gsub("\\_|\\.|\\ |\\/", "\n", xlabs)
+      b <- b + scale_x_discrete(labels = xlabs)
+    }
+    if (!input$boxplotShowConditions) {
+      b <- b + theme(axis.text.x = element_blank())
+    }
+    b <- b + theme(axis.title = element_blank())
     b
   })
   output$barplotStatic <- renderPlot({
