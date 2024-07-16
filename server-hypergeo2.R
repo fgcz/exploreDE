@@ -168,6 +168,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
             cex.params = list(category_label = (input$textSizeORA / 15), gene_label = (input$textSizeORA / 18), gene_node = input$nodeSizeORA/10, category_node = input$nodeSizeORA/8)
           )
           cn$data$color[!is.na(cn$data$color) & cn$data$color > input$scaleLimORA] <- input$scaleLimORA
+          cn$data$color[!is.na(cn$data$color) & cn$data$color < -input$scaleLimORA] <- -input$scaleLimORA
           if (input$oraDirection == "upGenes") {
             cn <- cn + scale_color_gradientn(name = "fold change", colours = c("white", "firebrick3"))
           } else if (input$oraDirection == "downGenes") {
