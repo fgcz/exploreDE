@@ -106,7 +106,7 @@ genesReactive <- eventReactive({
       strsplit(input[[geneText]], "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
     }
   }), c("boxplotGenesText", "volcanoGenesText", "heatmapGenesText"))
-
+  
   # Get the genes that were click-selected in the DE table 
   degMATable <- seqAnnoReactive$sa[order(seqAnnoReactive$sa$pValue), ]
   degMATable <- degMATable$gene_name[input$degTable_rows_selected]
@@ -118,6 +118,8 @@ genesReactive <- eventReactive({
   
   genesUnlist <- unique(unlist(c(genesList1, genesList2, degMATable, volcanoBrushGenes)))
   genesUnlist <- genesUnlist[!genesUnlist == ""]
+  
+  genesUnlist <- genesUnlist[which(genesUnlist %in% seqAnnoReactive$sa$gene_name)]
   return(list(
     "genes" = genesUnlist
   ))
