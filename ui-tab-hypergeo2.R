@@ -115,6 +115,12 @@ tabItem(
             downloadButton(outputId = "dlHeatmap_ORA", label = paste("Download Heatmap: PDF")),
             br(), br(),
             plotOutput(outputId = "heatmap_ORA", inline = TRUE)
+          ),
+          tabPanel(
+            title = "Upset plot",
+            downloadButton(outputId = "dlUpset_ORA", label = paste("Download Upset Plot: PDF")),
+            br(), br(),
+            plotOutput(outputId = "upset_ORA", inline = TRUE)
           )
         )
       ),

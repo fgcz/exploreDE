@@ -207,11 +207,32 @@ if(inputDataReactive()$dataType == "RNASeq") {
           color = RColorBrewer::brewer.pal(length(input$selectedTable_GSEA_rows_selected), "Set2")
         )
         
+        # make an upset plot of the genes in the selected pathways 
+        geneSetsUpset <- setNames(lapply(input$selectedTable_GSEA_rows_selected, function(i) {
+          er@result$geneName[i] %>% strsplit("/") %>% .[[1]]
+        }), er@result$Label[input$selectedTable_GSEA_rows_selected])
+        m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
+        geneLFCsUpset <- setNames(lapply(names(comb_size(m1)), function(x) {
+          g <- extract_comb(m1, x)
+          inputDataReactive()$seqAnno$log2Ratio[which(inputDataReactive()$seqAnno$gene_name %in% g)]
+        }), names(comb_size(m1)))
+        up <- ComplexHeatmap::UpSet(
+          m = m1, 
+          comb_order = order(comb_size(m1), decreasing = T), 
+          top_annotation = upset_top_annotation(m1, add_numbers = TRUE, annotation_name_rot = 90, annotation_name_offset = unit(10, "mm")), 
+          left_annotation = upset_left_annotation(m1, add_numbers = TRUE)
+          # bottom_annotation = HeatmapAnnotation(
+          #   "Log2 Ratios" = anno_boxplot(geneLFCsUpset),
+          #   annotation_name_side = "right"
+          # )
+        )
+        
         return(list(
           "cnetplot" = cn,
           "heatmap" = hp,
           "runningscore" = rs,
-          "ridgeplot" = rp
+          "ridgeplot" = rp,
+          "upset" = up
         ))
       }
     })
@@ -237,7 +258,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
             paste0(design, "GSEA_", input$gseaType, "_network.pdf")
           },
           content = function(file) {
-            pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50), )
+            pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50))
             print(gseaPlotList()[["cnetplot"]])
             dev.off()
           }
@@ -256,7 +277,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
             paste0(design, "GSEA_", input$gseaType, "_heatmap.pdf")
           },
           content = function(file) {
-            pdf(file = file, width = (as.numeric(input$figWidthGSEA)/25), height = (as.numeric(input$figHeightGSEA)/50), )
+            pdf(file = file, width = (as.numeric(input$figWidthGSEA)/25), height = (as.numeric(input$figHeightGSEA)/50))
             print(gseaPlotList()[["heatmap"]])
             dev.off()
           }
@@ -275,7 +296,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
             paste0(design, "GSEA_", input$gseaType, "_runningscore.pdf")
           },
           content = function(file) {
-            pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50), )
+            pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50))
             print(gseaPlotList()[["runningscore"]])
             dev.off()
           }
@@ -294,8 +315,27 @@ if(inputDataReactive()$dataType == "RNASeq") {
             paste0(design, "GSEA_", input$gseaType, "_ridgeplot.pdf")
           },
           content = function(file) {
-            pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50), )
+            pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50))
             print(gseaPlotList()[["ridgeplot"]])
+            dev.off()
+          }
+        )
+        
+        # Upset plot 
+        output$upsetPlot_GSEA <- renderPlot(
+          {
+            draw(gseaPlotList()[["upset"]], padding = unit(c(5, 5, 5, 20), "mm"))
+          },
+          width = as.numeric(input$figWidthGSEA)*1.3,
+          height = as.numeric(input$figHeightGSEA)
+        )
+        output$dlUpset_GSEA <- downloadHandler(
+          filename = function() {
+            paste0(design, "GSEA_", input$gseaType, "_upset.pdf")
+          },
+          content = function(file) {
+            pdf(file = file, width = (as.numeric(input$figWidthGSEA)/70), height = (as.numeric(input$figHeightGSEA)/90))
+            print(gseaPlotList()[["upset"]])
             dev.off()
           }
         )

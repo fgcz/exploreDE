@@ -234,12 +234,25 @@ if(inputDataReactive()$dataType == "RNASeq") {
                 vjust = -0.01, size = input$textSizeORA))
         }
         
+        # make an upset plot of the genes in the selected pathways 
+        geneSetsUpset <- setNames(lapply(input$selectedTable_ORA_rows_selected, function(i) {
+          er@result$geneName[i] %>% strsplit("/") %>% .[[1]]
+        }), er@result$Label[input$selectedTable_ORA_rows_selected])
+        m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
+        up <- ComplexHeatmap::UpSet(
+          m = m1, 
+          comb_order = order(comb_size(m1), decreasing = T), 
+          top_annotation = upset_top_annotation(m1, add_numbers = TRUE, annotation_name_rot = 90, annotation_name_offset = unit(10, "mm")), 
+          left_annotation = upset_left_annotation(m1, add_numbers = TRUE)
+          )
+        
         return(list(
           "er" = er,
           "cnetplot" = cn,
           "barplot" = bp,
           "dotplot" = dp,
-          "heatmap" = hp
+          "heatmap" = hp,
+          "upset" = up
         ))
       }
     })
@@ -324,6 +337,26 @@ if(inputDataReactive()$dataType == "RNASeq") {
           content = function(file) {
             pdf(file = file, width = (as.numeric(input$figWidthORA)/25), height = (as.numeric(input$figHeightORA)/50), )
             print(oraPlotList()[["heatmap"]])
+            dev.off()
+          }
+        )
+        
+        # upset 
+        output$upset_ORA <- renderPlot(
+          {
+            req(!is.null(oraPlotList()[["upset"]]))
+            draw(oraPlotList()[["upset"]], padding = unit(c(5, 5, 5, 20), "mm"))
+          },
+          width = as.numeric(input$figWidthORA)*1.3,
+          height = as.numeric(input$figHeightORA)
+        )
+        output$dlUpset_ORA <- downloadHandler(
+          filename = function() {
+            paste0(design, "ORA_", input$oraType, "_upset.pdf")
+          },
+          content = function(file) {
+            pdf(file = file, width = (as.numeric(input$figWidthORA)/70), height = (as.numeric(input$figHeightORA)/90))
+            print(oraPlotList()[["upset"]])
             dev.off()
           }
         )

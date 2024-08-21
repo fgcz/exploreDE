@@ -134,13 +134,13 @@ tabItem(
             downloadButton(outputId = "dlRidgePlot_GSEA", label = paste("Download Ridge Plot: PDF")),
             br(), br(),
             plotOutput(outputId = "ridgePlot_GSEA", inline = TRUE)
+          ),
+          tabPanel(
+            title = "Upset plot",
+            downloadButton(outputId = "dlUpset_GSEA", label = paste("Download Upset Plot: PDF")),
+            br(), br(),
+            plotOutput(outputId = "upsetPlot_GSEA", inline = TRUE)
           )
-          # tabPanel(
-          #   title = "Ridge plot",
-          #   downloadButton(outputId = "dlRidgePlot_GSEA", label = paste("Download Ridge Plot: PDF")),
-          #   br(), br(),
-          #   plotOutput(outputId = "ridgePlot_GSEA", inline = TRUE)
-          # )
         )
       ),
       box(
