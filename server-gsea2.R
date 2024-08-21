@@ -16,7 +16,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
     se <- inputDataReactive()$se
     design <- inputDataReactive()$design
   
-    req(inputDataReactive()$gsea)
+    req(!is.null(inputDataReactive()$gsea))
     
     output$gseaDesign <- renderText({design})
     
@@ -121,6 +121,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$gseaDodgeY
       input$gseaDodgeX
       input$nodeBorderGSEA
+      input$ridgePlotColourByGSEA
     }, {
       
       req(!is.null(input$selectedTable_GSEA_rows_selected))
@@ -138,12 +139,12 @@ if(inputDataReactive()$dataType == "RNASeq") {
         }
         
         erRP <- clusterProfiler::slice(er, input$selectedTable_GSEA_rows_selected)
-        rp <- enrichplot::ridgeplot(x = erRP)
+        rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
         rp <- rp +
           scale_y_discrete(labels = (erRP@result$Label[match(levels(as.factor(rp$plot_env$gs2val.df$category)), erRP@result$Description)])) +
           theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeGSEA)) +
-          geom_vline(xintercept = 0, linetype = "dashed")
-  
+          geom_vline(xintercept = 0, linetype = "dashed") +
+          scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "white", midpoint = 0)
         ce_list <- NA
         for (i in 1:length(er@result$core_enrichment)) {
           core_enrich <- strsplit(

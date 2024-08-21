@@ -131,6 +131,7 @@ tabItem(
           ),
           tabPanel(
             title = "Ridge Plot",
+            selectInput(inputId = "ridgePlotColourByGSEA", label = "Colour plot by", choices = c("p.adjust", "enrichmentScore", "NES"), selected = "NES"),
             downloadButton(outputId = "dlRidgePlot_GSEA", label = paste("Download Ridge Plot: PDF")),
             br(), br(),
             plotOutput(outputId = "ridgePlot_GSEA", inline = TRUE)

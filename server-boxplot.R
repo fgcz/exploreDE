@@ -550,7 +550,7 @@ observeEvent({
     b <- ggplot(cbSumList[[gene]], aes_string(x = input$boxplotFactor1, y = "value", fill = input$boxplotFactor1))
     if (input$showDotsBarplot) {
       b <- b + geom_bar(stat="identity", color="black", position = position_dodge(), alpha = input$boxplotBoxAlpha)
-      b <- b + geom_jitter(data = cbmList[[gene]], aes_string(x = input$boxplotFactor1, y = "value"), pch = 21, size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, width = 0.3)
+      b <- b + geom_beeswarm(data = cbmList[[gene]], aes_string(x = input$boxplotFactor1, y = "value"), pch = 21, size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = 3, corral = "gutter", corral.width = 0.9)
     } else {
       b <- b + geom_bar(stat="identity", color="black", position = position_dodge(), alpha = input$boxplotBoxAlpha)
     }
