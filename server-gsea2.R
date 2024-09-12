@@ -210,7 +210,9 @@ if(inputDataReactive()$dataType == "RNASeq") {
         
         # make an upset plot of the genes in the selected pathways 
         geneSetsUpset <- setNames(lapply(input$selectedTable_GSEA_rows_selected, function(i) {
-          er@result$geneName[i] %>% strsplit("/") %>% .[[1]]
+          g <- er@result$geneName[i] %>% strsplit("/") %>% .[[1]]
+          g <- g[nchar(g) > 1]
+          g
         }), er@result$Label[input$selectedTable_GSEA_rows_selected])
         m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
         geneLFCsUpset <- setNames(lapply(names(comb_size(m1)), function(x) {
