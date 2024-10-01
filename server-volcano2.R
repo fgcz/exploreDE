@@ -44,7 +44,7 @@ updateSelectizeInput(
 )
 
 observeEvent({
-  genesReactive()
+  genesReactive
 }, {
   output$geneBucket2 <- renderUI({
     bucket_list(
@@ -53,7 +53,7 @@ observeEvent({
       orientation = "horizontal",
       add_rank_list(
         text = "Include these features in this order",
-        labels = genesReactive()$genes,
+        labels = genesReactive$genes,
         input_id = "volcanoKeepBucketGenes"),
       add_rank_list(
         text = "Exclude these features",
@@ -62,6 +62,12 @@ observeEvent({
     )
   })
 })
+
+observeEvent(input$resetGeneBucketVolcano, {
+  genesReactive$genes <- NULL
+  updateSelectizeInput(session, inputId = "volcanoGenes", choices = inputDataReactive()$genes, selected = NULL, server = T)
+  updateTextAreaInput(session, inputId = "volcanoGenesText", value = NULL)
+}, ignoreNULL = T, ignoreInit = T)
 
 observeEvent(
   {

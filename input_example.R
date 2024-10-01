@@ -32,7 +32,9 @@ input$featureCalcLFC <- 0
 
 input$pcaFactor1 <- inputDataReactive()$factors[1]
 input$pcaGroups <- inputDataReactive()$designLevels
+input$pcaGroups <- levels(inputDataReactive()$dataset$G_)
 input$pcaCounts <- "Normalised + Log2"
+input$pcaCounts <- "transformedData"
 input$pcaBatch <- NULL
 input$pcaTopN <- 2000
 input$pcaCentre = TRUE 
@@ -211,7 +213,7 @@ input$gseaType <- "BP"
 input$selectedTable_GSEA_rows_selected <- c(1,2,3,4)
 input$textSizeGSEA <- 12
 
-input$nrPeptideVolcano <- 2
+input$nrPeptideVolcano <- 1
 input$showImputedVolcano <- TRUE
 input$highlightImputedVolcano <- TRUE
 
@@ -247,3 +249,19 @@ input$boxplotShowConditions <- TRUE
 input$boxplotConditionAngle <- 45
 input$boxplotConditionFormat <- TRUE
 input$boxplotMeanBarFront <- TRUE
+
+input$scaleLimORA <- 4
+input$nodeSizeORA <- 10
+input$oraMaxOver <- 10
+input$oraDodgeY <- 1
+input$oraDodgeX <- 1
+input$nodeBorderORA <- 1
+
+input$scaleLimGSEA <- 4
+input$nodeSizeGSEA <- 10
+input$gseaMaxOver <- 10
+input$gseaDodgeY <- 1
+input$gseaDodgeX <- 1
+input$nodeBorderGSEA <- 1
+
+input$showGeneLabelsORA <- TRUE

@@ -38,7 +38,7 @@ updateSelectizeInput(
   server = T
 )
 
-observeEvent({genesReactive()}, {
+observeEvent({genesReactive}, {
   output$geneBucket3 <- renderUI({
     bucket_list(
       header = "Drag and drop features in order to be plotted",
@@ -46,7 +46,7 @@ observeEvent({genesReactive()}, {
       orientation = "horizontal",
       add_rank_list(
         text = "Include these features in this order",
-        labels = genesReactive()$genes,
+        labels = genesReactive$genes,
         input_id = "keepBucketHeatmap"),
       add_rank_list(
         text = "Exclude these features",
@@ -55,6 +55,13 @@ observeEvent({genesReactive()}, {
     )
   })
 })
+
+observeEvent(input$resetGeneBucketHeatmap, {
+  genesReactive$genes <- NULL
+  updateSelectizeInput(session, inputId = "heatmapGenes", choices = inputDataReactive()$genes, selected = NULL, server = T)
+  updateTextAreaInput(session, inputId = "heatmapGenesText", value = NULL)
+  output$heatmapCustom <- NULL
+}, ignoreNULL = T, ignoreInit = T)
 
 observeEvent(groupingNameHeatmap(), {
   output$heatmapBucket <- renderUI({
@@ -192,6 +199,7 @@ observeEvent(
     input$heatmapDownloadFormat
     input$heatmapFilename
     input$nrPeptideHeatmap
+    input$heatmapCustomTitle
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
@@ -428,7 +436,7 @@ observeEvent(
                   show_column_names = input$colnamesHeatmap,
                   show_row_names = input$geneNamesHeatmap,
                   col = heatmapColours,
-                  column_title = paste("Custom heatmap")
+                  column_title = paste(input$heatmapCustomTitle)
                 )
                 draw(ch, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
                 output[["dlHeatmapButtonCustom"]] <- downloadHandler(

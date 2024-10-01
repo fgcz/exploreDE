@@ -1,7 +1,7 @@
 req(!is.null(inputDataReactive()$dataType))
 
 observeEvent({
-  genesReactive()
+  genesReactive
 }, {
   output$geneBucketDEG <- renderUI({
     bucket_list(
@@ -10,7 +10,7 @@ observeEvent({
       orientation = "horizontal",
       add_rank_list(
         text = "Include these features in this order",
-        labels = genesReactive()$genes,
+        labels = genesReactive$genes,
         input_id = "degKeepBucketGenes"),
       add_rank_list(
         text = "Exclude these features",
@@ -50,8 +50,7 @@ if (inputDataReactive()$dataType == "RNASeq") {
     "Ensembl ID", "Gene Symbol", "Description", "Type", "Log2 Ratio", "Raw p-value", "FDR", "Mean TPM", paste0(inputDataReactive()$param$sampleGroup, " Mean TPM"), paste0(inputDataReactive()$param$refGroup, " Mean TPM")
   )
   # Output the interactive data table
-  output$degTable <- DT::renderDataTable({
-    DT::datatable(
+  dt1 <- DT::datatable(
       data = inputDataReactive()$seqAnno %>% dplyr::select(all_of(colsToPlotR)),
       filter = "top",
       class = "cell-border stripe",
@@ -63,6 +62,10 @@ if (inputDataReactive()$dataType == "RNASeq") {
       DT::formatSignif(columns = "log2Ratio", digits = 5) %>%
       DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
       DT::formatStyle(columns = c("pValue", "fdr"), color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")
+  output$degTable <- DT::renderDataTable(dt1, server = TRUE, selection = list(target = 'row'))
+  proxy = dataTableProxy("degTable")
+  observeEvent(input$resetDEGTableSelectRows, {
+    proxy %>% selectRows(NULL)
   })
   
   observeEvent(input$degTable_rows_selected, {
@@ -192,23 +195,25 @@ if (inputDataReactive()$dataType == "proteomics") {
       # )
       
       # Output the interactive data table
-      output$degTable <- DT::renderDataTable({
-        dt1 <- DT::datatable(
-          data = seqAnnoDEG %>% dplyr::select(all_of(colsToPlot1)),
-          filter = "top",
-          class = "cell-border stripe",
-          rownames = FALSE,
-          colnames = colNamesToPlot1
-        ) %>%
-          DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
-          DT::formatSignif(columns = c("pValue", "fdr"), digits = 3) %>%
-          DT::formatSignif(columns = "log2Ratio", digits = 5) %>%
-          DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
-          DT::formatStyle(columns = c("pValue", "fdr"), color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")
-        if ("modelName" %in% colnames(seqAnnoDEG)) {
-          dt1 <- dt1 %>% DT::formatStyle(columns = "modelName", color = styleEqual(levels = c("Linear_Model_moderated", "Imputed_Mean_moderated"), values = c("black", "darkblue")))
-        }
-        dt1
+      dt1 <- DT::datatable(
+        data = seqAnnoDEG %>% dplyr::select(all_of(colsToPlot1)),
+        filter = "top",
+        class = "cell-border stripe",
+        rownames = FALSE,
+        colnames = colNamesToPlot1
+      ) %>%
+        DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
+        DT::formatSignif(columns = c("pValue", "fdr"), digits = 3) %>%
+        DT::formatSignif(columns = "log2Ratio", digits = 5) %>%
+        DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
+        DT::formatStyle(columns = c("pValue", "fdr"), color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")
+      if ("modelName" %in% colnames(seqAnnoDEG)) {
+        dt1 <- dt1 %>% DT::formatStyle(columns = "modelName", color = styleEqual(levels = c("Linear_Model_moderated", "Imputed_Mean_moderated"), values = c("black", "darkblue")))
+      }
+      output$degTable <- DT::renderDataTable(dt1, server = TRUE, selection = list(target = 'row'))
+      proxy = dataTableProxy("degTable")
+      observeEvent(input$resetDEGTableSelectRows, {
+        proxy %>% selectRows(NULL)
       })
       
       observeEvent(input$degTable_rows_selected, {

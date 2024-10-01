@@ -38,7 +38,7 @@ updateSelectizeInput(
   server = T
 )
 
-observeEvent({genesReactive()}, {
+observeEvent({genesReactive}, {
   output$geneBucket3 <- renderUI({
     bucket_list(
       header = "Drag and drop features in order to be plotted",
@@ -46,7 +46,7 @@ observeEvent({genesReactive()}, {
       orientation = "horizontal",
       add_rank_list(
         text = "Include these features in this order",
-        labels = genesReactive()$genes,
+        labels = genesReactive$genes,
         input_id = "keepBucketHeatmap"),
       add_rank_list(
         text = "Exclude these features",

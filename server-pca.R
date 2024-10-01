@@ -105,11 +105,11 @@ observeEvent(
     datasetPCA <- inputDataReactive()$dataset
     datasetPCA <- datasetPCA[datasetPCA[[input$pcaFactor1]] %in% input$pcaGroups, ]
     countsPCA <- inputDataReactive()$countList[[input$pcaCounts]]
-    countsPCA <- countsPCA[,rownames(datasetPCA)]
+    countsPCA <- countsPCA[, rownames(datasetPCA)]
     
     # If proteomics and minimum number of peptides selected, subset the counts
     if (inputDataReactive()$dataType == "proteomics") {
-      if (!is.null(input$nrPeptideVolcano)) {
+      if (!is.null(input$nrPeptidePCA)) {
         countsPCA <- countsPCA[which(rownames(countsPCA) %in% inputDataReactive()$seqAnnoList[[1]]$gene_name[which(inputDataReactive()$seqAnnoList[[1]]$nrPeptides >= input$nrPeptidePCA)]), ]
       }
     }
@@ -126,13 +126,14 @@ observeEvent(
     }
     countsPCA <- as.data.frame(t(countsPCA))
     # Get the n genes with greatest standard deviation for the PCA plot
-    countsPCA <- countsPCA[, names(head(sort(sapply(countsPCA, sd), decreasing = TRUE), n = input$pcaTopN))]
-    
+    if (ncol(countsPCA) > input$pcaTopN) {
+      countsPCA <- countsPCA[, names(head(sort(sapply(countsPCA, sd, na.rm = FALSE), decreasing = TRUE), n = input$pcaTopN))]
+    }
     req(length(dim(countsPCA)) == 2)
     req(ncol(countsPCA) > 2)
     
     # Get the PCA results
-    pcaResults <- prcomp(countsPCA, center = input$pcaCentre, scale. = input$pcaScale)
+    pcaResults <- prcomp(na.omit(countsPCA), center = input$pcaCentre, scale. = input$pcaScale)
     pc_eigenvalues <- pcaResults$sdev^2
     pc_eigenvalues <- tibble(PC = paste0("PC", factor(1:length(pc_eigenvalues))), variance = pc_eigenvalues) %>%
       mutate(pct = variance / sum(variance) * 100) %>%

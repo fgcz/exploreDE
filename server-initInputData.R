@@ -98,12 +98,18 @@ inputDataReactive <- reactive({
     
     # Prepare the metadata
     dataset <- as.data.frame(colData(se))
-    dataset$names <- dataset$Name
-    rownames(dataset) <- dataset$Name
+    names <- colnames(dataset)[grep("Sample|Name", colnames(dataset))]
+    dataset$names <- dataset[[names]]
+    rownames(dataset) <- dataset[[names]]
     
     # Get the main columns from the metadata that are plottable 
-    factors <- colnames(dataset)[grep("Name|names|channel|raw.file", colnames(dataset), invert = T)]
-    factorNames <- colnames(dataset)[grep("Name|names|channel|raw.file", colnames(dataset), invert = T)]
+    factors <- colnames(dataset)[grep("Sample|Name|names|channel|raw.file", colnames(dataset), invert = T)]
+    factorNames <- colnames(dataset)[grep("Sample|Name|names|channel|raw.file", colnames(dataset), invert = T)]
+    
+    # Sort numeric factor levels
+    for (x in factors) {
+      dataset[[x]] <- factor(dataset[[x]], levels = unique(gtools::mixedsort(dataset[[x]])))
+    }
     
     # Currently only transformed counts available
     countList <- setNames(lapply(names(assays(se)), function(ass) {
@@ -199,6 +205,9 @@ inputDataReactive <- reactive({
     
     # The app doesn't like empty strings in the factor columns, so for now, add "None" to those entries 
     dataset <- dataset %>% mutate_all(~ifelse(. == "", "None", .))
+    if (is.null(param$groupingName)) {
+      param$groupingName <- "Condition"
+    }
     dataset[[param$groupingName]] <- factor(
       dataset[[param$groupingName]], 
       levels = c(

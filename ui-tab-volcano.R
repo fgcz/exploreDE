@@ -63,6 +63,7 @@ tabItem(
               "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly 
               include/exclude these features from highlighting as you need to by dragging and dropping them in order or into the exclude bucket."),
             uiOutput("geneBucket2"),
+            actionButton(inputId = "resetGeneBucketVolcano", label = "Empty the bucket?", icon = icon("bucket")),
             hr(style = "border-top: 1px solid #000000;"), h4("Volcano colours"),
             checkboxInput(inputId = "volcanoAnnotationHighlightColour", label = "Use special highlight colour?", value = F),
             uiOutput("volcanoColourPicker")

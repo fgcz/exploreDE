@@ -102,11 +102,13 @@ tabItem(
             helpText("This allows you to plot the expression of any feature detected, irrespective of the DE test."),
             selectInput(inputId = "heatmapGenes", label = "Select features for custom heatmap:", multiple = TRUE, choices = "", selected = ""),
             textAreaInput(inputId = "heatmapGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1),
+            textAreaInput(inputId = "heatmapCustomTitle", label = "Enter a title for the heatmap", value = "Custom Heatmap"),
             hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
             h5(
               "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly 
               include/exclude these features from the custom heatmap as you need to by dragging and dropping them in order or into the exclude bucket."),
-            uiOutput("geneBucket3")
+            uiOutput("geneBucket3"),
+            actionButton(inputId = "resetGeneBucketHeatmap", label = "Empty the bucket?", icon = icon("bucket")),
           ),
           tabPanel(
             title = "GO heatmap",

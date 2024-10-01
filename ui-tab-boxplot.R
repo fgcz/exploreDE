@@ -93,6 +93,7 @@ tabItem(
               "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly 
               include/exclude these features from the plots as you need to by dragging and dropping them in order or into the exclude bucket."),
             uiOutput("geneBucket1"),
+            actionButton(inputId = "resetGeneBucketBoxplot", label = "Empty the bucket?", icon = icon("bucket")),
             hr(style = "border-top: 1px solid #000000;"),
             uiOutput("bucket")
           ),
@@ -158,6 +159,13 @@ tabItem(
               sliderInput(inputId = "figWidthBoxplot", label = "Figure Width", min = 100, max = 2000, value = 850, step = 10, width = "85%"),
               sliderInput(inputId = "figHeightBoxplot", label = "Figure Height", min = 100, max = 2000, value = 600, step = 10, width = "85%")
             )
+          ),
+          tabPanel(
+            title = "Download Settings",
+            # selectInput(inputId = "boxplotDownloadFormat", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+            # selectInput(inputId = "boxplotDPI", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
+            selectInput(inputId = "boxplotFont", label = "Font", choices = c("serif", "sans", "mono"), selected = "sans")
+            # textInput(inputId = "boxplotFilename", label = "Enter filename", value = "Feature_Boxplot"),
           )
         )
       )

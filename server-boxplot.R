@@ -80,7 +80,8 @@ if (inputDataReactive()$dataType == "RNASeq") {
 
 # The main part of the gene bucket lives here ----
 # It listens in on DEG table, volcano, and heatmap tabs, in addition to this tab
-genesReactive <- eventReactive({
+genesReactive <- reactiveValues(genes = NULL)
+observeEvent({
   input$boxplotGenes
   input$boxplotGenesText
   input$degTable_rows_selected
@@ -120,12 +121,21 @@ genesReactive <- eventReactive({
   genesUnlist <- genesUnlist[!genesUnlist == ""]
   
   genesUnlist <- genesUnlist[which(genesUnlist %in% seqAnnoReactive$sa$gene_name)]
-  return(list(
-    "genes" = genesUnlist
-  ))
+  genesReactive$genes <- genesUnlist
+  # return(list(
+  #   "genes" = genesUnlist
+  # ))
 })
 
-observeEvent({genesReactive()}, {
+observeEvent(input$resetGeneBucketBoxplot, {
+  genesReactive$genes <- NULL
+  updateSelectizeInput(session, inputId = "boxplotGenes", choices = inputDataReactive()$genes, selected = NULL, server = T)
+  updateTextAreaInput(session, inputId = "boxplotGenesText", value = NULL)
+  output$boxplotStatic <- NULL
+}, ignoreNULL = T, ignoreInit = T)
+
+
+observeEvent({genesReactive}, {
   output$geneBucket1 <- renderUI({
     bucket_list(
       header = "Drag and drop features in order to be plotted",
@@ -133,7 +143,7 @@ observeEvent({genesReactive()}, {
       orientation = "horizontal",
       add_rank_list(
         text = "Include these features in this order",
-        labels = genesReactive()$genes,
+        labels = genesReactive$genes,
         input_id = "keepBucketBoxplot"),
       add_rank_list(
         text = "Exclude these features",
@@ -166,6 +176,9 @@ boxplotCountsReactive <- eventReactive({
     }
     
     genesToPlot <- input$keepBucketBoxplot
+    if (length(genesToPlot) > 50) {
+      genesToPlot <- genesToPlot[1:50]
+    }
     datasetBoxplot <- inputDataReactive()$dataset
 
     # Get the count data
@@ -355,6 +368,7 @@ observeEvent({
   input$boxplotShowConditions
   input$boxplotConditionAngle
   input$boxplotConditionFormat
+  input$boxplotFont
   lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
     input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
   })
@@ -413,7 +427,7 @@ observeEvent({
       g <- g + scale_fill_grey()
     }
     # g <- g + themes[[input$boxplotThemeChoice]]
-    g <- g + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle)
+    g <- g + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle, base_family = input$boxplotFont)
     if (input$boxplotConditionFormat) {
       xlabs <- levels(countsBoxplotMelt[[input$boxplotFactor1]])
       xlabs <- gsub("\\_|\\.|\\ |\\/", "\n", xlabs)
@@ -442,7 +456,7 @@ observeEvent({
     output$dlBoxplotButton <- downloadHandler(
       filename = function() {paste0(design, "boxplot.pdf")},
       content = function(file) {
-        pdf(file = file, width = (as.numeric(input$figWidthBoxplot)/85), height = (as.numeric(input$figHeightBoxplot)/90), )
+        pdf(file = file, width = (as.numeric(input$figWidthBoxplot)/85), height = (as.numeric(input$figHeightBoxplot)/90))
         print(g)
         dev.off()
       }
@@ -504,7 +518,7 @@ observeEvent({
           vjust = -0.01
           )
       }
-      g <- g + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle)
+      g <- g + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle, base_family = input$boxplotFont)
       if (input$boxplotConditionFormat) {
         xlabs <- levels(cbmList[[gene]][[input$boxplotFactor1]])
         xlabs <- gsub("\\_|\\.|\\ |\\/", "\n", xlabs)
@@ -592,7 +606,7 @@ observeEvent({
     }
     b <- b + geom_errorbar(aes(ymin = value-sd, ymax = value+sd), width = .2, position = position_dodge(.9))
     b <- b + ggtitle(gene)
-    b <- b + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle)
+    b <- b + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle, base_family = input$boxplotFont)
     if (input$boxplotConditionFormat) {
       xlabs <- levels(cbmList[[gene]][[input$boxplotFactor1]])
       xlabs <- gsub("\\_|\\.|\\ |\\/", "\n", xlabs)
