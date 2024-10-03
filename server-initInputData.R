@@ -20,11 +20,7 @@ if (!is.null(dataUrl)) {
       stopApp(returnValue = invisible())
     }
   } else {
-    if (grepl("../", dataUrl)) {
-      dataDir <- paste0("https://fgcz-ms.uzh.ch/public/pStore", dataUrl)
-    } else {
-      dataDir <- paste0("https://fgcz-ms.uzh.ch/public/", dataUrl)
-    }
+    dataDir <- paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl)
   }
 } else {
   dataDir <- "/srv/gstore/projects/p23793/o23960_EdgeR_RIVA-Ibru-6h--over--RIVA-DMSO_2022-09-02--16-54-00/RIVA-Ibru-6h--over--RIVA-DMSO"
