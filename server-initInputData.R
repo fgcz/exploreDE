@@ -8,7 +8,7 @@ if (is.list(queryList)){
 
 if (!is.null(dataUrl)) {
   # Added this so we can read from both genomics and proteomics servers
-  if (!grepl("Proteomics", dataUrl)) {
+  if (!grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) {
     urlDataRoot = c("/srv/gstore/projects", "/srv/GT/analysis/course_sushi/public/gstore/projects")
     dataDir <- file.path(urlDataRoot, dataUrl)
     dataDir <- dataDir[file.exists(dataDir)][1]
@@ -29,6 +29,7 @@ if (!is.null(dataUrl)) {
   # dataDir <- "https://fgcz-ms.uzh.ch/public/uStore/p34731/bfabric/Proteomics/exploreDE/2024-05-13/workunit_o34731_OI__WU_with_no_impute_base_V2/SummarizedExperiment.rds"
   # dataDir <- "https://fgcz-ms.uzh.ch/public/jStore/o33038/Proteomics/SummarizedExperiment/2023/2023-11/2023-11-30/o33038_TMTphospho_multiplexed__PhosphoEnriched_o33281_multiPlex_dataset/SummarizedExperiment.rds"
   # dataDir <- "https://fgcz-proteomics.uzh.ch/public/wew_prolfquapp/DEA_large_example/DEA_20241001_WUall_diann_with_interaction_no_subject_vsn/Results_WU_all_diann_with_interaction_no_subject/SummarizedExperiment.rds"
+  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/../wew_prolfquapp/DEA_large_example/DEA_20241001_WUall_diann_with_interaction_no_subject_vsn/Results_WU_all_diann_with_interaction_no_subject/SummarizedExperiment.rds"
 }
 
 if(!exists("dataDir")) {
