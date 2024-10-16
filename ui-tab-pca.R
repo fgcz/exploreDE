@@ -118,7 +118,8 @@ tabItem(
             downloadButton(outputId = "dlPCAPlotDFButton", HTML("Download PCA Coords Table (Excel)")),
             br(), br(),
             plotOutput(outputId = "pcaStatic", inline = TRUE, brush = "pcaBrush"),
-            DT::dataTableOutput("pcaBrushTable")
+            DT::dataTableOutput("pcaBrushTable"),
+            uiOutput(outputId = "pcaNAWarning", inline = TRUE)
           ),
           tabPanel(
             title = "Paired Plot",
