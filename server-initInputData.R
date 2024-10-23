@@ -41,8 +41,16 @@ if(!exists("dataDir")) {
 }
 
 # Import proteomics data from pStore
+is_url <- function(dataDir) {
+  return(grepl("^https?://", dataDir))  # Checks if it starts with http:// or https://
+}
+# Import proteomics data from pStore
 if (grepl("rds", dataDir)) {
-  se <- readRDS(url(dataDir))
+  if (is_url(dataDir)) {
+    se <- readRDS(url(dataDir))  # If it's a URL
+  } else {
+    se <- readRDS(dataDir)       # If it's a local file path
+  }
 } else if (grepl("zip", dataDir)) {
   myTempFile <- tempfile(fileext=".rds", tmpdir = ".") #
   res = system(
