@@ -460,15 +460,15 @@ observeEvent(
               height = as.numeric(input$figHeightHeatmap)
             )
           }
+          output[[paste0("dlHeatmapDFButtonCustom")]] <- downloadHandler(
+            filename = function() {
+              paste0(design, "_Custom_heatmap.xlsx")
+            },
+            content = function(file) {
+              openxlsx::write.xlsx((as.data.frame(hmCustomMatrix) %>% rownames_to_column("gene_name")), file = file)
+            }
+          )
         })
-        output[[paste0("dlHeatmapDFButtonCustom")]] <- downloadHandler(
-          filename = function() {
-            paste0(design, "_Custom_heatmap.xlsx")
-          },
-          content = function(file) {
-            openxlsx::write.xlsx((as.data.frame(hmCustomMatrix) %>% rownames_to_column("gene_name")), file = file)
-          }
-        )
         
         # heatmapGoInput
         if (inputDataReactive()$dataType == "RNASeq") {
