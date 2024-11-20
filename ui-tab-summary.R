@@ -59,6 +59,8 @@ tabItem(
           width = 6,
           solidHeader = TRUE,
           status = "primary",
+          downloadButton(outputId = "dlColourTemplate", label = paste("Download Colour Template")),
+          fileInput(inputId = "importColourFile", accept = ".xlsx", width = "85%", label = "Upload Colour Template"),
           uiOutput("colourPaletteUI"),
           uiOutput(outputId = "colourPickerUI", inline = T)
         )

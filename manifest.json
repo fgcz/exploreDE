@@ -3066,8 +3066,8 @@
         "Package": "ezRun",
         "Type": "Package",
         "Title": "An R meta-package for the analysis of Next Generation Sequencing\nData",
-        "Version": "3.18.1",
-        "Date": "2023-11-10",
+        "Version": "3.19.1",
+        "Date": "2024-06-14",
         "Author": "Hubert Rehrauer",
         "Maintainer": "sequencing <sequencing@fgcz.ethz.ch>",
         "Description": "An environment that makes it easy to process data by using R\n    packages and external tools.",
@@ -3084,14 +3084,14 @@
         "RemoteRepo": "ezRun",
         "RemoteUsername": "uzh",
         "RemoteRef": "HEAD",
-        "RemoteSha": "470be0d8b24c7856ef5dc2e0b112e3a6d1c6db35",
+        "RemoteSha": "949285a77d95a2a36a50cc5f889b057bcf994584",
         "GithubRepo": "ezRun",
         "GithubUsername": "uzh",
         "GithubRef": "HEAD",
-        "GithubSHA1": "470be0d8b24c7856ef5dc2e0b112e3a6d1c6db35",
+        "GithubSHA1": "949285a77d95a2a36a50cc5f889b057bcf994584",
         "NeedsCompilation": "no",
-        "Packaged": "2024-06-10 15:27:51 UTC; lopitz",
-        "Built": "R 4.4.0; ; 2024-06-10 15:28:11 UTC; unix"
+        "Packaged": "2024-11-18 09:07:51 UTC; lopitz",
+        "Built": "R 4.4.0; ; 2024-11-18 09:08:11 UTC; unix"
       }
     },
     "fansi": {
@@ -6713,28 +6713,54 @@
         "Package": "shiny",
         "Type": "Package",
         "Title": "Web Application Framework for R",
-        "Version": "1.8.1.1",
+        "Version": "1.9.1",
         "Authors@R": "c(\n    person(\"Winston\", \"Chang\", role = c(\"aut\", \"cre\"), email = \"winston@posit.co\", comment = c(ORCID = \"0000-0002-1576-2126\")),\n    person(\"Joe\", \"Cheng\", role = \"aut\", email = \"joe@posit.co\"),\n    person(\"JJ\", \"Allaire\", role = \"aut\", email = \"jj@posit.co\"),\n    person(\"Carson\", \"Sievert\", role = \"aut\", email = \"carson@posit.co\", comment = c(ORCID = \"0000-0002-4958-2844\")),\n    person(\"Barret\", \"Schloerke\", role = \"aut\", email = \"barret@posit.co\", comment = c(ORCID = \"0000-0001-9986-114X\")),\n    person(\"Yihui\", \"Xie\", role = \"aut\", email = \"yihui@posit.co\"),\n    person(\"Jeff\", \"Allen\", role = \"aut\"),\n    person(\"Jonathan\", \"McPherson\", role = \"aut\", email = \"jonathan@posit.co\"),\n    person(\"Alan\", \"Dipert\", role = \"aut\"),\n    person(\"Barbara\", \"Borges\", role = \"aut\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")),\n    person(family = \"jQuery Foundation\", role = \"cph\",\n    comment = \"jQuery library and jQuery UI library\"),\n    person(family = \"jQuery contributors\", role = c(\"ctb\", \"cph\"),\n    comment = \"jQuery library; authors listed in inst/www/shared/jquery-AUTHORS.txt\"),\n    person(family = \"jQuery UI contributors\", role = c(\"ctb\", \"cph\"),\n    comment = \"jQuery UI library; authors listed in inst/www/shared/jqueryui/AUTHORS.txt\"),\n    person(\"Mark\", \"Otto\", role = \"ctb\",\n    comment = \"Bootstrap library\"),\n    person(\"Jacob\", \"Thornton\", role = \"ctb\",\n    comment = \"Bootstrap library\"),\n    person(family = \"Bootstrap contributors\", role = \"ctb\",\n    comment = \"Bootstrap library\"),\n    person(family = \"Twitter, Inc\", role = \"cph\",\n    comment = \"Bootstrap library\"),\n    person(\"Prem Nawaz\", \"Khan\", role = \"ctb\",\n    comment = \"Bootstrap accessibility plugin\"),\n    person(\"Victor\", \"Tsaran\", role = \"ctb\",\n    comment = \"Bootstrap accessibility plugin\"),\n    person(\"Dennis\", \"Lembree\", role = \"ctb\",\n    comment = \"Bootstrap accessibility plugin\"),\n    person(\"Srinivasu\", \"Chakravarthula\", role = \"ctb\",\n    comment = \"Bootstrap accessibility plugin\"),\n    person(\"Cathy\", \"O'Connor\", role = \"ctb\",\n    comment = \"Bootstrap accessibility plugin\"),\n    person(family = \"PayPal, Inc\", role = \"cph\",\n    comment = \"Bootstrap accessibility plugin\"),\n    person(\"Stefan\", \"Petre\", role = c(\"ctb\", \"cph\"),\n    comment = \"Bootstrap-datepicker library\"),\n    person(\"Andrew\", \"Rowls\", role = c(\"ctb\", \"cph\"),\n    comment = \"Bootstrap-datepicker library\"),\n    person(\"Brian\", \"Reavis\", role = c(\"ctb\", \"cph\"),\n    comment = \"selectize.js library\"),\n    person(\"Salmen\", \"Bejaoui\", role = c(\"ctb\", \"cph\"),\n    comment = \"selectize-plugin-a11y library\"),\n    person(\"Denis\", \"Ineshin\", role = c(\"ctb\", \"cph\"),\n    comment = \"ion.rangeSlider library\"),\n    person(\"Sami\", \"Samhuri\", role = c(\"ctb\", \"cph\"),\n    comment = \"Javascript strftime library\"),\n    person(family = \"SpryMedia Limited\", role = c(\"ctb\", \"cph\"),\n    comment = \"DataTables library\"),\n    person(\"John\", \"Fraser\", role = c(\"ctb\", \"cph\"),\n    comment = \"showdown.js library\"),\n    person(\"John\", \"Gruber\", role = c(\"ctb\", \"cph\"),\n    comment = \"showdown.js library\"),\n    person(\"Ivan\", \"Sagalaev\", role = c(\"ctb\", \"cph\"),\n    comment = \"highlight.js library\"),\n    person(family = \"R Core Team\", role = c(\"ctb\", \"cph\"),\n    comment = \"tar implementation from R\")\n    )",
         "Description": "Makes it incredibly easy to build interactive web\n    applications with R. Automatic \"reactive\" binding between inputs and\n    outputs and extensive prebuilt widgets make it possible to build\n    beautiful, responsive, and powerful applications with minimal effort.",
         "License": "GPL-3 | file LICENSE",
         "Depends": "R (>= 3.0.2), methods",
-        "Imports": "utils, grDevices, httpuv (>= 1.5.2), mime (>= 0.3), jsonlite\n(>= 0.9.16), xtable, fontawesome (>= 0.4.0), htmltools (>=\n0.5.4), R6 (>= 2.0), sourcetools, later (>= 1.0.0), promises\n(>= 1.1.0), tools, crayon, rlang (>= 0.4.10), fastmap (>=\n1.1.1), withr, commonmark (>= 1.7), glue (>= 1.3.2), bslib (>=\n0.3.0), cachem, lifecycle (>= 0.2.0)",
+        "Imports": "utils, grDevices, httpuv (>= 1.5.2), mime (>= 0.3), jsonlite\n(>= 0.9.16), xtable, fontawesome (>= 0.4.0), htmltools (>=\n0.5.4), R6 (>= 2.0), sourcetools, later (>= 1.0.0), promises\n(>= 1.1.0), tools, crayon, rlang (>= 0.4.10), fastmap (>=\n1.1.1), withr, commonmark (>= 1.7), glue (>= 1.3.2), bslib (>=\n0.6.0), cachem (>= 1.1.0), lifecycle (>= 0.2.0)",
         "Suggests": "datasets, DT, Cairo (>= 1.5-5), testthat (>= 3.0.0), knitr\n(>= 1.6), markdown, rmarkdown, ggplot2, reactlog (>= 1.0.0),\nmagrittr, yaml, future, dygraphs, ragg, showtext, sass",
         "URL": "https://shiny.posit.co/, https://github.com/rstudio/shiny",
         "BugReports": "https://github.com/rstudio/shiny/issues",
-        "Collate": "'globals.R' 'app-state.R' 'app_template.R' 'bind-cache.R'\n'bind-event.R' 'bookmark-state-local.R' 'bookmark-state.R'\n'bootstrap-deprecated.R' 'bootstrap-layout.R' 'conditions.R'\n'map.R' 'utils.R' 'bootstrap.R' 'cache-utils.R' 'deprecated.R'\n'devmode.R' 'diagnose.R' 'extended-task.R' 'fileupload.R'\n'graph.R' 'reactives.R' 'reactive-domains.R' 'history.R'\n'hooks.R' 'html-deps.R' 'image-interact-opts.R'\n'image-interact.R' 'imageutils.R' 'input-action.R'\n'input-checkbox.R' 'input-checkboxgroup.R' 'input-date.R'\n'input-daterange.R' 'input-file.R' 'input-numeric.R'\n'input-password.R' 'input-radiobuttons.R' 'input-select.R'\n'input-slider.R' 'input-submit.R' 'input-text.R'\n'input-textarea.R' 'input-utils.R' 'insert-tab.R' 'insert-ui.R'\n'jqueryui.R' 'knitr.R' 'middleware-shiny.R' 'middleware.R'\n'timer.R' 'shiny.R' 'mock-session.R' 'modal.R' 'modules.R'\n'notifications.R' 'priorityqueue.R' 'progress.R' 'react.R'\n'reexports.R' 'render-cached-plot.R' 'render-plot.R'\n'render-table.R' 'run-url.R' 'runapp.R' 'serializers.R'\n'server-input-handlers.R' 'server-resource-paths.R' 'server.R'\n'shiny-options.R' 'shiny-package.R' 'shinyapp.R' 'shinyui.R'\n'shinywrappers.R' 'showcase.R' 'snapshot.R' 'staticimports.R'\n'tar.R' 'test-export.R' 'test-server.R' 'test.R'\n'update-input.R' 'utils-lang.R' 'version_bs_date_picker.R'\n'version_ion_range_slider.R' 'version_jquery.R'\n'version_jqueryui.R' 'version_selectize.R' 'version_strftime.R'\n'viewer.R'",
-        "RoxygenNote": "7.3.1",
+        "Collate": "'globals.R' 'app-state.R' 'app_template.R' 'bind-cache.R'\n'bind-event.R' 'bookmark-state-local.R' 'bookmark-state.R'\n'bootstrap-deprecated.R' 'bootstrap-layout.R' 'conditions.R'\n'map.R' 'utils.R' 'bootstrap.R' 'busy-indicators-spinners.R'\n'busy-indicators.R' 'cache-utils.R' 'deprecated.R' 'devmode.R'\n'diagnose.R' 'extended-task.R' 'fileupload.R' 'graph.R'\n'reactives.R' 'reactive-domains.R' 'history.R' 'hooks.R'\n'html-deps.R' 'image-interact-opts.R' 'image-interact.R'\n'imageutils.R' 'input-action.R' 'input-checkbox.R'\n'input-checkboxgroup.R' 'input-date.R' 'input-daterange.R'\n'input-file.R' 'input-numeric.R' 'input-password.R'\n'input-radiobuttons.R' 'input-select.R' 'input-slider.R'\n'input-submit.R' 'input-text.R' 'input-textarea.R'\n'input-utils.R' 'insert-tab.R' 'insert-ui.R' 'jqueryui.R'\n'knitr.R' 'middleware-shiny.R' 'middleware.R' 'timer.R'\n'shiny.R' 'mock-session.R' 'modal.R' 'modules.R'\n'notifications.R' 'priorityqueue.R' 'progress.R' 'react.R'\n'reexports.R' 'render-cached-plot.R' 'render-plot.R'\n'render-table.R' 'run-url.R' 'runapp.R' 'serializers.R'\n'server-input-handlers.R' 'server-resource-paths.R' 'server.R'\n'shiny-options.R' 'shiny-package.R' 'shinyapp.R' 'shinyui.R'\n'shinywrappers.R' 'showcase.R' 'snapshot.R' 'staticimports.R'\n'tar.R' 'test-export.R' 'test-server.R' 'test.R'\n'update-input.R' 'utils-lang.R' 'version_bs_date_picker.R'\n'version_ion_range_slider.R' 'version_jquery.R'\n'version_jqueryui.R' 'version_selectize.R' 'version_strftime.R'\n'viewer.R'",
+        "RoxygenNote": "7.3.2",
         "Encoding": "UTF-8",
         "RdMacros": "lifecycle",
         "Config/testthat/edition": "3",
         "Config/Needs/check": "shinytest2",
         "NeedsCompilation": "no",
-        "Packaged": "2024-04-02 14:16:09 UTC; cpsievert",
+        "Packaged": "2024-07-31 17:44:44 UTC; cpsievert",
         "Author": "Winston Chang [aut, cre] (<https://orcid.org/0000-0002-1576-2126>),\n  Joe Cheng [aut],\n  JJ Allaire [aut],\n  Carson Sievert [aut] (<https://orcid.org/0000-0002-4958-2844>),\n  Barret Schloerke [aut] (<https://orcid.org/0000-0001-9986-114X>),\n  Yihui Xie [aut],\n  Jeff Allen [aut],\n  Jonathan McPherson [aut],\n  Alan Dipert [aut],\n  Barbara Borges [aut],\n  Posit Software, PBC [cph, fnd],\n  jQuery Foundation [cph] (jQuery library and jQuery UI library),\n  jQuery contributors [ctb, cph] (jQuery library; authors listed in\n    inst/www/shared/jquery-AUTHORS.txt),\n  jQuery UI contributors [ctb, cph] (jQuery UI library; authors listed in\n    inst/www/shared/jqueryui/AUTHORS.txt),\n  Mark Otto [ctb] (Bootstrap library),\n  Jacob Thornton [ctb] (Bootstrap library),\n  Bootstrap contributors [ctb] (Bootstrap library),\n  Twitter, Inc [cph] (Bootstrap library),\n  Prem Nawaz Khan [ctb] (Bootstrap accessibility plugin),\n  Victor Tsaran [ctb] (Bootstrap accessibility plugin),\n  Dennis Lembree [ctb] (Bootstrap accessibility plugin),\n  Srinivasu Chakravarthula [ctb] (Bootstrap accessibility plugin),\n  Cathy O'Connor [ctb] (Bootstrap accessibility plugin),\n  PayPal, Inc [cph] (Bootstrap accessibility plugin),\n  Stefan Petre [ctb, cph] (Bootstrap-datepicker library),\n  Andrew Rowls [ctb, cph] (Bootstrap-datepicker library),\n  Brian Reavis [ctb, cph] (selectize.js library),\n  Salmen Bejaoui [ctb, cph] (selectize-plugin-a11y library),\n  Denis Ineshin [ctb, cph] (ion.rangeSlider library),\n  Sami Samhuri [ctb, cph] (Javascript strftime library),\n  SpryMedia Limited [ctb, cph] (DataTables library),\n  John Fraser [ctb, cph] (showdown.js library),\n  John Gruber [ctb, cph] (showdown.js library),\n  Ivan Sagalaev [ctb, cph] (highlight.js library),\n  R Core Team [ctb, cph] (tar implementation from R)",
         "Maintainer": "Winston Chang <winston@posit.co>",
         "Repository": "CRAN",
-        "Date/Publication": "2024-04-02 17:22:03 UTC",
-        "Built": "R 4.4.0; ; 2024-06-10 07:38:40 UTC; unix"
+        "Date/Publication": "2024-08-01 10:50:02 UTC",
+        "Built": "R 4.4.0; ; 2024-10-05 15:39:55 UTC; unix"
+      }
+    },
+    "shinyalert": {
+      "Source": "CRAN",
+      "Repository": "https://stat.ethz.ch/CRAN",
+      "description": {
+        "Package": "shinyalert",
+        "Title": "Easily Create Pretty Popup Messages (Modals) in 'Shiny'",
+        "Version": "3.1.0",
+        "Authors@R": "c(\n    person(\"Dean\", \"Attali\",\n        email = \"daattali@gmail.com\",\n        role = c(\"aut\", \"cre\"),\n        comment = c(ORCID=\"0000-0002-5645-3493\", \"R interface\")),\n    person(\"Tristan\", \"Edwards\", role = c(\"aut\"),\n        comment = \"sweetalert library\"),\n    person(\"Zhengjia\", \"Wang\", role = c(\"ctb\"))\n    )",
+        "Description": "Easily create pretty popup messages (modals) in 'Shiny'. A modal can\n    contain text, images, OK/Cancel buttons, an input to get a response from the\n    user, and many more customizable options.",
+        "URL": "https://github.com/daattali/shinyalert,\nhttps://daattali.com/shiny/shinyalert-demo/",
+        "BugReports": "https://github.com/daattali/shinyalert/issues",
+        "Depends": "R (>= 3.0.2)",
+        "Imports": "htmltools (>= 0.3.5), shiny (>= 1.0.4), uuid",
+        "Suggests": "colourpicker, shinydisconnect",
+        "License": "MIT + file LICENSE",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.2.3",
+        "NeedsCompilation": "no",
+        "Packaged": "2024-04-26 16:57:44 UTC; Dean",
+        "Author": "Dean Attali [aut, cre] (<https://orcid.org/0000-0002-5645-3493>, R\n    interface),\n  Tristan Edwards [aut] (sweetalert library),\n  Zhengjia Wang [ctb]",
+        "Maintainer": "Dean Attali <daattali@gmail.com>",
+        "Repository": "CRAN",
+        "Date/Publication": "2024-04-27 23:10:02 UTC",
+        "Built": "R 4.4.0; ; 2024-06-10 08:22:22 UTC; unix"
       }
     },
     "shinycssloaders": {
@@ -8094,28 +8120,28 @@
       "checksum": "06c85f57d9c93d5c21d2db4f806f0dfb"
     },
     "server-gsea2.R": {
-      "checksum": "4e1c6c7608276dc160b1c2b428f391f2"
+      "checksum": "50c5516f43488ce013d24b64ef7fe060"
     },
     "server-heatmap.R": {
       "checksum": "e456695b03438a680d578f1469056334"
     },
     "server-heatmap2.R": {
-      "checksum": "b79d11e9960b2ab7002363c6f135c510"
+      "checksum": "e9eb200c662af264b1845b6044b1ba6e"
     },
     "server-hypergeo2.R": {
-      "checksum": "0fdd9d6db8ef54e516622ad5ff473564"
+      "checksum": "3104ef01309fdebfa71ca1be43bb077b"
     },
     "server-initInputData.R": {
-      "checksum": "24bd32d91239e757fd9a0cc6f3b8a22f"
+      "checksum": "2c216ec7f0a7bd549e89c3d7c6ea1980"
     },
     "server-kegg.R": {
       "checksum": "563dcbdb4a6af0630ef5a65cf922ec59"
     },
     "server-pca.R": {
-      "checksum": "e917c52402d3f71faacbcc5d113926be"
+      "checksum": "c3d168583dbe6c2ef251d81e0dc3e600"
     },
     "server-summary.R": {
-      "checksum": "9e3250bdca991ac8bbd5f87266e65e38"
+      "checksum": "fac0ff4101c5243dcc8eeaa830ed665c"
     },
     "server-volcano2.R": {
       "checksum": "024648f22abd15903a3e4045786a7855"
@@ -8145,13 +8171,13 @@
       "checksum": "fc1cc3e591e7e5d7e8809d522a6500f3"
     },
     "ui-tab-pca.R": {
-      "checksum": "6f854e062106b13e3a3f6ca558ac5c64"
+      "checksum": "dd6d147cfceb535cd827301bbe9a912e"
     },
     "ui-tab-summary.R": {
-      "checksum": "1e1c71c9b0c35b8efdf01a140d9f91a7"
+      "checksum": "141f42e15c8b4a484cd8a383b43a884f"
     },
     "ui-tab-volcano.R": {
-      "checksum": "a0a1c39b9d109cb557bb988462bcf260"
+      "checksum": "f2e16ab4dae801f9ebbcc6b1bab7941c"
     },
     "www/eth_logo.png": {
       "checksum": "d0f0ca72d8a842d4afc28b41f423bf0c"

@@ -121,7 +121,6 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        h5("New feature alert! (February 2024)"),
         helpText("If you click and drag on the volcano plot to select features, they will automatically be added to your feature bucket in other tabs too, e.g., boxplots, heatmaps."),
         textOutput("volcanoDesign"),
         downloadButton(outputId = "dlVolcanoPlotButton", HTML("Download Volcano Plot")),

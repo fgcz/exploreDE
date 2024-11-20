@@ -22,12 +22,6 @@ n <- 60
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 colourPaletteList <- list(
-  # "House colours" = c(
-  #   "indianred3", "steelblue4", "chartreuse4", "grey30", 
-  #   "goldenrod3", "firebrick4", "royalblue4", "mediumorchid3",
-  #   "turquoise4", "darkolivegreen", "thistle4", "darkorange3", 
-  #   "hotpink2", "burlywood3", "cadetblue4", "chocolate4", "firebrick"
-  # ),
   "Catalyst colours" = catalystCols,
   "Paired" = brewer.pal(12, "Paired"),
   "Set1" = brewer.pal(9, "Set1"),
@@ -63,21 +57,36 @@ observeEvent(input$colourPalette, {
   })
 })
 
-# lapply(factorLevels, function(fl) {
-#   updateSelectInput(
-#     session = session, 
-#     inputId = paste0("GroupColour", fl),
-#     label = fl
-#   )
-# })
+output$dlColourTemplate <- downloadHandler(
+  filename = function() {paste0(design, "_colour_template.xlsx")},
+  content = function(file) {
+    colourTemplate <- reactiveValuesToList(input)
+    colourTemplate <- data.frame(unlist(colourTemplate))
+    colourTemplate <- rownames_to_column(colourTemplate, "Level")
+    colnames(colourTemplate)[[2]] <- "Colour"
+    colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
+    writexl::write_xlsx(x = colourTemplate, path = file)
+  }
+)
 
-# lapply(seq_along(factorLevels), function(i) {
-#   updateSelectInput(
-#     session = session,
-#     inputId = paste0("GroupColour", i),
-#     label = factorLevels[[i]]
-#   )
-# })
+observeEvent(input$importColourFile, {
+  importedColours <- openxlsx::read.xlsx(input$importColourFile[1, 'datapath'], colNames = T)
+  importedColours <- importedColours %>% data.frame(check.names = F)
+  
+  colourTemplate <- reactiveValuesToList(input)
+  colourTemplate <- data.frame(unlist(colourTemplate))
+  colourTemplate <- rownames_to_column(colourTemplate, "Level")
+  colnames(colourTemplate)[[2]] <- "Colour"
+  colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
+  
+  if(any(!importedColours$Level %in% colourTemplate$Level)) {
+    shinyalert::shinyalert(title = "Uh oh...", text = "You uploaded a file that has different factors and/or levels to the dataset. Are you sure it's from this study?", closeOnEsc = TRUE, closeOnClickOutside = TRUE, showCancelButton = TRUE)
+  } else {
+    lapply(importedColours$Level, function(l) {
+      updateColourInput(session = session, inputId = l, value = importedColours$Colour[importedColours$Level == l])
+    })
+  }
+})
 
 observeEvent(inputDataReactive()$dataType, {
   if (inputDataReactive()$dataType == "RNASeq") {
