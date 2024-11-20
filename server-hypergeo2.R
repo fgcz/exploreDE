@@ -17,6 +17,11 @@ if(inputDataReactive()$dataType == "RNASeq") {
     
     output$oraDesign <- renderText({design})
     
+    # Some older datasets seem to be missing this parameter, so we will just assume it for now
+    if (is.null(param$fdrThreshORA)) {
+      param$fdrThreshORA <- 0.05
+    }
+    
     # Download full ORA results file
     output$dlTableORA <- downloadHandler(
       filename = function() {

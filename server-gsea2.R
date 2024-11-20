@@ -20,6 +20,11 @@ if(inputDataReactive()$dataType == "RNASeq") {
     
     output$gseaDesign <- renderText({design})
     
+    # Some older datasets seem to be missing this parameter, so we will just assume it for now
+    if (is.null(param$fdrThreshGSEA)) {
+      param$fdrThreshGSEA <- 0.05
+    }
+    
     # Download full GSEA results file
     output$dlTableGSEA <- downloadHandler(
       filename = function() {
