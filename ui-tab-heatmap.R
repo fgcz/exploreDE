@@ -89,32 +89,8 @@ tabItem(
           selectInput(inputId = "heatmapLimitCPalette", label = "Continuous heatmap palette", choices = rownames(brewer.pal.info)[which(brewer.pal.info$category %in% c("div", "seq"))], selected = "YlGnBu"),
           checkboxInput(inputId = "heatmapLimitCPaletteRev", label = "Click to reverse palette", value = FALSE),
           numericInput(inputId = "heatmapLimitCHigh", label = "Scale limit for continuous heatmap", value = 1e3, min = 1, max = 1e5, step = 1),
-          # h5("Select high, mid, and low scale limits for continuous heatmap"),
-          # splitLayout(
-          #   sliderInput(inputId = "heatmapLimitCMid", label = "Mid", value = 1e3, min = 1, max = 1e5, step = 1),
-          #   sliderInput(inputId = "heatmapLimitCLow", label = "Low", value = 1e2, min = 1, max = 1e5, step = 1)
-          # ),
           hr(style = "border-top: 1px solid #000000;"), h4("Groups to plot"),
           uiOutput("heatmapBucket")
-          ),
-          tabPanel(
-            title = "Custom heatmap",
-            helpText("This allows you to plot the expression of any feature detected, irrespective of the DE test."),
-            selectInput(inputId = "heatmapGenes", label = "Select features for custom heatmap:", multiple = TRUE, choices = "", selected = ""),
-            textAreaInput(inputId = "heatmapGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1),
-            textAreaInput(inputId = "heatmapCustomTitle", label = "Enter a title for the heatmap", value = "Custom Heatmap"),
-            hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
-            h5(
-              "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly 
-              include/exclude these features from the custom heatmap as you need to by dragging and dropping them in order or into the exclude bucket."),
-            uiOutput("geneBucket3"),
-            actionButton(inputId = "resetGeneBucketHeatmap", label = "Empty the bucket?", icon = icon("bucket")),
-          ),
-          tabPanel(
-            title = "GO heatmap",
-            helpText("You can also plot the expression of features annotated to a given GO term (again, irrespective of p-value from the DE test)."),
-            uiOutput("heatmapGOUI1"),
-            uiOutput("heatmapGOUI2")
           ),
           tabPanel(
             title = "Figure settings",
@@ -132,9 +108,9 @@ tabItem(
             colourpicker::colourInput(inputId = "heatmapColourRed", label = "Heatmap Red (+)", value = "darkred"),
             colourpicker::colourInput(inputId = "heatmapColourWhite", label = "Heatmap White (0)", value = "#FFFFFF"),
             colourpicker::colourInput(inputId = "heatmapColourBlue", label = "Heatmap Blue (-)", value = "deepskyblue4"),
-            numericInput(inputId = "textSizeHeatmap", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5),
-            numericInput(inputId = "figWidthHeatmap", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10),
-            numericInput(inputId = "figHeightHeatmap", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10)
+            sliderInput(inputId = "textSizeHeatmap", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%"),
+            sliderInput(inputId = "figWidthHeatmap", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10, width = "85%"),
+            sliderInput(inputId = "figHeightHeatmap", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10, width = "85%")
           ),
           tabPanel(
             title = "Download Settings",
@@ -155,23 +131,74 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        textOutput("heatmapDesign"), br(),
-        # Generate tabs, output, and download buttons for
-        # 3 x heatmaps: Both, up, and down regulated features:
-        do.call(tabsetPanel, c(
+        tabsetPanel(
           id = "sig",
-          lapply(c("Both Directions", "Up-Regulated", "Down-Regulated", "Custom", "GO"), function(sig) {
-              tabPanel(
-                paste0(sig, " Features"),
-                downloadButton(outputId = paste0("dlHeatmapButton", sig), label = "Download Heatmap"),
-                downloadButton(outputId = paste0("dlHeatmapDFButton", sig), label = "Download Counts (Excel)"), br(),
-                plotOutput(paste0("heatmap", sig), inline = TRUE),
-                br(),
-                textOutput(paste0(sig, "HeatmapZeroMeanMessage"))
+          tabPanel(
+            title = "Both Directions",
+            textOutput("heatmapDesignBoth Directions"), br(),
+            downloadButton(outputId = paste0("dlHeatmapButtonBoth Directions"), label = "Download Heatmap"),
+            downloadButton(outputId = paste0("dlHeatmapDFButtonBoth Directions"), label = "Download Counts (Excel)"), 
+            withSpinner(
+              plotOutput(paste0("heatmapBoth Directions"), inline = TRUE)
+            )
+          ),
+          tabPanel(
+            title = "Up-Regulated",
+            textOutput("heatmapDesignUp-Regulated"), br(),
+            downloadButton(outputId = paste0("dlHeatmapButtonUp-Regulated"), label = "Download Heatmap"),
+            downloadButton(outputId = paste0("dlHeatmapDFButtonUp-Regulated"), label = "Download Counts (Excel)"), br(),
+            withSpinner(
+              plotOutput(paste0("heatmapUp-Regulated"), inline = TRUE)
+            )
+          ),
+          tabPanel(
+            title = "Down-Regulated",
+            textOutput("heatmapDesignDown-Regulated"), br(),
+            downloadButton(outputId = paste0("dlHeatmapButtonDown-Regulated"), label = "Download Heatmap"),
+            downloadButton(outputId = paste0("dlHeatmapDFButtonDown-Regulated"), label = "Download Counts (Excel)"), br(),
+            withSpinner(
+              plotOutput(paste0("heatmapDown-Regulated"), inline = TRUE)
+            )
+          ),
+          tabPanel(
+            title = "Custom", 
+            column(
+              width = 3,
+              helpText("Plot the expression of any feature detected, irrespective of the DE test. Requires at least three features."),
+              selectInput(inputId = "heatmapGenes", label = "Select features for custom heatmap:", multiple = TRUE, choices = "", selected = ""),
+              textAreaInput(inputId = "heatmapGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1),
+              textAreaInput(inputId = "heatmapCustomTitle", label = "Enter a title for the heatmap", value = "Custom Heatmap"),
+              hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
+              uiOutput("geneBucket3"),
+              actionButton(inputId = "resetGeneBucketHeatmap", label = "Empty the bucket?", icon = icon("bucket")),
+            ),
+            column(
+              width = 9,
+              downloadButton(outputId = paste0("dlHeatmapButtonCustom"), label = "Download Heatmap"),
+              downloadButton(outputId = paste0("dlHeatmapDFButtonCustom"), label = "Download Counts (Excel)"), br(),
+              withSpinner(
+                plotOutput(paste0("heatmapCustom"), inline = TRUE)
               )
-            }
+            )
+          ),
+          tabPanel(
+            title = "GO", 
+            column(
+              width = 3,
+              helpText("You can also plot the expression of features annotated to a given GO term (again, irrespective of p-value from the DE test)."),
+            uiOutput("heatmapGOUI1"),
+            uiOutput("heatmapGOUI2")
+            ),
+            column(
+              width = 9,
+              downloadButton(outputId = paste0("dlHeatmapButtonGO"), label = "Download Heatmap"),
+              downloadButton(outputId = paste0("dlHeatmapDFButtonGO"), label = "Download Counts (Excel)"), br(),
+              withSpinner(
+                plotOutput(paste0("heatmapGO"), inline = TRUE)
+              )
+            )
           )
-        ))
+        )
       )
     )
   )

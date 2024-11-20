@@ -251,7 +251,6 @@ volcanoResultsList <- eventReactive(
         volcanoTable[which(volcanoTable["log10p"] >= log10p & volcanoTable["log2Ratio"] >= as.numeric(input$lfcVolcano)), "Status"] <- "FoldChangeSignificantUp"
         # LFC & p-value down:
         volcanoTable[which(volcanoTable["log10p"] >= log10p & volcanoTable["log2Ratio"] <= -as.numeric(input$lfcVolcano)), "Status"] <- "FoldChangeSignificantDown"
-        # table(volcanoTable$Status)
 
         if (!is.null(input$highlightImputedVolcano)) {
           if (input$highlightImputedVolcano) {
@@ -313,8 +312,8 @@ volcanoResultsList <- eventReactive(
 
 observeEvent(
   {
-    input$figWidthVolcano
-    input$figHeightVolcano
+    # input$figWidthVolcano
+    # input$figHeightVolcano
     input$textSizeVolcano
     input$showLinesVolcano
     input$showAxesVolcano
@@ -502,15 +501,8 @@ observeEvent(
           panel.grid.minor.y = element_blank()
         )
     }
-
-    # Render the static plot
-    output$volcanoStatic <- renderPlot(
-      {
-        volcanoStatic
-      },
-      width = as.numeric(input$figWidthVolcano),
-      height = as.numeric(input$figHeightVolcano)
-    )
+    
+    figuresDataReactive$volcanoStatic <- volcanoStatic
 
     output$volcanoBrushTable <- renderDataTable({
       volcanoTableFull2 <- volcanoTableFull %>% dplyr::select(gene_name, description, log2Ratio, log2Ratio_full, log10p, log10p_full, Status)
@@ -527,24 +519,6 @@ observeEvent(
         DT::formatStyle(columns = "Status", color = styleEqual(levels = names(volcanoColours), values = as.character(volcanoColours)), fontWeight = "bold")
     })
 
-    # Download button for the plot
-    output$dlVolcanoPlotButton <- downloadHandler(
-      filename = function() {
-        paste(input$filnameVolcano, design, tolower(input$downloadFormatVolcano), sep = ".")
-      },
-      content = function(file) {
-        if (input$downloadFormatVolcano == "PDF") {
-          pdf(file = file, width = as.numeric(input$figWidthVolcano/80), height = as.numeric(input$figHeightVolcano/80))
-        } else if (input$downloadFormatVolcano == "SVG") {
-          svg(file = file, width = as.numeric(input$figWidthVolcano/80), height = as.numeric(input$figHeightVolcano/80))
-        } else if (input$downloadFormatVolcano == "PNG") {
-          png(filename = file, width = as.numeric(input$figWidthVolcano/80), height = as.numeric(input$figHeightVolcano/80), units = "in", res = as.numeric(input$dpiVolcano))
-        }
-        print(volcanoStatic)
-        dev.off()
-      }
-    )
-
     output$dlVolcanoDFButton <- downloadHandler(
       filename = function() {
         paste0(design, "_volcano.xlsx")
@@ -553,5 +527,32 @@ observeEvent(
         openxlsx::write.xlsx(volcanoTable, file = file)
       }
     )
+  }
+)
+
+# Render the static plot
+output$volcanoStatic <- renderPlot(
+  {
+    req(!is.null(figuresDataReactive$volcanoStatic))
+    figuresDataReactive$volcanoStatic
+  },
+  width = function(){as.numeric(input$figWidthVolcano)},
+  height = function(){as.numeric(input$figHeightVolcano)}
+)
+# Download button for the plot
+output$dlVolcanoPlotButton <- downloadHandler(
+  filename = function() {
+    paste(input$filnameVolcano, inputDataReactive()$design, tolower(input$downloadFormatVolcano), sep = ".")
+  },
+  content = function(file) {
+    if (input$downloadFormatVolcano == "PDF") {
+      pdf(file = file, width = as.numeric(input$figWidthVolcano/80), height = as.numeric(input$figHeightVolcano/80))
+    } else if (input$downloadFormatVolcano == "SVG") {
+      svg(file = file, width = as.numeric(input$figWidthVolcano/80), height = as.numeric(input$figHeightVolcano/80))
+    } else if (input$downloadFormatVolcano == "PNG") {
+      png(filename = file, width = as.numeric(input$figWidthVolcano/80), height = as.numeric(input$figHeightVolcano/80), units = "in", res = as.numeric(input$dpiVolcano))
+    }
+    print(figuresDataReactive$volcanoStatic)
+    dev.off()
   }
 )

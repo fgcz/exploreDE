@@ -333,6 +333,13 @@ inputDataReactive <- reactive({
 })
 inputDataReactive()$dataType
 
+figuresDataReactive <- reactiveValues(
+  "volcanoStatic" = NULL,
+  "heatmapBoth Directions" = NULL, "heatmapUp-Regulated" = NULL, "heatmapDown-Regulated" = NULL, "heatmapCustom" = NULL, "heatmapGO" = NULL,
+  "pcaStatic" = NULL, "pcaPaired" = NULL,
+  "boxplotStatic" = NULL, "barplotStatic" = NULL
+  )
+
 output$test <- renderText({
   inputDataReactive()$dataType
 })

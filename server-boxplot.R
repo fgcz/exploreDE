@@ -337,8 +337,8 @@ observeEvent({
   # input$boxKeepBucket
   # input$keepBucketBoxplot
   input$boxplotYLimLFC
-  input$figHeightBoxplot
-  input$figWidthBoxplot
+  # input$figHeightBoxplot
+  # input$figWidthBoxplot
   input$textSizeBoxplot
   input$boxplotNCol
   input$boxplotVertLines
@@ -449,18 +449,8 @@ observeEvent({
     if (input$boxplotVertLines) {
       g <- g + geom_vline(xintercept = seq_along(input$boxKeepBucket)[-length(seq_along(input$boxKeepBucket))]+0.5, linetype = "dashed", alpha = 0.7)
     }
-    
-    output$boxplotStatic <- renderPlot({
-      g
-    }, width = as.numeric(input$figWidthBoxplot), height = as.numeric(input$figHeightBoxplot))
-    output$dlBoxplotButton <- downloadHandler(
-      filename = function() {paste0(design, "boxplot.pdf")},
-      content = function(file) {
-        pdf(file = file, width = (as.numeric(input$figWidthBoxplot)/85), height = (as.numeric(input$figHeightBoxplot)/90))
-        print(g)
-        dev.off()
-      }
-    )
+    g <- wrap_plots(g)
+    figuresDataReactive$boxplotStatic <- g
   }
 
   # Make list of plots with p-value stars
@@ -543,20 +533,7 @@ observeEvent({
       }
       g
     })
-    
-    output$boxplotStatic <- renderPlot({
-      p <- ggpubr::ggarrange(plotlist = plotList, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(plotList)/input$boxplotNCol))
-      annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10)))
-    }, width = as.numeric(input$figWidthBoxplot), height = as.numeric(input$figHeightBoxplot))
-    output$dlBoxplotButton <- downloadHandler(
-      filename = function() {paste0(design, "boxplot.pdf")},
-      content = function(file) {
-        pdf(file = file, width = (as.numeric(input$figWidthBoxplot)/65), height = (as.numeric(input$figHeightBoxplot)/70), onefile = FALSE)
-        p <- ggpubr::ggarrange(plotlist = plotList, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(plotList)/input$boxplotNCol))
-        print(annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10))))
-        dev.off()
-      }
-    )
+    figuresDataReactive$boxplotStatic <- plotList
   }
 
   # Make a list of barplots
@@ -618,19 +595,7 @@ observeEvent({
     b <- b + theme(axis.title = element_blank())
     b
   })
-  output$barplotStatic <- renderPlot({
-    p <- ggpubr::ggarrange(plotlist = plotListB, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(plotListB)/input$boxplotNCol))
-    annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10)))
-  }, width = as.numeric(input$figWidthBoxplot), height = as.numeric(input$figHeightBoxplot))
-  output$dlBarplotButton <- downloadHandler(
-    filename = function() {paste0(design, "_barplot.pdf")},
-    content = function(file) {
-      pdf(file = file, width = (as.numeric(input$figWidthBoxplot)/95), height = (as.numeric(input$figHeightBoxplot)/100), onefile = FALSE)
-      p <- ggpubr::ggarrange(plotlist = plotListB, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(plotListB)/input$boxplotNCol))
-      print(annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10))))
-      dev.off()
-    }
-  )
+  figuresDataReactive$barplotStatic <- plotListB
 
   # if (length(genesToPlot) >= 1) {
     output$boxplotBrushTable <- renderTable({
@@ -652,3 +617,50 @@ observeEvent({
       content = function(file) { openxlsx::write.xlsx(countsBoxplotDl, file = file) }
     )
 })
+
+
+output$boxplotStatic <- renderPlot({
+  req(!is.null(figuresDataReactive$boxplotStatic))
+  if (length(figuresDataReactive$boxplotStatic) == 1) {
+    figuresDataReactive$boxplotStatic
+  } else {
+    p <- ggpubr::ggarrange(plotlist = figuresDataReactive$boxplotStatic, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(figuresDataReactive$boxplotStatic)/input$boxplotNCol))
+    annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10)))
+  }
+  },
+  width = function(){as.numeric(input$figWidthBoxplot)},
+  height = function(){as.numeric(input$figHeightBoxplot)}
+)
+output$barplotStatic <- renderPlot({
+  req(!is.null(figuresDataReactive$barplotStatic))
+  p <- ggpubr::ggarrange(plotlist = figuresDataReactive$barplotStatic, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(figuresDataReactive$barplotStatic)/input$boxplotNCol))
+  annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10)))
+  }, 
+  width = function(){as.numeric(input$figWidthBoxplot)},
+  height = function(){as.numeric(input$figHeightBoxplot)}
+)
+output$dlBarplotButton <- downloadHandler(
+  filename = function() {paste0(design, "_barplot.pdf")},
+  content = function(file) {
+    pdf(file = file, width = (as.numeric(input$figWidthBoxplot)/95), height = (as.numeric(input$figHeightBoxplot)/100), onefile = FALSE)
+    p <- ggpubr::ggarrange(plotlist = figuresDataReactive$barplotStatic, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(figuresDataReactive$barplotStatic)/input$boxplotNCol))
+    print(annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10))))
+    dev.off()
+  }
+)
+output$dlBoxplotButton <- downloadHandler(
+  filename = function() {paste0(inputDataReactive()$design, "boxplot.pdf")},
+  content = function(file) {
+    req(!is.null(figuresDataReactive$boxplotStatic))
+    if (length(figuresDataReactive$boxplotStatic) == 1) {
+      pdf(file = file, width = function(){as.numeric(input$figWidthBoxplot)/85}, height = function(){as.numeric(input$figHeightBoxplot)/90})
+      print(figuresDataReactive$boxplotStatic)
+      dev.off()
+    } else {
+      pdf(file = file, width = function(){as.numeric(input$figWidthBoxplot)/65}, height = function(){as.numeric(input$figHeightBoxplot)/70}, onefile = FALSE)
+      p <- ggpubr::ggarrange(plotlist = figuresDataReactive$boxplotStatic, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(plotList)/input$boxplotNCol))
+      print(annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10))))
+      dev.off()
+    }
+  }
+)

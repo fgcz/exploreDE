@@ -69,8 +69,8 @@ observeEvent(
     input$pcaCentre
     input$pcaScale
     input$textSizePCA
-    input$figWidthPCA
-    input$figHeightPCA
+    # input$figWidthPCA
+    # input$figHeightPCA
     input$showLinesPCA
     input$showAxesPCA
     input$boldPCA
@@ -267,44 +267,8 @@ observeEvent(
             axis.ticks = element_line(linewidth = 1.3)
           )
       }
-      # Output PCA plot
-      output$pcaStatic <- renderPlot(
-        {
-          pcaPlot
-        },
-        width = as.numeric(input$figWidthPCA),
-        height = as.numeric(input$figHeightPCA)
-      )
-      # Download PCA plot PDF
-      output$dlPCAPlotButton <- downloadHandler(
-        filename = function() {
-          paste0(design, "_PCA.pdf")
-        },
-        content = function(file) {
-          ggsave(
-            filename = file, plot = pcaPlot,
-            width = (as.numeric(input$figWidthPCA) / 3.2),
-            height = (as.numeric(input$figHeightPCA) / 3.2), limitsize = FALSE,
-            units = "mm"
-          )
-        }
-      )
-      output$dlPCAPlotButton <- downloadHandler(
-        filename = function() {
-          paste(input$filnamePCA, design, tolower(input$downloadFormatPCA), sep = ".")
-        },
-        content = function(file) {
-          if (input$downloadFormatPCA == "PDF") {
-            pdf(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
-          } else if (input$downloadFormatPCA == "SVG") {
-            svg(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
-          } else if (input$downloadFormatPCA == "PNG") {
-            png(filename = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80), units = "in", res = as.numeric(input$dpiPCA))
-          }
-          print(pcaPlot)
-          dev.off()
-        }
-      )
+      figuresDataReactive$pcaStatic <- pcaPlot
+
       # Paired Plot 
       pairedPlot <- ggpairs(
         data = pc_scores, 
@@ -318,29 +282,8 @@ observeEvent(
         theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
         scale_colour_manual(values = as.character(coloursPCA), breaks = names(coloursPCA)) +
         scale_fill_manual(values = as.character(coloursPCA), breaks = names(coloursPCA))
-      output$pcaPaired <- renderPlot(
-        {
-          pairedPlot
-        },
-        width = as.numeric(input$figWidthPCA),
-        height = as.numeric(input$figHeightPCA)
-      )
-      output$dlPCAPairButton <- downloadHandler(
-        filename = function() {
-          paste(input$filnamePCA, ".paired.", design, tolower(input$downloadFormatPCA), sep = ".")
-        },
-        content = function(file) {
-          if (input$downloadFormatPCA == "PDF") {
-            pdf(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
-          } else if (input$downloadFormatPCA == "SVG") {
-            svg(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
-          } else if (input$downloadFormatPCA == "PNG") {
-            png(filename = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80), units = "in", res = as.numeric(input$dpiPCA))
-          }
-          print(pairedPlot)
-          dev.off()
-        }
-      )
+      
+      figuresDataReactive$pcaPaired <- pairedPlot
       
       output$dlPCAPlotDFButton <- downloadHandler(
         filename = function() {
@@ -365,7 +308,54 @@ observeEvent(
         print("I'm sorry! I think there are too many NAs in your count data for me to be able to calculate PCA results. If you think there is a mistake, please reach out to your bioinformatics coach for more help!")
       })
     }
-    
-    
-    
 })
+
+output$pcaStatic <- renderPlot(
+  {
+    req(!is.null(figuresDataReactive$pcaStatic))
+    figuresDataReactive$pcaStatic
+  },
+  width = function(){as.numeric(input$figWidthPCA)},
+  height = function(){as.numeric(input$figHeightPCA)}
+)
+output$dlPCAPlotButton <- downloadHandler(
+  filename = function() {
+    paste(input$filnamePCA, design, tolower(input$downloadFormatPCA), sep = ".")
+  },
+  content = function(file) {
+    if (input$downloadFormatPCA == "PDF") {
+      pdf(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
+    } else if (input$downloadFormatPCA == "SVG") {
+      svg(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
+    } else if (input$downloadFormatPCA == "PNG") {
+      png(filename = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80), units = "in", res = as.numeric(input$dpiPCA))
+    }
+    print(figuresDataReactive$pcaStatic)
+    dev.off()
+  }
+)
+
+output$pcaPaired <- renderPlot(
+  {
+    req(!is.null(figuresDataReactive$pcaPaired))
+    figuresDataReactive$pcaPaired
+  },
+  width = function(){as.numeric(input$figWidthPCA)},
+  height = function(){as.numeric(input$figHeightPCA)}
+)
+output$dlPCAPairButton <- downloadHandler(
+  filename = function() {
+    paste(input$filnamePCA, ".paired.", tolower(input$downloadFormatPCA), sep = ".")
+  },
+  content = function(file) {
+    if (input$downloadFormatPCA == "PDF") {
+      pdf(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
+    } else if (input$downloadFormatPCA == "SVG") {
+      svg(file = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80))
+    } else if (input$downloadFormatPCA == "PNG") {
+      png(filename = file, width = as.numeric(input$figWidthPCA/80), height = as.numeric(input$figHeightPCA/80), units = "in", res = as.numeric(input$dpiPCA))
+    }
+    print(figuresDataReactive$pcaPaired)
+    dev.off()
+  }
+)

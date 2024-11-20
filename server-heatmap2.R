@@ -168,8 +168,8 @@ if (inputDataReactive()$dataType == "proteomics") {
 
 observeEvent(
   {
-    input$figHeightHeatmap
-    input$figWidthHeatmap
+    # input$figHeightHeatmap
+    # input$figWidthHeatmap
     input$textSizeHeatmap
     input$heatmapBatch
     input$lfcHeatmap
@@ -221,8 +221,6 @@ observeEvent(
           param <- inputDataReactive()$param
           design <- inputDataReactive()$design
         }
-        
-        output$heatmapDesign <- renderText({design})
         
         # Get the desired p-value column
         if (input$pTypeHeatmap == "Raw") {
@@ -322,23 +320,13 @@ observeEvent(
         
         # Draw the heatmaps
         lapply(c("Both Directions", "Up-Regulated", "Down-Regulated"), function(sig) {
+          output[[paste0("heatmapDesign", sig)]] <- renderText({design})
           countsHeatmapSig <- countsHeatmap
           countsHeatmapSig <- countsHeatmapSig[geneDirections[[sig]], ]
-          
-          # rowSumsVector <- rowSums(countsHeatmapSig, na.rm = T)
-          # zeroGeneMeans <- rownames(countsHeatmapSig)[which(rowSums(countsHeatmapSig, na.rm = T) == 0)]
-          # if (length(zeroGeneMeans) >= 1) {
-          #   output[[paste0(sig, "HeatmapZeroMeanMessage")]] <- renderText({
-          #     c("The following features have been excluded because they have no mean calculated: ", zeroGeneMeans)
-          #   })
-          # }
-          # countsHeatmapSig <- countsHeatmapSig[which(!rownames(countsHeatmapSig) %in% zeroGeneMeans),]
           if (as.numeric(input$heatmapGeneNumber) <= length(geneDirections[[sig]])) {
             countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
           } 
-          
           rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
-          
           heatmap <- ComplexHeatmap::Heatmap(
             matrix = countsHeatmapSig,
             top_annotation = ha,
@@ -355,52 +343,27 @@ observeEvent(
             col = heatmapColours,
             column_title = paste("Top", nrow(countsHeatmapSig), sig, "DE Features:\n", design)
           )
-          
-          # Output heatmaps
-          output[[paste0("heatmap", sig)]] <- renderPlot(
-            {
-              draw(heatmap, merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
-            },
-            width = as.numeric(input$figWidthHeatmap),
-            height = as.numeric(input$figHeightHeatmap)
-          )
-          
-          # download button for the heatmaps
-          output[[paste0("dlHeatmapButton", sig)]] <- downloadHandler(
-            filename = function() {
-              paste(input$heatmapFilename, sig, tolower(input$heatmapDownloadFormat), sep = ".")
-            },
-            content = function(file) {
-              if (input$heatmapDownloadFormat == "PDF") {
-                pdf(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
-              } else if (input$heatmapDownloadFormat == "SVG") {
-                svg(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
-              } else if (input$heatmapDownloadFormat == "PNG") {
-                png(filename = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60), units = "in", res = as.numeric(input$heatmapDPI))
-              }
-              draw(heatmap, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
-              dev.off()
-            }
-          )
+          figuresDataReactive[[paste0("heatmap", sig)]] <- heatmap
+          # Download the count file
           countsHeatmapSigDL <- as.data.frame(countsHeatmapSig) %>% rownames_to_column("gene_name")
           output[[paste0("dlHeatmapDFButton", sig)]] <- downloadHandler(
             filename = function() { paste0(design, "_", sig, "_heatmap_counts.xlsx") },
             content = function(file) { openxlsx::write.xlsx(countsHeatmapSigDL, file = file) }
           )
-          
           # Show number of genes on plot (changes depending on settings applied)
           output[[paste0("hGN", sig)]] <- renderText({
             paste0("Number of features per settings chosen: ", nrow(countsHeatmapSig))
           })
           
-        }) # end of lapply
+        })
         
         # Make a custom heatmap from the genes selected
         observeEvent({
           input$keepBucketHeatmap
         }, {
-          
           hmCustomMatrix <- inputDataReactive()$countList[[input$heatmapCounts]]
+          req(length(input$keepBucketHeatmap) >= 3)
+          req(all(input$keepBucketHeatmap %in% rownames(hmCustomMatrix)))
           if (!is.null(input$heatmapBatch)) {
             for (i in seq_along(input$heatmapBatch)) {
               hmCustomMatrix <- limma::removeBatchEffect(hmCustomMatrix, datasetHeatmap[[input$heatmapBatch[i]]])
@@ -413,53 +376,21 @@ observeEvent(
             }
             hmCustomMatrix <- sweep(hmCustomMatrix, 1 , rowMeans(hmCustomMatrix, na.rm = T))
           }
+          hmCustomMatrix <- hmCustomMatrix[rownames(hmCustomMatrix) %in% input$keepBucketHeatmap, ] %>% as.matrix()
           
-          if(!is.null(input$keepBucketHeatmap)) {
-            hmCustomMatrix <- hmCustomMatrix[rownames(hmCustomMatrix) %in% input$keepBucketHeatmap, ] %>% as.matrix()
-            #zeroGeneMeansCustom <- rownames(hmCustomMatrix)[which(rowSums(hmCustomMatrix, na.rm = T) == 0)]
-            # if (length(zeroGeneMeansCustom) >= 1) {
-            #   output[[paste0("CustomHeatmapZeroMeanMessage")]] <- renderText({
-            #     c("The following features have been excluded because they have no mean calculated: ", zeroGeneMeansCustom)
-            #   })
-            # }
-            #hmCustomMatrix <- hmCustomMatrix[which(!rownames(hmCustomMatrix) %in% zeroGeneMeansCustom),]
-            
-            # Output heatmaps
-            output$heatmapCustom <- renderPlot(
-              {
-                ch <- ComplexHeatmap::Heatmap(
-                  matrix = hmCustomMatrix,
-                  top_annotation = ha,
-                  name = input$heatmapCounts,
-                  cluster_columns = input$clusterColsHeatmap,
-                  cluster_rows = input$clusterRowsHeatmap,
-                  show_column_names = input$colnamesHeatmap,
-                  show_row_names = input$geneNamesHeatmap,
-                  col = heatmapColours,
-                  column_title = paste(input$heatmapCustomTitle)
-                )
-                draw(ch, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
-                output[["dlHeatmapButtonCustom"]] <- downloadHandler(
-                  filename = function() {
-                    paste(input$heatmapFilename, "Custom", tolower(input$heatmapDownloadFormat), sep = ".")
-                  },
-                  content = function(file) {
-                    if (input$heatmapDownloadFormat == "PDF") {
-                      pdf(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
-                    } else if (input$heatmapDownloadFormat == "SVG") {
-                      svg(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
-                    } else if (input$heatmapDownloadFormat == "PNG") {
-                      png(filename = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60), units = "in", res = as.numeric(input$heatmapDPI))
-                    }
-                    draw(ch, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
-                    dev.off()
-                  }
-                )
-              },
-              width = as.numeric(input$figWidthHeatmap),
-              height = as.numeric(input$figHeightHeatmap)
-            )
-          }
+          ch <- ComplexHeatmap::Heatmap(
+            matrix = hmCustomMatrix,
+            top_annotation = ha,
+            name = input$heatmapCounts,
+            cluster_columns = input$clusterColsHeatmap,
+            cluster_rows = input$clusterRowsHeatmap,
+            show_column_names = input$colnamesHeatmap,
+            show_row_names = input$geneNamesHeatmap,
+            col = heatmapColours,
+            column_title = paste(input$heatmapCustomTitle)
+          )
+          figuresDataReactive$heatmapCustom <- ch
+          
           output[[paste0("dlHeatmapDFButtonCustom")]] <- downloadHandler(
             filename = function() {
               paste0(design, "_Custom_heatmap.xlsx")
@@ -496,23 +427,7 @@ observeEvent(
                   col = heatmapColours,
                   column_title = sub("\\s+", "\n", input$heatmapGoInput)
                 )
-                output$heatmapGO <- renderPlot(
-                  {
-                    draw(gh, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
-                  },
-                  width = as.numeric(input$figWidthHeatmap),
-                  height = as.numeric(input$figHeightHeatmap)
-                )
-                output[[paste("dlHeatmapButtonGO")]] <- downloadHandler(
-                  filename = function() {
-                    paste0(design, "_GO_heatmap.pdf")
-                  },
-                  content = function(file) {
-                    pdf(file = file, width = as.numeric(input$figWidthHeatmap)/70, height = as.numeric(input$figHeightHeatmap)/70)
-                    draw(gh, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
-                    dev.off()
-                  }
-                )
+                figuresDataReactive$heatmapGO <- gh
                 output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(
                   filename = function() {
                     paste0(design, "_GO_heatmap.xlsx")
@@ -526,7 +441,35 @@ observeEvent(
           })
         }
         
-      } # here
+      }
     }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
   }
-) # End of heatmaps observeEvent
+)
+
+# Output heatmaps
+lapply(c("Both Directions", "Up-Regulated", "Down-Regulated", "Custom", "GO"), function(sig) {
+  output[[paste0("heatmap", sig)]] <- renderPlot(
+    {
+      req(!is.null(figuresDataReactive[[paste0("heatmap", sig)]]))
+      draw(figuresDataReactive[[paste0("heatmap", sig)]], merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
+    },
+    width = function(){as.numeric(input$figWidthHeatmap)},
+    height = function(){as.numeric(input$figHeightHeatmap)}
+  )
+  output[[paste0("dlHeatmapButton", sig)]] <- downloadHandler(
+    filename = function() {
+      paste(input$heatmapFilename, sig, tolower(input$heatmapDownloadFormat), sep = ".")
+    },
+    content = function(file) {
+      if (input$heatmapDownloadFormat == "PDF") {
+        pdf(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
+      } else if (input$heatmapDownloadFormat == "SVG") {
+        svg(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
+      } else if (input$heatmapDownloadFormat == "PNG") {
+        png(filename = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60), units = "in", res = as.numeric(input$heatmapDPI))
+      }
+      draw(figuresDataReactive[[paste0("heatmap", sig)]], merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
+      dev.off()
+    }
+  )
+})
