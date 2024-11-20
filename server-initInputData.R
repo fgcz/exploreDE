@@ -24,12 +24,6 @@ if (!is.null(dataUrl)) {
   }
 } else {
   dataDir <- "/srv/gstore/projects/p23793/o23960_EdgeR_RIVA-Ibru-6h--over--RIVA-DMSO_2022-09-02--16-54-00/RIVA-Ibru-6h--over--RIVA-DMSO"
-  # "https://fgcz-shiny.uzh.ch/exploreDE/?data=p35605/bfabric/Proteomics/exploreDE/2024/2024-07/2024-07-24//workunit_309341//2585676.rds"
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p35605/bfabric/Proteomics/exploreDE/2024/2024-07/2024-07-24//workunit_309341//2585676.rds"
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/uStore/p34731/bfabric/Proteomics/exploreDE/2024-05-13/workunit_o34731_OI__WU_with_no_impute_base_V2/SummarizedExperiment.rds"
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/jStore/o33038/Proteomics/SummarizedExperiment/2023/2023-11/2023-11-30/o33038_TMTphospho_multiplexed__PhosphoEnriched_o33281_multiPlex_dataset/SummarizedExperiment.rds"
-  # dataDir <- "https://fgcz-proteomics.uzh.ch/public/wew_prolfquapp/DEA_large_example/DEA_20241001_WUall_diann_with_interaction_no_subject_vsn/Results_WU_all_diann_with_interaction_no_subject/SummarizedExperiment.rds"
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/../wew_prolfquapp/DEA_large_example/DEA_20241001_WUall_diann_with_interaction_no_subject_vsn/Results_WU_all_diann_with_interaction_no_subject/SummarizedExperiment.rds"
 }
 
 if(!exists("dataDir")) {
@@ -45,7 +39,7 @@ is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))  # Checks if it starts with http:// or https://
 }
 # Import proteomics data from pStore
-if (grepl("rds", dataDir)) {
+if (grepl("rds", dataDir) & grepl("Proteomics|prolfqua", dataDir)) {
   if (is_url(dataDir)) {
     se <- readRDS(url(dataDir))  # If it's a URL
   } else {
@@ -60,7 +54,7 @@ if (grepl("rds", dataDir)) {
   }
   se <- readRDS(myTempFile)
 }
-if (grepl("rds|zip", dataDir)) {
+if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir)) {
   contrasts <- names(rowData(se))[grep("^constrast_", names(rowData(se)))] %>% gsub("constrast_", "", .)
   output$proteomicsContrastSelectorUI <- renderUI({
     selectInput(inputId = "contrastSelected", label = "Select contrast to view", choices = contrasts, selected = contrasts[1], multiple = F, selectize = T)
@@ -69,12 +63,15 @@ if (grepl("rds|zip", dataDir)) {
 
 # Import RNA seq data from SUSHI 
 if (grepl("gstore", dataDir)) {
+  if (grepl("deResult.rds", dataDir)) {
+    dataDir <- gsub("\\/deResult.rds", "", dataDir)
+  }
   if (file.exists(file.path(dataDir, "deResult.rds"))) {
     se <- readRDS(file.path(dataDir, "deResult.rds"))
   } else {
     showModal(modalDialog(
       title = "The file does not exist", 
-      "Either the analysis has not yet finished running, you have made a mistake in the URL, or you have not pointed to any dataset. Please try again! If the issue persists, email peter.leary@fgcz.ethz.ch",
+      "Either the analysis has not yet finished running, you have made a mistake in the URL, or you have not pointed to any dataset. Please try again! If the issue persists, email peter.leary@uzh.ch",
       easyClose = TRUE,
       footer = NULL
     ))
