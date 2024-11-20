@@ -135,7 +135,7 @@ tabItem(
           id = "sig",
           tabPanel(
             title = "Both Directions",
-            textOutput("heatmapDesignBoth Directions"), br(),
+            textOutput("heatmapDesignBoth Directions"),
             downloadButton(outputId = paste0("dlHeatmapButtonBoth Directions"), label = "Download Heatmap"),
             downloadButton(outputId = paste0("dlHeatmapDFButtonBoth Directions"), label = "Download Counts (Excel)"), 
             withSpinner(

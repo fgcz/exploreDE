@@ -449,7 +449,7 @@ observeEvent({
     if (input$boxplotVertLines) {
       g <- g + geom_vline(xintercept = seq_along(input$boxKeepBucket)[-length(seq_along(input$boxKeepBucket))]+0.5, linetype = "dashed", alpha = 0.7)
     }
-    g <- wrap_plots(g)
+    # g <- wrap_plots(g)
     figuresDataReactive$boxplotStatic <- g
   }
 
@@ -621,7 +621,7 @@ observeEvent({
 
 output$boxplotStatic <- renderPlot({
   req(!is.null(figuresDataReactive$boxplotStatic))
-  if (length(figuresDataReactive$boxplotStatic) == 1) {
+  if (!any(class(figuresDataReactive$boxplotStatic) == "list")) {
     figuresDataReactive$boxplotStatic
   } else {
     p <- ggpubr::ggarrange(plotlist = figuresDataReactive$boxplotStatic, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(figuresDataReactive$boxplotStatic)/input$boxplotNCol))
@@ -652,7 +652,7 @@ output$dlBoxplotButton <- downloadHandler(
   filename = function() {paste0(inputDataReactive()$design, "boxplot.pdf")},
   content = function(file) {
     req(!is.null(figuresDataReactive$boxplotStatic))
-    if (length(figuresDataReactive$boxplotStatic) == 1) {
+    if (!any(class(figuresDataReactive$boxplotStatic) == "list")) {
       pdf(file = file, width = function(){as.numeric(input$figWidthBoxplot)/85}, height = function(){as.numeric(input$figHeightBoxplot)/90})
       print(figuresDataReactive$boxplotStatic)
       dev.off()

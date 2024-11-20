@@ -362,7 +362,7 @@ observeEvent(
           input$keepBucketHeatmap
         }, {
           hmCustomMatrix <- inputDataReactive()$countList[[input$heatmapCounts]]
-          req(length(input$keepBucketHeatmap) >= 3)
+          req(length(input$keepBucketHeatmap) >= 2)
           req(all(input$keepBucketHeatmap %in% rownames(hmCustomMatrix)))
           if (!is.null(input$heatmapBatch)) {
             for (i in seq_along(input$heatmapBatch)) {
