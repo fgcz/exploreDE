@@ -57,14 +57,23 @@ observeEvent(input$colourPalette, {
   })
 })
 
+saved_inputs <- reactiveVal(data.frame(Input = character(), Value = character(), stringsAsFactors = FALSE))
+# Observe all inputs and store their values
+observe({
+  current_inputs <- data.frame(
+    Input = names(input),
+    Value = sapply(names(input), function(x) paste(input[[x]], collapse = " ")),
+    stringsAsFactors = FALSE
+  )
+  saved_inputs(current_inputs)
+})
 output$dlColourTemplate <- downloadHandler(
   filename = function() {paste0(design, "_colour_template.xlsx")},
   content = function(file) {
-    colourTemplate <- reactiveValuesToList(input)
-    colourTemplate <- data.frame(unlist(colourTemplate))
-    colourTemplate <- rownames_to_column(colourTemplate, "Level")
-    colnames(colourTemplate)[[2]] <- "Colour"
+    colourTemplate <- saved_inputs()
+    colnames(colourTemplate) <- c("Level", "Colour")
     colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
+    cat(colourTemplate$Level)
     writexl::write_xlsx(x = colourTemplate, path = file)
   }
 )
@@ -73,10 +82,8 @@ observeEvent(input$importColourFile, {
   importedColours <- openxlsx::read.xlsx(input$importColourFile[1, 'datapath'], colNames = T)
   importedColours <- importedColours %>% data.frame(check.names = F)
   
-  colourTemplate <- reactiveValuesToList(input)
-  colourTemplate <- data.frame(unlist(colourTemplate))
-  colourTemplate <- rownames_to_column(colourTemplate, "Level")
-  colnames(colourTemplate)[[2]] <- "Colour"
+  colourTemplate <- saved_inputs()
+  colnames(colourTemplate) <- c("Level", "Colour")
   colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
   
   if(any(!importedColours$Level %in% colourTemplate$Level)) {
@@ -110,7 +117,7 @@ observeEvent(inputDataReactive()$dataType, {
         tags$b("SUSHI: Hatekeyama et al., 2016"),
         tags$p("Hatakeyama, M., Opitz, L., Russo, G. Qi, W., Schlapbach, R., Rehrauer, H. (2016) SUSHI: an exquisite recipe for fully documented, reproducible and reusable NGS data analysis. BMC Bioinformatics 17, 228. https://doi.org/10.1186/s12859-016-1104-8"),
         tags$b("exploreDE Shiny app: Leary and Rehrauer, 2023"),
-        tags$p("Peter Leary, & Hubert Rehrauer. (2023). exploreDEG Interactive Shiny App. Zenodo. https://doi.org/10.5281/zenodo.10026461"),
+        tags$p("Peter Leary, & Hubert Rehrauer. (2023). exploreDE Interactive Shiny App. Zenodo. https://doi.org/10.5281/zenodo.13927692"),
         tags$p("For the full list of citations required for the generation of these results, and/or for a written methods section, please email us at sequencing@fgcz.ethz.ch.")
       )
     })
@@ -169,10 +176,8 @@ observe({
       "Input_Options.xlsx"
     },
     content = function(file) { 
-      x <- reactiveValuesToList(input)
-      x <- data.frame(unlist(x))
-      x <- rownames_to_column(x, "Input")
-      colnames(x)[[2]] <- "Value"
+      x <- saved_inputs()
+      colnames(x) <- c("Input", "Value")
       writexl::write_xlsx(x, path = file)
     }
   )
@@ -181,7 +186,7 @@ observe({
       "Input_Options.qs"
     },
     content = function(file) { 
-      qs::qsave(x = reactiveValuesToList(input), file = file, nthreads = 8)
+      qs::qsave(x = saved_inputs(), file = file, nthreads = 8)
     }
   )
   

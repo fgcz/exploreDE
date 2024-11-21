@@ -135,30 +135,24 @@ tabItem(
           id = "sig",
           tabPanel(
             title = "Both Directions",
-            textOutput("heatmapDesignBoth Directions"),
+            textOutput("heatmapDesignBoth Directions"), br(),
             downloadButton(outputId = paste0("dlHeatmapButtonBoth Directions"), label = "Download Heatmap"),
-            downloadButton(outputId = paste0("dlHeatmapDFButtonBoth Directions"), label = "Download Counts (Excel)"), 
-            withSpinner(
-              plotOutput(paste0("heatmapBoth Directions"), inline = TRUE)
-            )
+            downloadButton(outputId = paste0("dlHeatmapDFButtonBoth Directions"), label = "Download Counts (Excel)"), br(),
+            plotOutput(paste0("heatmapBoth Directions"), inline = TRUE)
           ),
           tabPanel(
             title = "Up-Regulated",
             textOutput("heatmapDesignUp-Regulated"), br(),
             downloadButton(outputId = paste0("dlHeatmapButtonUp-Regulated"), label = "Download Heatmap"),
             downloadButton(outputId = paste0("dlHeatmapDFButtonUp-Regulated"), label = "Download Counts (Excel)"), br(),
-            withSpinner(
-              plotOutput(paste0("heatmapUp-Regulated"), inline = TRUE)
-            )
+            plotOutput(paste0("heatmapUp-Regulated"), inline = TRUE)
           ),
           tabPanel(
             title = "Down-Regulated",
             textOutput("heatmapDesignDown-Regulated"), br(),
             downloadButton(outputId = paste0("dlHeatmapButtonDown-Regulated"), label = "Download Heatmap"),
             downloadButton(outputId = paste0("dlHeatmapDFButtonDown-Regulated"), label = "Download Counts (Excel)"), br(),
-            withSpinner(
-              plotOutput(paste0("heatmapDown-Regulated"), inline = TRUE)
-            )
+            plotOutput(paste0("heatmapDown-Regulated"), inline = TRUE)
           ),
           tabPanel(
             title = "Custom", 
