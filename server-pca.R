@@ -87,6 +87,8 @@ observeEvent(
     input$dpiPCA
     input$filnamePCA
     input$nrPeptidePCA
+    input$pcaAddEllipses
+    input$pcaEllipsesAlpha
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
@@ -198,11 +200,19 @@ observeEvent(
       )
       
       if (input$pcaFactor2 == "None") {
-        pcaPlot <- ggplot(data = pc_scores, aes_string(x = input$pcaX, y = input$pcaY))
+        pcaPlot <- ggplot(data = pc_scores, aes_string(x = input$pcaX, y = input$pcaY, fill = input$pcaFactor1))
+        if (input$pcaAddEllipses) {
+          pcaPlot <- pcaPlot + stat_ellipse(aes_string(colour = input$pcaFactor1, fill = input$pcaFactor1), geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE)
+          pcaPlot <- pcaPlot + scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
+        }
         pcaPlot <- pcaPlot + geom_point(aes_string(fill = input$pcaFactor1), size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA)
         pcaPlot <- pcaPlot + guides(fill = guide_legend(override.aes = list(shape = 21, size = input$dotSizePCA, stroke = input$dotBorderPCA)))
       } else {
         pcaPlot <- ggplot(data = pc_scores, aes_string(x = input$pcaX, y = input$pcaY, shape = input$pcaFactor2))
+        if (input$pcaAddEllipses) {
+          pcaPlot <- pcaPlot + stat_ellipse(aes_string(colour = input$pcaFactor1, fill = input$pcaFactor1), geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE)
+          pcaPlot <- pcaPlot + scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
+        }
         pcaPlot <- pcaPlot + geom_point(aes_string(fill = input$pcaFactor1), size = input$dotSizePCA, alpha = input$alphaPCA, stroke = input$dotBorderPCA)
         pcaPlot <- pcaPlot + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25, 8, 3, 4), times = 10))[1:nlevels(as.factor(datasetPCA[[input$pcaFactor2]]))])
         pcaPlot <- pcaPlot + guides(fill = guide_legend(override.aes = list(shape = 21)))
