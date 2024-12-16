@@ -1,6 +1,6 @@
 if(inputDataReactive()$dataType == "RNASeq") {
   param <- inputDataReactive()$param
-  
+
   observeEvent(input$tabs, {
     if (input$tabs == "oraTab") {
       if (is_empty(inputDataReactive()$ora)) {
@@ -166,25 +166,25 @@ if(inputDataReactive()$dataType == "RNASeq") {
         
         if (!is.null(er) && nrow(er@result) >= 2) {
           # Draw the main plot 
-          cn <- enrichplot::cnetplot(
+          cn <- cnetplot(
             x = er,
-            color.params = list(foldChange = log2RatioORA),
+            foldChange = log2RatioORA,
             showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
             node_label = "none",
             cex.params = list(category_label = (input$textSizeORA / 15), gene_label = (input$textSizeORA / 18), gene_node = input$nodeSizeORA/10, category_node = input$nodeSizeORA/8)
           )
           # Set the colour limits to the user-specified values 
-          cn$data$color[!is.na(cn$data$color) & cn$data$color > input$scaleLimORA] <- input$scaleLimORA
-          cn$data$color[!is.na(cn$data$color) & cn$data$color < -input$scaleLimORA] <- -input$scaleLimORA
+          cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange > input$scaleLimORA] <- input$scaleLimORA
+          cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimORA] <- -input$scaleLimORA
           # Add our own geom_points on top 
           cn <- cn + geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderORA)
           # Get two copies of the plot data table so we can get gene and node labels and modify them for plotting 
           cd1 <- cn$data
-          cd1$name[!is.na(cd1$color)] <- NA
+          cd1$name[!is.na(cd1$foldChange)] <- NA
           cd1$Label <- NA
-          cd1$Label[1:length(input$selectedTable_ORA_rows_selected)] <- er@result$Label[input$selectedTable_ORA_rows_selected]
+          # cd1$Label[1:length(input$selectedTable_ORA_rows_selected)] <- er@result$Label[input$selectedTable_ORA_rows_selected]
           cd2 <- cn$data
-          cd2$name[is.na(cd2$color)] <- NA
+          cd2$name[is.na(cd2$foldChange)] <- NA
           # Some reason, enrichplot changed the default such that up is blue and down is red. We prefer the opposite... 
           if (input$oraDirection == "upGenes") {
             cn <- cn + scale_color_gradientn(name = "fold change", colours = c("white", "firebrick"))

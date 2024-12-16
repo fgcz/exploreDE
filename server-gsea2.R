@@ -179,17 +179,17 @@ if(inputDataReactive()$dataType == "RNASeq") {
           cex.params = list(category_label = (input$textSizeGSEA / 15), gene_label = (input$textSizeGSEA / 18), gene_node = input$nodeSizeGSEA/10, category_node = input$nodeSizeGSEA/8)
         )
         # Set the colour limits to the user-specified values 
-        cn$data$color[!is.na(cn$data$color) & cn$data$color > input$scaleLimGSEA] <- input$scaleLimGSEA
-        cn$data$color[!is.na(cn$data$color) & cn$data$color < -input$scaleLimGSEA] <- -input$scaleLimGSEA
+        cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$color > input$scaleLimGSEA] <- input$scaleLimGSEA
+        cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimGSEA] <- -input$scaleLimGSEA
         # Add our own geom_points on top 
         cn <- cn + geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderGSEA)
         # Get two copies of the plot data table so we can get gene and node labels and modify them for plotting 
         cd1 <- cn$data
-        cd1$name[!is.na(cd1$color)] <- NA
+        cd1$name[!is.na(cd1$foldChange)] <- NA
         cd1$Label <- NA
         cd1$Label[1:length(input$selectedTable_GSEA_rows_selected)] <- er@result$Label[input$selectedTable_GSEA_rows_selected]
         cd2 <- cn$data
-        cd2$name[is.na(cd2$color)] <- NA
+        cd2$name[is.na(cd2$foldChange)] <- NA
         # Some reason, enrichplot changed the default such that up is blue and down is red. We prefer the opposite... 
         cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick", midpoint = 0)
         # Add gene and node labels in that order 

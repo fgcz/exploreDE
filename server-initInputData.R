@@ -35,7 +35,7 @@ if(!exists("dataDir")) {
   stop()
 }
 
-# Import proteomics data from pStore
+# Import proteomics data from pStore ----
 is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))  # Checks if it starts with http:// or https://
 }
@@ -62,7 +62,7 @@ if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir)) {
   })
 }
 
-# Import RNA seq data from SUSHI 
+# Import RNA seq data from SUSHI ----
 if (grepl("gstore", dataDir)) {
   if (grepl("EzResult.RData", dataDir)) {
     dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
@@ -79,6 +79,7 @@ if (grepl("gstore", dataDir)) {
   }
 }
 
+# Generate inputDataReactive ----
 inputDataReactive <- reactive({
   waiter <- waiter::Waiter$new()
   waiter$show()
