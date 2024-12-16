@@ -81,7 +81,7 @@ if (grepl("gstore", dataDir)) {
 
 # Generate inputDataReactive ----
 inputDataReactive <- reactive({
-  waiter <- waiter::Waiter$new()
+  waiter <- waiter::Waiter$new(fadeout = TRUE)
   waiter$show()
   on.exit(waiter$hide())
   
