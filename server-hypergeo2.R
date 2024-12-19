@@ -137,6 +137,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$oraDodgeY
       input$oraDodgeX
       input$nodeBorderORA
+      input$oraLabelAlpha
     }, {
       
       req(!is.null(input$selectedTable_ORA_rows_selected))
@@ -182,7 +183,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
           cd1 <- cn$data
           cd1$name[!is.na(cd1$foldChange)] <- NA
           cd1$Label <- NA
-          # cd1$Label[1:length(input$selectedTable_ORA_rows_selected)] <- er@result$Label[input$selectedTable_ORA_rows_selected]
+          cd1$Label[1:length(input$selectedTable_ORA_rows_selected)] <- er@result$Label[input$selectedTable_ORA_rows_selected]
           cd2 <- cn$data
           cd2$name[is.na(cd2$foldChange)] <- NA
           # Some reason, enrichplot changed the default such that up is blue and down is red. We prefer the opposite... 
@@ -201,7 +202,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
                 fontface = "bold", color = "black", bg.color = "white", bg.r = .15, na.rm = T)
           }
           cn <- cn + geom_label_repel(
-            data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeORA/3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10, fontface = "bold", show.legend = F, fill = alpha(c("white"),0.5), na.rm = T)
+            data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeORA/3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10, fontface = "bold", show.legend = F, fill = alpha(c("white"), input$oraLabelAlpha), na.rm = T)
           
           hp <- enrichplot::heatplot(
             x = er,

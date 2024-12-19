@@ -143,7 +143,8 @@ tabItem(
           h4("Label Settings"),
           sliderInput(inputId = "oraMaxOver", label = "Label max overlaps", min = 0, max = 100, value = 10, step = 1, width = "85%"),
           sliderInput(inputId = "oraDodgeY", label = "Label dodge y", min = -10, max = 10, value = 0, step = 1, width = "85%"),
-          sliderInput(inputId = "oraDodgeX", label = "Label dodge x", min = -10, max = 10, value = 0, step = 1, width = "85%")
+          sliderInput(inputId = "oraDodgeX", label = "Label dodge x", min = -10, max = 10, value = 0, step = 1, width = "85%"),
+          sliderInput(inputId = "oraLabelAlpha", label = "Label alpha", min = 0, max = 1, value = 0.7, step = 0.1, width = "85%")
         ),
         column(
           width = 4,

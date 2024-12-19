@@ -127,6 +127,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$gseaDodgeX
       input$nodeBorderGSEA
       input$ridgePlotColourByGSEA
+      input$gseaLabelAlpha
     }, {
       
       req(!is.null(input$selectedTable_GSEA_rows_selected))
@@ -164,17 +165,16 @@ if(inputDataReactive()$dataType == "RNASeq") {
           er@result$core_enrichment[i] <- core_enrich_symbol
         }
         sigGeneIds <- ce_list[!is.na(ce_list)]
-        log2RatioGSEA <- metadata(se)$enrichInput$log2Ratio[sigGeneIds]
-        names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno[
-          sigGeneIds, "gene_name"
-        ]
+        
+        log2RatioGSEA <- metadata(se)$enrichInput$seqAnno$log2Ratio
+        names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno$gene_name
         log2RatioGSEA <- sort(log2RatioGSEA, decreasing = T)
         
         # Draw the main plot 
         cn <- enrichplot::cnetplot(
           x = er,
           node_label = "none",
-          color.params = list(foldChange = log2RatioGSEA),
+          foldChange = log2RatioGSEA,
           showCategory = er@result$Description[input$selectedTable_GSEA_rows_selected],
           cex.params = list(category_label = (input$textSizeGSEA / 15), gene_label = (input$textSizeGSEA / 18), gene_node = input$nodeSizeGSEA/10, category_node = input$nodeSizeGSEA/8)
         )
@@ -200,7 +200,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
               fontface = "bold", color = "black", bg.color = "white", bg.r = .15, na.rm = T)
         }
         cn <- cn + geom_label_repel(
-          data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeGSEA/3, max.overlaps = input$gseaMaxOver, nudge_x = input$gseaDodgeX/10, nudge_y = input$gseaDodgeY/10, fontface = "bold", show.legend = F, fill = alpha(c("white"),0.5), na.rm = T)
+          data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeGSEA/3, max.overlaps = input$gseaMaxOver, nudge_x = input$gseaDodgeX/10, nudge_y = input$gseaDodgeY/10, fontface = "bold", show.legend = F, fill = alpha(c("white"), input$gseaLabelAlpha), na.rm = T)
         
         hp <- enrichplot::heatplot(
           x = er,
