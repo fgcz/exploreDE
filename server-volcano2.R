@@ -420,8 +420,15 @@ observeEvent(
     volcanoStatic <- volcanoStatic + theme_bw()
     volcanoStatic <- volcanoStatic + geom_vline(xintercept = c(-as.numeric(input$lfcVolcano), as.numeric(input$lfcVolcano)), col = "black", linetype = "dashed")
     volcanoStatic <- volcanoStatic + geom_hline(yintercept = -log10(as.numeric(input$pThresholdVolcano)), col = "black", linetype = "dashed")
-    volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21, stroke = input$volcanoPointBorder)
-    volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+    if (input$volcanoPointBorder > 0) {
+      volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21, stroke = input$volcanoPointBorder)
+      volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+      volcanoStatic <- volcanoStatic + guides(fill = guide_legend(override.aes = list(shape = 21,  size = 4, stroke = input$volcanoPointBorder)))
+    } else if (input$volcanoPointBorder == 0) {
+      volcanoStatic <- volcanoStatic + geom_point(aes(colour = Status), size = as.numeric(input$dotSizeVolcano)*0.8, alpha = as.numeric(input$alphaVolcano), pch = 19)
+      volcanoStatic <- volcanoStatic + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+      volcanoStatic <- volcanoStatic + guides(colour = guide_legend(override.aes = list(shape = 19,  size = 4)))
+    }
     if (input$volcanoShowGenes) {
       volcanoStatic <- volcanoStatic +
         geom_label_repel(
