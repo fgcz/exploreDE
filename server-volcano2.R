@@ -444,7 +444,7 @@ observeEvent(
     }
     volcanoStatic <- volcanoStatic + labs(
       x = "Log2 Fold Change",
-      y = "-log10 P-value",
+      y = "-log10 p-value",
       fill = "Significance"
     )
     volcanoStatic <- volcanoStatic + theme(

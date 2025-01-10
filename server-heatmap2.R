@@ -308,7 +308,7 @@ observeEvent(
           p1 <- paste(lapply(input$heatmapFactors, function(g) {
             paste0("'", g, "' = datasetHeatmap[['", g, "']]")
           }), collapse = ",")
-          ha <- paste0("HeatmapAnnotation(", p1, ", show_legend = T)")
+          ha <- paste0("HeatmapAnnotation(", p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")))")
           ha <- eval(parse(text = ha))
           for (f in c(input$heatmapFactors)) {
             for (l in levels(as.factor(datasetHeatmap[, f]))) {
@@ -337,11 +337,15 @@ observeEvent(
             show_row_names = input$geneNamesHeatmap,
             show_column_dend = input$showClusterColDend, 
             show_row_dend = input$showClusterRowDend, 
-            use_raster = TRUE,
-            row_dend_width = unit(3, "cm"),
-            column_dend_height = unit(2, "cm"),
-            col = heatmapColours,
-            column_title = paste("Top", nrow(countsHeatmapSig), sig, "DE Features:\n", design)
+            use_raster = FALSE,
+            row_dend_width = unit(1, "cm"),
+            column_dend_height = unit(1, "cm"),
+            col = heatmapColours, 
+            row_names_gp = gpar(fontsize = input$textSizeHeatmap),
+            column_names_gp = gpar(fontsize = input$textSizeHeatmap), 
+            column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
+            column_title = paste("Top", nrow(countsHeatmapSig), sig, "DE Features:\n", design),
+            heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
           )
           figuresDataReactive[[paste0("heatmap", sig)]] <- heatmap
           # Download the count file
