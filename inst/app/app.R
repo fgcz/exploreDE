@@ -1,32 +1,15 @@
-library("shiny")
-library("shinydashboard")
-library("tidyverse")
-library("ggpubr")
-library("plotly")
-library("DESeq2")
-library("RColorBrewer")
-library("ComplexHeatmap")
-library("clusterProfiler")
-library("DT")
-library("colourpicker")
-library("writexl")
-library("circlize")
-library("ezRun")
-library("kableExtra")
-library("ggrepel")
-library("gplots")
-library("sortable")
-library("waiter")
-library("ggprism")
-library("ggbeeswarm")
-library("rstatix")
-library("gridExtra")
-library("shinylogs")
-library("parallel")
-library("plyr")
-library("shinycssloaders")
-library("GGally")
-library("patchwork")
+cat("loading packages...\n\n")
+packagesToLoad <- c(
+  "shiny", "shinydashboard", "tidyverse", "ggpubr", "plotly", "DESeq2", "RColorBrewer",
+  "ComplexHeatmap", "clusterProfiler", "DT", "colourpicker", "writexl", "circlize",
+  "ezRun", "kableExtra", "ggrepel", "gplots", "sortable", "waiter", "ggprism", "ggbeeswarm",
+  "rstatix", "gridExtra", "shinylogs", "parallel", "plyr", "shinycssloaders", "GGally", "patchwork",
+  "Matrix", "SingleCellExperiment"
+)
+invisible(lapply(packagesToLoad, function(pkg) {
+  suppressPackageStartupMessages(suppressWarnings(library(pkg, character.only = TRUE, quietly = TRUE)))
+}))
+cat("... packages loaded!")
 reactiveConsole(TRUE)
 
 ui = dashboardPage(
