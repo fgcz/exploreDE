@@ -22,7 +22,7 @@ if (!is.null(dataUrl)) {
   } else {
     dataDir <- paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl)
   }
-} else {
+} else if (is.null(dataUrl) & !exists("myDir")) {
   dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = NULL, closeButton = TRUE)
 }
