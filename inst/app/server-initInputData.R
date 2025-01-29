@@ -68,7 +68,7 @@ if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("
 }
 
 # Import RNA seq data from SUSHI ----
-if (grepl("gstore", dataDir)) {
+if (grepl("gstore", dataDir) | exists("fileSE")) {
   if (grepl("EzResult.RData", dataDir)) {
     dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
   }
