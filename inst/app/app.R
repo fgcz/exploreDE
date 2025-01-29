@@ -105,6 +105,7 @@ ui = dashboardPage(
 )
 
 server = function(input, output, session) {
+  message("dddd")
   source("server-initInputData.R", local = TRUE)
   source("server-summary.R", local = TRUE)
   source("server-DEGTable.R", local = TRUE)
