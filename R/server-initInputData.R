@@ -27,6 +27,11 @@ if (!is.null(dataUrl)) {
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = NULL, closeButton = TRUE)
 }
 
+# 2025-01-29: Read in local proteomics file if specified 
+if(exists("myDir")) {
+  dataDir <- myDir
+}
+
 if(!exists("dataDir")) {
   showModal(modalDialog(
     title = "Something went wrong",
@@ -40,7 +45,7 @@ is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))  # Checks if it starts with http:// or https://
 }
 # Import proteomics data from pStore
-if (grepl("rds", dataDir) & grepl("Proteomics|prolfqua", dataDir)) {
+if (grepl("rds", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("rds", dataDir) & exists("myDir")) {
   if (is_url(dataDir)) {
     se <- readRDS(url(dataDir))  # If it's a URL
   } else {
@@ -55,7 +60,7 @@ if (grepl("rds", dataDir) & grepl("Proteomics|prolfqua", dataDir)) {
   }
   se <- readRDS(myTempFile)
 }
-if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir)) {
+if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("rds|zip", dataDir) & exists("myDir")) {
   contrasts <- names(rowData(se))[grep("^constrast_", names(rowData(se)))] %>% gsub("constrast_", "", .)
   output$proteomicsContrastSelectorUI <- renderUI({
     selectInput(inputId = "contrastSelected", label = "Select contrast to view", choices = contrasts, selected = contrasts[1], multiple = F, selectize = T)
