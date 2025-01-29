@@ -2,7 +2,7 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' myDir <- "/srv/GT/analysis/peter/rs_connect_apps2/exploreDE/SummarizedExperiment.rds"
+#' myDir <- system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE")
 #' exploreDE(myDir)
 #' }
 exploreDE <- function(fileSE = NA) {
