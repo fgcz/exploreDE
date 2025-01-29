@@ -4,7 +4,7 @@ packagesToLoad <- c(
   "ComplexHeatmap", "clusterProfiler", "DT", "colourpicker", "writexl", "circlize",
   "ezRun", "kableExtra", "ggrepel", "gplots", "sortable", "waiter", "ggprism", "ggbeeswarm",
   "rstatix", "gridExtra", "shinylogs", "parallel", "plyr", "shinycssloaders", "GGally", "patchwork",
-  "Matrix", "SingleCellExperiment"
+  "Matrix", "SingleCellExperiment", "fresh"
 )
 invisible(lapply(packagesToLoad, function(pkg) {
   suppressPackageStartupMessages(suppressWarnings(library(pkg, character.only = TRUE, quietly = TRUE)))
@@ -12,8 +12,14 @@ invisible(lapply(packagesToLoad, function(pkg) {
 cat("... packages loaded!")
 reactiveConsole(TRUE)
 
+my_theme = create_theme(
+  adminlte_color(
+    light_blue = "#86a5bf"
+  )
+)
+
+
 ui = dashboardPage(
-  skin = "blue",
   dashboardHeader(
     title = "Explore DE",
     tags$li(
@@ -63,13 +69,45 @@ ui = dashboardPage(
     )
   ), 
   dashboardBody(
+    use_theme(my_theme),
     tags$head(
       tags$link(rel = "shortcut icon", href = "sushi.png"),
-      tags$head(tags$style(HTML("
-                              .shiny-split-layout > div {
-                                overflow: visible;
-                              }
-                              ")))
+      tags$head(
+        tags$style(
+          HTML("
+            .shiny-split-layout > div {
+              overflow: visible;
+            }
+            .box.box-solid.box-primary>.box-header {
+            color:#fff; background:#86a5bf}
+            .box.box-solid.box-primary{
+            border-bottom-color:#86a5bf;
+            border-left-color:#86a5bf;
+            border-right-color:#86a5bf;
+            border-top-color:#86a5bf;
+            }
+            .box.box-solid.box-success>.box-header {
+            color:#fff; background:#99adad}
+            .box.box-solid.box-success{
+            border-bottom-color:#99adad;
+            border-left-color:#99adad;
+            border-right-color:#99adad;
+            border-top-color:#99adad;
+            }
+            .skin-blue .main-sidebar .sidebar .sidebar-menu a:hover{
+            background-color: #93bac2;
+            }
+            .skin-blue .sidebar-menu > li:hover > a {
+              border-left-color: #455b73;
+            }
+            /* body */
+            .content-wrapper, .right-side {
+            background-color: #FFFFFF;
+            }
+            "
+            )
+          )
+        )
       ),
     use_waiter(),
     tabItems(
@@ -88,7 +126,6 @@ ui = dashboardPage(
 )
 
 server = function(input, output, session) {
-  message("dddd")
   source("server-initInputData.R", local = TRUE)
   source("server-summary.R", local = TRUE)
   source("server-DEGTable.R", local = TRUE)

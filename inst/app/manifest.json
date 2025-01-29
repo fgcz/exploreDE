@@ -133,8 +133,8 @@
         "Package": "BiocManager",
         "Title": "Access the Bioconductor Project Package Repository",
         "Description": "A convenient tool to install and update Bioconductor packages.",
-        "Version": "1.30.25",
-        "Authors@R": "c(\n    person(\"Martin\", \"Morgan\", email = \"martin.morgan@roswellpark.org\",\n        role = \"aut\", comment = c(ORCID = \"0000-0002-5874-8148\")),\n    person(\"Marcel\", \"Ramos\", email = \"marcel.ramos@sph.cuny.edu\",\n        role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-3242-0582\")))",
+        "Version": "1.30.23",
+        "Authors@R": "c(\n    person(\"Martin\", \"Morgan\", email = \"martin.morgan@roswellpark.org\",\n        role = \"aut\", comment = c(ORCID = \"0000-0002-5874-8148\")),\n    person(\"Marcel\", \"Ramos\", email = \"marcel.ramos@roswellpark.org\",\n        role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-3242-0582\")))",
         "Imports": "utils",
         "Suggests": "BiocVersion, BiocStyle, remotes, rmarkdown, testthat, withr,\ncurl, knitr",
         "URL": "https://bioconductor.github.io/BiocManager/",
@@ -144,19 +144,12 @@
         "Encoding": "UTF-8",
         "RoxygenNote": "7.3.1",
         "NeedsCompilation": "no",
-        "Packaged": "2024-08-27 21:44:40 UTC; mr148",
+        "Packaged": "2024-05-03 17:19:41 UTC; mr148",
         "Author": "Martin Morgan [aut] (<https://orcid.org/0000-0002-5874-8148>),\n  Marcel Ramos [aut, cre] (<https://orcid.org/0000-0002-3242-0582>)",
-        "Maintainer": "Marcel Ramos <marcel.ramos@sph.cuny.edu>",
+        "Maintainer": "Marcel Ramos <marcel.ramos@roswellpark.org>",
         "Repository": "CRAN",
-        "Date/Publication": "2024-08-28 14:20:02 UTC",
-        "Built": "R 4.4.0; ; 2024-10-15 12:03:36 UTC; unix",
-        "RemoteType": "standard",
-        "RemotePkgRef": "BiocManager",
-        "RemoteRef": "BiocManager",
-        "RemoteRepos": "https://stat.ethz.ch/CRAN",
-        "RemoteReposName": "CRAN",
-        "RemotePkgPlatform": "source",
-        "RemoteSha": "1.30.25"
+        "Date/Publication": "2024-05-04 06:20:02 UTC",
+        "Built": "R 4.4.0; ; 2024-06-08 10:55:30 UTC; unix"
       }
     },
     "BiocParallel": {
@@ -377,74 +370,6 @@
         "Repository": "CRAN",
         "Date/Publication": "2024-04-04 05:03:17 UTC",
         "Built": "R 4.4.0; ; 2024-06-08 11:30:16 UTC; unix"
-      }
-    },
-    "DelayedArray": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "DelayedArray",
-        "Title": "A unified framework for working transparently with on-disk and\nin-memory array-like datasets",
-        "Description": "Wrapping an array-like object (typically an on-disk object) in\n\ta DelayedArray object allows one to perform common array operations\n\ton it without loading the object in memory. In order to reduce memory\n\tusage and optimize performance, operations on the object are either\n\tdelayed or executed using a block processing mechanism. Note that\n\tthis also works on in-memory array-like objects like DataFrame objects\n\t(typically with Rle columns), Matrix objects, ordinary arrays and,\n\tdata frames.",
-        "biocViews": "Infrastructure, DataRepresentation, Annotation,\nGenomeAnnotation",
-        "URL": "https://bioconductor.org/packages/DelayedArray",
-        "BugReports": "https://github.com/Bioconductor/DelayedArray/issues",
-        "Version": "0.30.1",
-        "License": "Artistic-2.0",
-        "Encoding": "UTF-8",
-        "Authors@R": "c(\n\tperson(\"Hervé\", \"Pagès\", role=c(\"aut\", \"cre\"),\n\t\temail=\"hpages.on.github@gmail.com\"),\n\tperson(\"Aaron\", \"Lun\", role=\"ctb\",\n\t\temail=\"infinite.monkeys.with.keyboards@gmail.com\"),\n\tperson(\"Peter\", \"Hickey\", role=\"ctb\",\n\t\temail=\"peter.hickey@gmail.com\"))",
-        "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>",
-        "Depends": "R (>= 4.0.0), methods, stats4, Matrix, BiocGenerics (>=\n0.43.4), MatrixGenerics (>= 1.1.3), S4Vectors (>= 0.27.2),\nIRanges (>= 2.17.3), S4Arrays (>= 1.3.5), SparseArray (>=\n1.1.10)",
-        "Imports": "stats",
-        "LinkingTo": "S4Vectors",
-        "Suggests": "BiocParallel, HDF5Array (>= 1.17.12), genefilter,\nSummarizedExperiment, airway, lobstr, DelayedMatrixStats,\nknitr, rmarkdown, BiocStyle, RUnit",
-        "VignetteBuilder": "knitr",
-        "Collate": "compress_atomic_vector.R SparseArraySeed-class.R\nSparseArraySeed-utils.R read_sparse_block.R\nmakeCappedVolumeBox.R AutoBlock-global-settings.R AutoGrid.R\nblockApply.R DelayedOp-class.R DelayedSubset-class.R\nDelayedAperm-class.R DelayedUnaryIsoOpStack-class.R\nDelayedUnaryIsoOpWithArgs-class.R DelayedSubassign-class.R\nDelayedSetDimnames-class.R DelayedNaryIsoOp-class.R\nDelayedAbind-class.R showtree.R simplify.R DelayedArray-class.R\nDelayedArray-subsetting.R chunkGrid.R RealizationSink-class.R\nrealize.R DelayedArray-utils.R DelayedArray-stats.R\nDelayedMatrix-stats.R DelayedMatrix-rowsum.R\nDelayedMatrix-mult.R ConstantArray-class.R RleArraySeed-class.R\nRleArray-class.R compat.R zzz.R",
-        "git_url": "https://git.bioconductor.org/packages/DelayedArray",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "099a643",
-        "git_last_commit_date": "2024-05-06",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-05-07",
-        "NeedsCompilation": "yes",
-        "Packaged": "2024-05-07 20:49:45 UTC; biocbuild",
-        "Author": "Hervé Pagès [aut, cre],\n  Aaron Lun [ctb],\n  Peter Hickey [ctb]",
-        "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 12:37:49 UTC; unix"
-      }
-    },
-    "DelayedMatrixStats": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "DelayedMatrixStats",
-        "Type": "Package",
-        "Title": "Functions that Apply to Rows and Columns of 'DelayedMatrix'\nObjects",
-        "Version": "1.26.0",
-        "Date": "2024-04-23",
-        "Authors@R": "c(person(\"Peter\", \"Hickey\", role = c(\"aut\", \"cre\"),\n    email = \"peter.hickey@gmail.com\", comment = c(ORCID = \"0000-0002-8153-6258\")),\n    person(\"Hervé\", \"Pagès\", role = \"ctb\", email = \"hpages.on.github@gmail.com\"),\n    person(\"Aaron\", \"Lun\", role = \"ctb\", email = \"infinite.monkeys.with.keyboards@gmail.com\"))",
-        "Description": "A port of the 'matrixStats' API for use with DelayedMatrix objects \n  from the 'DelayedArray' package. High-performing functions operating on rows \n  and columns of DelayedMatrix objects, e.g. col / rowMedians(), \n  col / rowRanks(), and col / rowSds(). Functions optimized per data type and \n  for subsetted calculations such that both memory usage and processing time is \n  minimized.",
-        "License": "MIT + file LICENSE",
-        "Encoding": "UTF-8",
-        "Roxygen": "list(markdown = TRUE)",
-        "RoxygenNote": "7.3.1",
-        "Depends": "MatrixGenerics (>= 1.15.1), DelayedArray (>= 0.27.10)",
-        "Imports": "methods, sparseMatrixStats (>= 1.13.2), Matrix (>= 1.5-0),\nS4Vectors (>= 0.17.5), IRanges (>= 2.25.10)",
-        "Suggests": "testthat, knitr, rmarkdown, BiocStyle, microbenchmark,\nprofmem, HDF5Array, matrixStats (>= 1.0.0)",
-        "VignetteBuilder": "knitr",
-        "URL": "https://github.com/PeteHaitch/DelayedMatrixStats",
-        "BugReports": "https://github.com/PeteHaitch/DelayedMatrixStats/issues",
-        "biocViews": "Infrastructure, DataRepresentation, Software",
-        "git_url": "https://git.bioconductor.org/packages/DelayedMatrixStats",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "5774778",
-        "git_last_commit_date": "2024-04-30",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-04-30",
-        "NeedsCompilation": "no",
-        "Packaged": "2024-05-01 03:28:59 UTC; biocbuild",
-        "Author": "Peter Hickey [aut, cre] (<https://orcid.org/0000-0002-8153-6258>),\n  Hervé Pagès [ctb],\n  Aaron Lun [ctb]",
-        "Maintainer": "Peter Hickey <peter.hickey@gmail.com>",
-        "Built": "R 4.4.0; ; 2024-06-08 12:41:01 UTC; unix"
       }
     },
     "GO.db": {
@@ -821,39 +746,6 @@
         "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 11:22:21 UTC; unix"
       }
     },
-    "MatrixGenerics": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "MatrixGenerics",
-        "Title": "S4 Generic Summary Statistic Functions that Operate on\nMatrix-Like Objects",
-        "Description": "S4 generic functions modeled after the 'matrixStats' API\n    for alternative matrix implementations. Packages with alternative matrix\n    implementation can depend on this package and implement the generic\n    functions that are defined here for a useful set of row and column\n    summary statistics. Other package developers can import this package\n    and handle a different matrix implementations without worrying\n    about incompatibilities.",
-        "biocViews": "Infrastructure, Software",
-        "URL": "https://bioconductor.org/packages/MatrixGenerics",
-        "BugReports": "https://github.com/Bioconductor/MatrixGenerics/issues",
-        "Version": "1.16.0",
-        "License": "Artistic-2.0",
-        "Encoding": "UTF-8",
-        "Authors@R": "c(person(\"Constantin\", \"Ahlmann-Eltze\",\n                email = \"artjom31415@googlemail.com\", role = c(\"aut\"),\n                comment = c(ORCID = \"0000-0002-3762-068X\")),\n            person(\"Peter\", \"Hickey\", role = c(\"aut\", \"cre\"),\n                email = \"peter.hickey@gmail.com\",\n                comment = c(ORCID = \"0000-0002-8153-6258\")),\n            person(\"Hervé\", \"Pagès\", email = \"hpages.on.github@gmail.com\",\n                role = \"aut\"))",
-        "Depends": "matrixStats (>= 1.0.0)",
-        "Imports": "methods",
-        "Suggests": "Matrix, sparseMatrixStats, SparseArray, DelayedArray,\nDelayedMatrixStats, SummarizedExperiment, testthat (>= 2.1.0)",
-        "RoxygenNote": "7.3.1",
-        "Roxygen": "list(markdown = TRUE, old_usage = TRUE)",
-        "Collate": "'MatrixGenerics-package.R' 'rowAlls.R' 'rowAnyNAs.R'\n'rowAnys.R' 'rowAvgsPerColSet.R' 'rowCollapse.R' 'rowCounts.R'\n'rowCummaxs.R' 'rowCummins.R' 'rowCumprods.R' 'rowCumsums.R'\n'rowDiffs.R' 'rowIQRDiffs.R' 'rowIQRs.R' 'rowLogSumExps.R'\n'rowMadDiffs.R' 'rowMads.R' 'rowMaxs.R' 'rowMeans.R'\n'rowMeans2.R' 'rowMedians.R' 'rowMins.R' 'rowOrderStats.R'\n'rowProds.R' 'rowQuantiles.R' 'rowRanges.R' 'rowRanks.R'\n'rowSdDiffs.R' 'rowSds.R' 'rowSums.R' 'rowSums2.R'\n'rowTabulates.R' 'rowVarDiffs.R' 'rowVars.R'\n'rowWeightedMads.R' 'rowWeightedMeans.R' 'rowWeightedMedians.R'\n'rowWeightedSds.R' 'rowWeightedVars.R'",
-        "git_url": "https://git.bioconductor.org/packages/MatrixGenerics",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "80e0be9",
-        "git_last_commit_date": "2024-04-30",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-04-30",
-        "NeedsCompilation": "no",
-        "Packaged": "2024-05-01 04:28:02 UTC; biocbuild",
-        "Author": "Constantin Ahlmann-Eltze [aut]\n    (<https://orcid.org/0000-0002-3762-068X>),\n  Peter Hickey [aut, cre] (<https://orcid.org/0000-0002-8153-6258>),\n  Hervé Pagès [aut]",
-        "Maintainer": "Peter Hickey <peter.hickey@gmail.com>",
-        "Built": "R 4.4.0; ; 2024-06-08 12:15:33 UTC; unix"
-      }
-    },
     "MatrixModels": {
       "Source": "CRAN",
       "Repository": "https://stat.ethz.ch/CRAN",
@@ -1147,39 +1039,6 @@
         "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 12:32:29 UTC; unix"
       }
     },
-    "S4Arrays": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "S4Arrays",
-        "Title": "Foundation of array-like containers in Bioconductor",
-        "Description": "The S4Arrays package defines the Array virtual class to be\n\textended by other S4 classes that wish to implement a container\n\twith an array-like semantic. It also provides: (1) low-level\n\tfunctionality meant to help the developer of such container to\n\timplement basic operations like display, subsetting, or coercion\n\tof their array-like objects to an ordinary matrix or array, and\n\t(2) a framework that facilitates block processing of array-like\n\tobjects (typically on-disk objects).",
-        "biocViews": "Infrastructure, DataRepresentation",
-        "URL": "https://bioconductor.org/packages/S4Arrays",
-        "BugReports": "https://github.com/Bioconductor/S4Arrays/issues",
-        "Version": "1.4.1",
-        "License": "Artistic-2.0",
-        "Encoding": "UTF-8",
-        "Authors@R": "c(\n\tperson(\"Hervé\", \"Pagès\", role=c(\"aut\", \"cre\"),\n\t\temail=\"hpages.on.github@gmail.com\"),\n\tperson(\"Jacques\", \"Serizay\", role=\"ctb\"))",
-        "Depends": "R (>= 4.3.0), methods, Matrix, abind, BiocGenerics (>=\n0.45.2), S4Vectors, IRanges",
-        "Imports": "stats, crayon",
-        "LinkingTo": "S4Vectors",
-        "Suggests": "BiocParallel, SparseArray (>= 0.0.4), DelayedArray, testthat,\nknitr, rmarkdown, BiocStyle",
-        "VignetteBuilder": "knitr",
-        "Collate": "utils.R rowsum.R abind.R aperm2.R array_selection.R\nNindex-utils.R Array-class.R dim-tuning-utils.R\nArrayGrid-class.R mapToGrid.R extract_array.R type.R\nis_sparse.R read_block.R write_block.R show-utils.R zzz.R",
-        "git_url": "https://git.bioconductor.org/packages/S4Arrays",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "472c245",
-        "git_last_commit_date": "2024-05-20",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-05-20",
-        "NeedsCompilation": "yes",
-        "Packaged": "2024-05-20 23:05:24 UTC; biocbuild",
-        "Author": "Hervé Pagès [aut, cre],\n  Jacques Serizay [ctb]",
-        "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>",
-        "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 12:23:27 UTC; unix"
-      }
-    },
     "S4Vectors": {
       "Source": "Bioconductor",
       "Repository": "https://bioconductor.org/packages/3.19/bioc",
@@ -1211,69 +1070,6 @@
         "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 11:17:55 UTC; unix"
       }
     },
-    "SingleCellExperiment": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "SingleCellExperiment",
-        "Version": "1.26.0",
-        "Date": "2024-03-25",
-        "Title": "S4 Classes for Single Cell Data",
-        "Authors@R": "c(\n        person(\"Aaron\", \"Lun\", role=c(\"aut\", \"cph\"), email=\"infinite.monkeys.with.keyboards@gmail.com\"),\n        person(\"Davide\",\"Risso\", role=c(\"aut\",\"cre\", \"cph\"), email=\"risso.davide@gmail.com\"),\n        person(\"Keegan\", \"Korthauer\", role=\"ctb\"),\n        person(\"Kevin\", \"Rue-Albrecht\", role=\"ctb\"),\n        person(\"Luke\", \"Zappia\", role = \"ctb\", comment = c(ORCID = \"0000-0001-7744-8565\", github = \"lazappi\")))",
-        "Depends": "SummarizedExperiment",
-        "Imports": "methods, utils, stats, S4Vectors, BiocGenerics, GenomicRanges,\nDelayedArray",
-        "Suggests": "testthat, BiocStyle, knitr, rmarkdown, Matrix, scRNAseq (>=\n2.9.1), Rtsne",
-        "biocViews": "ImmunoOncology, DataRepresentation, DataImport,\nInfrastructure, SingleCell",
-        "Description": "Defines a S4 class for storing data from single-cell\n        experiments. This includes specialized methods to store and\n        retrieve spike-in information, dimensionality reduction\n        coordinates and size factors for each cell, along with the\n        usual metadata for genes and libraries.",
-        "License": "GPL-3",
-        "VignetteBuilder": "knitr",
-        "RoxygenNote": "7.3.1",
-        "git_url": "https://git.bioconductor.org/packages/SingleCellExperiment",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "9dae229",
-        "git_last_commit_date": "2024-04-30",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-04-30",
-        "NeedsCompilation": "no",
-        "Packaged": "2024-05-01 06:05:01 UTC; biocbuild",
-        "Author": "Aaron Lun [aut, cph],\n  Davide Risso [aut, cre, cph],\n  Keegan Korthauer [ctb],\n  Kevin Rue-Albrecht [ctb],\n  Luke Zappia [ctb] (<https://orcid.org/0000-0001-7744-8565>, lazappi)",
-        "Maintainer": "Davide Risso <risso.davide@gmail.com>",
-        "Built": "R 4.4.0; ; 2024-06-08 12:44:28 UTC; unix"
-      }
-    },
-    "SparseArray": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "SparseArray",
-        "Title": "High-performance sparse data representation and manipulation in\nR",
-        "Description": "The SparseArray package provides array-like containers for\n\tefficient in-memory representation of multidimensional sparse data in\n\tR (arrays and matrices). The package defines the SparseArray virtual\n\tclass and two concrete subclasses: COO_SparseArray and SVT_SparseArray.\n\tEach subclass uses its own internal representation of the nonzero\n\tmultidimensional data: the \"COO layout\" and the \"SVT layout\",\n\trespectively. SVT_SparseArray objects mimic as much as possible the\n\tbehavior of ordinary matrix and array objects in base R. In particular,\n\tthey suppport most of the \"standard matrix and array API\" defined in\n\tbase R and in the matrixStats package from CRAN.",
-        "biocViews": "Infrastructure, DataRepresentation",
-        "URL": "https://bioconductor.org/packages/SparseArray",
-        "BugReports": "https://github.com/Bioconductor/SparseArray/issues",
-        "Version": "1.4.8",
-        "License": "Artistic-2.0",
-        "Encoding": "UTF-8",
-        "Authors@R": "c(\n\tperson(\"Hervé\", \"Pagès\", role=c(\"aut\", \"cre\"),\n\t\temail=\"hpages.on.github@gmail.com\"),\n\tperson(\"Vince\", \"Carey\", role=\"fnd\",\n\t\temail=\"stvjc@channing.harvard.edu\"),\n\tperson(\"Rafael A.\", \"Irizarry\", role=\"fnd\",\n\t\temail=\"rafa@ds.harvard.edu\"),\n\tperson(\"Jacques\", \"Serizay\", role=\"ctb\"))",
-        "Depends": "R (>= 4.3.0), methods, Matrix, BiocGenerics (>= 0.43.1),\nMatrixGenerics (>= 1.11.1), S4Vectors, S4Arrays (>= 1.4.1)",
-        "Imports": "utils, stats, matrixStats, IRanges, XVector",
-        "LinkingTo": "S4Vectors, IRanges, XVector",
-        "Suggests": "DelayedArray, testthat, knitr, rmarkdown, BiocStyle",
-        "VignetteBuilder": "knitr",
-        "Collate": "utils.R options.R OPBufTree.R thread-control.R\nsparseMatrix-utils.R SparseArray-class.R\nCOO_SparseArray-class.R SVT_SparseArray-class.R\nextract_sparse_array.R read_block_as_sparse.R\nSparseArray-dim-tuning.R SparseArray-aperm.R\nSparseArray-subsetting.R SparseArray-subassignment.R\nSparseArray-abind.R SparseArray-summarization.R\nSparseArray-Ops-methods.R SparseArray-Math-methods.R\nSparseArray-Complex-methods.R SparseArray-misc-methods.R\nSparseMatrix-mult.R matrixStats-methods.R rowsum-methods.R\nrandomSparseArray.R readSparseCSV.R zzz.R",
-        "git_url": "https://git.bioconductor.org/packages/SparseArray",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "3d08cdc",
-        "git_last_commit_date": "2024-05-24",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-05-24",
-        "NeedsCompilation": "yes",
-        "Packaged": "2024-05-24 23:26:31 UTC; biocbuild",
-        "Author": "Hervé Pagès [aut, cre],\n  Vince Carey [fnd],\n  Rafael A. Irizarry [fnd],\n  Jacques Serizay [ctb]",
-        "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>",
-        "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 12:32:58 UTC; unix"
-      }
-    },
     "SparseM": {
       "Source": "CRAN",
       "Repository": "https://stat.ethz.ch/CRAN",
@@ -1296,38 +1092,6 @@
         "Packaged": "2024-05-30 15:31:25 UTC; roger",
         "Date/Publication": "2024-05-30 16:20:02 UTC",
         "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 11:07:04 UTC; unix"
-      }
-    },
-    "SummarizedExperiment": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "SummarizedExperiment",
-        "Title": "SummarizedExperiment container",
-        "Description": "The SummarizedExperiment container contains one or more assays,\n\teach represented by a matrix-like object of numeric or other mode.\n\tThe rows typically represent genomic ranges of interest and the columns\n\trepresent samples.",
-        "biocViews": "Genetics, Infrastructure, Sequencing, Annotation, Coverage,\nGenomeAnnotation",
-        "URL": "https://bioconductor.org/packages/SummarizedExperiment",
-        "BugReports": "https://github.com/Bioconductor/SummarizedExperiment/issues",
-        "Version": "1.34.0",
-        "License": "Artistic-2.0",
-        "Encoding": "UTF-8",
-        "Authors@R": "c(\n\tperson(\"Martin\", \"Morgan\", role=\"aut\"),\n\tperson(\"Valerie\", \"Obenchain\", role=\"aut\"),\n\tperson(\"Jim\", \"Hester\", role=\"aut\"),\n\tperson(\"Hervé\", \"Pagès\", role=c(\"aut\", \"cre\"),\n\t\temail=\"hpages.on.github@gmail.com\"))",
-        "Depends": "R (>= 4.0.0), methods, MatrixGenerics (>= 1.1.3),\nGenomicRanges (>= 1.55.2), Biobase",
-        "Imports": "utils, stats, tools, Matrix, BiocGenerics (>= 0.37.0),\nS4Vectors (>= 0.33.7), IRanges (>= 2.23.9), GenomeInfoDb (>=\n1.13.1), S4Arrays (>= 1.1.1), DelayedArray (>= 0.27.1)",
-        "Suggests": "HDF5Array (>= 1.7.5), annotate, AnnotationDbi, hgu95av2.db,\nGenomicFeatures, TxDb.Hsapiens.UCSC.hg19.knownGene, jsonlite,\nrhdf5, airway (>= 1.15.1), BiocStyle, knitr, rmarkdown, RUnit,\ntestthat, digest",
-        "VignetteBuilder": "knitr",
-        "Collate": "Assays-class.R SummarizedExperiment-class.R\nRangedSummarizedExperiment-class.R intra-range-methods.R\ninter-range-methods.R coverage-methods.R combine-methods.R\nfindOverlaps-methods.R nearest-methods.R\nmakeSummarizedExperimentFromExpressionSet.R\nmakeSummarizedExperimentFromDataFrame.R\nmakeSummarizedExperimentFromLoom.R zzz.R",
-        "git_url": "https://git.bioconductor.org/packages/SummarizedExperiment",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "503f180",
-        "git_last_commit_date": "2024-04-30",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-05-01",
-        "NeedsCompilation": "no",
-        "Packaged": "2024-05-01 23:41:24 UTC; biocbuild",
-        "Author": "Martin Morgan [aut],\n  Valerie Obenchain [aut],\n  Jim Hester [aut],\n  Hervé Pagès [aut, cre]",
-        "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>",
-        "Built": "R 4.4.0; ; 2024-06-08 12:42:53 UTC; unix"
       }
     },
     "UCSC.utils": {
@@ -1562,40 +1326,6 @@
         "Repository": "CRAN",
         "Date/Publication": "2015-07-28 08:03:37",
         "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 10:56:17 UTC; unix"
-      }
-    },
-    "beachmat": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "beachmat",
-        "Version": "2.20.0",
-        "Date": "2024-03-28",
-        "Title": "Compiling Bioconductor to Handle Each Matrix Type",
-        "Encoding": "UTF-8",
-        "Authors@R": "c(person(\"Aaron\", \"Lun\", role = c(\"aut\", \"cre\"), email = \"infinite.monkeys.with.keyboards@gmail.com\"),\n        person(\"Hervé\", \"Pagès\", role=\"aut\"),\n        person(\"Mike\", \"Smith\", role=\"aut\"))",
-        "Imports": "methods, DelayedArray (>= 0.27.2), SparseArray, BiocGenerics,\nMatrix, Rcpp",
-        "Suggests": "testthat, BiocStyle, knitr, rmarkdown, rcmdcheck,\nBiocParallel, HDF5Array",
-        "LinkingTo": "Rcpp",
-        "biocViews": "DataRepresentation, DataImport, Infrastructure",
-        "Description": "\n    Provides a consistent C++ class interface for reading from a variety of commonly used matrix types. \n    Ordinary matrices and several sparse/dense Matrix classes are directly supported, \n    along with a subset of the delayed operations implemented in the DelayedArray package.\n    All other matrix-like objects are supported by calling back into R.",
-        "License": "GPL-3",
-        "NeedsCompilation": "yes",
-        "VignetteBuilder": "knitr",
-        "SystemRequirements": "C++17",
-        "URL": "https://github.com/tatami-inc/beachmat",
-        "BugReports": "https://github.com/tatami-inc/beachmat/issues",
-        "RoxygenNote": "7.3.1",
-        "git_url": "https://git.bioconductor.org/packages/beachmat",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "fe0b119",
-        "git_last_commit_date": "2024-04-30",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-04-30",
-        "Packaged": "2024-05-01 02:44:42 UTC; biocbuild",
-        "Author": "Aaron Lun [aut, cre],\n  Hervé Pagès [aut],\n  Mike Smith [aut]",
-        "Maintainer": "Aaron Lun <infinite.monkeys.with.keyboards@gmail.com>",
-        "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 12:40:34 UTC; unix"
       }
     },
     "bit": {
@@ -3733,32 +3463,6 @@
         "Repository": "CRAN",
         "Date/Publication": "2024-04-22 20:40:02 UTC",
         "Built": "R 4.4.0; ; 2024-06-08 11:11:10 UTC; unix"
-      }
-    },
-    "gtools": {
-      "Source": "CRAN",
-      "Repository": "https://stat.ethz.ch/CRAN",
-      "description": {
-        "Package": "gtools",
-        "Title": "Various R Programming Tools",
-        "Description": "Functions to assist in R programming, including:\n  - assist in developing, updating, and maintaining R and R packages ('ask', 'checkRVersion',\n    'getDependencies', 'keywords', 'scat'),\n  - calculate the logit and inverse logit transformations ('logit', 'inv.logit'),\n  - test if a value is missing, empty or contains only NA and NULL values ('invalid'),\n  - manipulate R's .Last function ('addLast'),\n  - define macros ('defmacro'),\n  - detect odd and even integers ('odd', 'even'),\n  - convert strings containing non-ASCII characters (like single quotes) to plain ASCII ('ASCIIfy'),\n  - perform a binary search ('binsearch'),\n  - sort strings containing both numeric and character components ('mixedsort'),\n  - create a factor variable from the quantiles of a continuous variable ('quantcut'),\n  - enumerate permutations and combinations ('combinations', 'permutation'),\n  - calculate and convert between fold-change and log-ratio ('foldchange',\n    'logratio2foldchange', 'foldchange2logratio'),\n  - calculate probabilities and generate random numbers from Dirichlet distributions\n    ('rdirichlet', 'ddirichlet'),\n  - apply a function over adjacent subsets of a vector ('running'),\n  - modify the TCP_NODELAY ('de-Nagle') flag for socket objects,\n  - efficient 'rbind' of data frames, even if the column names don't match ('smartbind'),\n  - generate significance stars from p-values ('stars.pval'),\n  - convert characters to/from ASCII codes ('asc', 'chr'),\n  - convert character vector to ASCII representation ('ASCIIfy'),\n  - apply title capitalization rules to a character vector ('capwords').",
-        "Version": "3.9.5",
-        "Authors@R": "c(person(\"Gregory R.\", \"Warnes\", role = \"aut\"),\n             person(\"Ben\", \"Bolker\", role = c(\"aut\", \"cre\"),\n                     email = \"bolker@mcmaster.ca\",\n                     comment=c(ORCID=\"0000-0002-2127-0443\")),\n             person(\"Thomas\", \"Lumley\", role = \"aut\"),\n             person(\"Arni\", \"Magnusson\", role = \"aut\"),\n             person(\"Bill\", \"Venables\", role = \"aut\"),\n             person(\"Genei\", \"Ryodan\", role = \"aut\"),\n             person(\"Steffen\", \"Moeller\", role = \"aut\"),\n             person(\"Ian\", \"Wilson\", role = \"ctb\"),\n             person(\"Mark\", \"Davis\", role = \"ctb\"),\n             person(\"Nitin\", \"Jain\", role=\"ctb\"),\n             person(\"Scott\", \"Chamberlain\", role = \"ctb\"))",
-        "License": "GPL-2",
-        "Depends": "methods, stats, utils",
-        "URL": "https://github.com/r-gregmisc/gtools",
-        "BugReports": "https://github.com/r-gregmisc/gtools/issues",
-        "Language": "en-US",
-        "Suggests": "car, gplots, knitr, rstudioapi, SGP, taxize",
-        "RoxygenNote": "7.2.3",
-        "Encoding": "UTF-8",
-        "NeedsCompilation": "yes",
-        "Packaged": "2023-11-19 00:52:21 UTC; bolker",
-        "Author": "Gregory R. Warnes [aut],\n  Ben Bolker [aut, cre] (<https://orcid.org/0000-0002-2127-0443>),\n  Thomas Lumley [aut],\n  Arni Magnusson [aut],\n  Bill Venables [aut],\n  Genei Ryodan [aut],\n  Steffen Moeller [aut],\n  Ian Wilson [ctb],\n  Mark Davis [ctb],\n  Nitin Jain [ctb],\n  Scott Chamberlain [ctb]",
-        "Maintainer": "Ben Bolker <bolker@mcmaster.ca>",
-        "Repository": "CRAN",
-        "Date/Publication": "2023-11-20 15:10:05 UTC",
-        "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 11:07:15 UTC; unix"
       }
     },
     "haven": {
@@ -5939,39 +5643,6 @@
         "Built": "R 4.4.0; ; 2024-06-08 12:29:28 UTC; unix"
       }
     },
-    "scuttle": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "scuttle",
-        "Type": "Package",
-        "Authors@R": "c(\n        person(\"Aaron\", \"Lun\", role = c(\"aut\", \"cre\"), email=\"infinite.monkeys.with.keyboards@gmail.com\"),\n        person(\"Davis\", \"McCarthy\", role=\"aut\")\n    )",
-        "Version": "1.14.0",
-        "Date": "2024-03-05",
-        "License": "GPL-3",
-        "Title": "Single-Cell RNA-Seq Analysis Utilities",
-        "Description": "\n    Provides basic utility functions for performing single-cell analyses,\n    focusing on simple normalization, quality control and data transformations.\n    Also provides some helper functions to assist development of other packages.",
-        "Depends": "SingleCellExperiment",
-        "Imports": "methods, utils, stats, Matrix, Rcpp, BiocGenerics, S4Vectors,\nBiocParallel, GenomicRanges, SummarizedExperiment,\nDelayedArray, DelayedMatrixStats, beachmat",
-        "Suggests": "BiocStyle, knitr, scRNAseq, rmarkdown, testthat, scran",
-        "VignetteBuilder": "knitr",
-        "biocViews": "ImmunoOncology, SingleCell, RNASeq, QualityControl,\nPreprocessing, Normalization, Transcriptomics, GeneExpression,\nSequencing, Software, DataImport",
-        "LinkingTo": "Rcpp, beachmat",
-        "SystemRequirements": "C++11",
-        "RoxygenNote": "7.2.3",
-        "NeedsCompilation": "yes",
-        "git_url": "https://git.bioconductor.org/packages/scuttle",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "7e2bcae",
-        "git_last_commit_date": "2024-04-30",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-04-30",
-        "Packaged": "2024-05-01 06:00:56 UTC; biocbuild",
-        "Author": "Aaron Lun [aut, cre],\n  Davis McCarthy [aut]",
-        "Maintainer": "Aaron Lun <infinite.monkeys.with.keyboards@gmail.com>",
-        "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 12:46:07 UTC; unix"
-      }
-    },
     "selectr": {
       "Source": "CRAN",
       "Repository": "https://stat.ethz.ch/CRAN",
@@ -6172,41 +5843,6 @@
         "Repository": "CRAN",
         "Date/Publication": "2023-02-01 10:10:02 UTC",
         "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 10:56:13 UTC; unix"
-      }
-    },
-    "sparseMatrixStats": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.19/bioc",
-      "description": {
-        "Package": "sparseMatrixStats",
-        "Type": "Package",
-        "Title": "Summary Statistics for Rows and Columns of Sparse Matrices",
-        "Version": "1.16.0",
-        "Authors@R": "person(\"Constantin\", \"Ahlmann-Eltze\", email = \"artjom31415@googlemail.com\", \n                  role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-3762-068X\"))",
-        "Description": "High performance functions for row and column operations on sparse matrices.\n    For example: col / rowMeans2, col / rowMedians, col / rowVars etc. Currently,\n    the optimizations are limited to data in the column sparse format. \n    This package is inspired by the matrixStats package by Henrik Bengtsson.",
-        "License": "MIT + file LICENSE",
-        "Encoding": "UTF-8",
-        "RoxygenNote": "7.3.1",
-        "LinkingTo": "Rcpp",
-        "Imports": "Rcpp, Matrix, matrixStats (>= 0.60.0), methods",
-        "Depends": "MatrixGenerics (>= 1.5.3)",
-        "Suggests": "testthat (>= 2.1.0), knitr, bench, rmarkdown, BiocStyle",
-        "SystemRequirements": "C++11",
-        "VignetteBuilder": "knitr",
-        "URL": "https://github.com/const-ae/sparseMatrixStats",
-        "BugReports": "https://github.com/const-ae/sparseMatrixStats/issues",
-        "biocViews": "Infrastructure, Software, DataRepresentation",
-        "git_url": "https://git.bioconductor.org/packages/sparseMatrixStats",
-        "git_branch": "RELEASE_3_19",
-        "git_last_commit": "2ad650c",
-        "git_last_commit_date": "2024-04-30",
-        "Repository": "Bioconductor 3.19",
-        "Date/Publication": "2024-04-30",
-        "NeedsCompilation": "yes",
-        "Packaged": "2024-05-01 06:08:30 UTC; biocbuild",
-        "Author": "Constantin Ahlmann-Eltze [aut, cre]\n    (<https://orcid.org/0000-0002-3762-068X>)",
-        "Maintainer": "Constantin Ahlmann-Eltze <artjom31415@googlemail.com>",
-        "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2024-06-08 12:29:33 UTC; unix"
       }
     },
     "statmod": {
@@ -7258,7 +6894,7 @@
   },
   "files": {
     "app.R": {
-      "checksum": "15c43baf48d77fff92bb0193929fe9a5"
+      "checksum": "739c471010f1203503b867d44cebebac"
     },
     "input_example.R": {
       "checksum": "8d2170f0e5ff1bf5f2623c5c86902937"
@@ -7285,7 +6921,7 @@
       "checksum": "1e7318c3028eb812bfb67c73d6df2b80"
     },
     "server-initInputData.R": {
-      "checksum": "ac4e98dc8e00dd4194c71bf849c2fe65"
+      "checksum": "906d9f50ed4ed2c1a892eff525760fde"
     },
     "server-kegg.R": {
       "checksum": "563dcbdb4a6af0630ef5a65cf922ec59"
