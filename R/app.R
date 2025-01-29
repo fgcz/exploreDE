@@ -42,7 +42,7 @@ ui = dashboardPage(
     tags$li(
       a(href = 'http://www.fgcz.ch', 
         target = "_blank",
-        img(src = 'fgcz_logo.png', title = "FGCZ", height = "30px"),
+        img(src = '../inst/www/fgcz_logo.png', title = "FGCZ", height = "30px"),
         style = "padding-top:10px; padding-bottom:5px;"),
       class = "dropdown"),
     tags$li(
