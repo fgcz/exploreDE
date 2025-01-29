@@ -1,0 +1,40 @@
+Package: exploreDE
+Type: Package
+Title: exploreDE
+Version: 0.1.0
+Author: Peter Leary [aut, cre]
+Maintainer: Peter Leary <you@example.com>
+Description: exploreDE
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports:
+  shiny
+  shinydashboard
+  tidyverse
+  ggpubr
+  plotly
+  DESeq2
+  RColorBrewer
+  ComplexHeatmap
+  clusterProfiler
+  DT
+  colourpicker
+  writexl
+  circlize
+  ezRun
+  kableExtra
+  ggrepel
+  gplots
+  sortable
+  waiter
+  ggprism
+  ggbeeswarm
+  rstatix
+  gridExtra
+  shinylogs
+  parallel
+  plyr
+  shinycssloaders
+  GGally
+  patchwork
+RoxygenNote: 7.2.3
