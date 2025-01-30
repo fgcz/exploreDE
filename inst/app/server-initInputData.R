@@ -92,12 +92,12 @@ inputDataReactive <- reactive({
   
   # Load proteomics data ----
   if (grepl("rds|zip", dataDir)) {
-    return(convert_proteomics_se(se))
+    return(exploreDE::convert_proteomics_se(se))
   }
   
   # Load RNA Seq data ----
   if (file.exists(file.path(dataDir, "deResult.rds"))) {
-    return(convert_genomics_se(se, dataDir))
+    return(exploreDE::convert_genomics_se(se, dataDir))
   }
 })
 inputDataReactive()$dataType
