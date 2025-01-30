@@ -3010,7 +3010,17 @@
         "URL": "https://github.com/fgcz/exploreDE",
         "Encoding": "UTF-8",
         "Imports": "shiny,\nshinydashboard,\ntidyverse,\nggpubr,\nplotly,\nDESeq2,\nRColorBrewer,\nComplexHeatmap,\nclusterProfiler,\nDT,\ncolourpicker,\nwritexl,\ncirclize,\nezRun,\nkableExtra,\nggrepel,\ngplots,\nsortable,\nwaiter,\nggprism,\nggbeeswarm,\nrstatix,\ngridExtra,\nshinylogs,\nparallel,\nplyr,\nshinycssloaders,\nGGally,\npatchwork,\nMatrix,\nSingleCellExperiment,\nfresh",
-        "RoxygenNote": "7.3.2"
+        "RoxygenNote": "7.3.2",
+        "RemoteType": "github",
+        "RemoteHost": "api.github.com",
+        "RemoteRepo": "exploreDE",
+        "RemoteUsername": "fgcz",
+        "RemoteSha": "890ef765a4edf1674f66948a393948fafc46e66d",
+        "GithubRepo": "exploreDE",
+        "GithubUsername": "fgcz",
+        "GithubRef": "HEAD",
+        "GithubSHA1": "890ef765a4edf1674f66948a393948fafc46e66d",
+        "NeedsCompilation": "no"
       }
     },
     "ezRun": {
