@@ -84,11 +84,6 @@ if (grepl("gstore", dataDir) | exists("fileSE")) {
   }
 }
 
-message("======================\n\n")
-message("------------------------\n")
-message(ls())
-message("------------------------\n")
-
 # Generate inputDataReactive ----
 inputDataReactive <- reactive({
   waiter <- waiter::Waiter$new(fadeout = TRUE, color = "#86a5bf")

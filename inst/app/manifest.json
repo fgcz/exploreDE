@@ -6644,7 +6644,7 @@
   },
   "files": {
     "app.R": {
-      "checksum": "739c471010f1203503b867d44cebebac"
+      "checksum": "9d36b8c7cc8a6f3e22942dc922710687"
     },
     "input_example.R": {
       "checksum": "8d2170f0e5ff1bf5f2623c5c86902937"
@@ -6671,7 +6671,7 @@
       "checksum": "1e7318c3028eb812bfb67c73d6df2b80"
     },
     "server-initInputData.R": {
-      "checksum": "906d9f50ed4ed2c1a892eff525760fde"
+      "checksum": "c7a9a5a4c4062e136d2a32909121db6d"
     },
     "server-kegg.R": {
       "checksum": "563dcbdb4a6af0630ef5a65cf922ec59"

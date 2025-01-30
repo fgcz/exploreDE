@@ -36,5 +36,8 @@ Imports:
   plyr,
   shinycssloaders,
   GGally,
-  patchwork
+  patchwork,
+  Matrix,
+  SingleCellExperiment,
+  fresh
 RoxygenNote: 7.3.2
