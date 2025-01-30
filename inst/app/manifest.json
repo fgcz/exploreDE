@@ -3007,6 +3007,7 @@
         "Maintainer": "Peter Leary <you@example.com>",
         "Description": "exploreDE",
         "License": "MIT + file LICENSE",
+        "URL": "https://github.com/fgcz/exploreDE",
         "Encoding": "UTF-8",
         "Imports": "shiny,\nshinydashboard,\ntidyverse,\nggpubr,\nplotly,\nDESeq2,\nRColorBrewer,\nComplexHeatmap,\nclusterProfiler,\nDT,\ncolourpicker,\nwritexl,\ncirclize,\nezRun,\nkableExtra,\nggrepel,\ngplots,\nsortable,\nwaiter,\nggprism,\nggbeeswarm,\nrstatix,\ngridExtra,\nshinylogs,\nparallel,\nplyr,\nshinycssloaders,\nGGally,\npatchwork,\nMatrix,\nSingleCellExperiment,\nfresh",
         "RoxygenNote": "7.3.2"
