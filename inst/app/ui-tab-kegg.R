@@ -83,7 +83,7 @@ tabItem(
         status = "primary",
         textOutput("keggPlotDesign"),
         br(),
-        plotOutput("keggOutput", inline = TRUE)
+        withSpinner(plotOutput("keggOutput", inline = TRUE))
       )
     )
   )

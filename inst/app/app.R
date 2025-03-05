@@ -4,7 +4,7 @@ packagesToLoad <- c(
   "ComplexHeatmap", "clusterProfiler", "DT", "colourpicker", "writexl", "circlize",
   "ezRun", "kableExtra", "ggrepel", "gplots", "sortable", "waiter", "ggprism", "ggbeeswarm",
   "rstatix", "gridExtra", "shinylogs", "parallel", "plyr", "shinycssloaders", "GGally", "patchwork",
-  "Matrix", "SingleCellExperiment", "fresh", "exploreDE"
+  "Matrix", "SingleCellExperiment", "fresh", "exploreDE", "pathview"
 )
 invisible(lapply(packagesToLoad, function(pkg) {
   suppressPackageStartupMessages(suppressWarnings(library(pkg, character.only = TRUE, quietly = TRUE)))

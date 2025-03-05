@@ -770,39 +770,6 @@
         "Built": "R 4.4.2; ; 2024-11-11 11:03:21 UTC; unix"
       }
     },
-    "KEGGgraph": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.20/bioc",
-      "description": {
-        "Package": "KEGGgraph",
-        "Type": "Package",
-        "Title": "KEGGgraph: A graph approach to KEGG PATHWAY in R and\nBioconductor",
-        "Version": "1.66.0",
-        "Date": "2022-12-18",
-        "Author": "Jitao David Zhang, with inputs from Paul Shannon and Hervé Pagès",
-        "Maintainer": "Jitao David Zhang <jitao_david.zhang@roche.com>",
-        "Description": "KEGGGraph is an interface between KEGG pathway and graph\n        object as well as a collection of tools to analyze, dissect and\n        visualize these graphs. It parses the regularly updated KGML\n        (KEGG XML) files into graph models maintaining all essential\n        pathway attributes. The package offers functionalities\n        including parsing, graph operation, visualization and etc.",
-        "License": "GPL (>= 2)",
-        "LazyLoad": "yes",
-        "LazyData": "yes",
-        "Depends": "R (>= 3.5.0)",
-        "Imports": "methods, XML (>= 2.3-0), graph, utils, RCurl, Rgraphviz",
-        "Suggests": "RBGL, testthat, RColorBrewer, org.Hs.eg.db, hgu133plus2.db,\nSPIA",
-        "Collate": "kegg2graph-functions.R parse.R annotation.R graph.R kgmlfile.R\nmisc.R vis.R",
-        "URL": "http://www.nextbiomotif.com",
-        "biocViews": "Pathways, GraphAndNetwork, Visualization, KEGG",
-        "Encoding": "UTF-8",
-        "git_url": "https://git.bioconductor.org/packages/KEGGgraph",
-        "git_branch": "RELEASE_3_20",
-        "git_last_commit": "af0cece",
-        "git_last_commit_date": "2024-10-29",
-        "Repository": "Bioconductor 3.20",
-        "Date/Publication": "2024-10-29",
-        "NeedsCompilation": "no",
-        "Packaged": "2024-10-30 01:19:36 UTC; biocbuild",
-        "Built": "R 4.4.2; ; 2024-11-11 15:37:32 UTC; unix"
-      }
-    },
     "KernSmooth": {
       "Source": "CRAN",
       "Repository": "https://stat.ethz.ch/CRAN",
@@ -1093,30 +1060,6 @@
         "Built": "R 4.4.2; ; 2024-11-11 10:23:15 UTC; unix"
       }
     },
-    "RCurl": {
-      "Source": "CRAN",
-      "Repository": "https://stat.ethz.ch/CRAN",
-      "description": {
-        "Package": "RCurl",
-        "Version": "1.98-1.16",
-        "Title": "General Network (HTTP/FTP/...) Client Interface for R",
-        "Authors@R": "c(person(\"CRAN Team\", role = c('ctb', 'cre'),\n                    email = \"CRAN@r-project.org\",\n                    comment = \"de facto maintainer since 2013\"),\n             person(\"Duncan\", \"Temple Lang\", role = \"aut\",\n                    email = \"duncan@r-project.org\",\n                    comment = c(ORCID = \"0000-0003-0159-1546\")))",
-        "SystemRequirements": "GNU make, libcurl",
-        "Description": "A wrapper for 'libcurl' <https://curl.se/libcurl/>\n\tProvides functions to allow one to compose general HTTP requests\n        and provides convenient functions to fetch URIs, get & post\n        forms, etc. and process the results returned by the Web server.\n        This provides a great deal of control over the HTTP/FTP/...\n        connection and the form of the request while providing a\n        higher-level interface than is available just using R socket\n        connections.  Additionally, the underlying implementation is\n        robust and extensive, supporting FTP/FTPS/TFTP (uploads and\n        downloads), SSL/HTTPS, telnet, dict, ldap, and also supports\n        cookies, redirects, authentication, etc.",
-        "License": "BSD_3_clause + file LICENSE",
-        "Depends": "R (>= 3.4.0), methods",
-        "Imports": "bitops",
-        "Suggests": "XML",
-        "Collate": "aclassesEnums.R bitClasses.R xbits.R base64.R binary.S\nclasses.S curl.S curlAuthConstants.R curlEnums.R curlError.R\ncurlInfo.S dynamic.R form.S getFormParams.R getURLContent.R\nheader.R http.R httpError.R httpErrors.R iconv.R info.S mime.R\nmulti.S options.S scp.R support.S upload.R urlExists.R zclone.R\nzzz.R",
-        "NeedsCompilation": "yes",
-        "Packaged": "2024-07-11 10:39:12 UTC; tomas",
-        "Author": "CRAN Team [ctb, cre] (de facto maintainer since 2013),\n  Duncan Temple Lang [aut] (<https://orcid.org/0000-0003-0159-1546>)",
-        "Maintainer": "CRAN Team <CRAN@r-project.org>",
-        "Repository": "CRAN",
-        "Date/Publication": "2024-07-11 13:00:02 UTC",
-        "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2024-11-11 10:29:07 UTC; unix"
-      }
-    },
     "RSQLite": {
       "Source": "CRAN",
       "Repository": "https://stat.ethz.ch/CRAN",
@@ -1322,37 +1265,6 @@
         "Repository": "CRAN",
         "Date/Publication": "2024-08-19 22:20:07 UTC",
         "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2024-11-12 14:45:22 UTC; unix"
-      }
-    },
-    "Rgraphviz": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.20/bioc",
-      "description": {
-        "Package": "Rgraphviz",
-        "Title": "Provides plotting capabilities for R graph objects",
-        "Description": "Interfaces R with the AT and T graphviz library for\n        plotting R graph objects from the graph package.",
-        "Version": "2.50.0",
-        "Authors@R": "c(person(c(\"Kasper\", \"Daniel\"), \"Hansen\", role = c(\"cre\", \"aut\"),\n                    email = \"kasperdanielhansen@gmail.com\"),\n             person(\"Jeff\", \"Gentry\", role = \"aut\"),\n             person(\"Li\", \"Long\", role = \"aut\"),\n             person(\"Robert\", \"Gentleman\", role = \"aut\"),\n             person(\"Seth\", \"Falcon\", role = \"aut\"),\n             person(\"Florian\", \"Hahne\", role = \"aut\"),\n             person(\"Deepayan\", \"Sarkar\", role = \"aut\"))",
-        "Depends": "R (>= 2.6.0), methods, utils, graph, grid",
-        "Imports": "stats4, graphics, grDevices",
-        "Suggests": "RUnit, BiocGenerics, XML",
-        "SystemRequirements": "optionally Graphviz (>= 2.16)",
-        "GraphvizDetails": "Graphviz 2.28.0",
-        "License": "EPL",
-        "LazyLoad": "Yes",
-        "Collate": "AllGenerics.R AllClasses.R SimpleMethods.R graphvizVersion.R\ngraphviz_build_version.R agfunctions.R attrs.R graphLayout.R\nplotGraph.R plotUtils.R layoutGraph.R renderGraph.R\ngraph_methods.R writers.R zzz.R",
-        "biocViews": "GraphAndNetwork, Visualization",
-        "git_url": "https://git.bioconductor.org/packages/Rgraphviz",
-        "git_branch": "RELEASE_3_20",
-        "git_last_commit": "afcb63b",
-        "git_last_commit_date": "2024-10-29",
-        "Repository": "Bioconductor 3.20",
-        "Date/Publication": "2024-10-29",
-        "NeedsCompilation": "yes",
-        "Packaged": "2024-10-30 02:27:54 UTC; biocbuild",
-        "Author": "Kasper Daniel Hansen [cre, aut],\n  Jeff Gentry [aut],\n  Li Long [aut],\n  Robert Gentleman [aut],\n  Seth Falcon [aut],\n  Florian Hahne [aut],\n  Deepayan Sarkar [aut]",
-        "Maintainer": "Kasper Daniel Hansen <kasperdanielhansen@gmail.com>",
-        "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2024-11-11 15:30:56 UTC; unix"
       }
     },
     "S4Arrays": {
@@ -1567,30 +1479,6 @@
         "Author": "Hervé Pagès [aut, cre]",
         "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>",
         "Built": "R 4.4.2; ; 2024-11-11 10:32:38 UTC; unix"
-      }
-    },
-    "XML": {
-      "Source": "CRAN",
-      "Repository": "https://stat.ethz.ch/CRAN",
-      "description": {
-        "Package": "XML",
-        "Version": "3.99-0.17",
-        "Authors@R": "c(person(\"CRAN Team\", role = c('ctb', 'cre'),\n                    email = \"CRAN@r-project.org\",\n                    comment = \"de facto maintainer since 2013\"),\n             person(\"Duncan\", \"Temple Lang\", role = c(\"aut\"),\n                    email = \"duncan@r-project.org\",\n                    comment = c(ORCID = \"0000-0003-0159-1546\")),\n\t    person(\"Tomas\", \"Kalibera\", role = \"ctb\"))",
-        "Title": "Tools for Parsing and Generating XML Within R and S-Plus",
-        "Depends": "R (>= 4.0.0), methods, utils",
-        "Suggests": "bitops, RCurl",
-        "SystemRequirements": "libxml2 (>= 2.6.3)",
-        "Description": "Many approaches for both reading and\n        creating XML (and HTML) documents (including DTDs), both local\n        and accessible via HTTP or FTP.  Also offers access to an\n        'XPath' \"interpreter\".",
-        "URL": "https://www.omegahat.net/RSXML/",
-        "License": "BSD_3_clause + file LICENSE",
-        "Collate": "AAA.R DTD.R DTDClasses.R DTDRef.R SAXMethods.R XMLClasses.R\napplyDOM.R assignChild.R catalog.R createNode.R dynSupports.R\nerror.R flatTree.R nodeAccessors.R parseDTD.R schema.R\nsummary.R tangle.R toString.R tree.R version.R xmlErrorEnums.R\nxmlEventHandler.R xmlEventParse.R xmlHandler.R\nxmlInternalSource.R xmlOutputDOM.R xmlNodes.R xmlOutputBuffer.R\nxmlTree.R xmlTreeParse.R htmlParse.R hashTree.R zzz.R\nsupports.R parser.R libxmlFeatures.R xmlString.R saveXML.R\nnamespaces.R readHTMLTable.R reflection.R xmlToDataFrame.R\nbitList.R compare.R encoding.R fixNS.R xmlRoot.R serialize.R\nxmlMemoryMgmt.R keyValueDB.R solrDocs.R XMLRErrorInfo.R\nxincludes.R namespaceHandlers.R tangle1.R htmlLinks.R\nhtmlLists.R getDependencies.R getRelativeURL.R xmlIncludes.R\nsimplifyPath.R",
-        "NeedsCompilation": "yes",
-        "Packaged": "2024-06-25 12:03:40 UTC; hornik",
-        "Author": "CRAN Team [ctb, cre] (de facto maintainer since 2013),\n  Duncan Temple Lang [aut] (<https://orcid.org/0000-0003-0159-1546>),\n  Tomas Kalibera [ctb]",
-        "Maintainer": "CRAN Team <CRAN@r-project.org>",
-        "Repository": "CRAN",
-        "Date/Publication": "2024-06-25 13:05:01 UTC",
-        "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2024-11-11 10:21:10 UTC; unix"
       }
     },
     "XVector": {
@@ -1925,7 +1813,7 @@
         "Maintainer": "Martin Maechler <maechler@stat.math.ethz.ch>",
         "Repository": "CRAN",
         "Date/Publication": "2024-10-03 23:00:54 UTC",
-        "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2024-11-11 10:16:54 UTC; unix"
+        "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2025-02-04 11:10:43 UTC; unix"
       }
     },
     "blob": {
@@ -2067,7 +1955,7 @@
         "Packaged": "2024-09-04 15:01:56 UTC; dietze2",
         "Author": "Jarek Tuszynski [aut],\n  Michael Dietze [cre]",
         "Date/Publication": "2024-09-04 17:00:02 UTC",
-        "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2024-11-11 10:25:19 UTC; unix"
+        "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2025-02-04 11:10:53 UTC; unix"
       }
     },
     "cachem": {
@@ -3007,20 +2895,10 @@
         "Maintainer": "Peter Leary <you@example.com>",
         "Description": "exploreDE",
         "License": "MIT + file LICENSE",
-        "URL": "https://github.com/fgcz/exploreDE",
         "Encoding": "UTF-8",
         "Imports": "shiny,\nshinydashboard,\ntidyverse,\nggpubr,\nplotly,\nDESeq2,\nRColorBrewer,\nComplexHeatmap,\nclusterProfiler,\nDT,\ncolourpicker,\nwritexl,\ncirclize,\nezRun,\nkableExtra,\nggrepel,\ngplots,\nsortable,\nwaiter,\nggprism,\nggbeeswarm,\nrstatix,\ngridExtra,\nshinylogs,\nparallel,\nplyr,\nshinycssloaders,\nGGally,\npatchwork,\nMatrix,\nSingleCellExperiment,\nfresh",
         "RoxygenNote": "7.3.2",
-        "RemoteType": "github",
-        "RemoteHost": "api.github.com",
-        "RemoteRepo": "exploreDE",
-        "RemoteUsername": "fgcz",
-        "RemoteSha": "890ef765a4edf1674f66948a393948fafc46e66d",
-        "GithubRepo": "exploreDE",
-        "GithubUsername": "fgcz",
-        "GithubRef": "HEAD",
-        "GithubSHA1": "890ef765a4edf1674f66948a393948fafc46e66d",
-        "NeedsCompilation": "no"
+        "Built": "R 4.4.2; ; 2025-03-05 10:17:43 UTC; unix"
       }
     },
     "ezRun": {
@@ -3048,14 +2926,14 @@
         "RemoteRepo": "ezRun",
         "RemoteUsername": "uzh",
         "RemoteRef": "HEAD",
-        "RemoteSha": "4a8b74057075f6283f1d2124d8ce278ab2709cce",
+        "RemoteSha": "4832c789172b0f0b1f665bd8b3cd1370f1878c9f",
         "GithubRepo": "ezRun",
         "GithubUsername": "uzh",
         "GithubRef": "HEAD",
-        "GithubSHA1": "4a8b74057075f6283f1d2124d8ce278ab2709cce",
+        "GithubSHA1": "4832c789172b0f0b1f665bd8b3cd1370f1878c9f",
         "NeedsCompilation": "no",
-        "Packaged": "2025-01-24 19:04:54 UTC; falkonoe",
-        "Built": "R 4.4.2; ; 2025-01-24 19:05:14 UTC; unix"
+        "Packaged": "2025-03-05 07:22:17 UTC; lopitz",
+        "Built": "R 4.4.2; ; 2025-03-05 07:22:38 UTC; unix"
       }
     },
     "fansi": {
@@ -3328,7 +3206,7 @@
         "Maintainer": "Victor Perrier <victor.perrier@dreamrs.fr>",
         "Repository": "CRAN",
         "Date/Publication": "2024-06-26 09:50:11 UTC",
-        "Built": "R 4.4.0; ; 2024-12-13 14:25:02 UTC; unix"
+        "Built": "R 4.4.2; ; 2024-12-13 14:30:29 UTC; unix"
       }
     },
     "fs": {
@@ -3989,38 +3867,6 @@
         "Repository": "CRAN",
         "Date/Publication": "2024-10-05 23:00:02 UTC",
         "Built": "R 4.4.2; ; 2024-11-11 10:34:57 UTC; unix"
-      }
-    },
-    "graph": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.20/bioc",
-      "description": {
-        "Package": "graph",
-        "Title": "graph: A package to handle graph data structures",
-        "Version": "1.84.0",
-        "Authors@R": "c(\n        person(\"R\", \"Gentleman\", role = \"aut\"),\n        person(\"Elizabeth\", \"Whalen\", role=\"aut\"),\n        person(\"W\", \"Huber\", role=\"aut\"),\n        person(\"S\", \"Falcon\", role=\"aut\"),\n        person(\"Jeff\", \"Gentry\", role=\"aut\"),\n        person(\"Paul\", \"Shannon\", role=\"aut\"),\n        person(\"Halimat C.\", \"Atanda\", role = \"ctb\",\n                comment = \"Converted 'MultiGraphClass' and 'GraphClass' vignettes from Sweave to RMarkdown / HTML.\"\n        ),   \n        person(\"Paul\", \"Villafuerte\", role = \"ctb\",\n                comment = \"Converted vignettes from Sweave to RMarkdown / HTML.\"\n        ),\n        person(\"Aliyu Atiku\", \"Mustapha\", role = \"ctb\",\n                comment = \"Converted 'Graph' vignette from Sweave to RMarkdown / HTML.\"\n        ),\n        person(\"Bioconductor Package Maintainer\", role = \"cre\",\n                email = \"maintainer@bioconductor.org\"\n        ))",
-        "Description": "A package that implements some simple graph handling\n        capabilities.",
-        "License": "Artistic-2.0",
-        "Depends": "R (>= 2.10), methods, BiocGenerics (>= 0.13.11)",
-        "Imports": "stats, stats4, utils",
-        "Suggests": "SparseM (>= 0.36), XML, RBGL, RUnit, cluster, BiocStyle,\nknitr",
-        "Enhances": "Rgraphviz",
-        "Collate": "AllClasses.R AllGenerics.R bitarray.R buildDepGraph.R\nmethods-graph.R graphNEL.R clustergraph.R NELhandler.R\nedgefunctions.R graphfunctions.R GXLformals.R gxlReader.R\nrandom.R write.tlp.R mat2graph.R settings.R zzz.R\nstandardLabeling.R TODOT.R toDotWithRI.R methods-graphAM.R\nattrData.R reverseEdgeDirections.R nodes-methods.R\nmethods-multiGraph.R MultiGraph.R methods-graphBAM.R\ngraph-constructors.R",
-        "LazyLoad": "yes",
-        "Packaged": "2024-10-30 00:59:56 UTC; biocbuild",
-        "biocViews": "GraphAndNetwork",
-        "RoxygenNote": "7.2.3",
-        "VignetteBuilder": "knitr",
-        "git_url": "https://git.bioconductor.org/packages/graph",
-        "git_branch": "RELEASE_3_20",
-        "git_last_commit": "3107e96",
-        "git_last_commit_date": "2024-10-29",
-        "Repository": "Bioconductor 3.20",
-        "Date/Publication": "2024-10-29",
-        "NeedsCompilation": "yes",
-        "Author": "R Gentleman [aut],\n  Elizabeth Whalen [aut],\n  W Huber [aut],\n  S Falcon [aut],\n  Jeff Gentry [aut],\n  Paul Shannon [aut],\n  Halimat C. Atanda [ctb] (Converted 'MultiGraphClass' and 'GraphClass'\n    vignettes from Sweave to RMarkdown / HTML.),\n  Paul Villafuerte [ctb] (Converted vignettes from Sweave to RMarkdown /\n    HTML.),\n  Aliyu Atiku Mustapha [ctb] (Converted 'Graph' vignette from Sweave to\n    RMarkdown / HTML.),\n  Bioconductor Package Maintainer [cre]",
-        "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
-        "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2024-11-11 15:02:37 UTC; unix"
       }
     },
     "gridExtra": {
@@ -5360,27 +5206,6 @@
         "Built": "R 4.4.2; x86_64-pc-linux-gnu; 2024-11-11 10:24:37 UTC; unix"
       }
     },
-    "org.Hs.eg.db": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.20/data/annotation",
-      "description": {
-        "Package": "org.Hs.eg.db",
-        "Title": "Genome wide annotation for Human",
-        "Description": "Genome wide annotation for Human, primarily based on mapping using Entrez Gene identifiers.",
-        "Version": "3.20.0",
-        "Author": "Marc Carlson",
-        "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
-        "Depends": "R (>= 2.7.0), methods, AnnotationDbi (>= 1.67.0)",
-        "Suggests": "DBI, annotate, RUnit",
-        "License": "Artistic-2.0",
-        "organism": "Homo sapiens",
-        "species": "Human",
-        "biocViews": "OrgDb, AnnotationData, Homo_sapiens, humanLLMappings",
-        "NeedsCompilation": "no",
-        "Packaged": "2024-09-23 21:57:31 UTC; ubuntu",
-        "Built": "R 4.4.2; ; 2024-11-11 15:04:08 UTC; unix"
-      }
-    },
     "patchwork": {
       "Source": "CRAN",
       "Repository": "https://stat.ethz.ch/CRAN",
@@ -5407,37 +5232,6 @@
         "Repository": "CRAN",
         "Date/Publication": "2024-09-16 09:30:02 UTC",
         "Built": "R 4.4.2; ; 2024-11-11 10:57:06 UTC; unix"
-      }
-    },
-    "pathview": {
-      "Source": "Bioconductor",
-      "Repository": "https://bioconductor.org/packages/3.20/bioc",
-      "description": {
-        "Package": "pathview",
-        "Type": "Package",
-        "Title": "a tool set for pathway based data integration and visualization",
-        "Version": "1.46.0",
-        "Date": "2024-03-25",
-        "Author": "Weijun Luo",
-        "Maintainer": "Weijun Luo <luo_weijun@yahoo.com>",
-        "Description": "Pathview is a tool set for pathway based data integration\n        and visualization. It maps and renders a wide variety of\n        biological data on relevant pathway graphs. All users need is\n        to supply their data and specify the target pathway. Pathview\n        automatically downloads the pathway graph data, parses the data\n        file, maps user data to the pathway, and render pathway graph\n        with the mapped data. In addition, Pathview also seamlessly\n        integrates with pathway and gene set (enrichment) analysis tools for\n        large-scale and fully automated analysis.",
-        "biocViews": "Pathways, GraphAndNetwork, Visualization, GeneSetEnrichment,\nDifferentialExpression, GeneExpression, Microarray, RNASeq,\nGenetics, Metabolomics, Proteomics, SystemsBiology, Sequencing",
-        "Depends": "R (>= 3.5.0)",
-        "Imports": "KEGGgraph, XML, Rgraphviz, graph, png, AnnotationDbi,\norg.Hs.eg.db, KEGGREST, methods, utils",
-        "Suggests": "gage, org.Mm.eg.db, org.EcK12.eg.db, RUnit, BiocGenerics",
-        "License": "GPL (>=3.0)",
-        "URL": "https://github.com/datapplab/pathview, https://pathview.uncc.edu/",
-        "LazyLoad": "yes",
-        "LazyData": "yes",
-        "git_url": "https://git.bioconductor.org/packages/pathview",
-        "git_branch": "RELEASE_3_20",
-        "git_last_commit": "b165b79",
-        "git_last_commit_date": "2024-10-29",
-        "Repository": "Bioconductor 3.20",
-        "Date/Publication": "2024-10-29",
-        "NeedsCompilation": "no",
-        "Packaged": "2024-10-30 02:07:32 UTC; biocbuild",
-        "Built": "R 4.4.2; ; 2024-11-11 15:46:30 UTC; unix"
       }
     },
     "pbkrtest": {
@@ -7771,10 +7565,22 @@
   },
   "files": {
     "app.R": {
-      "checksum": "9d36b8c7cc8a6f3e22942dc922710687"
+      "checksum": "b013395abc6765728e76cdbee3f10203"
     },
     "input_example.R": {
       "checksum": "8d2170f0e5ff1bf5f2623c5c86902937"
+    },
+    "rno04218.png": {
+      "checksum": "e6f1fa93363eae477ce0ba79b28bf1fa"
+    },
+    "rno04218.xml": {
+      "checksum": "69e220e7299be66797d261e6bf979365"
+    },
+    "rno05200.png": {
+      "checksum": "d8a62ee53d0d3cc58ed2bd986e36aae2"
+    },
+    "rno05200.xml": {
+      "checksum": "23e6fe6f10106bdb70838f24c9c88421"
     },
     "server-boxplot.R": {
       "checksum": "bfd1594ddede9015143154dccda0189c"
@@ -7798,10 +7604,10 @@
       "checksum": "1e7318c3028eb812bfb67c73d6df2b80"
     },
     "server-initInputData.R": {
-      "checksum": "07dfa9bef60fd871344d3cd440ca2489"
+      "checksum": "3b4cb782ca16e5d4650e88e92bead60a"
     },
     "server-kegg.R": {
-      "checksum": "563dcbdb4a6af0630ef5a65cf922ec59"
+      "checksum": "ecba3260beb8155e3921942d96b949cb"
     },
     "server-pca.R": {
       "checksum": "48629716c423a57549392ad09e67f3ff"
@@ -7831,7 +7637,7 @@
       "checksum": "8ecfba48336e7f926f223c88714636ff"
     },
     "ui-tab-kegg.R": {
-      "checksum": "0511e31308e80b3f3f3ad17c929a8643"
+      "checksum": "8228e625b295a92bdb241347a9879645"
     },
     "ui-tab-parameters.R": {
       "checksum": "fc1cc3e591e7e5d7e8809d522a6500f3"

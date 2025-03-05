@@ -3,10 +3,13 @@ if(inputDataReactive()$dataType == "RNASeq") {
   se <- inputDataReactive()$se
   param <- inputDataReactive()$param
   design <- inputDataReactive()$design
-  
+  keggPlotReactive <- reactiveValues(outfile = NULL, gD = NULL, keggInput = NULL, spp = NULL)
   output$keggPlotDesign <- renderText({design})
   
   spp <- ezRun::getSpecies(param$refBuild)
+  if (grepl("^Rattus", param$refBuild)){
+    spp <- "Rat"
+  }
   
   observeEvent(input$tabs, {
     if (input$tabs == "keggTab") {
@@ -33,13 +36,18 @@ if(inputDataReactive()$dataType == "RNASeq") {
           pTypeKEGG <- "fdr"
         }
         
-        require("pathview")
-        
         switch(
           spp,
           "Human" = {spp = "hsa"},
-          "Mouse" = {spp = "mmu"}
+          "Mouse" = {spp = "mmu"},
+          "Rat" = {spp = "rno"}
         )
+        
+        if (grepl("^[0-9]", input$keggInput)) {
+          keggInput <- paste0(spp, input$keggInput)
+        } else {
+          keggInput <- input$keggInput
+        }
         
         gD <- metadata(se)$enrichInput$log2Ratio[
           names(metadata(se)$enrichInput$log2Ratio) %in% inputDataReactive()$seqAnno$gene_id[
@@ -47,23 +55,11 @@ if(inputDataReactive()$dataType == "RNASeq") {
           ]
         ]
         
-        outfile <- paste0(input$keggInput, ".pathview.png")
-        output$keggOutput <- renderImage({
-          pathview(
-            gene.data = gD,
-            gene.idtype = "ENSEMBL",
-            pathway.id = input$keggInput,
-            key.pos = "bottomright",
-            species = spp, 
-            low = list("gene" = "dodgerblue3"),
-            mid = list("gene" = "lightgrey"),
-            high = list("gene" = "indianred3"),
-            kegg.native = TRUE,
-            limit = list(gene = input$keggLimitColour))
-          list(src = outfile, 
-               contentType = 'image/png')
-        }, deleteFile = TRUE)
-        
+        outfile <- paste0(keggInput, ".pathview.png")
+        keggPlotReactive$outfile <- outfile
+        keggPlotReactive$gD = gD
+        keggPlotReactive$keggInput = keggInput
+        keggPlotReactive$spp = spp
         
       }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
     }
@@ -75,3 +71,20 @@ if(inputDataReactive()$dataType == "RNASeq") {
     }
   })
 }
+
+output$keggOutput <- renderImage({
+  req(!is.null(keggPlotReactive$outfile))
+  pathview(
+    gene.data = keggPlotReactive$gD,
+    gene.idtype = "ENSEMBL",
+    pathway.id = keggPlotReactive$keggInput,
+    key.pos = "bottomright",
+    species = keggPlotReactive$spp, 
+    low = list("gene" = "dodgerblue3"),
+    mid = list("gene" = "lightgrey"),
+    high = list("gene" = "indianred3"),
+    kegg.native = TRUE,
+    limit = list(gene = input$keggLimitColour))
+  list(src = keggPlotReactive$outfile, 
+       contentType = 'image/png')
+}, deleteFile = TRUE)
