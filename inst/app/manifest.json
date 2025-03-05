@@ -2907,7 +2907,7 @@
         "GithubUsername": "fgcz",
         "GithubRef": "HEAD",
         "GithubSHA1": "227a375f4d7272ada8d5a353bd7b1aba49cb3308",
-        "NeedsCompilation": "no"
+        "NeedsCompilation": "no",
         "Built": "R 4.4.2; ; 2025-03-05 10:17:43 UTC; unix"
       }
     },
