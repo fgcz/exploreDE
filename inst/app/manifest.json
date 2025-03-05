@@ -2894,10 +2894,20 @@
         "Author": "Peter Leary [aut, cre]",
         "Maintainer": "Peter Leary <you@example.com>",
         "Description": "exploreDE",
-        "License": "MIT + file LICENSE",
+        "URL": "https://github.com/fgcz/exploreDE",
         "Encoding": "UTF-8",
         "Imports": "shiny,\nshinydashboard,\ntidyverse,\nggpubr,\nplotly,\nDESeq2,\nRColorBrewer,\nComplexHeatmap,\nclusterProfiler,\nDT,\ncolourpicker,\nwritexl,\ncirclize,\nezRun,\nkableExtra,\nggrepel,\ngplots,\nsortable,\nwaiter,\nggprism,\nggbeeswarm,\nrstatix,\ngridExtra,\nshinylogs,\nparallel,\nplyr,\nshinycssloaders,\nGGally,\npatchwork,\nMatrix,\nSingleCellExperiment,\nfresh",
         "RoxygenNote": "7.3.2",
+        "RemoteType": "github",
+        "RemoteHost": "api.github.com",
+        "RemoteRepo": "exploreDE",
+        "RemoteUsername": "fgcz",
+        "RemoteSha": "227a375f4d7272ada8d5a353bd7b1aba49cb3308",
+        "GithubRepo": "exploreDE",
+        "GithubUsername": "fgcz",
+        "GithubRef": "HEAD",
+        "GithubSHA1": "227a375f4d7272ada8d5a353bd7b1aba49cb3308",
+        "NeedsCompilation": "no"
         "Built": "R 4.4.2; ; 2025-03-05 10:17:43 UTC; unix"
       }
     },
