@@ -40,6 +40,27 @@ if(!exists("dataDir")) {
   stop()
 }
 
+# JLR 2025 employee and project restrictions, username coming from app.R, projectFromUrl from above, be careful that ldap-utils in installed in bash and you can access LDAP (certificate installed?)
+username <- Sys.getenv("SHINYPROXY_USERNAME")
+roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T) 
+allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"),intern=T)
+if ("R_2" %in% roles){
+  ldap_role="employee"
+  allowed=TRUE
+} else if ("R_3" %in% roles){
+  ldap_role="user"
+  if(projectFromUrl %in% allowedProjects){
+    allowed=TRUE
+  } else {
+    allowed=FALSE
+  }
+} else {
+  # What happened?
+  allowed=FALSE
+}
+message(roles); message(ldap_role); message("Allowed to all projects?"); message(allowed)
+
+
 # Import proteomics data from pStore ----
 is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))  # Checks if it starts with http:// or https://
@@ -68,19 +89,21 @@ if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("
 }
 
 # Import RNA seq data from SUSHI ----
-if (grepl("gstore", dataDir) | exists("fileSE")) {
-  if (grepl("EzResult.RData", dataDir)) {
-    dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
-  }
-  if (file.exists(file.path(dataDir, "deResult.rds"))) {
-    se <- readRDS(file.path(dataDir, "deResult.rds"))
-  } else {
-    showModal(modalDialog(
-      title = "The file does not exist", 
-      "Either the analysis has not yet finished running, you have made a mistake in the URL, or you have not pointed to any dataset. Please try again! If the issue persists, email peter.leary@uzh.ch",
-      easyClose = TRUE,
-      footer = NULL
-    ))
+if (allowed) {
+  if (grepl("gstore", dataDir) | exists("fileSE")) {
+    if (grepl("EzResult.RData", dataDir)) {
+      dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
+    }
+    if (file.exists(file.path(dataDir, "deResult.rds"))) {
+      se <- readRDS(file.path(dataDir, "deResult.rds"))
+    } else {
+      showModal(modalDialog(
+        title = "The file does not exist", 
+        "Either the analysis has not yet finished running, you have made a mistake in the URL, or you have not pointed to any dataset. Please try again! If the issue persists, email peter.leary@uzh.ch",
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    }
   }
 }
 
