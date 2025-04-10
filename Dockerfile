@@ -16,7 +16,7 @@ ENV LC_ALL en_US.UTF-8
 WORKDIR /srv/shiny-server/exploreDE
 
 # Copy the app files
-COPY . /srv/shiny-server/
+COPY /inst/app/* /srv/shiny-server/
 
 # Shiny Server runs as user 'shiny'
 RUN chown -R shiny:shiny /srv/shiny-server
