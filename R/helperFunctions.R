@@ -184,7 +184,7 @@ convert_proteomics_se <- function(se) {
   
   # Prepare the metadata
   dataset <- as.data.frame(colData(se))
-  names <- colnames(dataset)[grep("Sample|Name", colnames(dataset))]
+  names <- colnames(dataset)[grep("^Sample$|^Name$", colnames(dataset), ignore.case = T)]
   dataset$names <- dataset[[names]]
   rownames(dataset) <- dataset[[names]]
   

@@ -27,7 +27,8 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl) & !exists("fileSE")) {
-  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/../jStore/p38066/bfabric/Proteomics/SummarizedExperiment/2025/2025-04-25/workunit_DEA_proteome/SummarizedExperiment.rds"
   projectFromUrl <- "p3009" # JLR 2025
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = NULL, closeButton = TRUE)
 }
