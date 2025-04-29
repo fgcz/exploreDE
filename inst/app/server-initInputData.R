@@ -82,20 +82,18 @@ if (grepl("gstore", dataDir) | exists("fileSE")) {
   roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T) 
   allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"),intern=T)
   if ("R_2" %in% roles){
-    ldap_role="employee"
-    allowed=TRUE
+    ldap_role <- "employee"
+    allowed <- TRUE
   } else if ("R_3" %in% roles){
-    ldap_role="user"
-    if(projectFromUrl %in% allowedProjects){
-      allowed=TRUE
-    } else {
-      allowed=FALSE
-    }
+    ldap_role <- "user"
+    allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
   } else {
-    # What happened?
-    allowed=FALSE
+    allowed <- FALSE
   }
-  message(roles); message(ldap_role); message("Allowed to all projects?"); message(allowed)
+  message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
+  if (is.null(dataUrl)) {
+    allowed = TRUE
+  }
   if (allowed) {
     if (grepl("EzResult.RData", dataDir)) {
       dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
