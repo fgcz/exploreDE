@@ -201,7 +201,7 @@ boxplotCountsReactive <- eventReactive({
     }
     countsBoxplot <- as.data.frame(t(countsBoxplot))
     countsBoxplot$names <- rownames(countsBoxplot)
-    countsBoxplot <- countsBoxplot %>% dplyr::select(names, genesToPlot)
+    countsBoxplot <- countsBoxplot %>% dplyr::select(names, dplyr::all_of(genesToPlot))
 
     # Add the metadata
     countsBoxplot <- left_join(countsBoxplot, datasetBoxplot)
@@ -300,16 +300,16 @@ boxplotCountsReactive <- eventReactive({
         if (param$featureLevel == "gene") {
           x$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(x$variable, seqAnnoReactive$sa$gene_name)]
           x$pValue <- seqAnnoReactive$sa$pValue[match(x$variable, seqAnnoReactive$sa$gene_name)]
-          if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
-            x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+          if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == gene]) {
+            x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == gene]
           } else {
             x$fdr <- 1
           }
         } else if (param$featureLevel == "isoform") {
           x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[match(x$variable, seqAnnoReactive$sa$gene_name)]
           x$pValue <- seqAnnoReactive$saF$pValue[match(x$variable, seqAnnoReactive$sa$gene_name)]
-          if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
-            x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+          if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == gene]) {
+            x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == gene]
           } else {
             x$fdr <- 1
           }
@@ -317,8 +317,8 @@ boxplotCountsReactive <- eventReactive({
       } else if (inputDataReactive()$dataType == "proteomics") {
         x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[match(x$variable, seqAnnoReactive$sa$gene_name)]
         x$pValue <- seqAnnoReactive$saF$pValue[match(x$variable, seqAnnoReactive$sa$gene_name)]
-        if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
-          x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+        if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == gene]) {
+          x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == gene]
         } else {
           x$fdr <- 1
         }
