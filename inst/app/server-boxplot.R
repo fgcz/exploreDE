@@ -62,7 +62,7 @@ observeEvent({
 # Extract the appropriate data ----
 if (inputDataReactive()$dataType == "RNASeq") {
   seqAnnoReactive <- reactiveValues("sa" = inputDataReactive()$seqAnno, "saF" = NULL)
-  seqAnnoReactive$saF <- seqAnnoReactive$sa[which(seqAnnoReactive$sa$usedInTest),]
+  # seqAnnoReactive$saF <- seqAnnoReactive$sa[which(seqAnnoReactive$sa$usedInTest),]
   design <- inputDataReactive()$design
   param <- inputDataReactive()$param
   designLevels <- inputDataReactive()$designLevels
@@ -237,16 +237,28 @@ boxplotCountsReactive <- eventReactive({
         if (param$featureLevel == "gene") {
           x$log2Ratio <- seqAnnoReactive$sa$log2Ratio[seqAnnoReactive$sa$gene_name == g]
           x$pValue <- seqAnnoReactive$sa$pValue[seqAnnoReactive$sa$gene_name == g]
-          x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+          if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
+            x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+          } else {
+            x$fdr <- 1
+          }
         } else if (param$featureLevel == "isoform") {
           x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[seqAnnoReactive$saF$gene_name == g]
           x$pValue <- seqAnnoReactive$saF$pValue[seqAnnoReactive$saF$gene_name == g]
-          x$fdr <- seqAnnoReactive$saF$fdr[seqAnnoReactive$saF$gene_name == g]
+          if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
+            x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+          } else {
+            x$fdr <- 1
+          }
         }
       } else if (inputDataReactive()$dataType == "proteomics") {
         x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[which(seqAnnoReactive$saF$gene_name == g)]
         x$pValue <- seqAnnoReactive$saF$pValue[which(seqAnnoReactive$saF$gene_name == g)]
-        x$fdr <- seqAnnoReactive$saF$fdr[which(seqAnnoReactive$saF$gene_name == g)]
+        if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
+          x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+        } else {
+          x$fdr <- 1
+        }
       }
       x <- add_significance(
         x,
@@ -288,16 +300,28 @@ boxplotCountsReactive <- eventReactive({
         if (param$featureLevel == "gene") {
           x$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(x$variable, seqAnnoReactive$sa$gene_name)]
           x$pValue <- seqAnnoReactive$sa$pValue[match(x$variable, seqAnnoReactive$sa$gene_name)]
-          x$fdr <- seqAnnoReactive$sa$fdr[match(x$variable, seqAnnoReactive$sa$gene_name)]
+          if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
+            x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+          } else {
+            x$fdr <- 1
+          }
         } else if (param$featureLevel == "isoform") {
           x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[match(x$variable, seqAnnoReactive$sa$gene_name)]
           x$pValue <- seqAnnoReactive$saF$pValue[match(x$variable, seqAnnoReactive$sa$gene_name)]
-          x$fdr <- seqAnnoReactive$saF$fdr[match(x$variable, seqAnnoReactive$sa$gene_name)]
+          if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
+            x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+          } else {
+            x$fdr <- 1
+          }
         }
       } else if (inputDataReactive()$dataType == "proteomics") {
         x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[match(x$variable, seqAnnoReactive$sa$gene_name)]
         x$pValue <- seqAnnoReactive$saF$pValue[match(x$variable, seqAnnoReactive$sa$gene_name)]
-        x$fdr <- seqAnnoReactive$saF$fdr[match(x$variable, seqAnnoReactive$sa$gene_name)]
+        if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
+          x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
+        } else {
+          x$fdr <- 1
+        }
       }
       x <- add_significance(
         x,

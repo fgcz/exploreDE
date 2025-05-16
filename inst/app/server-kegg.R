@@ -29,7 +29,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$keggLimitColour
     }, ignoreInit = TRUE,
     {
-      tryCatch({
+      # tryCatch({
         if (input$pTypeKEGG == "Raw") {
           pTypeKEGG <- "pValue"
         } else {
@@ -61,7 +61,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
         keggPlotReactive$keggInput = keggInput
         keggPlotReactive$spp = spp
         
-      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+      # }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
     }
   )
 } else {
