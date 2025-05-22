@@ -13,15 +13,12 @@ Imports:
   tidyverse,
   ggpubr,
   plotly,
-  DESeq2,
   RColorBrewer,
   ComplexHeatmap,
-  clusterProfiler,
   DT,
   colourpicker,
   writexl,
   circlize,
-  ezRun,
   kableExtra,
   ggrepel,
   gplots,
@@ -40,4 +37,9 @@ Imports:
   Matrix,
   SingleCellExperiment,
   fresh
+Remotes:
+  uzh/ezRun,
+  bioc::ComplexHeatmap,
+  bioc::clusterProfiler,
+  bioc::DESeq2
 RoxygenNote: 7.3.2
