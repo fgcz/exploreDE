@@ -254,11 +254,7 @@ boxplotCountsReactive <- eventReactive({
     } else if (inputDataReactive()$dataType == "proteomics") {
       x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[which(seqAnnoReactive$saF$gene_name == g)]
       x$pValue <- seqAnnoReactive$saF$pValue[which(seqAnnoReactive$saF$gene_name == g)]
-      if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == g]) {
-        x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
-      } else {
-        x$fdr <- 1
-      }
+      x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == g]
     }
     x <- add_significance(
       x,
@@ -317,11 +313,7 @@ boxplotCountsReactive <- eventReactive({
     } else if (inputDataReactive()$dataType == "proteomics") {
       x$log2Ratio <- seqAnnoReactive$saF$log2Ratio[match(x$variable, seqAnnoReactive$sa$gene_name)]
       x$pValue <- seqAnnoReactive$saF$pValue[match(x$variable, seqAnnoReactive$sa$gene_name)]
-      if (seqAnnoReactive$sa$usedInTest[seqAnnoReactive$sa$gene_name == gene]) {
-        x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == gene]
-      } else {
-        x$fdr <- 1
-      }
+      x$fdr <- seqAnnoReactive$sa$fdr[seqAnnoReactive$sa$gene_name == gene]
     }
     x <- add_significance(
       x,
