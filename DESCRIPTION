@@ -8,6 +8,7 @@ Description: exploreDE
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
+  BiocManager,
   shiny,
   shinydashboard,
   tidyverse,
@@ -39,6 +40,7 @@ Imports:
   fresh
 Remotes:
   uzh/ezRun,
+  bioc::pathview,
   bioc::ComplexHeatmap,
   bioc::clusterProfiler,
   bioc::DESeq2
