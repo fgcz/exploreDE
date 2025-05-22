@@ -1,4 +1,3 @@
-
 req(!is.null(inputDataReactive()$dataType))
 
 if (inputDataReactive()$dataType == "proteomics") {
@@ -119,7 +118,7 @@ if (inputDataReactive()$dataType == "proteomics") {
 
   if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
     output$nrPeptidesVolcanoUI <- renderUI({
-      sliderInput(inputId = "nrPeptideVolcano", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
+      sliderInput(inputId = "nrPeptideVolcano", label = "Minimum number of peptides", min = 0, max = 20, value = 0, step = 1, width = "85%")
     })
   } else {
     output$nrPeptidesVolcanoUI <- renderUI({ NULL })
@@ -187,7 +186,11 @@ volcanoResultsList <- eventReactive(
         if (inputDataReactive()$dataType == "proteomics") {
           seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
           if (!is.null(input$nrPeptideVolcano)) {
-            seqAnnoFilt <- seqAnnoFilt[which(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano),]
+            if (any(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano)) {
+              seqAnnoFilt <- seqAnnoFilt[which(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano),]
+            } else {
+              shinyalert::shinyalert(title = "Oops!", text = "No features with this number of peptides!", type = "error", closeOnClickOutside = TRUE, showCancelButton = FALSE, showConfirmButton = TRUE, timer = 5000)
+            }
           }
           if (!is.null(input$showImputedVolcano)) {
             if (!input$showImputedVolcano) {

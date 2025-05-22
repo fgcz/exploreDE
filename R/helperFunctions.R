@@ -184,13 +184,13 @@ convert_proteomics_se <- function(se) {
   
   # Prepare the metadata
   dataset <- as.data.frame(colData(se))
-  names <- colnames(dataset)[grep("Sample|Name", colnames(dataset))]
+  names <- colnames(dataset)[grep("^Sample$|^Name$|^sampleName$", colnames(dataset), ignore.case = T)]
   dataset$names <- dataset[[names]]
   rownames(dataset) <- dataset[[names]]
   
   # Get the main columns from the metadata that are plottable 
-  factors <- colnames(dataset)[grep("Sample|Name|names|channel|raw.file", colnames(dataset), invert = T)]
-  factorNames <- colnames(dataset)[grep("Sample|Name|names|channel|raw.file", colnames(dataset), invert = T)]
+  factors <- colnames(dataset)[grep("Sample|Name|names|channel|raw\\.file", colnames(dataset), invert = T, ignore.case = T)]
+  factorNames <- colnames(dataset)[grep("Sample|Name|names|channel|raw\\.file", colnames(dataset), invert = T, ignore.case = T)]
   
   # Sort numeric factor levels
   for (x in factors) {

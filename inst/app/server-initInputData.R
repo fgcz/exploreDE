@@ -5,6 +5,9 @@ if (is.list(queryList)){
 } else {
   dataUrl <- NULL
 }
+#dataUrl <- "p34002/bfabric/Proteomics/SummarizedExperiment/2024/2024-02/2024-02-09//workunit_299655//2444794.rds"
+message(ezTime(), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
+
 
 if (!is.null(dataUrl)) {
   # Added this so we can read from both genomics and proteomics servers
@@ -22,10 +25,14 @@ if (!is.null(dataUrl)) {
   } else {
     dataDir <- paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl)
   }
+  projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl) & !exists("fileSE")) {
   dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  projectFromUrl <- "p3009" # JLR 2025
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = NULL, closeButton = TRUE)
 }
+
+
 
 # 2025-01-29: Read in local proteomics file if specified 
 if(exists("fileSE")) {
@@ -40,31 +47,13 @@ if(!exists("dataDir")) {
   stop()
 }
 
-# JLR 2025 employee and project restrictions, username coming from app.R, projectFromUrl from above, be careful that ldap-utils in installed in bash and you can access LDAP (certificate installed?)
-username <- Sys.getenv("SHINYPROXY_USERNAME")
-roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T) 
-allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"),intern=T)
-if ("R_2" %in% roles){
-  ldap_role="employee"
-  allowed=TRUE
-} else if ("R_3" %in% roles){
-  ldap_role="user"
-  if(projectFromUrl %in% allowedProjects){
-    allowed=TRUE
-  } else {
-    allowed=FALSE
-  }
-} else {
-  # What happened?
-  allowed=FALSE
-}
-message(roles); message(ldap_role); message("Allowed to all projects?"); message(allowed)
-
-
 # Import proteomics data from pStore ----
 is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))  # Checks if it starts with http:// or https://
 }
+
+message("trying: ", dataDir)
+
 # Import proteomics data from pStore
 if (grepl("rds", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("rds", dataDir) & exists("fileSE")) {
   if (is_url(dataDir)) {
@@ -89,8 +78,23 @@ if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("
 }
 
 # Import RNA seq data from SUSHI ----
-if (allowed) {
-  if (grepl("gstore", dataDir) | exists("fileSE")) {
+if (grepl("gstore", dataDir) | exists("fileSE")) {
+  roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T) 
+  allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"),intern=T)
+  if ("R_2" %in% roles){
+    ldap_role <- "employee"
+    allowed <- TRUE
+  } else if ("R_3" %in% roles){
+    ldap_role <- "user"
+    allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
+  } else {
+    allowed <- FALSE
+  }
+  message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
+  if (is.null(dataUrl)) {
+    allowed = TRUE
+  }
+  if (allowed) {
     if (grepl("EzResult.RData", dataDir)) {
       dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
     }

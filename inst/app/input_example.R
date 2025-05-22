@@ -265,3 +265,5 @@ input$gseaDodgeX <- 1
 input$nodeBorderGSEA <- 1
 
 input$showGeneLabelsORA <- TRUE
+
+input$contrastSelected

@@ -1,3 +1,8 @@
+## Sys.setenv(SHINYPROXY_USERNAME=Sys.getenv("USER"))
+
+# JLR 2025 employee and project restrictions, username coming from app.R, projectFromUrl from above, be careful that ldap-utils in installed in bash and you can access LDAP (certificate installed?)
+username <- Sys.getenv("SHINYPROXY_USERNAME")
+
 cat("loading packages...\n\n")
 packagesToLoad <- c(
   "shiny", "shinydashboard", "tidyverse", "ggpubr", "plotly", "DESeq2", "RColorBrewer",
