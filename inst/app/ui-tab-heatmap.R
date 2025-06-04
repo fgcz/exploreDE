@@ -82,7 +82,7 @@ tabItem(
           uiOutput(outputId = "nrPeptidesHeatmapUI"),
           hr(style = "border-top: 1px solid #000000;"), h4("Count settings"),
           selectInput(inputId = "heatmapCounts", label = "Select count method to plot", choices = "", selected = ""),
-          selectInput(inputId = "heatmapBatch", label = "Apply a batch-correction to the counts?", choices = "", multiple = TRUE),
+          selectInput(inputId = "heatmapBatch", label = "Apply a batch-correction to the counts?", choices = "", multiple = FALSE),
           hr(style = "border-top: 1px solid #000000;"), h4("Scale settings"),
           radioButtons(inputId = "heatmapScale", label = "Scale", choices = c("Continuous", "Diverging"), selected = "Diverging"),
           sliderInput(inputId = "heatmapLimitD", label = "Scale limit for diverging heatmap (+/-)", value = 4, min = 1, max = 20, step = 0.5),

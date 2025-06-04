@@ -32,9 +32,11 @@ input$featureCalcLFC <- 0
 
 input$pcaFactor1 <- inputDataReactive()$factors[1]
 input$pcaGroups <- inputDataReactive()$designLevels
-input$pcaGroups <- levels(inputDataReactive()$dataset$G_)
+# input$pcaGroups <- levels(inputDataReactive()$dataset$G_)
 input$pcaCounts <- "Normalised + Log2"
-input$pcaCounts <- "transformedData"
+input$pcaAddEllipses <- TRUE
+input$pcaEllipsesAlpha <- 0.2
+# input$pcaCounts <- "transformedData"
 input$pcaBatch <- NULL
 input$pcaTopN <- 2000
 input$pcaCentre = TRUE 
@@ -68,6 +70,7 @@ input$filnamePCA <- "PCA"
 
 input$boxplotFactor1 <- inputDataReactive()$factors[1]
 input$keepBucketBoxplot <- inputDataReactive()$genes[1:5]
+# input$keepBucketBoxplot <- grep("Hrh1", inputDataReactive()$genes, value = T)
 input$boxplotCounts <- names(inputDataReactive()$countList)[2]
 input$boxplotBatch <- NULL
 input$boxplotFactor2 <- "None"

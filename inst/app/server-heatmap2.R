@@ -125,8 +125,8 @@ observeEvent(inputDataReactive(), {
 updateSelectInput(
   session = session,
   inputId = "heatmapBatch",
-  choices = inputDataReactive()$factors,
-  selected = NULL
+  choices = c("None", inputDataReactive()$factors),
+  selected = "None"
 )
 
 if (inputDataReactive()$dataType == "RNASeq") {
@@ -239,10 +239,8 @@ observeEvent(
         
         # Subset count matrix:
         countsHeatmap <- inputDataReactive()$countList[[input$heatmapCounts]]
-        if (!is.null(input$heatmapBatch)) {
-          for (i in seq_along(input$heatmapBatch)) {
-            countsHeatmap <- limma::removeBatchEffect(countsHeatmap, datasetHeatmap[[input$heatmapBatch[i]]])
-          }
+        if (input$heatmapBatch != "None") {
+          countsHeatmap <- limma::removeBatchEffect(countsHeatmap, datasetHeatmap[[input$heatmapBatch]])
         }
         countsHeatmap <- countsHeatmap[, rownames(datasetHeatmap)]
         if (input$heatmapScale == "Diverging") {

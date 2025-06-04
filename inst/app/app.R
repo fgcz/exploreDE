@@ -23,11 +23,11 @@ my_theme = create_theme(
   )
 )
 
-
 ui = dashboardPage(
   dashboardHeader(
     title = "Explore DE",
     tags$li(
+      title = "Please include the URL to the dataset in your email.",
       a(
         href = 'mailto:sequencing@fgcz.ethz.ch?subject=exploreDE-shiny-app-feedback', 
         "Request Features/Report Bugs"), 

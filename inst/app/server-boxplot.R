@@ -35,8 +35,8 @@ updateSelectInput(
 updateSelectInput(
   session = session,
   inputId = "boxplotBatch",
-  choices = inputDataReactive()$factors,
-  selected = NULL
+  choices = c("None", inputDataReactive()$factors),
+  selected = "None"
 )
 
 observeEvent({
@@ -191,10 +191,8 @@ boxplotCountsReactive <- eventReactive({
     }
   }
   
-  if (!is.null(input$boxplotBatch)) {
-    for (i in seq_along(input$boxplotBatch)) {
-      countsBoxplot <- limma::removeBatchEffect(countsBoxplot, datasetBoxplot[[input$boxplotBatch[i]]])
-    }
+  if (input$boxplotBatch != "None") {
+    countsBoxplot <- limma::removeBatchEffect(countsBoxplot, datasetBoxplot[[input$boxplotBatch]])
   }
   if (inputDataReactive()$dataType == "proteomics") {
     rownames(countsBoxplot) <- gsub("\\~.*", "", rownames(countsBoxplot))
@@ -669,12 +667,22 @@ output$dlBoxplotButton <- downloadHandler(
   content = function(file) {
     req(!is.null(figuresDataReactive$boxplotStatic))
     if (!any(class(figuresDataReactive$boxplotStatic) == "list")) {
-      pdf(file = file, width = function(){as.numeric(input$figWidthBoxplot)/85}, height = function(){as.numeric(input$figHeightBoxplot)/90})
+      pdf(
+        file = file, 
+        width = (input$figWidthBoxplot/85), 
+        height = (input$figHeightBoxplot/90)
+        )
       print(figuresDataReactive$boxplotStatic)
       dev.off()
     } else {
-      pdf(file = file, width = function(){as.numeric(input$figWidthBoxplot)/65}, height = function(){as.numeric(input$figHeightBoxplot)/70}, onefile = FALSE)
-      p <- ggpubr::ggarrange(plotlist = figuresDataReactive$boxplotStatic, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(plotList)/input$boxplotNCol))
+      pdf(
+        file = file, 
+        width = (input$figWidthBoxplot/85), 
+        height = (input$figHeightBoxplot/90),
+        onefile = FALSE
+      )
+      p <- ggpubr::ggarrange(
+        plotlist = figuresDataReactive$boxplotStatic, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(plotList)/input$boxplotNCol))
       print(annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10))))
       dev.off()
     }

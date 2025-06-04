@@ -87,7 +87,8 @@ tabItem(
               inputId = "boxplotBatch", 
               label = "Apply a batch-correction to the counts?", 
               choices = c(), 
-              multiple = TRUE),
+              multiple = FALSE
+              ),
             hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
             h5(
               "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly 

@@ -51,7 +51,7 @@ tabItem(
             selectInput(inputId = "pcaFactor2", label = "Shape by", choices = "", selected = "", width = "75%"),
             hr(style = "border-top: 0.1px solid #000000;"),
             selectInput(inputId = "pcaCounts", label = "Counts to plot", choices = "", selected = "", width = "75%"),
-            selectInput(inputId = "pcaBatch", label = "Batch-correct by", choices = "", multiple = TRUE, width = "75%"),
+            selectInput(inputId = "pcaBatch", label = "Batch-correct by", choices = "", multiple = FALSE, width = "75%"),
             checkboxInput(inputId = "pcaLog2", label = "Log2 counts?", value = TRUE),
             helpText("Log2 only applies to non-logged RNA counts, e.g., TPM, FPKM"),
             hr(style = "border-top: 0.1px solid #000000;"),
