@@ -6,6 +6,7 @@ if (is.list(queryList)){
   dataUrl <- NULL
 }
 #dataUrl <- "p34002/bfabric/Proteomics/SummarizedExperiment/2024/2024-02/2024-02-09//workunit_299655//2444794.rds"
+#dataUrl <- "p38194/bfabric/Proteomics/exploreDE/2025/2025-05/2025-05-28//workunit_327682//2891915.rds"
 message(ezTime(), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
 
 
@@ -119,12 +120,12 @@ inputDataReactive <- reactive({
   
   # Load proteomics data ----
   if (grepl("rds|zip", dataDir)) {
-    return(exploreDE::convert_proteomics_se(se))
+    return(convert_proteomics_se(se))
   }
   
   # Load RNA Seq data ----
   if (file.exists(file.path(dataDir, "deResult.rds"))) {
-    return(exploreDE::convert_genomics_se(se, dataDir))
+    return(convert_genomics_se(se, dataDir))
   }
 })
 inputDataReactive()$dataType
