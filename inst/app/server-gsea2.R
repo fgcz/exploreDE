@@ -28,15 +28,6 @@ if(inputDataReactive()$dataType == "RNASeq") {
       param$fdrThreshGSEA <- 0.05
     }
     
-    # Download full GSEA results file
-    output$dlTableGSEA <- downloadHandler(
-      filename = function() {
-        basename(gseaHTML)
-      },
-      content = function(file) {
-        file.copy(from = gseaHTML, to = file)
-      }
-    )
     # GSEA Overview Table
     gsea.overview <- ezFrame(
       "Number of Significant Pathways" = numeric()
@@ -141,6 +132,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$nodeBorderGSEA
       input$ridgePlotColourByGSEA
       input$gseaLabelAlpha
+      input$gseaType
     }, {
       
       req(!is.null(input$selectedTable_GSEA_rows_selected))
@@ -256,6 +248,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
         )
         
         return(list(
+          "er" = er,
           "cnetplot" = cn,
           "heatmap" = hp,
           "runningscore" = rs,
@@ -264,6 +257,16 @@ if(inputDataReactive()$dataType == "RNASeq") {
         ))
       }
     })
+    
+    # Download GSEA results file
+    output$dlTableGSEA <- downloadHandler(
+      filename = function() {
+        paste0(design, "_GSEA_", input$gseaType, ".xlsx")
+      },
+      content = function(file) {
+        openxlsx::write.xlsx(x = as.data.frame(gsea[[input$gseaType]]@result), file = file)
+      }
+    )
     
     # Custom GSEA results output
     observeEvent(

@@ -268,6 +268,7 @@ input$gseaMaxOver <- 10
 input$gseaDodgeY <- 1
 input$gseaDodgeX <- 1
 input$nodeBorderGSEA <- 1
+input$ridgePlotColourByGSEA <- "qvalue"
 
 input$showGeneLabelsORA <- TRUE
 
