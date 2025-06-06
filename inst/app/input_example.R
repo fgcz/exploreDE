@@ -273,3 +273,23 @@ input$ridgePlotColourByGSEA <- "qvalue"
 input$showGeneLabelsORA <- TRUE
 
 input$contrastSelected
+
+input$correlationGene1 <- inputDataReactive()$genes[1]
+input$correlationGene2 <- inputDataReactive()$genes[2]
+input$correlationColourBy <- inputDataReactive()$factors[1]
+input$correlationShapeBy <- "None"
+input$correlationCounts <- switch(inputDataReactive()$dataType, "RNASeq" = "Normalised + Log2", "proteomics" = "transformedData")
+input$correlationBatch <- "None"
+input$correlationCorPosX <- "left"
+input$correlationCorPosY <- "top"
+input$correlationPointSize <- 2
+input$correlationPointStroke <- 0.8
+input$correlationPointAlpha <- 1
+input$textSizeCorrelation <- 12
+input$correlationMethod <- "Pearson"
+input$correlationCountsLog <- TRUE
+input$correlationShowNames <- TRUE
+input$correlationMaxOverlaps <- 10
+input$correlationLabelPosX <- 0
+input$correlationLabelPosY <- 0
+input$correlationKeepBucket <- levels(inputDataReactive()$dataset[[inputDataReactive()$factors[1]]])

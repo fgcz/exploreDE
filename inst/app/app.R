@@ -62,6 +62,7 @@ ui = dashboardPage(
         menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
         menuItem(text = "PCA Plots", tabName = "pcaPlotTab", icon = icon("meteor")),
         menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),
+        menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
       conditionalPanel(
         condition = "output.test=='RNASeq'",
         sidebarMenu(
@@ -122,6 +123,7 @@ ui = dashboardPage(
       source("ui-tab-heatmap.R", local = TRUE)$value,
       source("ui-tab-pca.R", local = TRUE)$value,
       source("ui-tab-boxplot.R", local = TRUE)$value,
+      source("ui-tab-correlation.R", local = TRUE)$value,
       source("ui-tab-hypergeo2.R", local = TRUE)$value,
       source("ui-tab-gsea2.R", local = TRUE)$value,
       source("ui-tab-goTile.R", local = TRUE)$value,
@@ -138,6 +140,7 @@ server = function(input, output, session) {
   source("server-heatmap2.R", local = TRUE)
   source("server-pca.R", local = TRUE)
   source("server-boxplot.R", local = TRUE)
+  source("server-correlation.R", local = TRUE)
   source("server-hypergeo2.R", local = TRUE)
   source("server-gsea2.R", local = TRUE)
   source("server-goTile.R", local = TRUE)
