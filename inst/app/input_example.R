@@ -260,6 +260,8 @@ input$oraDodgeY <- 1
 input$oraDodgeX <- 1
 input$nodeBorderORA <- 1
 
+input$showGeneLabelsGSEA <- TRUE
+input$gseaLabelAlpha <- 0.2
 input$scaleLimGSEA <- 4
 input$nodeSizeGSEA <- 10
 input$gseaMaxOver <- 10
