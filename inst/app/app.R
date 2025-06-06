@@ -2,7 +2,6 @@
 
 # JLR 2025 employee and project restrictions, username coming from app.R, projectFromUrl from above, be careful that ldap-utils in installed in bash and you can access LDAP (certificate installed?)
 username <- Sys.getenv("SHINYPROXY_USERNAME")
-source("../../R/helperFunctions.R")
 
 cat("loading packages...\n\n")
 packagesToLoad <- c(
@@ -10,7 +9,7 @@ packagesToLoad <- c(
   "ComplexHeatmap", "clusterProfiler", "DT", "colourpicker", "writexl", "circlize",
   "ezRun", "kableExtra", "ggrepel", "gplots", "sortable", "waiter", "ggprism", "ggbeeswarm",
   "rstatix", "gridExtra", "shinylogs", "parallel", "plyr", "shinycssloaders", "GGally", "patchwork",
-  "Matrix", "SingleCellExperiment", "fresh", "pathview"
+  "Matrix", "SingleCellExperiment", "fresh", "pathview", "exploreDE"
 )
 invisible(lapply(packagesToLoad, function(pkg) {
   suppressPackageStartupMessages(suppressWarnings(library(pkg, character.only = TRUE, quietly = TRUE)))
