@@ -46,9 +46,9 @@ tabItem(
               sliderInput(inputId = "correlationPointAlpha", label = "Point alpha", min = 0, max = 1, value = 1, step = 0.1, ticks = FALSE, width = "85%")
             ),
             splitLayout(
-              sliderInput(inputId = "textSizeCorrelation", label = "Figure Font Size", min = 4, max = 30, value = 14, step = 0.5, width = "85%"),
-              sliderInput(inputId = "figWidthCorrelation", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
-              sliderInput(inputId = "figHeightCorrelation", label = "Figure Height", min = 100, max = 2000, value = 450, step = 10, width = "85%")
+              sliderInput(inputId = "textSizeCorrelation", label = "Figure Font Size", min = 4, max = 30, value = 14, step = 0.5, ticks = FALSE, width = "85%"),
+              sliderInput(inputId = "figWidthCorrelation", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, ticks = FALSE, width = "85%"),
+              sliderInput(inputId = "figHeightCorrelation", label = "Figure Height", min = 100, max = 2000, value = 450, step = 10, ticks = FALSE, width = "85%")
             ),
             checkboxInput(inputId = "correlationShowNames", label = "Show sample names", value = FALSE),
             helpText("Increase the overlaps to show more labels"),
