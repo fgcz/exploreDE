@@ -178,14 +178,10 @@ if (inputDataReactive()$dataType == "proteomics") {
 }
 
 observeEvent(input$heatmapZScore, {
-  if (input$heatmapZScore == "Z-Score") {
+  if (input$heatmapZScore %in% c("Z-Score", "Centred")) {
     updateNumericInput(session = session, inputId = "heatmapAtLow", value = -2, min = -10, max = 10, step = 0.1)
     updateNumericInput(session = session, inputId = "heatmapAtMid", value = 0, min = -10, max = 10, step = 0.1)
     updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 2, min = -10, max = 10, step = 0.1)
-  } else if (input$heatmapZScore == "Centred") {
-    updateNumericInput(session = session, inputId = "heatmapAtLow", value = -1, min = -10, max = 10, step = 0.1)
-    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 0, min = -10, max = 10, step = 0.1)
-    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 1, min = -10, max = 10, step = 0.1)
   } else if (input$heatmapLog2 & input$heatmapZScore == "None") {
     updateNumericInput(session = session, inputId = "heatmapAtLow", value = 0, min = -10, max = 10, step = 0.1)
     updateNumericInput(session = session, inputId = "heatmapAtMid", value = 6, min = -10, max = 10, step = 0.1)
@@ -277,7 +273,7 @@ observeEvent(
         
         # Apply the following in this specific order as required: Log2, batch correct, Z-scale
         # If the user wants to log2, then do that
-        if (input$heatmapLog2) {
+        if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
           countsHeatmap <- log2(countsHeatmap + 1)
         }
         # If the user wants to remove batch effect, then do that
@@ -365,7 +361,7 @@ observeEvent(
         rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
         
         hmName <- paste(input$heatmapCounts %>% gsub("\\+", "\n\\+", .))
-        if (input$heatmapLog2) {
+        if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
           hmName <- paste(hmName, "\n(Log2)")
         }
         if (input$heatmapZScore == "Z-Score") {
