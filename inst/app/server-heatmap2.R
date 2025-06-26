@@ -162,6 +162,26 @@ if (inputDataReactive()$dataType == "proteomics") {
   }
 }
 
+observeEvent(input$heatmapZScore, {
+  if (input$heatmapZScore == "Z-Score") {
+    updateNumericInput(session = session, inputId = "heatmapAtLow", value = -2, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 0, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 2, min = -10, max = 10, step = 0.1)
+  } else if (input$heatmapZScore == "Centred") {
+    updateNumericInput(session = session, inputId = "heatmapAtLow", value = -1, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 0, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 1, min = -10, max = 10, step = 0.1)
+  } else if (input$heatmapLog2 & input$heatmapZScore == "None") {
+    updateNumericInput(session = session, inputId = "heatmapAtLow", value = 0, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 6, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 12, min = -10, max = 10, step = 0.1)
+  } else if (!input$heatmapLog2 & input$heatmapZScore == "None") {
+    updateNumericInput(session = session, inputId = "heatmapAtLow", value = 0, min = 0, max = 1e6, step = 100)
+    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 1000, min = 0, max = 1e6, step = 100)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 10000, min = 0, max = 1e6, step = 100)
+  }
+})
+
 observeEvent(
   {
     input$textSizeHeatmap
@@ -196,6 +216,9 @@ observeEvent(
     input$heatmapFeatureDirection
     input$heatmapLog2
     input$heatmapZScore
+    input$heatmapAtLow
+    input$heatmapAtMid
+    input$heatmapAtHigh
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
@@ -247,11 +270,15 @@ observeEvent(
           countsHeatmap <- limma::removeBatchEffect(countsHeatmap, datasetHeatmap[[input$heatmapBatch]])
         }
         # If the user wants to plot gene-wise Z-scores, then do that 
-        if (input$heatmapZScore) {
+        if (input$heatmapZScore == "Z-Score") {
           countsHeatmapz <- t(apply(countsHeatmap, 1, zscore))
           colnames(countsHeatmapz) <- colnames(countsHeatmap)
           countsHeatmap <- countsHeatmapz
           rm(countsHeatmapz)
+        }
+        # If the user wants to centre the counts, then do that
+        if (input$heatmapZScore == "Centred") {
+          countsHeatmap <- sweep(countsHeatmap, 1, rowMeans(countsHeatmap, na.rm = T))
         }
         
         # Fix the proteomics rownames
@@ -269,11 +296,14 @@ observeEvent(
         countsHeatmap <- countsHeatmap[!is.na(rownames(countsHeatmap)), ]
         
         # Get the heatmap colour palette to use
-        if (input$heatmapZScore) {
-          at <- c(-2, 0, 2)
-        } else {
-          at <- c(min(countsHeatmap, na.rm = TRUE), mean(countsHeatmap, na.rm = TRUE), max(countsHeatmap, na.rm = TRUE))
-        }
+        at <- c(input$heatmapAtLow, input$heatmapAtMid, input$heatmapAtHigh)
+        # if (input$heatmapZScore == "Z-Score") {
+        #   at <- c(-2, 0, 2)
+        # } else if (input$heatmapZScore == "Centred") {
+        #   at <- c(ceiling(min(countsHeatmap)), 0, floor(max(countsHeatmap)))
+        # } else {
+        #   at <- c(min(countsHeatmap, na.rm = TRUE), mean(countsHeatmap, na.rm = TRUE), max(countsHeatmap, na.rm = TRUE))
+        # }
         if (input$heatmapLimitCPalette == "None") {
           heatmapColours <- colorRamp2(
             breaks = rev(at),
@@ -323,8 +353,10 @@ observeEvent(
         if (input$heatmapLog2) {
           hmName <- paste(hmName, "\n(Log2)")
         }
-        if (input$heatmapZScore) {
+        if (input$heatmapZScore == "Z-Score") {
           hmName <- paste(hmName, "\n[Z Score]")
+        } else if (input$heatmapZScore == "Centred") {
+          hmName <- paste(hmName, "\n[Centred]")
         }
         
         heatmap <- ComplexHeatmap::Heatmap(

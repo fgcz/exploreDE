@@ -88,7 +88,7 @@ tabItem(
             selectInput(inputId = "heatmapBatch", label = "Apply a batch-correction to the counts?", choices = "", multiple = FALSE),
             checkboxInput(inputId = "heatmapLog2", label = "Log2 transform counts?", value = TRUE),
             helpText("Only applies to counts not already in log space."),
-            checkboxInput(inputId = "heatmapZScore", label = "Transform to Z-Scores?", value = TRUE),
+            radioButtons(inputId = "heatmapZScore", label = "Centre or use Z-Scores?", choices = c("None", "Centred", "Z-Score"), selected = "Centred"),
             helpText("Calculates per-gene Z-Scores. Works on any count method."),
             
             hr(style = "border-top: 1px solid #000000;"), h4("Heatmap settings"),
@@ -120,6 +120,12 @@ tabItem(
               colourpicker::colourInput(inputId = "heatmapColourRed", label = "High", value = "firebrick4", width = "85%"),
               colourpicker::colourInput(inputId = "heatmapColourWhite", label = "Mid", value = "white", width = "85%"),
               colourpicker::colourInput(inputId = "heatmapColourBlue", label = "Low", value = "dodgerblue4", width = "85%"),
+              cellArgs = list(style = "overflow: visible;")
+            ),
+            splitLayout(
+              numericInput(inputId = "heatmapAtLow", label = "Low break", min = -10, max = 10, value = -1, step = 0.5, width = "85%"),
+              numericInput(inputId = "heatmapAtMid", label = "Mid break", min = -10, max = 10, value = 0, step = 0.5, width = "85%"),
+              numericInput(inputId = "heatmapAtHigh", label = "High break", min = -10, max = 10, value = 1, step = 0.5, width = "85%"),
               cellArgs = list(style = "overflow: visible;")
             ),
             selectInput(inputId = "heatmapLimitCPalette", label = "Or, select palette", choices = c("None", rownames(brewer.pal.info)[which(brewer.pal.info$category %in% c("div", "seq"))]), selected = ""),
