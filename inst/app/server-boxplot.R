@@ -1,3 +1,18 @@
+zscore <- function(x) {
+  # Remove NAs for mean and sd calculation
+  if (all(is.na(x))) {
+    # If all values are NA, return all NAs
+    return(rep(NA, length(x)))
+  }
+  m <- mean(x, na.rm = TRUE)
+  s <- sd(x, na.rm = TRUE)
+  if (is.na(s) || s == 0) {
+    # If sd is NA (all NAs) or zero (no variance), return zeros (or NAs)
+    return(rep(0, length(x)))
+  }
+  (x - m) / s
+}
+
 # Update a bunch of input options ----
 output$boxplotStatic <- renderPlot({NULL})
 
