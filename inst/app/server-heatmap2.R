@@ -21,6 +21,7 @@ if (inputDataReactive()$dataType == "proteomics") {
   })
   updateCheckboxInput(session = session, inputId = "clusterColsHeatmap", value = FALSE)
   updateCheckboxInput(session = session, inputId = "clusterRowsHeatmap", value = FALSE)
+  updateCheckboxInput(session = session, inputId = "heatmapLog2", value = FALSE)
 }
 
 updateSelectInput(
@@ -34,8 +35,8 @@ updateSelectizeInput(
   session = session,
   inputId = "heatmapGenes",
   choices = inputDataReactive()$genes,
-  selected = "",
-  server = T
+  selected = NULL,
+  server = T, 
 )
 
 observeEvent({genesReactive}, {
@@ -122,12 +123,7 @@ observeEvent(inputDataReactive(), {
   }
 })
 
-updateSelectInput(
-  session = session,
-  inputId = "heatmapBatch",
-  choices = inputDataReactive()$factors,
-  selected = NULL
-)
+updateSelectInput(session = session, inputId = "heatmapBatch", choices = c("None", inputDataReactive()$factors), selected = "None")
 
 if (inputDataReactive()$dataType == "RNASeq") {
   output$heatmapGOUI <- renderUI({
@@ -166,16 +162,33 @@ if (inputDataReactive()$dataType == "proteomics") {
   }
 }
 
+observeEvent(input$heatmapZScore, {
+  if (input$heatmapZScore == "Z-Score") {
+    updateNumericInput(session = session, inputId = "heatmapAtLow", value = -2, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 0, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 2, min = -10, max = 10, step = 0.1)
+  } else if (input$heatmapZScore == "Centred") {
+    updateNumericInput(session = session, inputId = "heatmapAtLow", value = -1, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 0, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 1, min = -10, max = 10, step = 0.1)
+  } else if (input$heatmapLog2 & input$heatmapZScore == "None") {
+    updateNumericInput(session = session, inputId = "heatmapAtLow", value = 0, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 6, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 12, min = -10, max = 10, step = 0.1)
+  } else if (!input$heatmapLog2 & input$heatmapZScore == "None") {
+    updateNumericInput(session = session, inputId = "heatmapAtLow", value = 0, min = 0, max = 1e6, step = 100)
+    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 1000, min = 0, max = 1e6, step = 100)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 10000, min = 0, max = 1e6, step = 100)
+  }
+})
+
 observeEvent(
   {
-    # input$figHeightHeatmap
-    # input$figWidthHeatmap
     input$textSizeHeatmap
     input$heatmapBatch
     input$lfcHeatmap
     input$pTypeHeatmap
     input$pThresholdHeatmap
-    input$heatmapScale
     input$heatmapLimitD
     input$heatmapLimitCHigh
     input$heatmapLimitCMid
@@ -200,6 +213,12 @@ observeEvent(
     input$heatmapFilename
     input$nrPeptideHeatmap
     input$heatmapCustomTitle
+    input$heatmapFeatureDirection
+    input$heatmapLog2
+    input$heatmapZScore
+    input$heatmapAtLow
+    input$heatmapAtMid
+    input$heatmapAtHigh
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
@@ -239,65 +258,50 @@ observeEvent(
         
         # Subset count matrix:
         countsHeatmap <- inputDataReactive()$countList[[input$heatmapCounts]]
-        if (!is.null(input$heatmapBatch)) {
-          for (i in seq_along(input$heatmapBatch)) {
-            countsHeatmap <- limma::removeBatchEffect(countsHeatmap, datasetHeatmap[[input$heatmapBatch[i]]])
-          }
-        }
         countsHeatmap <- countsHeatmap[, rownames(datasetHeatmap)]
-        if (input$heatmapScale == "Diverging") {
-          if (input$heatmapCounts %in% c("FPKM", "TPM", "Normalised")) {
-            countsHeatmap <- log2(countsHeatmap + param$backgroundExpression)
-          }
-          # Subtract the gene row mean from each sample
+        
+        # Apply the following in this specific order as required: Log2, batch correct, Z-scale
+        # If the user wants to log2, then do that
+        if (input$heatmapLog2 & input$heatmapCounts %in% c("FPKM", "TPM", "Normalised")) {
+          countsHeatmap <- log2(countsHeatmap + 1)
+        }
+        # If the user wants to remove batch effect, then do that
+        if (input$heatmapBatch != "None") {
+          countsHeatmap <- limma::removeBatchEffect(countsHeatmap, datasetHeatmap[[input$heatmapBatch]])
+        }
+        # If the user wants to plot gene-wise Z-scores, then do that 
+        if (input$heatmapZScore == "Z-Score") {
+          countsHeatmapz <- t(apply(countsHeatmap, 1, zscore))
+          colnames(countsHeatmapz) <- colnames(countsHeatmap)
+          countsHeatmap <- countsHeatmapz
+          rm(countsHeatmapz)
+        }
+        # If the user wants to centre the counts, then do that
+        if (input$heatmapZScore == "Centred") {
           countsHeatmap <- sweep(countsHeatmap, 1, rowMeans(countsHeatmap, na.rm = T))
+        }
+        # Fix the proteomics rownames
+        if (inputDataReactive()$dataType == "proteomics") {
+          rownames(countsHeatmap) <- gsub("\\~.*", "", rownames(countsHeatmap))
+        }
+        countsHeatmap <- countsHeatmap[!is.na(rownames(countsHeatmap)), ]
+        
+        # Get the heatmap colour palette to use
+        at <- c(input$heatmapAtLow, input$heatmapAtMid, input$heatmapAtHigh)
+        if (input$heatmapLimitCPalette == "None") {
           heatmapColours <- colorRamp2(
-            breaks = c(input$heatmapLimitD, 0, -input$heatmapLimitD),
+            breaks = rev(at),
             colors = c(input$heatmapColourRed, input$heatmapColourWhite, input$heatmapColourBlue)
           )
-          at <- c(-input$heatmapLimitD, 0, input$heatmapLimitD)
-        } else if (input$heatmapScale == "Continuous") {
-          countsHeatmap[countsHeatmap > input$heatmapLimitCHigh] <- input$heatmapLimitCHigh
+        } else {
           if (input$heatmapLimitCPaletteRev) {
             heatmapColours <- colorRampPalette(brewer.pal(9, input$heatmapLimitCPalette))(64)
           } else {
             heatmapColours <- rev(colorRampPalette(brewer.pal(9, input$heatmapLimitCPalette))(64))
           }
-          at <- c(
-            as.numeric(input$heatmapLimitCLow),
-            as.numeric(input$heatmapLimitCMid), 
-            as.numeric(input$heatmapLimitCHigh)
-          )
         }
-        if (inputDataReactive()$dataType == "proteomics") {
-          rownames(countsHeatmap) <- gsub("\\~.*", "", rownames(countsHeatmap))
-        }
-        countsHeatmap <- countsHeatmap[match(seqAnnoHeatmap$gene_name, rownames(countsHeatmap)), ]
-        countsHeatmap <- countsHeatmap[!is.na(rownames(countsHeatmap)), ]
-        
-        geneDirections <- list(
-          "Both Directions" = seqAnnoHeatmap$gene_name[which(
-            as.numeric(seqAnnoHeatmap[[pTypeHeatmap]]) <= as.numeric(input$pThresholdHeatmap) &
-              as.numeric(abs(seqAnnoHeatmap[["log2Ratio"]])) >= as.numeric(input$lfcHeatmap) &
-              seqAnnoHeatmap[["usedInTest"]] == TRUE
-          )],
-          "Up-Regulated" = seqAnnoHeatmap$gene_name[which(
-            as.numeric(seqAnnoHeatmap[[pTypeHeatmap]]) <= as.numeric(input$pThresholdHeatmap) &
-              as.numeric(seqAnnoHeatmap[["log2Ratio"]]) >= as.numeric(input$lfcHeatmap) &
-              seqAnnoHeatmap[["usedInTest"]] == TRUE
-          )],
-          "Down-Regulated" = seqAnnoHeatmap$gene_name[which(
-            as.numeric(seqAnnoHeatmap[[pTypeHeatmap]]) <= as.numeric(input$pThresholdHeatmap) &
-              as.numeric(seqAnnoHeatmap[["log2Ratio"]]) <= -as.numeric(input$lfcHeatmap) &
-              seqAnnoHeatmap[["usedInTest"]] == TRUE
-          )]
-        )
-        
         
         # Top Annotation
-        # I realise this is the ugliest code in the world and I will refactor it
-        # but just getting it to work at all was a minor miracle
-        # HA = heatmap annotation
         colourListHeatmap <- setNames(lapply(inputDataReactive()$factors, function(f) {
           setNames(lapply(unique(datasetHeatmap[[f]]), function(k) {
             paste0(col2hex(input[[paste0("GroupColour", f, "__", k)]]), "FF")
@@ -308,7 +312,10 @@ observeEvent(
           p1 <- paste(lapply(input$heatmapFactors, function(g) {
             paste0("'", g, "' = datasetHeatmap[['", g, "']]")
           }), collapse = ",")
-          ha <- paste0("HeatmapAnnotation(", p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")))")
+          ha <- paste0(
+            "HeatmapAnnotation("
+            , p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")), gp = gpar(col = 'black', lwd = 0.5))"
+            )
           ha <- eval(parse(text = ha))
           for (f in c(input$heatmapFactors)) {
             for (l in levels(as.factor(datasetHeatmap[, f]))) {
@@ -319,69 +326,69 @@ observeEvent(
         }
         
         # Draw the heatmaps
-        lapply(c("Both Directions", "Up-Regulated", "Down-Regulated"), function(sig) {
-          output[[paste0("heatmapDesign", sig)]] <- renderText({design})
-          countsHeatmapSig <- countsHeatmap
-          countsHeatmapSig <- countsHeatmapSig[geneDirections[[sig]], ]
-          if (as.numeric(input$heatmapGeneNumber) <= length(geneDirections[[sig]])) {
-            countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
-          } 
-          rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
-          heatmap <- ComplexHeatmap::Heatmap(
-            matrix = countsHeatmapSig,
-            top_annotation = ha,
-            name = input$heatmapCounts %>% gsub("\\+", "\n\\+", .),
-            cluster_columns = input$clusterColsHeatmap,
-            cluster_rows = input$clusterRowsHeatmap,
-            show_column_names = input$colnamesHeatmap,
-            show_row_names = input$geneNamesHeatmap,
-            show_column_dend = input$showClusterColDend, 
-            show_row_dend = input$showClusterRowDend, 
-            use_raster = FALSE,
-            row_dend_width = unit(1, "cm"),
-            column_dend_height = unit(1, "cm"),
-            col = heatmapColours, 
-            row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-            column_names_gp = gpar(fontsize = input$textSizeHeatmap), 
-            column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-            column_title = paste("Top", nrow(countsHeatmapSig), sig, "DE Features:\n", design),
-            heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
-          )
-          figuresDataReactive[[paste0("heatmap", sig)]] <- heatmap
-          # Download the count file
-          countsHeatmapSigDL <- as.data.frame(countsHeatmapSig) %>% rownames_to_column("gene_name")
-          output[[paste0("dlHeatmapDFButton", sig)]] <- downloadHandler(
-            filename = function() { paste0(design, "_", sig, "_heatmap_counts.xlsx") },
-            content = function(file) { openxlsx::write.xlsx(countsHeatmapSigDL, file = file) }
-          )
-          # Show number of genes on plot (changes depending on settings applied)
-          output[[paste0("hGN", sig)]] <- renderText({
-            paste0("Number of features per settings chosen: ", nrow(countsHeatmapSig))
-          })
-          
+        output[["heatmapDesignBoth Directions"]] <- renderText({design})
+        # Get the features only in the specified DE direction
+        geneDirections <- list(
+          "Both" = seqAnnoHeatmap$gene_name[seqAnnoHeatmap[[pTypeHeatmap]] < input$pThresholdHeatmap & abs(seqAnnoHeatmap$log2Ratio) >= input$lfcHeatmap],
+          "Up-regulated" = seqAnnoHeatmap$gene_name[seqAnnoHeatmap[[pTypeHeatmap]] < input$pThresholdHeatmap & seqAnnoHeatmap$log2Ratio >= input$lfcHeatmap],
+          "Down-regulated" = seqAnnoHeatmap$gene_name[seqAnnoHeatmap[[pTypeHeatmap]] < input$pThresholdHeatmap & seqAnnoHeatmap$log2Ratio <= -input$lfcHeatmap]
+        )
+        countsHeatmapUpDown <- countsHeatmap[match(geneDirections[[input$heatmapFeatureDirection]], rownames(countsHeatmap)), ]
+        countsHeatmapSig <- countsHeatmapUpDown
+        if (as.numeric(input$heatmapGeneNumber) <= nrow(countsHeatmapSig)) {
+          countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
+        } 
+        rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
+        
+        hmName <- paste(input$heatmapCounts %>% gsub("\\+", "\n\\+", .))
+        if (input$heatmapLog2) {
+          hmName <- paste(hmName, "\n(Log2)")
+        }
+        if (input$heatmapZScore == "Z-Score") {
+          hmName <- paste(hmName, "\n[Z Score]")
+        } else if (input$heatmapZScore == "Centred") {
+          hmName <- paste(hmName, "\n[Centred]")
+        }
+        
+        heatmap <- ComplexHeatmap::Heatmap(
+          matrix = countsHeatmapSig,
+          top_annotation = ha,
+          name = hmName,
+          cluster_columns = input$clusterColsHeatmap,
+          cluster_rows = input$clusterRowsHeatmap,
+          show_column_names = input$colnamesHeatmap,
+          show_row_names = input$geneNamesHeatmap,
+          show_column_dend = input$showClusterColDend, 
+          show_row_dend = input$showClusterRowDend, 
+          rect_gp = gpar(col = "white", lwd = 0.5),
+          use_raster = FALSE,
+          row_dend_width = unit(1, "cm"),
+          column_dend_height = unit(1, "cm"),
+          col = heatmapColours, 
+          row_names_gp = gpar(fontsize = input$textSizeHeatmap),
+          column_names_gp = gpar(fontsize = input$textSizeHeatmap), 
+          column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
+          column_title = paste("Top", nrow(countsHeatmapSig), "DE Features:\n", design),
+          heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
+        ) %>% draw(merge_legend = TRUE)
+        figuresDataReactive[["heatmapDEFeatures"]] <- heatmap
+        
+        # Download the count file
+        countsHeatmapSigDL <- as.data.frame(countsHeatmapSig) %>% rownames_to_column("gene_name")
+        output[["dlHeatmapDFButtonDEFeatures"]] <- downloadHandler(
+          filename = function() { paste0(design, "_DE_", "_heatmap_counts.xlsx") },
+          content = function(file) { openxlsx::write.xlsx(countsHeatmapSigDL, file = file) }
+        )
+        # Show number of genes on plot (changes depending on settings applied)
+        output[["hGNDE"]] <- renderText({
+          paste0("Number of features per settings chosen: ", nrow(countsHeatmapSig))
         })
         
         # Make a custom heatmap from the genes selected
         observeEvent({
           input$keepBucketHeatmap
         }, {
-          hmCustomMatrix <- inputDataReactive()$countList[[input$heatmapCounts]]
-          req(length(input$keepBucketHeatmap) >= 2)
-          req(all(input$keepBucketHeatmap %in% rownames(hmCustomMatrix)))
-          if (!is.null(input$heatmapBatch)) {
-            for (i in seq_along(input$heatmapBatch)) {
-              hmCustomMatrix <- limma::removeBatchEffect(hmCustomMatrix, datasetHeatmap[[input$heatmapBatch[i]]])
-            }
-          }
-          hmCustomMatrix <- hmCustomMatrix[, rownames(datasetHeatmap)]
-          if (input$heatmapScale == "Diverging") {
-            if (input$heatmapCounts %in% c("FPKM", "TPM", "Normalised")) {
-              hmCustomMatrix <- log2(hmCustomMatrix + param$backgroundExpression)
-            }
-            hmCustomMatrix <- sweep(hmCustomMatrix, 1 , rowMeans(hmCustomMatrix, na.rm = T))
-          }
-          hmCustomMatrix <- hmCustomMatrix[rownames(hmCustomMatrix) %in% input$keepBucketHeatmap, ] %>% as.matrix()
-          
+          hmCustomMatrix <- countsHeatmap[input$keepBucketHeatmap, ]
           ch <- ComplexHeatmap::Heatmap(
             matrix = hmCustomMatrix,
             top_annotation = ha,
@@ -391,8 +398,9 @@ observeEvent(
             show_column_names = input$colnamesHeatmap,
             show_row_names = input$geneNamesHeatmap,
             col = heatmapColours,
-            column_title = paste(input$heatmapCustomTitle)
-          )
+            column_title = paste(input$heatmapCustomTitle),
+            rect_gp = gpar(col = "white", lwd = 0.5)
+          ) %>% draw(merge_legend = TRUE)
           figuresDataReactive$heatmapCustom <- ch
           
           output[[paste0("dlHeatmapDFButtonCustom")]] <- downloadHandler(
@@ -411,37 +419,36 @@ observeEvent(
             input$heatmapGoInput
             input$heatmapGoExpr
           }, ignoreInit = T, {
-            withProgress(message = "Making GO Heatmap. Can take a few minutes!", {
-              goToPlot <- gsub(" .*", "", input$heatmapGoInput)
-              goGenes <- seqAnnoHeatmap$gene_name[with(seqAnnoHeatmap, grepl(goToPlot, paste(`GO BP`, `GO MF`, `GO CC`)))]
+            goToPlot <- gsub(" .*", "", input$heatmapGoInput)
+            goGenes <- seqAnnoHeatmap$gene_name[with(seqAnnoHeatmap, grepl(goToPlot, paste(`GO BP`, `GO MF`, `GO CC`)))]
+            
+            if(!is.null(goGenes)) {
+              hmGOMatrix <- countsHeatmap[rownames(countsHeatmap) %in% goGenes, ] %>% as.matrix()
+              hmGOMatrix <- hmGOMatrix[abs(rowMedians(hmGOMatrix)) >= input$heatmapGoExpr, ]
               
-              if(!is.null(goGenes)) {
-                hmGOMatrix <- countsHeatmap[rownames(countsHeatmap) %in% goGenes, ] %>% as.matrix()
-                hmGOMatrix <- hmGOMatrix[abs(rowMedians(hmGOMatrix)) >= input$heatmapGoExpr, ]
-                
-                # Output heatmaps
-                gh <- ComplexHeatmap::Heatmap(
-                  matrix = hmGOMatrix,
-                  top_annotation = ha,
-                  name = input$heatmapCounts,
-                  cluster_columns = input$clusterColsHeatmap,
-                  cluster_rows = input$clusterRowsHeatmap,
-                  show_column_names = input$colnamesHeatmap,
-                  show_row_names = input$geneNamesHeatmap,
-                  col = heatmapColours,
-                  column_title = sub("\\s+", "\n", input$heatmapGoInput)
-                )
-                figuresDataReactive$heatmapGO <- gh
-                output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(
-                  filename = function() {
-                    paste0(design, "_GO_heatmap.xlsx")
-                  },
-                  content = function(file) {
-                    openxlsx::write.xlsx((as.data.frame(hmGOMatrix) %>% rownames_to_column("gene_name")), file = file)
-                  }
-                )
-              }
-            })
+              # Output heatmaps
+              gh <- ComplexHeatmap::Heatmap(
+                matrix = hmGOMatrix,
+                top_annotation = ha,
+                name = input$heatmapCounts,
+                cluster_columns = input$clusterColsHeatmap,
+                cluster_rows = input$clusterRowsHeatmap,
+                show_column_names = input$colnamesHeatmap,
+                show_row_names = input$geneNamesHeatmap,
+                col = heatmapColours,
+                column_title = sub("\\s+", "\n", input$heatmapGoInput),
+                rect_gp = gpar(col = "white", lwd = 0.5)
+              ) %>% draw(merge_legend = TRUE)
+              figuresDataReactive$heatmapGO <- gh
+              output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(
+                filename = function() {
+                  paste0(design, "_GO_heatmap.xlsx")
+                },
+                content = function(file) {
+                  openxlsx::write.xlsx((as.data.frame(hmGOMatrix) %>% rownames_to_column("gene_name")), file = file)
+                }
+              )
+            }
           })
         }
         
@@ -451,7 +458,7 @@ observeEvent(
 )
 
 # Output heatmaps
-lapply(c("Both Directions", "Up-Regulated", "Down-Regulated", "Custom", "GO"), function(sig) {
+lapply(c("DEFeatures", "Custom", "GO"), function(sig) {
   output[[paste0("heatmap", sig)]] <- renderPlot(
     {
       req(!is.null(figuresDataReactive[[paste0("heatmap", sig)]]))

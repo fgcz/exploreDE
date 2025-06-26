@@ -73,54 +73,77 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Main settings",
-          uiOutput(outputId = "heatmapProteomicsColumnSelectUI", inline = TRUE),
-          helpText("Plot the feature expression per sample of DE features, based on thresholds."),
-          numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 5000, value = 50, step = 1),
-          numericInput(inputId = "lfcHeatmap", label = "Log2 Fold Change Threshold:", value = 0.5, min = 0, max = 10, step = 0.25),
-          selectInput(inputId = "pTypeHeatmap", choices = c("FDR", "Raw"), label = "P-Value:", selected = "FDR"),
-          selectInput(inputId = "pThresholdHeatmap", choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05),
-          uiOutput(outputId = "nrPeptidesHeatmapUI"),
-          hr(style = "border-top: 1px solid #000000;"), h4("Count settings"),
-          selectInput(inputId = "heatmapCounts", label = "Select count method to plot", choices = "", selected = ""),
-          selectInput(inputId = "heatmapBatch", label = "Apply a batch-correction to the counts?", choices = "", multiple = TRUE),
-          hr(style = "border-top: 1px solid #000000;"), h4("Scale settings"),
-          radioButtons(inputId = "heatmapScale", label = "Scale", choices = c("Continuous", "Diverging"), selected = "Diverging"),
-          sliderInput(inputId = "heatmapLimitD", label = "Scale limit for diverging heatmap (+/-)", value = 4, min = 1, max = 20, step = 0.5),
-          selectInput(inputId = "heatmapLimitCPalette", label = "Continuous heatmap palette", choices = rownames(brewer.pal.info)[which(brewer.pal.info$category %in% c("div", "seq"))], selected = "YlGnBu"),
-          checkboxInput(inputId = "heatmapLimitCPaletteRev", label = "Click to reverse palette", value = FALSE),
-          numericInput(inputId = "heatmapLimitCHigh", label = "Scale limit for continuous heatmap", value = 1e3, min = 1, max = 1e5, step = 1),
-          hr(style = "border-top: 1px solid #000000;"), h4("Groups to plot"),
-          uiOutput("heatmapBucket")
-          ),
+            h4("Feature selection"),
+            uiOutput(outputId = "heatmapProteomicsColumnSelectUI", inline = TRUE),
+            helpText("Plot the feature expression per sample of DE features, based on thresholds."),
+            numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 5000, value = 50, step = 1),
+            numericInput(inputId = "lfcHeatmap", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
+            selectInput(inputId = "pTypeHeatmap", choices = c("FDR", "Raw"), label = "P-Value:", selected = "Raw"),
+            selectInput(inputId = "pThresholdHeatmap", choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05),
+            selectInput(inputId = "heatmapFeatureDirection", label = "Feature DE direction", choices = c("Both", "Up-regulated", "Down-regulated"), selected = "Both", multiple = FALSE),
+            uiOutput(outputId = "nrPeptidesHeatmapUI"),
+            
+            hr(style = "border-top: 1px solid #000000;"), h4("Count settings"),
+            selectInput(inputId = "heatmapCounts", label = "Select count method to plot", choices = "", selected = ""),
+            selectInput(inputId = "heatmapBatch", label = "Apply a batch-correction to the counts?", choices = "", multiple = FALSE),
+            checkboxInput(inputId = "heatmapLog2", label = "Log2 transform counts?", value = TRUE),
+            helpText("Only applies to counts not already in log space."),
+            radioButtons(inputId = "heatmapZScore", label = "Centre or use Z-Scores?", choices = c("None", "Centred", "Z-Score"), selected = "Centred"),
+            helpText("Calculates per-gene Z-Scores. Works on any count method."),
+            
+            hr(style = "border-top: 1px solid #000000;"), h4("Heatmap settings"),
+            uiOutput(outputId = "clusterWarningProteomics", inline = TRUE),
+            splitLayout(
+              checkboxInput(inputId = "clusterColsHeatmap", label = "Cluster samples?", value = TRUE),
+              checkboxInput(inputId = "showClusterColDend", label = "Show sample dendrogram?", value = TRUE)
+            ), 
+            splitLayout(
+              checkboxInput(inputId = "clusterRowsHeatmap", label = "Cluster features?", value = TRUE),
+              checkboxInput(inputId = "showClusterRowDend", label = "Show feature dendrogram?", value = TRUE)
+            ),
+            tags$b("Turn off/on names of rows/columns"),
+            splitLayout(
+              checkboxInput(inputId = "colnamesHeatmap", label = "Show sample names?", value = TRUE),
+              checkboxInput(inputId = "geneNamesHeatmap", label = "Show feature names?", value = TRUE)
+            ),
+            checkboxGroupInput(inputId = "heatmapFactors", label = "Select which factors should be displayed", choices = NULL, selected = NULL),
+            
+            
+            hr(style = "border-top: 1px solid #000000;"), h4("Groups to plot"),
+            uiOutput("heatmapBucket")
+            ),
+          
           tabPanel(
             title = "Figure settings",
-            tags$b("Turn off/on clustering of rows/columns"),
-            uiOutput(outputId = "clusterWarningProteomics", inline = TRUE),
-            checkboxInput(inputId = "clusterColsHeatmap", label = "Cluster samples?", value = TRUE),
-            checkboxInput(inputId = "showClusterColDend", label = "Show sample dendrogram?", value = TRUE),
-            checkboxInput(inputId = "clusterRowsHeatmap", label = "Cluster features?", value = TRUE),
-            checkboxInput(inputId = "showClusterRowDend", label = "Show feature dendrogram?", value = TRUE),
-            tags$b("Turn off/on names of rows/columns"),
-            checkboxInput(inputId = "colnamesHeatmap", label = "Show sample names?", value = TRUE),
-            checkboxInput(inputId = "geneNamesHeatmap", label = "Show feature names?", value = TRUE),
-            # uiOutput("heatmapFactors"),
-            checkboxGroupInput(inputId = "heatmapFactors", label = "Select which factors should be displayed", choices = "", selected = ""),
-            colourpicker::colourInput(inputId = "heatmapColourRed", label = "Heatmap Red (+)", value = "darkred"),
-            colourpicker::colourInput(inputId = "heatmapColourWhite", label = "Heatmap White (0)", value = "#FFFFFF"),
-            colourpicker::colourInput(inputId = "heatmapColourBlue", label = "Heatmap Blue (-)", value = "deepskyblue4"),
-            sliderInput(inputId = "textSizeHeatmap", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%"),
-            sliderInput(inputId = "figWidthHeatmap", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10, width = "85%"),
-            sliderInput(inputId = "figHeightHeatmap", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10, width = "85%")
+            h4("Heatmap colours"),
+            splitLayout(
+              colourpicker::colourInput(inputId = "heatmapColourRed", label = "High", value = "firebrick4", width = "85%"),
+              colourpicker::colourInput(inputId = "heatmapColourWhite", label = "Mid", value = "white", width = "85%"),
+              colourpicker::colourInput(inputId = "heatmapColourBlue", label = "Low", value = "dodgerblue4", width = "85%"),
+              cellArgs = list(style = "overflow: visible;")
+            ),
+            splitLayout(
+              numericInput(inputId = "heatmapAtLow", label = "Low break", min = -10, max = 10, value = -1, step = 0.5, width = "85%"),
+              numericInput(inputId = "heatmapAtMid", label = "Mid break", min = -10, max = 10, value = 0, step = 0.5, width = "85%"),
+              numericInput(inputId = "heatmapAtHigh", label = "High break", min = -10, max = 10, value = 1, step = 0.5, width = "85%"),
+              cellArgs = list(style = "overflow: visible;")
+            ),
+            selectInput(inputId = "heatmapLimitCPalette", label = "Or, select palette", choices = c("None", rownames(brewer.pal.info)[which(brewer.pal.info$category %in% c("div", "seq"))]), selected = ""),
+            checkboxInput(inputId = "heatmapLimitCPaletteRev", "Reverse palette", value = FALSE),
+            splitLayout(
+              sliderInput(inputId = "textSizeHeatmap", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "figWidthHeatmap", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "figHeightHeatmap", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10, width = "85%", ticks = FALSE)
+            )
           ),
+          
           tabPanel(
             title = "Download Settings",
             helpText("Which ever heatmap you are currently viewing (e.g., both, up, or down) will be the one downloaded."),
             selectInput(inputId = "heatmapDownloadFormat", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
-            # numericInput(inputId = "heatmapDownloadWidth", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10),
-            # numericInput(inputId = "heatmapDownloadHeight", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10),
             selectInput(inputId = "heatmapDPI", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
-            textInput(inputId = "heatmapFilename", label = "Enter filename", value = "heatmap", placeholder = "up_regulated_heatmap"),
-            )
+            textInput(inputId = "heatmapFilename", label = "Enter filename", value = "heatmap", placeholder = "up_regulated_heatmap")
+          )
         )
       )
     ), 
@@ -134,26 +157,14 @@ tabItem(
         tabsetPanel(
           id = "sig",
           tabPanel(
-            title = "Both Directions",
+            title = "DE Features",
             textOutput("heatmapDesignBoth Directions"), br(),
-            downloadButton(outputId = paste0("dlHeatmapButtonBoth Directions"), label = "Download Heatmap"),
-            downloadButton(outputId = paste0("dlHeatmapDFButtonBoth Directions"), label = "Download Counts (Excel)"), br(),
-            plotOutput(paste0("heatmapBoth Directions"), inline = TRUE)
+            downloadButton(outputId = "dlHeatmapButtonDEFeatures", label = "Download Heatmap"),
+            downloadButton(outputId = "dlHeatmapDFButtonDEFeatures", label = "Download Counts"), br(),
+            plotOutput("heatmapDEFeatures", inline = TRUE),
+            textOutput("hGNDE")
           ),
-          tabPanel(
-            title = "Up-Regulated",
-            textOutput("heatmapDesignUp-Regulated"), br(),
-            downloadButton(outputId = paste0("dlHeatmapButtonUp-Regulated"), label = "Download Heatmap"),
-            downloadButton(outputId = paste0("dlHeatmapDFButtonUp-Regulated"), label = "Download Counts (Excel)"), br(),
-            plotOutput(paste0("heatmapUp-Regulated"), inline = TRUE)
-          ),
-          tabPanel(
-            title = "Down-Regulated",
-            textOutput("heatmapDesignDown-Regulated"), br(),
-            downloadButton(outputId = paste0("dlHeatmapButtonDown-Regulated"), label = "Download Heatmap"),
-            downloadButton(outputId = paste0("dlHeatmapDFButtonDown-Regulated"), label = "Download Counts (Excel)"), br(),
-            plotOutput(paste0("heatmapDown-Regulated"), inline = TRUE)
-          ),
+          
           tabPanel(
             title = "Custom", 
             column(

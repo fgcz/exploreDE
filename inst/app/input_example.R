@@ -32,9 +32,11 @@ input$featureCalcLFC <- 0
 
 input$pcaFactor1 <- inputDataReactive()$factors[1]
 input$pcaGroups <- inputDataReactive()$designLevels
-input$pcaGroups <- levels(inputDataReactive()$dataset$G_)
+# input$pcaGroups <- levels(inputDataReactive()$dataset$G_)
 input$pcaCounts <- "Normalised + Log2"
-input$pcaCounts <- "transformedData"
+input$pcaAddEllipses <- TRUE
+input$pcaEllipsesAlpha <- 0.2
+# input$pcaCounts <- "transformedData"
 input$pcaBatch <- NULL
 input$pcaTopN <- 2000
 input$pcaCentre = TRUE 
@@ -68,6 +70,7 @@ input$filnamePCA <- "PCA"
 
 input$boxplotFactor1 <- inputDataReactive()$factors[1]
 input$keepBucketBoxplot <- inputDataReactive()$genes[1:5]
+# input$keepBucketBoxplot <- grep("Hrh1", inputDataReactive()$genes, value = T)
 input$boxplotCounts <- names(inputDataReactive()$countList)[2]
 input$boxplotBatch <- NULL
 input$boxplotFactor2 <- "None"
@@ -99,6 +102,7 @@ input$boxplotShowPTipSizeB <- 1
 input$boxplotShowPDodge <- 1
 input$boxplotPointBorder <- 0.5
 input$boxplotCountsLog <- FALSE
+input$boxplotZScore <- TRUE
 
 input$boxplotGenes <- inputDataReactive()$genes[1:5]
 input$boxplotGenesText <- inputDataReactive()$genes[6:10]
@@ -134,11 +138,11 @@ if (inputDataReactive()$dataType == "proteomics") {
   input$downloadCount <- "transformed"
 }
 
-input$heatmapScale <- "Continuous"
+# input$heatmapScale <- "Continuous"
 input$pTypeHeatmap <- "Raw"
 # input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[3]])))
 input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[1]])))
-input$heatmapCounts <- names(inputDataReactive()$countList)[2]
+input$heatmapCounts <- switch(inputDataReactive()$dataType, "RNASeq" = "TPM", "proteomics" = "transformedData")
 input$xCoord <- 10
 input$yCoord <- 10
 
@@ -175,7 +179,7 @@ input$figHeightHeatmap <- 800
 input$figWidthHeatmap <- 1000
 input$textSizeHeatmap <- 12
 input$heatmapBatch <- "None"
-input$heatmapLimitCPalette <- "YlGnBu"
+input$heatmapLimitCPalette <- "RdBu"
 input$heatmapLimitCPaletteRev <- FALSE
 input$heatmapLimitCHigh <- 1e5
 input$heatmapLimitCMid <- 1e4
@@ -185,6 +189,12 @@ input$showClusterColDend <- TRUE
 input$showClusterRowDend <- TRUE
 input$heatmapGoInput <- "GO:0042254 ribosome biogenesis"
 input$heatmapGoExpr <- 0.05
+input$heatmapLog2 <- TRUE
+input$heatmapZScore <- "Centred"
+input$heatmapFeatureDirection <- "Both"
+input$heatmapAtLow <- -1
+input$heatmapAtMid <- 0
+input$heatmapAtHigh <- 1
 
 input$pTypeVolcano <- "FDR"
 input$lfcVolcano <- 0.25
@@ -257,13 +267,47 @@ input$oraDodgeY <- 1
 input$oraDodgeX <- 1
 input$nodeBorderORA <- 1
 
+input$showGeneLabelsGSEA <- TRUE
+input$gseaLabelAlpha <- 0.2
 input$scaleLimGSEA <- 4
 input$nodeSizeGSEA <- 10
 input$gseaMaxOver <- 10
 input$gseaDodgeY <- 1
 input$gseaDodgeX <- 1
 input$nodeBorderGSEA <- 1
+input$ridgePlotColourByGSEA <- "qvalue"
 
 input$showGeneLabelsORA <- TRUE
 
 input$contrastSelected
+
+input$correlationGene1 <- inputDataReactive()$genes[1]
+input$correlationGene2 <- inputDataReactive()$genes[2]
+input$correlationColourBy <- inputDataReactive()$factors[1]
+input$correlationShapeBy <- "None"
+input$correlationCounts <- switch(inputDataReactive()$dataType, "RNASeq" = "Normalised + Log2", "proteomics" = "transformedData")
+input$correlationBatch <- "None"
+input$correlationCorPosX <- "left"
+input$correlationCorPosY <- "top"
+input$correlationPointSize <- 2
+input$correlationPointStroke <- 0.8
+input$correlationPointAlpha <- 1
+input$textSizeCorrelation <- 12
+input$correlationMethod <- "Pearson"
+input$correlationCountsLog <- TRUE
+input$correlationShowNames <- TRUE
+input$correlationMaxOverlaps <- 10
+input$correlationLabelPosX <- 0
+input$correlationLabelPosY <- 0
+input$correlationKeepBucket <- levels(inputDataReactive()$dataset[[inputDataReactive()$factors[1]]])
+
+if (inputDataReactive()$dataType == "proteomics") {
+  groupingNameHeatmap <- eventReactive(input$heatmapProteomicsColumnSelect, {
+    return(list(
+      "gn" = input$heatmapProteomicsColumnSelect
+    ))
+  })
+} else if (inputDataReactive()$dataType == "RNASeq") {
+  groupingNameHeatmap <- reactive(return(list("gn" = inputDataReactive()$param$groupingName)))
+}
+input$keepBucketHeatmap <- inputDataReactive()$genes[c(1, 4, 5, 6, 9)]

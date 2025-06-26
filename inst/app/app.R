@@ -9,7 +9,7 @@ packagesToLoad <- c(
   "ComplexHeatmap", "clusterProfiler", "DT", "colourpicker", "writexl", "circlize",
   "ezRun", "kableExtra", "ggrepel", "gplots", "sortable", "waiter", "ggprism", "ggbeeswarm",
   "rstatix", "gridExtra", "shinylogs", "parallel", "plyr", "shinycssloaders", "GGally", "patchwork",
-  "Matrix", "SingleCellExperiment", "fresh", "exploreDE", "pathview"
+  "Matrix", "SingleCellExperiment", "fresh", "pathview", "exploreDE"
 )
 invisible(lapply(packagesToLoad, function(pkg) {
   suppressPackageStartupMessages(suppressWarnings(library(pkg, character.only = TRUE, quietly = TRUE)))
@@ -23,11 +23,11 @@ my_theme = create_theme(
   )
 )
 
-
 ui = dashboardPage(
   dashboardHeader(
     title = "Explore DE",
     tags$li(
+      title = "Please include the URL to the dataset in your email.",
       a(
         href = 'mailto:sequencing@fgcz.ethz.ch?subject=exploreDE-shiny-app-feedback', 
         "Request Features/Report Bugs"), 
@@ -62,6 +62,7 @@ ui = dashboardPage(
         menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
         menuItem(text = "PCA Plots", tabName = "pcaPlotTab", icon = icon("meteor")),
         menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),
+        menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
       conditionalPanel(
         condition = "output.test=='RNASeq'",
         sidebarMenu(
@@ -122,6 +123,7 @@ ui = dashboardPage(
       source("ui-tab-heatmap.R", local = TRUE)$value,
       source("ui-tab-pca.R", local = TRUE)$value,
       source("ui-tab-boxplot.R", local = TRUE)$value,
+      source("ui-tab-correlation.R", local = TRUE)$value,
       source("ui-tab-hypergeo2.R", local = TRUE)$value,
       source("ui-tab-gsea2.R", local = TRUE)$value,
       source("ui-tab-goTile.R", local = TRUE)$value,
@@ -138,6 +140,7 @@ server = function(input, output, session) {
   source("server-heatmap2.R", local = TRUE)
   source("server-pca.R", local = TRUE)
   source("server-boxplot.R", local = TRUE)
+  source("server-correlation.R", local = TRUE)
   source("server-hypergeo2.R", local = TRUE)
   source("server-gsea2.R", local = TRUE)
   source("server-goTile.R", local = TRUE)

@@ -35,8 +35,8 @@ updateSelectInput(
 updateSelectInput(
   session = session,
   inputId = "boxplotBatch",
-  choices = inputDataReactive()$factors,
-  selected = NULL
+  choices = c("None", inputDataReactive()$factors),
+  selected = "None"
 )
 
 observeEvent({
@@ -165,6 +165,7 @@ boxplotCountsReactive <- eventReactive({
   input$contrastSelected
   input$boxplotShowPHeight
   input$boxplotCountsLog
+  input$boxplotZScore
 }, ignoreNULL = FALSE, ignoreInit = TRUE, {
   
   req(length(input$keepBucketBoxplot) >= 1)
@@ -183,6 +184,9 @@ boxplotCountsReactive <- eventReactive({
   
   # Get the count data
   countsBoxplot <- inputDataReactive()$countList[[input$boxplotCounts]]
+  
+  # Apply the following in this specific order as required: Log2, batch correct, Z-scale
+  # If the user wants to log2, then do that
   if (input$boxplotCountsLog) {
     if (inputDataReactive()$dataType == "RNASeq") {
       if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
@@ -190,12 +194,19 @@ boxplotCountsReactive <- eventReactive({
       }
     }
   }
-  
-  if (!is.null(input$boxplotBatch)) {
-    for (i in seq_along(input$boxplotBatch)) {
-      countsBoxplot <- limma::removeBatchEffect(countsBoxplot, datasetBoxplot[[input$boxplotBatch[i]]])
-    }
+  # If the user wants to remove batch effect, then do that
+  if (input$boxplotBatch != "None") {
+    countsBoxplot <- limma::removeBatchEffect(countsBoxplot, datasetBoxplot[[input$boxplotBatch]])
   }
+  # If the user wants to plot gene-wise Z-scores, then do that 
+  if (input$boxplotZScore) {
+    countsBoxplotz <- t(apply(countsBoxplot, 1, zscore))
+    colnames(countsBoxplotz) <- colnames(countsBoxplot)
+    countsBoxplot <- countsBoxplotz
+    rm(countsBoxplotz)
+  }
+  
+  # Clean up proteomics feature names 
   if (inputDataReactive()$dataType == "proteomics") {
     rownames(countsBoxplot) <- gsub("\\~.*", "", rownames(countsBoxplot))
   }
@@ -349,12 +360,7 @@ themes <- list(
 
 observeEvent({
   boxplotCountsReactive()
-  # input$boxplotFactor1
-  # input$boxKeepBucket
-  # input$keepBucketBoxplot
   input$boxplotYLimLFC
-  # input$figHeightBoxplot
-  # input$figWidthBoxplot
   input$textSizeBoxplot
   input$boxplotNCol
   input$boxplotVertLines
@@ -452,15 +458,16 @@ observeEvent({
     if (!input$boxplotShowConditions) {
       g <- g + theme(axis.text.x = element_blank())
     }
+    
+    ylabToPlot <- paste(input$boxplotCounts, "Counts")
     if (input$boxplotCountsLog) {
-      if (inputDataReactive()$dataType == "RNASeq") {
-        if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
-          g <- g + labs(y = paste(input$boxplotCounts, "Counts (Log2)"))
-        }
-      }
-    } else {
-      g <- g + labs(y = paste(input$boxplotCounts, "Counts"))
+      ylabToPlot <- paste(ylabToPlot, "(Log2)")
     }
+    if (input$boxplotZScore) {
+      ylabToPlot <- paste(ylabToPlot, "[Z-score]")
+    }
+    g <- g + labs(y = ylabToPlot)
+    
     g <- g + facet_wrap(~variable, scales = "free", ncol = input$boxplotNCol)
     if (input$boxplotVertLines) {
       g <- g + geom_vline(xintercept = seq_along(input$boxKeepBucket)[-length(seq_along(input$boxKeepBucket))]+0.5, linetype = "dashed", alpha = 0.7)
@@ -669,12 +676,22 @@ output$dlBoxplotButton <- downloadHandler(
   content = function(file) {
     req(!is.null(figuresDataReactive$boxplotStatic))
     if (!any(class(figuresDataReactive$boxplotStatic) == "list")) {
-      pdf(file = file, width = function(){as.numeric(input$figWidthBoxplot)/85}, height = function(){as.numeric(input$figHeightBoxplot)/90})
+      pdf(
+        file = file, 
+        width = (input$figWidthBoxplot/85), 
+        height = (input$figHeightBoxplot/90)
+        )
       print(figuresDataReactive$boxplotStatic)
       dev.off()
     } else {
-      pdf(file = file, width = function(){as.numeric(input$figWidthBoxplot)/65}, height = function(){as.numeric(input$figHeightBoxplot)/70}, onefile = FALSE)
-      p <- ggpubr::ggarrange(plotlist = figuresDataReactive$boxplotStatic, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(plotList)/input$boxplotNCol))
+      pdf(
+        file = file, 
+        width = (input$figWidthBoxplot/85), 
+        height = (input$figHeightBoxplot/90),
+        onefile = FALSE
+      )
+      p <- ggpubr::ggarrange(
+        plotlist = figuresDataReactive$boxplotStatic, common.legend = TRUE, legend = "right", ncol = input$boxplotNCol, nrow = ceiling(length(plotList)/input$boxplotNCol))
       print(annotate_figure(p, left = textGrob(paste(input$boxplotCounts, "Counts"), rot = 90, vjust = 1, gp = gpar(cex = input$textSizeBoxplot/10))))
       dev.off()
     }

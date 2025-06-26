@@ -11,6 +11,9 @@ if(inputDataReactive()$dataType == "RNASeq") {
   })
   
   if(isTRUE(param$runGO & param$featureLevel != "isoform")) {
+    
+    updateSelectInput(session = session, inputId = "gseaType", choices = names(inputDataReactive()$gsea), selected = names(inputDataReactive()$gsea)[[1]])
+    
     gsea <- inputDataReactive()$gsea
     gseaHTML <- inputDataReactive()$gseaHTML
     se <- inputDataReactive()$se
@@ -25,15 +28,6 @@ if(inputDataReactive()$dataType == "RNASeq") {
       param$fdrThreshGSEA <- 0.05
     }
     
-    # Download full GSEA results file
-    output$dlTableGSEA <- downloadHandler(
-      filename = function() {
-        basename(gseaHTML)
-      },
-      content = function(file) {
-        file.copy(from = gseaHTML, to = file)
-      }
-    )
     # GSEA Overview Table
     gsea.overview <- ezFrame(
       "Number of Significant Pathways" = numeric()
@@ -85,18 +79,23 @@ if(inputDataReactive()$dataType == "RNASeq") {
         }
       }
       if (!is.null(er) && nrow(er@result) != 0) {
-        er@result$Label <- ""
-        for (i in seq_along(er@result$Description)) {
-          desc <- er@result$Description[i]
-          label <- paste0(er@result$ID[i], "\n", desc)
-          if (!is.na(label) && nchar(label) > 45) {
-            label <- substr(label, 1, 45)
+        if (input$gseaType %in% c("BP", "MF", "CC")) {
+          er@result$Label <- ""
+          for (i in seq_along(er@result$Description)) {
+            desc <- er@result$Description[i]
+            label <- paste0(er@result$ID[i], "\n", desc)
+            if (!is.na(label) && nchar(label) > 45) {
+              label <- substr(label, 1, 45)
+            }
+            er@result$Label[i] <- label
+            colsToTable <- c("Label", "enrichmentScore", "NES", "qvalue", "geneName")
           }
-          er@result$Label[i] <- label
+        } else {
+          colsToTable <- c("Description", "enrichmentScore", "NES", "qvalue","core_enrichment")
         }
         output$selectedTable_GSEA <- DT::renderDataTable({
           DT::datatable(
-            data = as.data.frame(er)[, c("Label", "enrichmentScore", "NES", "geneName")],
+            data = as.data.frame(er)[, colsToTable],
             filter = "top", class = "cell-border stripe",
             rownames = FALSE, caption = "Click pathways in this table to add them to the figures on the right"
           ) %>%
@@ -104,12 +103,17 @@ if(inputDataReactive()$dataType == "RNASeq") {
               columns = colnames(.$x$data), `font-size` = "12px"
             ) %>%
             DT::formatSignif(
-              columns = c("enrichmentScore", "NES"),
+              columns = c("enrichmentScore", "NES", "qvalue"),
               digits = 3
             ) %>%
             DT::formatStyle(
               columns = c("enrichmentScore", "NES"),
               color = styleInterval(cuts = 0, values = c("blue", "darkorange")),
+              fontWeight = "bold"
+            ) %>% 
+            DT::formatStyle(
+              columns = "qvalue",
+              color = styleInterval(cuts = param$fdrThreshGSEA, values = c("green", "black")),
               fontWeight = "bold"
             )
         })
@@ -128,22 +132,26 @@ if(inputDataReactive()$dataType == "RNASeq") {
       input$nodeBorderGSEA
       input$ridgePlotColourByGSEA
       input$gseaLabelAlpha
+      input$gseaType
     }, {
       
       req(!is.null(input$selectedTable_GSEA_rows_selected))
       
       er <- gsea[[input$gseaType]]
       if (!is.null(er) && nrow(er@result) >= 2) {
-        er@result$Label <- ""
-        for (i in seq_along(er@result$Description)) {
-          desc <- er@result$Description[i]
-          label <- paste0(er@result$ID[i], "\n", desc)
-          if (!is.na(label) && nchar(label) > 45) {
-            label <- substr(label, 1, 45)
+        if (input$gseaType %in% c("BP", "MF", "CC")) {
+          er@result$Label <- ""
+          for (i in seq_along(er@result$Description)) {
+            desc <- er@result$Description[i]
+            label <- paste0(er@result$ID[i], "\n", desc)
+            if (!is.na(label) && nchar(label) > 45) {
+              label <- substr(label, 1, 45)
+            }
+            er@result$Label[i] <- label
           }
-          er@result$Label[i] <- label
+        } else {
+          er@result$Label <- er@result$Description
         }
-        
         erRP <- clusterProfiler::slice(er, input$selectedTable_GSEA_rows_selected)
         rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
         rp <- rp +
@@ -151,20 +159,23 @@ if(inputDataReactive()$dataType == "RNASeq") {
           theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeGSEA)) +
           geom_vline(xintercept = 0, linetype = "dashed") +
           scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "white", midpoint = 0)
-        ce_list <- NA
-        for (i in 1:length(er@result$core_enrichment)) {
-          core_enrich <- strsplit(
-            er@result$core_enrichment[i],
-            split = "/"
-          ) %>% unlist()
-          ce_list <- c(ce_list, core_enrich)
-          core_enrich_symbol <- metadata(se)$enrichInput$seqAnno$gene_name[
-            metadata(se)$enrichInput$seqAnno$gene_id %in% core_enrich
-          ]
-          core_enrich_symbol <- paste(core_enrich_symbol, collapse = "/")
-          er@result$core_enrichment[i] <- core_enrich_symbol
+        
+        if (input$gseaType %in% c("BP", "MF", "CC")) {
+          ce_list <- NA
+          for (i in 1:length(er@result$core_enrichment)) {
+            core_enrich <- strsplit(
+              er@result$core_enrichment[i],
+              split = "/"
+            ) %>% unlist()
+            ce_list <- c(ce_list, core_enrich)
+            core_enrich_symbol <- metadata(se)$enrichInput$seqAnno$gene_name[
+              metadata(se)$enrichInput$seqAnno$gene_id %in% core_enrich
+            ]
+            core_enrich_symbol <- paste(core_enrich_symbol, collapse = "/")
+            er@result$core_enrichment[i] <- core_enrich_symbol
+          }
+          sigGeneIds <- ce_list[!is.na(ce_list)]
         }
-        sigGeneIds <- ce_list[!is.na(ce_list)]
         
         log2RatioGSEA <- metadata(se)$enrichInput$seqAnno$log2Ratio
         names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno$gene_name
@@ -206,7 +217,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
           x = er,
           foldChange = log2RatioGSEA,
           showCategory = er@result$Description[input$selectedTable_GSEA_rows_selected],
-        ) + scale_colour_distiller(palette = "RdBu")
+        ) + scale_colour_distiller(palette = "RdBu") + coord_flip()
         rs <- enrichplot::gseaplot2(
           x = er,
           geneSetID = input$selectedTable_GSEA_rows_selected,
@@ -215,7 +226,8 @@ if(inputDataReactive()$dataType == "RNASeq") {
         
         # make an upset plot of the genes in the selected pathways 
         geneSetsUpset <- setNames(lapply(input$selectedTable_GSEA_rows_selected, function(i) {
-          g <- er@result$geneName[i] %>% strsplit("/") %>% .[[1]]
+          if (input$gseaType %in% c("BP", "MF", "CC")) {colToUse = "geneName"} else {colToUse = "core_enrichment"}
+          g <- er@result[[colToUse]][i] %>% strsplit("/") %>% .[[1]]
           g <- g[nchar(g) > 1]
           g
         }), er@result$Label[input$selectedTable_GSEA_rows_selected])
@@ -236,6 +248,7 @@ if(inputDataReactive()$dataType == "RNASeq") {
         )
         
         return(list(
+          "er" = er,
           "cnetplot" = cn,
           "heatmap" = hp,
           "runningscore" = rs,
@@ -244,6 +257,16 @@ if(inputDataReactive()$dataType == "RNASeq") {
         ))
       }
     })
+    
+    # Download GSEA results file
+    output$dlTableGSEA <- downloadHandler(
+      filename = function() {
+        paste0(design, "_GSEA_", input$gseaType, ".xlsx")
+      },
+      content = function(file) {
+        openxlsx::write.xlsx(x = as.data.frame(gsea[[input$gseaType]]@result), file = file)
+      }
+    )
     
     # Custom GSEA results output
     observeEvent(
@@ -277,8 +300,8 @@ if(inputDataReactive()$dataType == "RNASeq") {
           {
             gseaPlotList()[["heatmap"]]
           },
-          width = as.numeric(input$figWidthGSEA*2),
-          height = as.numeric(input$figHeightGSEA)
+          width = as.numeric(input$figWidthGSEA),
+          height = as.numeric(input$figHeightGSEA*4)
         )
         output$dlHeatmap_GSEA <- downloadHandler(
           filename = function() {

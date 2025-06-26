@@ -5,7 +5,6 @@ if (is.list(queryList)){
 } else {
   dataUrl <- NULL
 }
-#dataUrl <- "p34002/bfabric/Proteomics/SummarizedExperiment/2024/2024-02/2024-02-09//workunit_299655//2444794.rds"
 message(ezTime(), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
 
 
@@ -27,7 +26,9 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl) & !exists("fileSE")) {
-  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p38067/bfabric/Proteomics/exploreDE/2025/2025-04/2025-04-09//workunit_323880//2838978.rds"
+  dataDir <- "/srv/gstore/projects/p29284/o36981_EdgeR_HR1_B_cells--over--Double_negative_B_cells_2025-02-06--15-20-54/HR1_B_cells--over--Double_negative_B_cells"
+  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
   projectFromUrl <- "p3009" # JLR 2025
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = NULL, closeButton = TRUE)
 }
@@ -51,6 +52,10 @@ if(!exists("dataDir")) {
 is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))  # Checks if it starts with http:// or https://
 }
+
+message("trying: ", dataDir)
+
+# Import proteomics data from pStore
 if (grepl("rds", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("rds", dataDir) & exists("fileSE")) {
   if (is_url(dataDir)) {
     se <- readRDS(url(dataDir))  # If it's a URL
@@ -75,18 +80,35 @@ if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("
 
 # Import RNA seq data from SUSHI ----
 if (grepl("gstore", dataDir) | exists("fileSE")) {
-  if (grepl("EzResult.RData", dataDir)) {
-    dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
-  }
-  if (file.exists(file.path(dataDir, "deResult.rds"))) {
-    se <- readRDS(file.path(dataDir, "deResult.rds"))
+  roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T) 
+  allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"),intern=T)
+  if ("R_2" %in% roles){
+    ldap_role <- "employee"
+    allowed <- TRUE
+  } else if ("R_3" %in% roles){
+    ldap_role <- "user"
+    allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
   } else {
-    showModal(modalDialog(
-      title = "The file does not exist", 
-      "Either the analysis has not yet finished running, you have made a mistake in the URL, or you have not pointed to any dataset. Please try again! If the issue persists, email peter.leary@uzh.ch",
-      easyClose = TRUE,
-      footer = NULL
-    ))
+    allowed <- FALSE
+  }
+  message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
+  if (is.null(dataUrl)) {
+    allowed = TRUE
+  }
+  if (allowed) {
+    if (grepl("EzResult.RData", dataDir)) {
+      dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
+    }
+    if (file.exists(file.path(dataDir, "deResult.rds"))) {
+      se <- readRDS(file.path(dataDir, "deResult.rds"))
+    } else {
+      showModal(modalDialog(
+        title = "The file does not exist", 
+        "Either the analysis has not yet finished running, you have made a mistake in the URL, or you have not pointed to any dataset. Please try again! If the issue persists, email peter.leary@uzh.ch",
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    }
   }
 }
 
@@ -98,12 +120,12 @@ inputDataReactive <- reactive({
   
   # Load proteomics data ----
   if (grepl("rds|zip", dataDir)) {
-    return(exploreDE::convert_proteomics_se(se))
+    return(convert_proteomics_se(se))
   }
   
   # Load RNA Seq data ----
   if (file.exists(file.path(dataDir, "deResult.rds"))) {
-    return(exploreDE::convert_genomics_se(se, dataDir))
+    return(convert_genomics_se(se, dataDir))
   }
 })
 inputDataReactive()$dataType

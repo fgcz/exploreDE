@@ -88,7 +88,7 @@ tabItem(
           label = "Download GSEA Results File"
         ),
         br(), br(),
-        selectInput(inputId = "gseaType", label = "Select GO to view", choices = c("BP", "MF", "CC"), selected = "BP", width = "25%"),
+        selectInput(inputId = "gseaType", label = "Select result to view", choices = NA, selected = NA, width = "25%"),
         DT::dataTableOutput(outputId = "selectedTable_GSEA"),
         style = "overflow-y: scroll;"
       )),

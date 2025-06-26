@@ -49,45 +49,21 @@ tabItem(
           tabPanel(
             title = "Main settings",
             selectizeInput(
-              inputId = "boxplotGenes",
-              label = "Features for Boxplots:",
-              multiple = TRUE,
-              choices = "",
-              selected = ""
+              inputId = "boxplotGenes", label = "Features for Boxplots:", multiple = TRUE, choices = NULL, selected = NULL, 
+              options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
             ),
-            textAreaInput(
-              inputId = "boxplotGenesText",
-              label = "Or, paste list of features:",
-              placeholder = "feature1 feature2 feature3 feature4 ",
-              cols = 1
-            ),
+            helpText("Drag and drop to rearragne feature orders. You can also search for features by typing in the box above."),
+            textAreaInput(inputId = "boxplotGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1, rows = 2, resize = "vertical"),
             uiOutput("boxplotGTError"),
-            selectInput(
-              inputId = "boxplotFactor1", 
-              label = "Select the main factor to plot by", 
-              choices = "", 
-              selected = ""
-            ),
-            selectInput(
-              inputId = "boxplotFactor2",
-              label = "Select a second factor to plot by",
-              choices = "", 
-              selected = ""
-            ),
+            selectInput(inputId = "boxplotFactor1", label = "Select the main factor to plot by", choices = NULL, selected = NULL, multiple = FALSE),
+            selectInput(inputId = "boxplotFactor2", label = "Select a second factor to plot by", choices = NULL, selected = NULL, multiple = FALSE),
             helpText("Second factor determines point shape for the boxplot"),
-            selectInput(
-              inputId = "boxplotCounts",
-              label = "Select count method to plot",
-              choices = "",
-              selected = ""
-              ),
+            selectInput(inputId = "boxplotCounts", label = "Select count method to plot", choices = NULL, selected = NULL, multiple = FALSE),
+            checkboxInput(inputId = "boxplotZScore", label = "Transform to Z-Scores?", value = FALSE),
+            helpText("Calculates per-gene Z-Scores. Works on any count method."),
             checkboxInput(inputId = "boxplotCountsLog", label = "Log2 Counts?", value = FALSE),
-            helpText("Only applies to counts that are not already on a log2 scale."),
-            selectInput(
-              inputId = "boxplotBatch", 
-              label = "Apply a batch-correction to the counts?", 
-              choices = c(), 
-              multiple = TRUE),
+            helpText("Only applies to counts that are not already on in log space."),
+            selectInput(inputId = "boxplotBatch", label = "Apply a batch-correction to the counts?", choices = NULL, multiple = FALSE),
             hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
             h5(
               "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly 

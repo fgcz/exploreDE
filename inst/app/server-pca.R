@@ -11,8 +11,8 @@ if (inputDataReactive()$dataType == "RNASeq") {
 updateSelectInput(
   session = session,
   inputId = "pcaBatch",
-  choices = inputDataReactive()$factors,
-  selected = NULL
+  choices = c("None", inputDataReactive()$factors),
+  selected = "None"
 )
 
 lapply(c(1:2), function(i) {
@@ -121,10 +121,9 @@ observeEvent(
         countsPCA <- log2(countsPCA+1)
       }
     }
-    if (!is.null(input$pcaBatch)) {
-      for (i in seq_along(input$pcaBatch)) {
-        countsPCA <- limma::removeBatchEffect(countsPCA, datasetPCA[[input$pcaBatch[i]]])
-      }
+    
+    if (input$pcaBatch != "None") {
+      countsPCA <- limma::removeBatchEffect(countsPCA, datasetPCA[[input$pcaBatch]])
     }
     countsPCA <- as.data.frame(t(countsPCA))
     # Get the n genes with greatest standard deviation for the PCA plot
@@ -148,12 +147,6 @@ observeEvent(
       pc_loadings <- pcaResults$rotation
       pc_loadings <- pc_loadings %>%
         as_tibble(rownames = "gene")
-      top_genes <- pc_loadings %>%
-        dplyr::select(gene, PC1, PC2) %>%
-        pivot_longer(matches("PC"), names_to = "PC", values_to = "loading") %>%
-        group_by(PC) %>%
-        arrange(desc(abs(loading)))
-      
       pc_scores <- pcaResults$x
       pc_scores <- pc_scores %>%
         as_tibble(rownames = "sample")
@@ -188,6 +181,11 @@ observeEvent(
         datatable(pc_eigenvalues[, c("PC", "pct", "pct_cum")], rownames = F, colnames = c("PC", "Variance explained", "Cumulative variance")) %>% formatRound(c("pct", "pct_cum"), digits = 3)
       })
       # Output the loading table
+      top_genes <- pc_loadings %>%
+        dplyr::select(all_of(c("gene", input$pcaX, input$pcaY))) %>%
+        pivot_longer(matches("PC"), names_to = "PC", values_to = "loading") %>%
+        group_by(PC) %>%
+        arrange(desc(abs(loading)))
       output$pcaLoadings <- DT::renderDataTable({
         datatable(top_genes, rownames = F) %>% formatRound("loading", digits = 3)
       })
@@ -195,22 +193,22 @@ observeEvent(
         paste0(design, "_PCA_loadings.xlsx")
       },
       content = function(file) {
-        openxlsx::write.xlsx(as.data.frame(top_genes), file = file)
+        openxlsx::write.xlsx(as.data.frame(pc_loadings), file = file)
       }
       )
       
       if (input$pcaFactor2 == "None") {
-        pcaPlot <- ggplot(data = pc_scores, aes_string(x = input$pcaX, y = input$pcaY, fill = input$pcaFactor1))
+        pcaPlot <- ggplot(data = pc_scores, aes(x = .data[[input$pcaX]], y = .data[[input$pcaY]], fill = .data[[input$pcaFactor1]]))
         if (input$pcaAddEllipses) {
-          pcaPlot <- pcaPlot + stat_ellipse(aes_string(colour = input$pcaFactor1, fill = input$pcaFactor1), geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE)
+          pcaPlot <- pcaPlot + stat_ellipse(aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]), geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE)
           pcaPlot <- pcaPlot + scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
         }
         pcaPlot <- pcaPlot + geom_point(aes_string(fill = input$pcaFactor1), size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA)
         pcaPlot <- pcaPlot + guides(fill = guide_legend(override.aes = list(shape = 21, size = input$dotSizePCA, stroke = input$dotBorderPCA)))
       } else {
-        pcaPlot <- ggplot(data = pc_scores, aes_string(x = input$pcaX, y = input$pcaY, shape = input$pcaFactor2))
+        pcaPlot <- ggplot(data = pc_scores, aes(x = .data[[input$pcaX]], y = .data[[input$pcaY]], shape = .data[[input$pcaFactor2]]))
         if (input$pcaAddEllipses) {
-          pcaPlot <- pcaPlot + stat_ellipse(aes_string(colour = input$pcaFactor1, fill = input$pcaFactor1), geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE)
+          pcaPlot <- pcaPlot + stat_ellipse(aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]), geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE)
           pcaPlot <- pcaPlot + scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
         }
         pcaPlot <- pcaPlot + geom_point(aes_string(fill = input$pcaFactor1), size = input$dotSizePCA, alpha = input$alphaPCA, stroke = input$dotBorderPCA)
@@ -240,7 +238,7 @@ observeEvent(
       if (input$pcaShowNames) {
         pcaPlot <- pcaPlot +
           geom_label_repel(
-            aes(label = sample, colour = Condition),
+            aes(label = sample, fill = Condition),
             force = 2,
             nudge_y = as.numeric(input$geneLabelNudgePCAY)/10,
             nudge_x = as.numeric(input$geneLabelNudgePCAX)/10, 
@@ -249,10 +247,9 @@ observeEvent(
             fontface = "bold", 
             show.legend = F,
             show_guide = FALSE
-          ) +
-          scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA)) +
-          ylim(c(min(pc_scores[[input$pcaY]] * 1.1), max(pc_scores[[input$pcaY]] * 1.2))) +
-          xlim(c(min(pc_scores[[input$pcaX]] * 1.1), max(pc_scores[[input$pcaX]] * 1.2)))
+          ) 
+          # ylim(c(min(pc_scores[[input$pcaY]] * 1.1), max(pc_scores[[input$pcaY]] * 1.2))) +
+          # xlim(c(min(pc_scores[[input$pcaX]] * 1.1), max(pc_scores[[input$pcaX]] * 1.2)))
       }
       if (!input$showLinesPCA) {
         pcaPlot <- pcaPlot +
