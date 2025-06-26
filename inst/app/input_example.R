@@ -190,8 +190,11 @@ input$showClusterRowDend <- TRUE
 input$heatmapGoInput <- "GO:0042254 ribosome biogenesis"
 input$heatmapGoExpr <- 0.05
 input$heatmapLog2 <- TRUE
-input$heatmapZScore <- TRUE
+input$heatmapZScore <- "Centred"
 input$heatmapFeatureDirection <- "Both"
+input$heatmapAtLow <- -1
+input$heatmapAtMid <- 0
+input$heatmapAtHigh <- 1
 
 input$pTypeVolcano <- "FDR"
 input$lfcVolcano <- 0.25
@@ -297,3 +300,14 @@ input$correlationMaxOverlaps <- 10
 input$correlationLabelPosX <- 0
 input$correlationLabelPosY <- 0
 input$correlationKeepBucket <- levels(inputDataReactive()$dataset[[inputDataReactive()$factors[1]]])
+
+if (inputDataReactive()$dataType == "proteomics") {
+  groupingNameHeatmap <- eventReactive(input$heatmapProteomicsColumnSelect, {
+    return(list(
+      "gn" = input$heatmapProteomicsColumnSelect
+    ))
+  })
+} else if (inputDataReactive()$dataType == "RNASeq") {
+  groupingNameHeatmap <- reactive(return(list("gn" = inputDataReactive()$param$groupingName)))
+}
+input$keepBucketHeatmap <- inputDataReactive()$genes[c(1, 4, 5, 6, 9)]
