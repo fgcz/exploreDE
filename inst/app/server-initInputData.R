@@ -5,8 +5,6 @@ if (is.list(queryList)){
 } else {
   dataUrl <- NULL
 }
-#dataUrl <- "p34002/bfabric/Proteomics/SummarizedExperiment/2024/2024-02/2024-02-09//workunit_299655//2444794.rds"
-#dataUrl <- "p38194/bfabric/Proteomics/exploreDE/2025/2025-05/2025-05-28//workunit_327682//2891915.rds"
 message(ezTime(), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
 
 
@@ -28,7 +26,9 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl) & !exists("fileSE")) {
-  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p38067/bfabric/Proteomics/exploreDE/2025/2025-04/2025-04-09//workunit_323880//2838978.rds"
+  dataDir <- "/srv/gstore/projects/p29284/o36981_EdgeR_HR1_B_cells--over--Double_negative_B_cells_2025-02-06--15-20-54/HR1_B_cells--over--Double_negative_B_cells"
+  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
   projectFromUrl <- "p3009" # JLR 2025
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = NULL, closeButton = TRUE)
 }

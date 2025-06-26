@@ -102,6 +102,7 @@ input$boxplotShowPTipSizeB <- 1
 input$boxplotShowPDodge <- 1
 input$boxplotPointBorder <- 0.5
 input$boxplotCountsLog <- FALSE
+input$boxplotZScore <- TRUE
 
 input$boxplotGenes <- inputDataReactive()$genes[1:5]
 input$boxplotGenesText <- inputDataReactive()$genes[6:10]
@@ -137,11 +138,11 @@ if (inputDataReactive()$dataType == "proteomics") {
   input$downloadCount <- "transformed"
 }
 
-input$heatmapScale <- "Continuous"
+# input$heatmapScale <- "Continuous"
 input$pTypeHeatmap <- "Raw"
 # input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[3]])))
 input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[1]])))
-input$heatmapCounts <- names(inputDataReactive()$countList)[2]
+input$heatmapCounts <- switch(inputDataReactive()$dataType, "RNASeq" = "TPM", "proteomics" = "transformedData")
 input$xCoord <- 10
 input$yCoord <- 10
 
@@ -178,7 +179,7 @@ input$figHeightHeatmap <- 800
 input$figWidthHeatmap <- 1000
 input$textSizeHeatmap <- 12
 input$heatmapBatch <- "None"
-input$heatmapLimitCPalette <- "YlGnBu"
+input$heatmapLimitCPalette <- "RdBu"
 input$heatmapLimitCPaletteRev <- FALSE
 input$heatmapLimitCHigh <- 1e5
 input$heatmapLimitCMid <- 1e4
@@ -188,6 +189,9 @@ input$showClusterColDend <- TRUE
 input$showClusterRowDend <- TRUE
 input$heatmapGoInput <- "GO:0042254 ribosome biogenesis"
 input$heatmapGoExpr <- 0.05
+input$heatmapLog2 <- TRUE
+input$heatmapZScore <- TRUE
+input$heatmapFeatureDirection <- "Both"
 
 input$pTypeVolcano <- "FDR"
 input$lfcVolcano <- 0.25
