@@ -385,10 +385,20 @@ observeEvent(
         # Custom heatmap ----
         observeEvent({
           input$keepBucketHeatmap
+          input$clusterColsHeatmap
+          input$clusterRowsHeatmap
+          input$colnamesHeatmap
+          input$geneNamesHeatmap
         }, ignoreNULL = FALSE, ignoreInit = TRUE, {
           req(input$keepBucketHeatmap != "")
-          countsHeatmapCustom <- countsHeatmap[input$keepBucketHeatmap, ]
-          req(nrow(countsHeatmapCustom) > 1)
+          
+          if (length(input$keepBucketHeatmap) == 1) {
+            countsHeatmapCustom <- t(as.matrix(countsHeatmap[input$keepBucketHeatmap,]))
+            rownames(countsHeatmapCustom) <- input$keepBucketHeatmap
+          } else {
+            countsHeatmapCustom <- countsHeatmap[input$keepBucketHeatmap, ]
+          }
+          req(nrow(countsHeatmapCustom) >= 1)
           ch <- ComplexHeatmap::Heatmap(
             matrix = countsHeatmapCustom,
             top_annotation = ha,
@@ -419,18 +429,19 @@ observeEvent(
           observeEvent({
             input$heatmapGoInput
             input$heatmapGoExpr
+            input$clusterColsHeatmap
+            input$clusterRowsHeatmap
+            input$colnamesHeatmap
+            input$geneNamesHeatmap
           }, ignoreNULL = FALSE, ignoreInit = TRUE, {
             goToPlot <- NULL
             goGenes <- NULL
             countsHeatmapGO <- NULL
             
-            cat("input$heatmapGoInput:", input$heatmapGoInput, "\n")
             req(input$heatmapGoInput != "")
             
             goToPlot <- gsub(" .*", "", input$heatmapGoInput)
-            cat("goToPlot:", goToPlot, "\n")
             goGenes <- seqAnnoHeatmap$gene_name[with(seqAnnoHeatmap, grepl(goToPlot, paste(`GO BP`, `GO MF`, `GO CC`)))]
-            cat("goGenes:", goGenes, "\n")
             
             goGenes <- goGenes[which(goGenes %in% rownames(countsHeatmap))]
             if (length(goGenes) == 1) {
@@ -442,7 +453,6 @@ observeEvent(
             }
             req(nrow(countsHeatmapGO) >= 1)
             req(ncol(countsHeatmapGO) == ha@anno_list[[1]]@fun@n)
-            cat("nrow(countsHeatmapGO):", nrow(countsHeatmapGO), "\n")
             
             gh <- ComplexHeatmap::Heatmap(
               matrix = countsHeatmapGO,
