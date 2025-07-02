@@ -188,6 +188,7 @@ input$heatmapFactor2 <- ""
 input$showClusterColDend <- TRUE
 input$showClusterRowDend <- TRUE
 input$heatmapGoInput <- "GO:0042254 ribosome biogenesis"
+input$heatmapGoInput <- inputDataReactive()$seqAnno$`GO BP`[[2]] %>% strsplit("; ") %>% .[[1]] %>% .[1]
 input$heatmapGoExpr <- 0.05
 input$heatmapLog2 <- TRUE
 input$heatmapZScore <- "Centred"
@@ -310,4 +311,5 @@ if (inputDataReactive()$dataType == "proteomics") {
 } else if (inputDataReactive()$dataType == "RNASeq") {
   groupingNameHeatmap <- reactive(return(list("gn" = inputDataReactive()$param$groupingName)))
 }
+groupingNameHeatmap <- reactive(return(list("gn" = "Condition")))
 input$keepBucketHeatmap <- inputDataReactive()$genes[c(1, 4, 5, 6, 9)]

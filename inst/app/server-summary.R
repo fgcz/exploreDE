@@ -55,6 +55,7 @@ observeEvent(input$colourPalette, {
       )
     })
   })
+  outputOptions(output, "colourPickerUI", suspendWhenHidden = FALSE)
 })
 
 saved_inputs <- reactiveVal(data.frame(Input = character(), Value = character(), stringsAsFactors = FALSE))

@@ -8,6 +8,7 @@ Description: exploreDE
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
+  devtools,
   shiny,
   shinydashboard,
   tidyverse,
@@ -40,4 +41,6 @@ Imports:
   Matrix,
   SingleCellExperiment,
   fresh
+Remotes:
+  fgcz/exploreDE
 RoxygenNote: 7.3.2
