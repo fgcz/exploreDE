@@ -25,9 +25,10 @@ tabItem(
         h4("GO Tile Input settings"),
         selectizeInput(
           inputId = "goTileInput",
-          choices = c(),
+          choices = NULL,
           multiple = TRUE, 
-          label = "Enter the GO Term you wish to plot"
+          label = "Enter the GO Term you wish to plot",
+          options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
         ),
         selectInput(
           inputId = "pTypeGoTile",

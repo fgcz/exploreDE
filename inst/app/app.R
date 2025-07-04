@@ -29,7 +29,7 @@ ui = dashboardPage(
     tags$li(
       title = "Please include the URL to the dataset in your email.",
       a(
-        href = 'mailto:sequencing@fgcz.ethz.ch?subject=exploreDE-shiny-app-feedback', 
+        href = 'mailto:sequencing@fgcz.ethz.ch?subject=exploreDE-shiny-app-feedback&body=Please%20include%20the%20URL%20you%20are%20having%20issues%20with.%20Thanks!%0A%0A', 
         "Request Features/Report Bugs"), 
       class = "dropdown"
     ),

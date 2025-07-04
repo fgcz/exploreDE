@@ -127,7 +127,8 @@ figuresDataReactive <- reactiveValues(
   "volcanoStatic" = NULL, "volcanoMA" = NULL, "volcanoPlotly" = NULL,
   "heatmapBoth Directions" = NULL, "heatmapUp-Regulated" = NULL, "heatmapDown-Regulated" = NULL, "heatmapCustom" = NULL, "heatmapGO" = NULL,
   "pcaStatic" = NULL, "pcaPaired" = NULL,
-  "boxplotStatic" = NULL, "barplotStatic" = NULL
+  "boxplotStatic" = NULL, "barplotStatic" = NULL,
+  "goTilePlot" = NULL
 )
 genesReactive <- reactiveValues(genes = NULL)
 

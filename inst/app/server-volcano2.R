@@ -473,7 +473,14 @@ observeEvent(
         "-log10(p): %{y:.2f}<br>",
         "<extra></extra>"
       ),
-      marker = list(size = 6)
+      marker = list(
+        size = input$dotSizeVolcano,
+        color = "fill_colour",
+        line = list(
+          color = "black",
+          width = input$volcanoPointBorder
+        )
+      )
     )
     figuresDataReactive$volcanoPlotly <- volcanoPlotly
     
@@ -515,7 +522,15 @@ output$volcanoStatic <- renderPlot(
 output$volcanoPlotly <- renderPlotly(
   {
     req(!is.null(figuresDataReactive$volcanoPlotly))
-    figuresDataReactive$volcanoPlotly
+    volcanoPlotly <- figuresDataReactive$volcanoPlotly
+    volcanoPlotly <- config(
+      volcanoPlotly,
+      displaylogo = FALSE,
+      displayModeBar = TRUE,
+      modeBarButtonsToRemove = c("toImage", "select2d", "lasso2d")
+    )
+    volcanoPlotly %>%
+      layout(height = input$figHeightVolcano, width = input$figWidthVolcano)
   }
 )
 # Download button for the plot

@@ -138,7 +138,7 @@ tabItem(
           ),
           tabPanel(
             title = "Interactive",
-            plotlyOutput("volcanoPlotly", inline = TRUE)
+            plotlyOutput("volcanoPlotly", inline = TRUE, height = "auto")
           )
         )
       ),
