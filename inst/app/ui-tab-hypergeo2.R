@@ -94,7 +94,7 @@ tabItem(
             title = "Network plot",
             downloadButton(outputId = "dlCnetPlot_ORA", label = paste("Download Network Plot: PDF")),
             br(), br(),
-            plotOutput(outputId = "cnetPlot_ORA", inline = TRUE),
+            withSpinner(plotOutput(outputId = "cnetPlot_ORA", inline = TRUE), color = "#93bac2"),
             br(), 
             checkboxInput(inputId = "showGeneLabelsORA", label = "Show gene names?", value = TRUE)
           ),
@@ -102,25 +102,25 @@ tabItem(
             title = "Bar plot",
             downloadButton(outputId = "dlBarPlot_ORA", label = paste("Download Bar Plot: PDF")),
             br(), br(),
-            plotOutput(outputId = "barPlot_ORA", inline = TRUE)
+            withSpinner(plotOutput(outputId = "barPlot_ORA", inline = TRUE), color = "#93bac2")
           ),
           tabPanel(
             title = "Dot plot",
             downloadButton(outputId = "dlDotPlot_ORA", label = paste("Download Dot Plot: PDF")),
             br(), br(),
-            plotOutput(outputId = "dotPlot_ORA", inline = TRUE)
+            withSpinner(plotOutput(outputId = "dotPlot_ORA", inline = TRUE), color = "#93bac2")
           ),
           tabPanel(
             title = "Heatmap",
             downloadButton(outputId = "dlHeatmap_ORA", label = paste("Download Heatmap: PDF")),
             br(), br(),
-            plotOutput(outputId = "heatmap_ORA", inline = TRUE)
+            withSpinner(plotOutput(outputId = "heatmap_ORA", inline = TRUE), color = "#93bac2")
           ),
           tabPanel(
             title = "Upset plot",
             downloadButton(outputId = "dlUpset_ORA", label = paste("Download Upset Plot: PDF")),
             br(), br(),
-            plotOutput(outputId = "upset_ORA", inline = TRUE)
+            withSpinner(plotOutput(outputId = "upset_ORA", inline = TRUE), color = "#93bac2")
           )
         )
       ),

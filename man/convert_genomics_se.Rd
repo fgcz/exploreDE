@@ -4,7 +4,7 @@
 \alias{convert_genomics_se}
 \title{convert_genomics_se}
 \usage{
-convert_genomics_se(se, dataDir)
+convert_genomics_se(se, dataDir, param = NULL)
 }
 \description{
 convert_genomics_se

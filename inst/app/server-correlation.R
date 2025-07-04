@@ -58,6 +58,7 @@ observeEvent({
   })
 }, ignoreNULL = TRUE, ignoreInit = TRUE, {
   
+  req(input$correlationGene1 != input$correlationGene2)
   req(nchar(input$correlationGene1) > 1 & nchar(input$correlationGene2) > 1)
   
   # get the counts 

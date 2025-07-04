@@ -3,4 +3,5 @@
 export(convert_genomics_se)
 export(convert_proteomics_se)
 export(exploreDE)
+export(generateParams)
 export(zscore)

@@ -50,6 +50,7 @@ if (inputDataReactive()$dataType == "proteomics") {
     output$nrPeptidesPCAUI <- renderUI({
       sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
     })
+    outputOptions(output, "nrPeptidesPCAUI", suspendWhenHidden = FALSE)
   } else {
     output$nrPeptidesPCAUI <- renderUI({ NULL })
   }
@@ -69,8 +70,6 @@ observeEvent(
     input$pcaCentre
     input$pcaScale
     input$textSizePCA
-    # input$figWidthPCA
-    # input$figHeightPCA
     input$showLinesPCA
     input$showAxesPCA
     input$boldPCA

@@ -32,14 +32,16 @@ colourPaletteList <- list(
 )
 
 output$colourPaletteUI <- renderUI({
-  selectInput(
+  selectizeInput(
     inputId = "colourPalette", 
     label = "Colour Palette",
     choices = names(colourPaletteList), 
     selected = names(colourPaletteList)[1],
-    multiple = TRUE
+    multiple = TRUE, width = "85%",
+    options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
   )
 })
+outputOptions(output, "colourPaletteUI", suspendWhenHidden = FALSE)
 
 # Colour picker for each of the groups in Condition:
 observeEvent(input$colourPalette, {
@@ -51,7 +53,7 @@ observeEvent(input$colourPalette, {
         value =  rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[i],
         palette = "square",
         closeOnClick = TRUE,
-        returnName = TRUE
+        returnName = TRUE, width = "85%"
       )
     })
   })

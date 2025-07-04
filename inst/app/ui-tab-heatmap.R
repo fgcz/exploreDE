@@ -161,7 +161,10 @@ tabItem(
             textOutput("heatmapDesignBoth Directions"), br(),
             downloadButton(outputId = "dlHeatmapButtonDEFeatures", label = "Download Heatmap"),
             downloadButton(outputId = "dlHeatmapDFButtonDEFeatures", label = "Download Counts"), br(),
-            plotOutput("heatmapDEFeatures", inline = TRUE),
+            withSpinner(
+              plotOutput("heatmapDEFeatures", inline = TRUE),
+              color = "#93bac2"
+            ),
             textOutput("hGNDE")
           ),
           
@@ -185,7 +188,8 @@ tabItem(
               downloadButton(outputId = paste0("dlHeatmapButtonCustom"), label = "Download Heatmap"),
               downloadButton(outputId = paste0("dlHeatmapDFButtonCustom"), label = "Download Counts (Excel)"), br(),
               withSpinner(
-                plotOutput(paste0("heatmapCustom"), inline = TRUE)
+                plotOutput(paste0("heatmapCustom"), inline = TRUE),
+                color = "#93bac2"
               )
             )
           ),
@@ -194,15 +198,21 @@ tabItem(
             column(
               width = 3,
               helpText("You can also plot the expression of features annotated to a given GO term (again, irrespective of p-value from the DE test)."),
-            uiOutput("heatmapGOUI1"),
-            uiOutput("heatmapGOUI2")
+              selectizeInput(
+                inputId = "heatmapGoInput",
+                label = "Or, select the GO Term you wish to plot",
+                choices = NULL,
+                selected = NULL
+              ),
+              uiOutput("heatmapGOUI2")
             ),
             column(
               width = 9,
               downloadButton(outputId = paste0("dlHeatmapButtonGO"), label = "Download Heatmap"),
               downloadButton(outputId = paste0("dlHeatmapDFButtonGO"), label = "Download Counts (Excel)"), br(),
               withSpinner(
-                plotOutput(paste0("heatmapGO"), inline = TRUE)
+                plotOutput(paste0("heatmapGO"), inline = TRUE),
+                color = "#93bac2"
               )
             )
           )

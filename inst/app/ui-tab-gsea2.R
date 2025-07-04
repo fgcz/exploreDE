@@ -114,33 +114,33 @@ tabItem(
             title = "Network plot",
             downloadButton(outputId = "dlCnetPlot_GSEA", label = paste("Download Network Plot: PDF")),
             br(), br(),
-            plotOutput(outputId = "cnetPlot_GSEA", inline = TRUE), br(),
+            withSpinner(plotOutput(outputId = "cnetPlot_GSEA", inline = TRUE), color = "#93bac2"),
             checkboxInput(inputId = "showGeneLabelsGSEA", label = "Show gene names?", value = TRUE)
           ),
           tabPanel(
             title = "Heatmap",
             downloadButton(outputId = "dlHeatmap_GSEA", label = paste("Download Heatmap: PDF")),
             br(), br(),
-            plotOutput(outputId = "heatmap_GSEA", inline = TRUE)
+            withSpinner(plotOutput(outputId = "heatmap_GSEA", inline = TRUE), color = "#93bac2")
           ),
           tabPanel(
             title = "Running Score",
             downloadButton(outputId = "dlRunningScore_GSEA", label = paste("Download Running Score Plot: PDF")),
             br(), br(),
-            plotOutput(outputId = "runningScore_GSEA", inline = TRUE)
+            withSpinner(plotOutput(outputId = "runningScore_GSEA", inline = TRUE), color = "#93bac2")
           ),
           tabPanel(
             title = "Ridge Plot",
             selectInput(inputId = "ridgePlotColourByGSEA", label = "Colour plot by", choices = c("p.adjust", "enrichmentScore", "NES"), selected = "NES"),
             downloadButton(outputId = "dlRidgePlot_GSEA", label = paste("Download Ridge Plot: PDF")),
             br(), br(),
-            plotOutput(outputId = "ridgePlot_GSEA", inline = TRUE)
+            withSpinner(plotOutput(outputId = "ridgePlot_GSEA", inline = TRUE), color = "#93bac2")
           ),
           tabPanel(
             title = "Upset plot",
             downloadButton(outputId = "dlUpset_GSEA", label = paste("Download Upset Plot: PDF")),
             br(), br(),
-            plotOutput(outputId = "upsetPlot_GSEA", inline = TRUE)
+            withSpinner(plotOutput(outputId = "upsetPlot_GSEA", inline = TRUE), color = "#93bac2")
           )
         )
       ),

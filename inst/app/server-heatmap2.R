@@ -19,6 +19,7 @@ if (inputDataReactive()$dataType == "proteomics") {
   output$heatmapProteomicsColumnSelectUI <- renderUI({
     selectInput(inputId = "heatmapProteomicsColumnSelect", label = "Select main factor to plot by", choices = inputDataReactive()$factors, selected = inputDataReactive()$factors[1], multiple = F)
   })
+  outputOptions(output, "heatmapProteomicsColumnSelectUI", suspendWhenHidden = FALSE)
   groupingNameHeatmap <- eventReactive(input$heatmapProteomicsColumnSelect, {
     return(list(
       "gn" = input$heatmapProteomicsColumnSelect
@@ -34,6 +35,7 @@ if (inputDataReactive()$dataType == "proteomics") {
       "Clustering by row/column may break the heatmap for proteomics data, due 
       to the high number of NA values in the count table.")
   })
+  outputOptions(output, "clusterWarningProteomics", suspendWhenHidden = FALSE)
   updateCheckboxInput(session = session, inputId = "clusterColsHeatmap", value = FALSE)
   updateCheckboxInput(session = session, inputId = "clusterRowsHeatmap", value = FALSE)
   updateCheckboxInput(session = session, inputId = "heatmapLog2", value = FALSE)
@@ -71,6 +73,7 @@ observeEvent({genesReactive}, {
         input_id = "excludeBucketHeatmap")
     )
   })
+  outputOptions(output, "geneBucket3", suspendWhenHidden = FALSE)
 })
 
 observeEvent(input$resetGeneBucketHeatmap, {
@@ -96,6 +99,7 @@ observeEvent(groupingNameHeatmap(), {
         input_id = "hmExcludeBucket")
     )
   })
+  outputOptions(output, "heatmapBucket", suspendWhenHidden = FALSE)
   updateCheckboxGroupInput(
     session = session,
     inputId = "heatmapFactors",
@@ -114,14 +118,12 @@ if (inputDataReactive()$dataType == "proteomics") {
 observeEvent(inputDataReactive(), {
   if (inputDataReactive()$dataType == "RNASeq") {
     req(!is.null(inputDataReactive()$allPathways))
-    output$heatmapGOUI1 <- renderUI({
-      selectizeInput(
-        inputId = "heatmapGoInput",
-        choices = inputDataReactive()$allPathways,
-        selected = NULL,
-        label = "Or, select the GO Term you wish to plot"
-      )
-    })
+    updateSelectizeInput(
+      session,
+      inputId = "heatmapGoInput",
+      choices = inputDataReactive()$allPathways,
+      server = TRUE  # ← this is what activates server-side mode
+    )
     output$heatmapGOUI2 <- renderUI({
       numericInput(
         inputId = "heatmapGoExpr",
@@ -131,6 +133,7 @@ observeEvent(inputDataReactive(), {
         max = 1e100
       )
     })
+    outputOptions(output, "heatmapGOUI2", suspendWhenHidden = FALSE)
   } else {
     output$heatmapGOUI1 <- renderUI({
       h5("Proteomics data doesn't support GO terms.")
@@ -154,6 +157,7 @@ if (inputDataReactive()$dataType == "proteomics") {
     output$nrPeptidesHeatmapUI <- renderUI({
       sliderInput(inputId = "nrPeptideHeatmap", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
     })
+    outputOptions(output, "nrPeptidesHeatmapUI", suspendWhenHidden = FALSE)
   } else {
     output$nrPeptidesHeatmapUI <- renderUI({ NULL })
   }
@@ -208,7 +212,6 @@ observeEvent(
     input$heatmapDownloadFormat
     input$heatmapFilename
     input$nrPeptideHeatmap
-    input$heatmapCustomTitle
     input$heatmapFeatureDirection
     input$heatmapLog2
     input$heatmapZScore
@@ -366,7 +369,7 @@ observeEvent(
           column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
           column_title = paste("Top", nrow(countsHeatmapSig), "DE Features:\n", design),
           heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
-        ) %>% draw(merge_legend = TRUE)
+        )
         figuresDataReactive[["heatmapDEFeatures"]] <- heatmap
         
         # Download the count file
@@ -389,6 +392,7 @@ observeEvent(
           input$clusterRowsHeatmap
           input$colnamesHeatmap
           input$geneNamesHeatmap
+          input$heatmapCustomTitle
         }, ignoreNULL = FALSE, ignoreInit = TRUE, {
           req(input$keepBucketHeatmap != "")
           
@@ -410,7 +414,7 @@ observeEvent(
             col = heatmapColours,
             column_title = paste(input$heatmapCustomTitle),
             rect_gp = gpar(col = "white", lwd = 0.5)
-          ) %>% draw(merge_legend = TRUE)
+          )
           figuresDataReactive$heatmapCustom <- ch
           
           output[[paste0("dlHeatmapDFButtonCustom")]] <- downloadHandler(
@@ -465,7 +469,7 @@ observeEvent(
               col = heatmapColours,
               column_title = sub("\\s+", "\n", input$heatmapGoInput),
               rect_gp = gpar(col = "white", lwd = 0.5)
-            ) %>% draw(merge_legend = TRUE)
+            )
             figuresDataReactive$heatmapGO <- gh
             output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(
               filename = function() {

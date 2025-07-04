@@ -56,13 +56,13 @@ ui = dashboardPage(
     shinyjs::useShinyjs(),
     sidebarMenu(
       id = "tabs",
-        menuItem(text = "Results Summary", tabName = "summaryTab",  icon = icon("list")),
-        menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
-        menuItem(text = "Volcano Plots", tabName = "volcanoTab", icon = icon("wifi")),
-        menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
-        menuItem(text = "PCA Plots", tabName = "pcaPlotTab", icon = icon("meteor")),
-        menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),
-        menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
+      menuItem(text = "Results Summary", tabName = "summaryTab",  icon = icon("list")),
+      menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
+      menuItem(text = "Volcano Plots", tabName = "volcanoTab", icon = icon("wifi")),
+      menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
+      menuItem(text = "PCA Plots", tabName = "pcaPlotTab", icon = icon("meteor")),
+      menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),
+      menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
       conditionalPanel(
         condition = "output.test=='RNASeq'",
         sidebarMenu(
@@ -71,7 +71,8 @@ ui = dashboardPage(
           menuItem(text = "GO Tile Plots", tabName = "goTileTab", icon = icon("table")),
           menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))
         )
-      )
+      ),
+      menuItem(text= "Colours", tabName = "colourTab", icon = icon("palette"))
     )
   ), 
   dashboardBody(
@@ -127,7 +128,8 @@ ui = dashboardPage(
       source("ui-tab-hypergeo2.R", local = TRUE)$value,
       source("ui-tab-gsea2.R", local = TRUE)$value,
       source("ui-tab-goTile.R", local = TRUE)$value,
-      source("ui-tab-kegg.R", local = TRUE)$value
+      source("ui-tab-kegg.R", local = TRUE)$value,
+      source("ui-tab-colour.R", local = TRUE)$value
     )
   )
 )

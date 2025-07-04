@@ -1,15 +1,16 @@
-# Start from here:
+# Extract the dataset path from the URL string 
 queryList = parseQueryString(session$clientData$url_search) 
 if (is.list(queryList)){
   dataUrl <- queryList$data
 } else {
   dataUrl <- NULL
 }
+
+# whoami?
 message(ezTime(), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
 
-
+# complete the full file path for both proteomics and genomics servers 
 if (!is.null(dataUrl)) {
-  # Added this so we can read from both genomics and proteomics servers
   if (!grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) {
     urlDataRoot = c("/srv/gstore/projects", "/srv/GT/analysis/course_sushi/public/gstore/projects")
     dataDir <- file.path(urlDataRoot, dataUrl)
@@ -26,18 +27,15 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl) & !exists("fileSE")) {
-  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p38183/bfabric/Proteomics/exploreDE/2025/2025-04/2025-04-24//workunit_324394//2853109.rds"
   projectFromUrl <- "p3009" # JLR 2025
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = NULL, closeButton = TRUE)
 }
 
-
-
-# 2025-01-29: Read in local proteomics file if specified 
 if(exists("fileSE")) {
   dataDir <- fileSE
 }
-
 if(!exists("dataDir")) {
   showModal(modalDialog(
     title = "Something went wrong",
@@ -45,15 +43,11 @@ if(!exists("dataDir")) {
   ))
   stop()
 }
-
-# Import proteomics data from pStore ----
 is_url <- function(dataDir) {
-  return(grepl("^https?://", dataDir))  # Checks if it starts with http:// or https://
+  return(grepl("^https?://", dataDir)) 
 }
 
-message("trying: ", dataDir)
-
-# Import proteomics data from pStore
+# Import proteomics data from pStore ----
 if (grepl("rds", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("rds", dataDir) & exists("fileSE")) {
   if (is_url(dataDir)) {
     se <- readRDS(url(dataDir))  # If it's a URL
@@ -75,6 +69,7 @@ if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("
     selectInput(inputId = "contrastSelected", label = "Select contrast to view", choices = contrasts, selected = contrasts[1], multiple = F, selectize = T)
   })
 }
+
 
 # Import RNA seq data from SUSHI ----
 if (grepl("gstore", dataDir) | exists("fileSE")) {
@@ -99,6 +94,8 @@ if (grepl("gstore", dataDir) | exists("fileSE")) {
     }
     if (file.exists(file.path(dataDir, "deResult.rds"))) {
       se <- readRDS(file.path(dataDir, "deResult.rds"))
+    } else if (file.exists(file.path(dataDir, "deResult.qs2"))) {
+      se <- qs2::qs_read(file.path(dataDir, "deResult.qs2"), nthreads = 4)
     } else {
       showModal(modalDialog(
         title = "The file does not exist", 
@@ -127,13 +124,13 @@ inputDataReactive <- reactive({
   }
 })
 inputDataReactive()$dataType
-
 figuresDataReactive <- reactiveValues(
-  "volcanoStatic" = NULL,
+  "volcanoStatic" = NULL, "volcanoMA" = NULL, "volcanoPlotly" = NULL,
   "heatmapBoth Directions" = NULL, "heatmapUp-Regulated" = NULL, "heatmapDown-Regulated" = NULL, "heatmapCustom" = NULL, "heatmapGO" = NULL,
   "pcaStatic" = NULL, "pcaPaired" = NULL,
   "boxplotStatic" = NULL, "barplotStatic" = NULL
 )
+genesReactive <- reactiveValues(genes = NULL)
 
 output$test <- renderText({
   inputDataReactive()$dataType
