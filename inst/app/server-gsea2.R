@@ -7,11 +7,8 @@ observeEvent(input$tabs, {
 })
 
 if (inputDataReactive()$dataType == "RNASeq") {
-
-  req(inputDataReactive()$dataType == "RNASeq")
-  req(param$runGO)
-  req(param$featureLevel != "isoform")
   
+  req(!is_empty(inputDataReactive()$gsea))
   
   updateSelectInput(session = session, inputId = "gseaType", choices = names(inputDataReactive()$gsea), selected = names(inputDataReactive()$gsea)[[1]])
   

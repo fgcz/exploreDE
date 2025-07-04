@@ -8,10 +8,7 @@ observeEvent(input$tabs, {
 
 if (inputDataReactive()$dataType == "RNASeq") {
 
-  req(is_empty(inputDataReactive()$ora))
-  req(inputDataReactive()$dataType == "RNASeq")
-  req(param$runGO)
-  req(param$featureLevel != "isoform")
+  req(!is_empty(inputDataReactive()$ora))
   
   # Get data 
   ora <- inputDataReactive()$ora
