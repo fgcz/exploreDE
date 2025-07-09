@@ -125,7 +125,7 @@ inputDataReactive <- reactive({
 inputDataReactive()$dataType
 figuresDataReactive <- reactiveValues(
   "volcanoStatic" = NULL, "volcanoMA" = NULL, "volcanoPlotly" = NULL,
-  "heatmapBoth Directions" = NULL, "heatmapUp-Regulated" = NULL, "heatmapDown-Regulated" = NULL, "heatmapCustom" = NULL, "heatmapGO" = NULL,
+  "heatmapDEFeatures" = NULL, "heatmapCustom" = NULL, "heatmapGO" = NULL,
   "pcaStatic" = NULL, "pcaPaired" = NULL,
   "boxplotStatic" = NULL, "barplotStatic" = NULL,
   "goTilePlot" = NULL
