@@ -478,8 +478,14 @@ observeEvent({
   
   # Table ----
   output$boxplotTable <- renderDataTable({
+    boxplot_brushed_df <- brushedPoints(
+      countsBoxplotMelt,
+      input$boxplotBrush,
+      xvar = input$boxplotFactor1,
+      yvar = "Counts"
+    )
     DT::datatable(
-      data = countsBoxplotMelt[, c("names", input$boxplotFactor1, "Feature", "Counts", "log2Ratio", "fdr")], 
+      data = boxplot_brushed_df[, c("names", input$boxplotFactor1, "Feature", "Counts", "log2Ratio", "fdr"), drop = FALSE],
       filter = "top", 
       rownames = F) %>%
       DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%

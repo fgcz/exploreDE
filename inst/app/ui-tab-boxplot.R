@@ -162,7 +162,7 @@ tabItem(
           id = "boxbarplots",
           tabPanel(
             title = "Boxplot",
-            withSpinner(plotOutput(outputId = "boxplotStatic", inline = TRUE), color = "#93bac2"),
+            withSpinner(plotOutput(outputId = "boxplotStatic", inline = TRUE, brush = "boxplotBrush"), color = "#93bac2"),
             DT::dataTableOutput(outputId = "boxplotTable")
           ),
           tabPanel(
