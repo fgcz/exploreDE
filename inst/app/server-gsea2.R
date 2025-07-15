@@ -148,7 +148,9 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
     req(!is.null(input$selectedTable_GSEA_rows_selected))
     
     er <- gsea[[input$gseaType]]
-    if (!is.null(er) && nrow(er@result) >= 2) {
+    req(nrow(er@result) >= 1)
+    
+    if (!is.null(er) && nrow(er@result) >= 1) {
       if (input$gseaType %in% c("BP", "MF", "CC")) {
         er@result$Label <- ""
         for (i in seq_along(er@result$Description)) {
@@ -162,105 +164,106 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
       } else {
         er@result$Label <- er@result$Description
       }
-      erRP <- clusterProfiler::slice(er, input$selectedTable_GSEA_rows_selected)
-      
-      rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
-      rp <- rp +
-        scale_y_discrete(labels = (erRP@result$Label[match(levels(as.factor(rp$plot_env$gs2val.df$category)), erRP@result$Description)])) +
-        theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeGSEA)) +
-        geom_vline(xintercept = 0, linetype = "dashed") +
-        scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "white", midpoint = 0)
-      gseaPlotReactive$ridgeplot <- rp
-      
-      req(input$gseaType %in% c("BP", "MF", "CC"))
-      ce_list <- NA
-      for (i in 1:length(er@result$core_enrichment)) {
-        core_enrich <- strsplit(
-          er@result$core_enrichment[i],
-          split = "/"
-        ) %>% unlist()
-        ce_list <- c(ce_list, core_enrich)
-        core_enrich_symbol <- metadata(se)$enrichInput$seqAnno$gene_name[
-          metadata(se)$enrichInput$seqAnno$gene_id %in% core_enrich
-        ]
-        core_enrich_symbol <- paste(core_enrich_symbol, collapse = "/")
-        er@result$core_enrichment[i] <- core_enrich_symbol
-      }
-      sigGeneIds <- ce_list[!is.na(ce_list)]
-      
-      log2RatioGSEA <- metadata(se)$enrichInput$seqAnno$log2Ratio
-      names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno$gene_name
-      log2RatioGSEA <- sort(log2RatioGSEA, decreasing = T)
-      
-      # Draw the main plot 
-      cn <- enrichplot::cnetplot(
-        x = er,
-        node_label = "none",
-        foldChange = log2RatioGSEA,
-        showCategory = er@result$Description[input$selectedTable_GSEA_rows_selected],
-        cex.params = list(category_label = (input$textSizeGSEA / 15), gene_label = (input$textSizeGSEA / 18), gene_node = input$nodeSizeGSEA/10, category_node = input$nodeSizeGSEA/8)
-      )
-      # Set the colour limits to the user-specified values 
-      cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$color > input$scaleLimGSEA] <- input$scaleLimGSEA
-      cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimGSEA] <- -input$scaleLimGSEA
-      # Add our own geom_points on top 
-      cn <- cn + geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderGSEA)
-      # Get two copies of the plot data table so we can get gene and node labels and modify them for plotting 
-      cd1 <- cn$data
-      cd1$name[!is.na(cd1$foldChange)] <- NA
-      cd1$Label <- NA
-      cd1$Label[1:length(input$selectedTable_GSEA_rows_selected)] <- er@result$Label[input$selectedTable_GSEA_rows_selected]
-      cd2 <- cn$data
-      cd2$name[is.na(cd2$foldChange)] <- NA
-      # Some reason, enrichplot changed the default such that up is blue and down is red. We prefer the opposite... 
-      cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick", midpoint = 0)
-      # Add gene and node labels in that order 
-      if (input$showGeneLabelsGSEA) {
-        cn <- cn +
-          geom_text_repel(
-            data = cd2, aes(label = name, x = x, y = y), size = input$textSizeGSEA/3, max.overlaps = input$gseaMaxOver, nudge_x = input$gseaDodgeX/10, nudge_y = input$gseaDodgeY/10,
-            fontface = "bold", color = "black", bg.color = "white", bg.r = .15, na.rm = T)
-      }
-      cn <- cn + geom_label_repel(
-        data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeGSEA/3, max.overlaps = input$gseaMaxOver, nudge_x = input$gseaDodgeX/10, nudge_y = input$gseaDodgeY/10, fontface = "bold", show.legend = F, fill = alpha(c("white"), input$gseaLabelAlpha), na.rm = T)
-      gseaPlotReactive$cnetplot <- cn
-      
-      hp <- enrichplot::heatplot(
-        x = er,
-        foldChange = log2RatioGSEA,
-        showCategory = er@result$Description[input$selectedTable_GSEA_rows_selected],
-      ) + scale_colour_distiller(palette = "RdBu") + coord_flip()
-      gseaPlotReactive$heatmap <- hp
-      
-      rs <- enrichplot::gseaplot2(
-        x = er,
-        geneSetID = input$selectedTable_GSEA_rows_selected,
-        color = RColorBrewer::brewer.pal(length(input$selectedTable_GSEA_rows_selected), "Set2")
-      )
-      gseaPlotReactive$runningscore <- rs
-      
-      # make an upset plot of the genes in the selected pathways 
-      geneSetsUpset <- setNames(lapply(input$selectedTable_GSEA_rows_selected, function(i) {
-        if (input$gseaType %in% c("BP", "MF", "CC")) {colToUse = "geneName"} else {colToUse = "core_enrichment"}
-        g <- er@result[[colToUse]][i] %>% strsplit("/") %>% .[[1]]
-        g <- g[nchar(g) > 1]
-        g
-      }), er@result$Label[input$selectedTable_GSEA_rows_selected])
-      m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
-      geneLFCsUpset <- setNames(lapply(names(comb_size(m1)), function(x) {
-        g <- extract_comb(m1, x)
-        inputDataReactive()$seqAnno$log2Ratio[which(inputDataReactive()$seqAnno$gene_name %in% g)]
-      }), names(comb_size(m1)))
-      up <- ComplexHeatmap::UpSet(
-        m = m1, 
-        comb_order = order(comb_size(m1), decreasing = T), 
-        top_annotation = upset_top_annotation(m1, add_numbers = TRUE, annotation_name_rot = 90, annotation_name_offset = unit(10, "mm")), 
-        left_annotation = upset_left_annotation(m1, add_numbers = TRUE)
-      )
-      gseaPlotReactive$upset <- up
-      
-      gseaPlotReactive$er <- er
     }
+    
+    erRP <- clusterProfiler::slice(er, input$selectedTable_GSEA_rows_selected)
+    
+    rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
+    rp <- rp +
+      scale_y_discrete(labels = (erRP@result$Label[match(levels(as.factor(rp$plot_env$gs2val.df$category)), erRP@result$Description)])) +
+      theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeGSEA)) +
+      geom_vline(xintercept = 0, linetype = "dashed") +
+      scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "white", midpoint = 0)
+    gseaPlotReactive$ridgeplot <- rp
+    
+    req(input$gseaType %in% c("BP", "MF", "CC"))
+    ce_list <- NA
+    for (i in 1:length(er@result$core_enrichment)) {
+      core_enrich <- strsplit(
+        er@result$core_enrichment[i],
+        split = "/"
+      ) %>% unlist()
+      ce_list <- c(ce_list, core_enrich)
+      core_enrich_symbol <- metadata(se)$enrichInput$seqAnno$gene_name[
+        metadata(se)$enrichInput$seqAnno$gene_id %in% core_enrich
+      ]
+      core_enrich_symbol <- paste(core_enrich_symbol, collapse = "/")
+      er@result$core_enrichment[i] <- core_enrich_symbol
+    }
+    sigGeneIds <- ce_list[!is.na(ce_list)]
+    
+    log2RatioGSEA <- metadata(se)$enrichInput$seqAnno$log2Ratio
+    names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno$gene_name
+    log2RatioGSEA <- sort(log2RatioGSEA, decreasing = T)
+    
+    # Draw the main plot 
+    cn <- enrichplot::cnetplot(
+      x = er,
+      node_label = "none",
+      foldChange = log2RatioGSEA,
+      showCategory = er@result$Description[input$selectedTable_GSEA_rows_selected],
+      cex.params = list(category_label = (input$textSizeGSEA / 15), gene_label = (input$textSizeGSEA / 18), gene_node = input$nodeSizeGSEA/10, category_node = input$nodeSizeGSEA/8)
+    )
+    # Set the colour limits to the user-specified values 
+    cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$color > input$scaleLimGSEA] <- input$scaleLimGSEA
+    cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimGSEA] <- -input$scaleLimGSEA
+    # Add our own geom_points on top 
+    cn <- cn + geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderGSEA)
+    # Get two copies of the plot data table so we can get gene and node labels and modify them for plotting 
+    cd1 <- cn$data
+    cd1$name[!is.na(cd1$foldChange)] <- NA
+    cd1$Label <- NA
+    cd1$Label[1:length(input$selectedTable_GSEA_rows_selected)] <- er@result$Label[input$selectedTable_GSEA_rows_selected]
+    cd2 <- cn$data
+    cd2$name[is.na(cd2$foldChange)] <- NA
+    # Some reason, enrichplot changed the default such that up is blue and down is red. We prefer the opposite... 
+    cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick", midpoint = 0)
+    # Add gene and node labels in that order 
+    if (input$showGeneLabelsGSEA) {
+      cn <- cn +
+        geom_text_repel(
+          data = cd2, aes(label = name, x = x, y = y), size = input$textSizeGSEA/3, max.overlaps = input$gseaMaxOver, nudge_x = input$gseaDodgeX/10, nudge_y = input$gseaDodgeY/10,
+          fontface = "bold", color = "black", bg.color = "white", bg.r = .15, na.rm = T)
+    }
+    cn <- cn + geom_label_repel(
+      data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeGSEA/3, max.overlaps = input$gseaMaxOver, nudge_x = input$gseaDodgeX/10, nudge_y = input$gseaDodgeY/10, fontface = "bold", show.legend = F, fill = alpha(c("white"), input$gseaLabelAlpha), na.rm = T)
+    gseaPlotReactive$cnetplot <- cn
+    
+    hp <- enrichplot::heatplot(
+      x = er,
+      foldChange = log2RatioGSEA,
+      showCategory = er@result$Description[input$selectedTable_GSEA_rows_selected],
+    ) + scale_colour_distiller(palette = "RdBu") + coord_flip()
+    gseaPlotReactive$heatmap <- hp
+    
+    rs <- enrichplot::gseaplot2(
+      x = er,
+      geneSetID = input$selectedTable_GSEA_rows_selected,
+      color = RColorBrewer::brewer.pal(length(input$selectedTable_GSEA_rows_selected), "Set2")
+    )
+    gseaPlotReactive$runningscore <- rs
+    
+    # make an upset plot of the genes in the selected pathways 
+    geneSetsUpset <- setNames(lapply(input$selectedTable_GSEA_rows_selected, function(i) {
+      if (input$gseaType %in% c("BP", "MF", "CC")) {colToUse = "geneName"} else {colToUse = "core_enrichment"}
+      g <- er@result[[colToUse]][i] %>% strsplit("/") %>% .[[1]]
+      g <- g[nchar(g) > 1]
+      g
+    }), er@result$Label[input$selectedTable_GSEA_rows_selected])
+    m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
+    geneLFCsUpset <- setNames(lapply(names(comb_size(m1)), function(x) {
+      g <- extract_comb(m1, x)
+      inputDataReactive()$seqAnno$log2Ratio[which(inputDataReactive()$seqAnno$gene_name %in% g)]
+    }), names(comb_size(m1)))
+    up <- ComplexHeatmap::UpSet(
+      m = m1, 
+      comb_order = order(comb_size(m1), decreasing = T), 
+      top_annotation = upset_top_annotation(m1, add_numbers = TRUE, annotation_name_rot = 90, annotation_name_offset = unit(10, "mm")), 
+      left_annotation = upset_left_annotation(m1, add_numbers = TRUE)
+    )
+    gseaPlotReactive$upset <- up
+    
+    gseaPlotReactive$er <- er
   })
   
 
