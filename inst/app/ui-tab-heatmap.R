@@ -76,7 +76,7 @@ tabItem(
             h4("Feature selection"),
             uiOutput(outputId = "heatmapProteomicsColumnSelectUI", inline = TRUE),
             helpText("Plot the feature expression per sample of DE features, based on thresholds."),
-            numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 5000, value = 50, step = 1),
+            numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 2000, value = 50, step = 1),
             numericInput(inputId = "lfcHeatmap", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
             selectInput(inputId = "pTypeHeatmap", choices = c("FDR", "Raw"), label = "P-Value:", selected = "Raw"),
             selectInput(inputId = "pThresholdHeatmap", choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05),

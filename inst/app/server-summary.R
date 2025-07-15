@@ -47,14 +47,17 @@ outputOptions(output, "colourPaletteUI", suspendWhenHidden = FALSE)
 observeEvent(input$colourPalette, {
   output$colourPickerUI <- renderUI({
     lapply(seq_along(factorLevels), function(i) {
-      colourpicker::colourInput(
-        inputId = paste0("GroupColour", names(factorLevels)[[i]]),
-        label = factorLevels[[i]],
-        value =  rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[i],
-        palette = "square",
-        closeOnClick = TRUE,
-        returnName = TRUE, width = "85%"
-      )
+      lapply(seq_along(factorLevels[[i]]), function(j) {
+        colourpicker::colourInput(
+          inputId = paste0("GroupColour", names(factorLevels)[[i]], factorLevels[[i]][[j]]),
+          label = paste0(names(factorLevels)[i], ": ", factorLevels[[i]][j]),
+          value =  rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j],
+          palette = "square",
+          closeOnClick = TRUE,
+          returnName = TRUE, 
+          width = "85%"
+        )
+      })
     })
   })
   outputOptions(output, "colourPickerUI", suspendWhenHidden = FALSE)

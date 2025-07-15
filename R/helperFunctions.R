@@ -48,10 +48,40 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   factorLevels <- lapply(factors, function(f) {
     levels(as.factor(dataset[[f]]))
   }) %>% setNames(factors)
+  
+  # If someone manually enters a duplicate column (but sans [Factor]), things will break. So, remove!
+  # Identify duplicated column names
+  dups <- which(duplicated(names(dataset)) | duplicated(names(dataset), fromLast = TRUE))
+  dup_names <- unique(names(dataset)[dups])
+  
+  # Go through each duplicate group
+  for (dup in dup_names) {
+    cols <- which(names(dataset) == dup)
+    
+    # Compare all pairwise combinations (in case there are >2)
+    keep <- cols[1]
+    drop_these <- integer(0)
+    
+    for (i in 2:length(cols)) {
+      if (all(dataset[[cols[i]]] == dataset[[keep]], na.rm = TRUE)) {
+        # If identical, mark for dropping
+        drop_these <- c(drop_these, cols[i])
+      } else {
+        # If not identical, make unique
+        names(dataset)[cols[i]] <- paste0(dup, ".", i - 1)
+      }
+    }
+    
+    # Drop identical duplicates
+    if (length(drop_these) > 0) {
+      dataset <- dataset[, -drop_these, drop = FALSE]
+    }
+  }
+  
   # The app doesn't like empty strings in the factor columns, so for now, add "None" to those entries 
   dataset <- dataset %>% mutate_all(~ifelse(. == "", "None", .))
   if (is.null(param$groupingName)) {
-    param$groupingName <- "Condition"
+    param$groupingName <- factors[[1]]
   }
   # Set the comparison column levels to be in order of test, e.g., diff, undiff
   dataset[[param$groupingName]] <- factor(
@@ -138,7 +168,8 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
       "countList" = countList,
       "genes" = genes,
       "allPathways" = allPathways,
-      "goObjects" = goObjects
+      "goObjects" = goObjects,
+      "groupingName" = param$groupingName
     )
     )
   }
@@ -173,7 +204,9 @@ convert_proteomics_se <- function(se) {
   
   # Get the main columns from the metadata that are plottable 
   factors <- colnames(dataset)[grep("Sample|Name|names|channel|raw\\.file", colnames(dataset), invert = T, ignore.case = T)]
-  factorNames <- colnames(dataset)[grep("Sample|Name|names|channel|raw\\.file", colnames(dataset), invert = T, ignore.case = T)]
+  factorLevels <- lapply(factors, function(f) {
+    levels(as.factor(dataset[[f]]))
+  }) %>% setNames(factors)
   
   # Sort numeric factor levels
   for (x in factors) {
@@ -196,17 +229,6 @@ convert_proteomics_se <- function(se) {
   # Get the protein IDs
   genes <- unique(unlist(lapply(seq_along(seqAnnoList), function(x) {seqAnnoList[[x]][["gene_name"]]})))
   
-  # Get a vector of all the levels of each plottable column
-  factorLevels <- NULL
-  for (i in seq_along(dataset[factors])){
-    factorLevels[[i]] <- paste0(
-      colnames(dataset[factors[[i]]]),
-      ": ",
-      levels(as.factor(dataset[, factors[i]])))
-  }
-  factorLevels <- unlist(factorLevels)
-  names(factorLevels) <- factorLevels %>% gsub("\\ |\\:", "_", .)
-  
   # Return the final list
   return(list(
     "dataType" = "proteomics",
@@ -215,11 +237,11 @@ convert_proteomics_se <- function(se) {
     "contrasts" = contrasts,
     "dataset" = dataset,
     "factors" = factors,
-    "factorNames" = factorNames,
     "countList" = countList,
     "genes" = genes,
-    "factorLevels" = factorLevels
-  )
+    "factorLevels" = factorLevels,
+    "groupingName" = factors[[1]]
+    )
   )
 }
 

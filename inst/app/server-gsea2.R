@@ -1,19 +1,25 @@
 observeEvent(input$tabs, {
   if (input$tabs == "gseaTab") {
-    if (is_empty(allPathways)) {
+    if (is_empty(inputDataReactive()$goObjects$gsea)) {
       showModal(modalDialog(title = "No GSEA Results", "No pathway analysis was performed so this tab is empty."))
     }
   }
 })
 
-if (inputDataReactive()$dataType == "RNASeq") {
+gseaPlotReactive <- reactiveValues(
+  "er" = NULL,
+  "cnetplot" = NULL,
+  "heatmap" = NULL,
+  "runningscore" = NULL,
+  "ridgeplot" = NULL,
+  "upset" = NULL
+)
+
+if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$goObjects$gsea)) {
   
-  req(!is_empty(inputDataReactive()$gsea))
+  updateSelectInput(session = session, inputId = "gseaType", choices = names(inputDataReactive()$goObjects$gsea), selected = names(inputDataReactive()$goObjects$gsea)[[1]])
   
-  updateSelectInput(session = session, inputId = "gseaType", choices = names(inputDataReactive()$gsea), selected = names(inputDataReactive()$gsea)[[1]])
-  
-  gsea <- inputDataReactive()$gsea
-  gseaHTML <- inputDataReactive()$gseaHTML
+  gsea <- inputDataReactive()$goObjects$gsea
   se <- inputDataReactive()$se
   design <- inputDataReactive()$design
   output$gseaDesign <- renderText({design})
@@ -113,15 +119,6 @@ if (inputDataReactive()$dataType == "RNASeq") {
       })
     }
   })
-  
-  gseaPlotReactive <- reactiveValues(
-    "er" = NULL,
-    "cnetplot" = NULL,
-    "heatmap" = NULL,
-    "runningscore" = NULL,
-    "ridgeplot" = NULL,
-    "upset" = NULL
-  )
   
   # Download GSEA results file
   output$dlTableGSEA <- downloadHandler(
@@ -266,104 +263,104 @@ if (inputDataReactive()$dataType == "RNASeq") {
     }
   })
   
-  # Network plot 
-  output$cnetPlot_GSEA <- renderPlot(
-    {
-      req(!is.null(gseaPlotReactive[["cnetplot"]]))
-      gseaPlotReactive[["cnetplot"]]
-    },
-    width = as.numeric(input$figWidthGSEA),
-    height = as.numeric(input$figHeightGSEA)
-  )
-  output$dlCnetPlot_GSEA <- downloadHandler(
-    filename = function() {
-      paste0(design, "GSEA_", input$gseaType, "_network.pdf")
-    },
-    content = function(file) {
-      pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50))
-      print(gseaPlotReactive[["cnetplot"]])
-      dev.off()
-    }
-  )
-  
-  # Heatmap
-  output$heatmap_GSEA <- renderPlot(
-    {
-      req(!is.null(gseaPlotReactive[["heatmap"]]))
-      gseaPlotReactive[["heatmap"]]
-    },
-    width = as.numeric(input$figWidthGSEA),
-    height = as.numeric(input$figHeightGSEA*4)
-  )
-  output$dlHeatmap_GSEA <- downloadHandler(
-    filename = function() {
-      paste0(design, "GSEA_", input$gseaType, "_heatmap.pdf")
-    },
-    content = function(file) {
-      pdf(file = file, width = (as.numeric(input$figWidthGSEA)/25), height = (as.numeric(input$figHeightGSEA)/50))
-      print(gseaPlotReactive[["heatmap"]])
-      dev.off()
-    }
-  )
-  
-  # Running score
-  output$runningScore_GSEA <- renderPlot(
-    {
-      req(!is.null(gseaPlotReactive[["runningscore"]]))
-      gseaPlotReactive[["runningscore"]]
-    },
-    width = as.numeric(input$figWidthGSEA),
-    height = as.numeric(input$figHeightGSEA)
-  )
-  output$dlRunningScore_GSEA <- downloadHandler(
-    filename = function() {
-      paste0(design, "GSEA_", input$gseaType, "_runningscore.pdf")
-    },
-    content = function(file) {
-      pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50))
-      print(gseaPlotReactive[["runningscore"]])
-      dev.off()
-    }
-  )
-  
-  # Ridge plot 
-  output$ridgePlot_GSEA <- renderPlot(
-    {
-      req(!is.null(gseaPlotReactive[["ridgeplot"]]))
-      gseaPlotReactive[["ridgeplot"]]
-    },
-    width = as.numeric(input$figWidthGSEA),
-    height = as.numeric(input$figHeightGSEA)
-  )
-  output$dlRidgePlot_GSEA <- downloadHandler(
-    filename = function() {
-      paste0(design, "GSEA_", input$gseaType, "_ridgeplot.pdf")
-    },
-    content = function(file) {
-      pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50))
-      print(gseaPlotReactive[["ridgeplot"]])
-      dev.off()
-    }
-  )
-  
-  # Upset plot 
-  output$upsetPlot_GSEA <- renderPlot(
-    {
-      req(!is.null(gseaPlotReactive[["upset"]]))
-      draw(gseaPlotReactive[["upset"]], padding = unit(c(5, 5, 5, 20), "mm"))
-    },
-    width = as.numeric(input$figWidthGSEA)*1.3,
-    height = as.numeric(input$figHeightGSEA)
-  )
-  output$dlUpset_GSEA <- downloadHandler(
-    filename = function() {
-      paste0(design, "GSEA_", input$gseaType, "_upset.pdf")
-    },
-    content = function(file) {
-      pdf(file = file, width = (as.numeric(input$figWidthGSEA)/70), height = (as.numeric(input$figHeightGSEA)/90))
-      print(gseaPlotReactive[["upset"]])
-      dev.off()
-    }
-  )
 
 }
+# Network plot 
+output$cnetPlot_GSEA <- renderPlot(
+  {
+    req(!is.null(gseaPlotReactive[["cnetplot"]]))
+    gseaPlotReactive[["cnetplot"]]
+  },
+  width = as.numeric(input$figWidthGSEA),
+  height = as.numeric(input$figHeightGSEA)
+)
+output$dlCnetPlot_GSEA <- downloadHandler(
+  filename = function() {
+    paste0(design, "GSEA_", input$gseaType, "_network.pdf")
+  },
+  content = function(file) {
+    pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50))
+    print(gseaPlotReactive[["cnetplot"]])
+    dev.off()
+  }
+)
+
+# Heatmap
+output$heatmap_GSEA <- renderPlot(
+  {
+    req(!is.null(gseaPlotReactive[["heatmap"]]))
+    gseaPlotReactive[["heatmap"]]
+  },
+  width = as.numeric(input$figWidthGSEA),
+  height = as.numeric(input$figHeightGSEA*4)
+)
+output$dlHeatmap_GSEA <- downloadHandler(
+  filename = function() {
+    paste0(design, "GSEA_", input$gseaType, "_heatmap.pdf")
+  },
+  content = function(file) {
+    pdf(file = file, width = (as.numeric(input$figWidthGSEA)/25), height = (as.numeric(input$figHeightGSEA)/50))
+    print(gseaPlotReactive[["heatmap"]])
+    dev.off()
+  }
+)
+
+# Running score
+output$runningScore_GSEA <- renderPlot(
+  {
+    req(!is.null(gseaPlotReactive[["runningscore"]]))
+    gseaPlotReactive[["runningscore"]]
+  },
+  width = as.numeric(input$figWidthGSEA),
+  height = as.numeric(input$figHeightGSEA)
+)
+output$dlRunningScore_GSEA <- downloadHandler(
+  filename = function() {
+    paste0(design, "GSEA_", input$gseaType, "_runningscore.pdf")
+  },
+  content = function(file) {
+    pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50))
+    print(gseaPlotReactive[["runningscore"]])
+    dev.off()
+  }
+)
+
+# Ridge plot 
+output$ridgePlot_GSEA <- renderPlot(
+  {
+    req(!is.null(gseaPlotReactive[["ridgeplot"]]))
+    gseaPlotReactive[["ridgeplot"]]
+  },
+  width = as.numeric(input$figWidthGSEA),
+  height = as.numeric(input$figHeightGSEA)
+)
+output$dlRidgePlot_GSEA <- downloadHandler(
+  filename = function() {
+    paste0(design, "GSEA_", input$gseaType, "_ridgeplot.pdf")
+  },
+  content = function(file) {
+    pdf(file = file, width = (as.numeric(input$figWidthGSEA)/50), height = (as.numeric(input$figHeightGSEA)/50))
+    print(gseaPlotReactive[["ridgeplot"]])
+    dev.off()
+  }
+)
+
+# Upset plot 
+output$upsetPlot_GSEA <- renderPlot(
+  {
+    req(!is.null(gseaPlotReactive[["upset"]]))
+    draw(gseaPlotReactive[["upset"]], padding = unit(c(5, 5, 5, 20), "mm"))
+  },
+  width = as.numeric(input$figWidthGSEA)*1.3,
+  height = as.numeric(input$figHeightGSEA)
+)
+output$dlUpset_GSEA <- downloadHandler(
+  filename = function() {
+    paste0(design, "GSEA_", input$gseaType, "_upset.pdf")
+  },
+  content = function(file) {
+    pdf(file = file, width = (as.numeric(input$figWidthGSEA)/70), height = (as.numeric(input$figHeightGSEA)/90))
+    print(gseaPlotReactive[["upset"]])
+    dev.off()
+  }
+)

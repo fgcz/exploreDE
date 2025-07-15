@@ -28,12 +28,16 @@ lapply(c(1:2), function(i) {
     selected = selected
   )
 })
-updateCheckboxGroupInput(
-  session = session,
-  inputId = paste0("pcaGroups"),
-  choices = levels(as.factor(inputDataReactive()$dataset[, inputDataReactive()$factors[1]])),
-  selected = levels(as.factor(inputDataReactive()$dataset[, inputDataReactive()$factors[1]]))
-)
+observeEvent({
+  input$pcaFactor1
+  }, ignoreNULL = FALSE, ignoreInit = TRUE, {
+    updateCheckboxGroupInput(
+      session = session,
+      inputId = paste0("pcaGroups"),
+      choices = levels(as.factor(inputDataReactive()$dataset[, input$pcaFactor1])),
+      selected = levels(as.factor(inputDataReactive()$dataset[, input$pcaFactor1]))
+    )
+})
 
 observeEvent(input[["pcaFactor1"]], ignoreInit = T, {
   updateCheckboxGroupInput(
@@ -99,7 +103,7 @@ observeEvent(
   
     # Get the colours for the condition levels
     coloursPCA <- setNames(lapply(input$pcaGroups, function(k) {
-      paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, "__", k)]]), "FF")
+      paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, k)]]), "FF")
     }), input$pcaGroups)
     
     # Keep only the groups selected:

@@ -1,3 +1,26 @@
+is_url <- function(dataDir) {
+  return(grepl("^https?://", dataDir)) 
+}
+dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+# dataDir <- "/srv/gstore/projects/p28466/eq2_dnaj1dnaj2dnaj3pepe--over--WT_2025-07-07--12-43-22/dnaj1dnaj2dnaj3pepe--over--WT"
+# dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/../jStore/p2699/bfabric/Proteomics/SummarizedExperiment/2023/2023-11/2023-11-23/workunit_o31423_p2699_GeneSymbolRollUp_unpaired/SummarizedExperiment.rds"
+if (is_url(dataDir)) {
+  se <- readRDS(url(dataDir))  # If it's a URL
+} else {
+  se <- readRDS(file.path(dataDir, "deResult.rds"))
+}
+inputDataReactive <- reactive({
+  # Load proteomics data ----
+  if (grepl("rds|zip", dataDir)) {
+    return(convert_proteomics_se(se))
+  }
+  
+  # Load RNA Seq data ----
+  if (file.exists(file.path(dataDir, "deResult.rds"))) {
+    return(convert_genomics_se(se, dataDir))
+  }
+})
+inputDataReactive()$dataType
 input <- list()
 names(inputDataReactive())
 
@@ -16,12 +39,12 @@ colourPaletteList <- list(
 )
 
 input$colourPalette <- c("Dark2", "Paired")
+i <- 1
+j <- 13
 for (i in seq_along(inputDataReactive()$factorLevels)) {
-  input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]] <- rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[i]
-}
-
-for (i in seq_along(1:50)) {
-  input[[paste0("GroupColour", i)]] <- rep(RColorBrewer::brewer.pal(12, "Paired"), 10)[i]
+  for (j in seq_along(inputDataReactive()$factorLevels[[i]])) {
+    input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[i], inputDataReactive()$factorLevels[[i]][j])]] <- rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j]
+  }
 }
 input$selectedTable_ORA_rows_selected <- 1:5
 input$textSizeORA <- 12
@@ -31,7 +54,7 @@ input$featureCalcPValue <- 0.05
 input$featureCalcLFC <- 0
 
 input$pcaFactor1 <- inputDataReactive()$factors[1]
-input$pcaGroups <- inputDataReactive()$designLevels
+input$pcaGroups <- inputDataReactive()$factorLevels[[1]]
 # input$pcaGroups <- levels(inputDataReactive()$dataset$G_)
 input$pcaCounts <- "Normalised + Log2"
 input$pcaAddEllipses <- TRUE
@@ -345,3 +368,4 @@ input$oraLabelAlpha <- 0.9
 input$geneLabelSizeVolcano <- 2
 input$showAxesVolcano <- TRUE
 input$showLinesVolcano <- TRUE
+input$pcaBatch <- "None"

@@ -354,7 +354,7 @@ observeEvent({
   
   # Get the colours for the condition levels
   coloursBoxplot <- setNames(lapply(input$boxKeepBucket, function(k) {
-    paste0(col2hex(input[[paste0("GroupColour", input$boxplotFactor1, "__", k)]]), "FF")
+    paste0(col2hex(input[[paste0("GroupColour", input$boxplotFactor1, k)]]), "FF")
   }), input$boxKeepBucket)
   
   if (inputDataReactive()$dataType == "proteomics") {

@@ -308,7 +308,7 @@ observeEvent(
         # Top Annotation
         colourListHeatmap <- setNames(lapply(inputDataReactive()$factors, function(f) {
           setNames(lapply(unique(datasetHeatmap[[f]]), function(k) {
-            paste0(col2hex(input[[paste0("GroupColour", f, "__", k)]]), "FF")
+            paste0(col2hex(input[[paste0("GroupColour", f, k)]]), "FF")
           }), unique(datasetHeatmap[[f]]))
         }), inputDataReactive()$factors)
         if (any(input$heatmapFactors != "")) {
@@ -352,7 +352,8 @@ observeEvent(
           ]
         )
         
-        gtp <- rownames(countsHeatmap)[match(geneDirections[[input$heatmapFeatureDirection]], rownames(countsHeatmap))]
+        ntp <- min(input$heatmapGeneNumber, length(geneDirections[[input$heatmapFeatureDirection]]))
+        gtp <- rownames(countsHeatmap)[match(geneDirections[[input$heatmapFeatureDirection]][1:ntp], rownames(countsHeatmap))]
         rtp <- grep(paste0("^", gtp, "$", collapse = "|"), rownames(countsHeatmap))
         
         countsHeatmapSig <- countsHeatmap[rtp, ]
