@@ -8,18 +8,21 @@ Description: exploreDE
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
-  BiocManager,
+  devtools,
   shiny,
   shinydashboard,
   tidyverse,
   ggpubr,
   plotly,
+  DESeq2,
   RColorBrewer,
   ComplexHeatmap,
+  clusterProfiler,
   DT,
   colourpicker,
   writexl,
   circlize,
+  ezRun,
   kableExtra,
   ggrepel,
   gplots,
@@ -37,11 +40,9 @@ Imports:
   patchwork,
   Matrix,
   SingleCellExperiment,
-  fresh
+  fresh,
+  scuttle,
+  qs2
 Remotes:
-  uzh/ezRun,
-  bioc::pathview,
-  bioc::ComplexHeatmap,
-  bioc::clusterProfiler,
-  bioc::DESeq2
+  fgcz/exploreDE
 RoxygenNote: 7.3.2

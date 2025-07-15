@@ -28,12 +28,16 @@ lapply(c(1:2), function(i) {
     selected = selected
   )
 })
-updateCheckboxGroupInput(
-  session = session,
-  inputId = paste0("pcaGroups"),
-  choices = levels(as.factor(inputDataReactive()$dataset[, inputDataReactive()$factors[1]])),
-  selected = levels(as.factor(inputDataReactive()$dataset[, inputDataReactive()$factors[1]]))
-)
+observeEvent({
+  input$pcaFactor1
+  }, ignoreNULL = FALSE, ignoreInit = TRUE, {
+    updateCheckboxGroupInput(
+      session = session,
+      inputId = paste0("pcaGroups"),
+      choices = levels(as.factor(inputDataReactive()$dataset[, input$pcaFactor1])),
+      selected = levels(as.factor(inputDataReactive()$dataset[, input$pcaFactor1]))
+    )
+})
 
 observeEvent(input[["pcaFactor1"]], ignoreInit = T, {
   updateCheckboxGroupInput(
@@ -50,6 +54,7 @@ if (inputDataReactive()$dataType == "proteomics") {
     output$nrPeptidesPCAUI <- renderUI({
       sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
     })
+    outputOptions(output, "nrPeptidesPCAUI", suspendWhenHidden = FALSE)
   } else {
     output$nrPeptidesPCAUI <- renderUI({ NULL })
   }
@@ -69,8 +74,6 @@ observeEvent(
     input$pcaCentre
     input$pcaScale
     input$textSizePCA
-    # input$figWidthPCA
-    # input$figHeightPCA
     input$showLinesPCA
     input$showAxesPCA
     input$boldPCA
@@ -100,7 +103,7 @@ observeEvent(
   
     # Get the colours for the condition levels
     coloursPCA <- setNames(lapply(input$pcaGroups, function(k) {
-      paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, "__", k)]]), "FF")
+      paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, k)]]), "FF")
     }), input$pcaGroups)
     
     # Keep only the groups selected:
@@ -223,6 +226,20 @@ observeEvent(
         y = paste0(input$pcaY, ": ", round(pc_eigenvalues$pct[pc_eigenvalues$PC == input$pcaY]), "% variance"),
         fill = input$pcaFactor1, shape = input$pcaFactor2
       )
+      if (input$pcaShowNames) {
+        pcaPlot <- pcaPlot +
+          geom_label_repel(
+            aes(label = sample, fill = .data[[input$pcaFactor1]]),
+            force = 2,
+            nudge_y = as.numeric(input$geneLabelNudgePCAY)/10,
+            nudge_x = as.numeric(input$geneLabelNudgePCAX)/10, 
+            size = (input$textSizePCA / 3),
+            max.overlaps = input$pcaLabelMaxOverlap,
+            fontface = "bold", 
+            show.legend = F,
+            show_guide = FALSE
+          ) 
+      }
       pcaPlot <- pcaPlot + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
       pcaPlot <- pcaPlot + theme_bw()
       face <- switch(input$boldPCA, "TRUE" = "bold", "FALSE" = "plain")
@@ -235,22 +252,6 @@ observeEvent(
         legend.title = element_text(size = input$textSizePCA),
         title = element_text(size = input$textSizePCA)
       )
-      if (input$pcaShowNames) {
-        pcaPlot <- pcaPlot +
-          geom_label_repel(
-            aes(label = sample, fill = Condition),
-            force = 2,
-            nudge_y = as.numeric(input$geneLabelNudgePCAY)/10,
-            nudge_x = as.numeric(input$geneLabelNudgePCAX)/10, 
-            size = (input$textSizePCA / 3),
-            max.overlaps = input$pcaLabelMaxOverlap,
-            fontface = "bold", 
-            show.legend = F,
-            show_guide = FALSE
-          ) 
-          # ylim(c(min(pc_scores[[input$pcaY]] * 1.1), max(pc_scores[[input$pcaY]] * 1.2))) +
-          # xlim(c(min(pc_scores[[input$pcaX]] * 1.1), max(pc_scores[[input$pcaX]] * 1.2)))
-      }
       if (!input$showLinesPCA) {
         pcaPlot <- pcaPlot +
           theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
@@ -302,8 +303,9 @@ observeEvent(
       )
       
       output$pcaBrushTable <- renderDataTable({
+        brushed_df <- brushedPoints(pc_scores, input$pcaBrush, xvar = input$pcaX, yvar = input$pcaY)
         DT::datatable(
-          data = brushedPoints(pc_scores[, c("sample", factorNames, input$pcaX, input$pcaY)], input$pcaBrush),
+          data = brushed_df[, c("sample", factorNames, input$pcaX, input$pcaY)],
           filter = "top",
           caption = "Click and drag over dots on the PCA plot to see those samples in this table.",
           rownames = F) %>% 

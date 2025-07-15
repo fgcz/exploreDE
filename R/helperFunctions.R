@@ -1,17 +1,26 @@
 #' convert_genomics_se
 #' @export
-convert_genomics_se <- function(se, dataDir) {
-  param <- metadata(se)$param
-  seqAnno <- data.frame(
-    rowData(se),
-    row.names = rownames(se),
-    check.names = FALSE)
+convert_genomics_se <- function(se, dataDir, param = NULL) {
   
+  if (is.null(param)) {
+    param <- metadata(se)$param
+  }
+  
+  # Prepare the seqAnno results table ----
+  seqAnno <- data.frame(rowData(se), row.names = rownames(se), check.names = FALSE)
+  # Get the p-value and log2 columns 
+  pValueColumn <- grep("^p[-_]?value$", colnames(seqAnno), value = TRUE, ignore.case = TRUE)[[1]]
+  pAdjColumn <- grep("^(padj|adj[._]?p[-_]?value|adjusted[._]?p[-_]?value|fdr|q[-_]?value)$", colnames(seqAnno), value = TRUE, ignore.case = TRUE)[[1]]
+  log2FCColumn <- grep("^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc)$", colnames(seqAnno), value = TRUE, ignore.case = TRUE)[[1]]
+  # Sort the dataframe by raw pvalue 
+  seqAnno <- seqAnno[order(seqAnno[[pValueColumn]]),]
+  # Tidy the description column to remove extraneous accessors 
+  if ("description" %in% colnames(seqAnno)) {
+    seqAnno$description <- gsub(" \\[..*", "", seqAnno$description)
+  } else {
+    seqAnno$description <- seqAnno$gene_name
+  }
   # Uniquify the gene symbols 
-  seqAnno <- seqAnno[order(seqAnno$pValue),]
-  seqAnno$description <- gsub(" \\[..*", "", seqAnno$description)
-  
-  # change any NA FDRs to 1:
   if (param$featureLevel == "gene") {
     seqAnno$gene_name <- scuttle::uniquifyFeatureNames(
       ID = seqAnno$gene_id,
@@ -21,68 +30,98 @@ convert_genomics_se <- function(se, dataDir) {
       ID = seqAnno$transcript_id, 
       names = seqAnno$gene_name)
   }
+  # If uniquifying broke some names, fix them
   seqAnno$gene_name[grep("^_", seqAnno$gene_name)] <- gsub("_", "", seqAnno$gene_name[grep("^_", seqAnno$gene_name)])
-  dataset <- data.frame(colData(se), check.names = FALSE)
+  # get the list of genes to go in as input options:
+  genes <- seqAnno$gene_name[order(seqAnno$pValue)]
   
-  # remove things like [] & whitespace from colnames to make subsetting easier:
-  # I appear to have got confused somewhere with my need for some of these factor variables... will fix 
-  factorNs <- grep("\\[Factor]", colnames(dataset))
+  
+  
+  # Prepare the metadata table ----
+  dataset <- data.frame(colData(se), check.names = FALSE)
+  # Get the factors that should be available for plotting 
   factors <- colnames(dataset)[grep("\\[Factor]", colnames(dataset))]
-  factorNames <- colnames(dataset)[grep("\\[Factor]", colnames(dataset))]
+  # Remove [Factor] from colnames and factors
   colnames(dataset) <- gsub(" \\[.*", "", colnames(dataset)) %>% gsub(" ", "_", .)
-  factorNames <- gsub(" \\[.*", "", factorNames) %>% gsub(" ", "_", .)
   factors <- gsub(" \\[.*", "", factors) %>% gsub(" ", "_", .)
-  factorLevels <- NULL
-  for (i in seq_along(dataset[factorNs])){
-    factorLevels[[i]] <- paste0(
-      colnames(dataset[factorNs[[i]]]),
-      ": ",
-      levels(as.factor(dataset[, factorNs[i]])))
+  # Get the individual levels for each factor 
+  factorLevels <- lapply(factors, function(f) {
+    levels(as.factor(dataset[[f]]))
+  }) %>% setNames(factors)
+  
+  # If someone manually enters a duplicate column (but sans [Factor]), things will break. So, remove!
+  # Identify duplicated column names
+  dups <- which(duplicated(names(dataset)) | duplicated(names(dataset), fromLast = TRUE))
+  dup_names <- unique(names(dataset)[dups])
+  
+  # Go through each duplicate group
+  for (dup in dup_names) {
+    cols <- which(names(dataset) == dup)
+    
+    # Compare all pairwise combinations (in case there are >2)
+    keep <- cols[1]
+    drop_these <- integer(0)
+    
+    for (i in 2:length(cols)) {
+      if (all(dataset[[cols[i]]] == dataset[[keep]], na.rm = TRUE)) {
+        # If identical, mark for dropping
+        drop_these <- c(drop_these, cols[i])
+      } else {
+        # If not identical, make unique
+        names(dataset)[cols[i]] <- paste0(dup, ".", i - 1)
+      }
+    }
+    
+    # Drop identical duplicates
+    if (length(drop_these) > 0) {
+      dataset <- dataset[, -drop_these, drop = FALSE]
+    }
   }
-  factorLevels <- unlist(factorLevels)
-  names(factorLevels) <- factorLevels %>% gsub("\\ |\\:", "_", .)
   
   # The app doesn't like empty strings in the factor columns, so for now, add "None" to those entries 
   dataset <- dataset %>% mutate_all(~ifelse(. == "", "None", .))
   if (is.null(param$groupingName)) {
-    param$groupingName <- "Condition"
+    param$groupingName <- factors[[1]]
   }
+  # Set the comparison column levels to be in order of test, e.g., diff, undiff
   dataset[[param$groupingName]] <- factor(
     dataset[[param$groupingName]], 
     levels = c(
       param$sampleGroup, 
       param$refGroup, 
-      unique(dataset[[param$groupingName]])[!unique(dataset[[param$groupingName]]) %in% c(param$sampleGroup, param$refGroup)]))
+      unique(dataset[[param$groupingName]])[!unique(dataset[[param$groupingName]]) %in% c(param$sampleGroup, param$refGroup)])
+  )
+  # make the sample names an actual column to make it easier to bind to things:
+  dataset$names <- rownames(dataset)
   
-  # Make a list of counts:
+  
+  
+  # Prepare the count files ----
   countList <- list()
   countList[["Raw"]] <- assay(se, "counts")
   countList[["Normalised"]] <- assay(se, "xNorm")
   countList[["Normalised + Log2"]] <- log2(assay(se, "xNorm")+param$backgroundExpression)
-  countList[["FPKM"]] <- getRpkm(se)
-  countList[["TPM"]] <- getTpm(se)
-  for (i in seq_along(countList)) {
-    if(param$featureLevel == "gene") {
-      countList[[i]] <- countList[[i]][which(rownames(countList[[i]]) %in% seqAnno$gene_id), ]
-      rownames(countList[[i]]) <- seqAnno$gene_name[match(rownames(countList[[i]]), seqAnno$gene_id)]
-    } else if(param$featureLevel == "isoform") {
-      countList[[i]] <- countList[[i]][rownames(countList[[i]]) %in% seqAnno$transcript_id, ]
-      rownames(countList[[i]]) <- seqAnno$gene_name[match(rownames(countList[[i]]), seqAnno$transcript_id)] %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
-    }
+  if (!is.null(param$refBuild)) {
+    countList[["FPKM"]] <- getRpkm(se)
+    countList[["TPM"]] <- getTpm(se)
   }
   forVST <- as.matrix(assay(se, "counts"))
   mode(forVST) <- "integer"
   vstCountMatrix <- varianceStabilizingTransformation(forVST)
-  if(param$featureLevel == "gene") {
-    vstCountMatrix <- vstCountMatrix[intersect(rownames(vstCountMatrix), seqAnno$gene_id), ]
-    vstCountMatrix <- vstCountMatrix[match(seqAnno$gene_id, rownames(vstCountMatrix)), ]
-    rownames(vstCountMatrix) <- seqAnno$gene_name
-  } else if (param$featureLevel == "isoform") {
-    vstCountMatrix <- vstCountMatrix[intersect(rownames(vstCountMatrix), seqAnno$transcript_id), ]
-    vstCountMatrix <- vstCountMatrix[match(seqAnno$transcript_id, rownames(vstCountMatrix)), ]
-    rownames(vstCountMatrix) <- seqAnno$gene_name %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
-  }
   countList[["VST"]] <- vstCountMatrix
+  # For all the counts, match the matrices to the seqAnno order
+  for (i in seq_along(countList)) {
+    if(param$featureLevel == "gene") {
+      geneOrder <- intersect(seqAnno$gene_id, rownames(countList[[i]]))
+      countList[[i]] <- countList[[i]][geneOrder, ]
+      rownames(countList[[i]]) <- seqAnno$gene_name
+    } else if(param$featureLevel == "isoform") {
+      geneOrder <- intersect(seqAnno$transcript_id, rownames(countList[[i]]))
+      countList[[i]] <- countList[[i]][geneOrder, ]
+      rownames(countList[[i]]) <- seqAnno$gene_name %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
+    }
+  }
+  # Add global and per group means to the seqAnno table 
   for (count in names(countList)) {
     cts <- countList[[count]]
     seqAnno[[paste0(count, "_mean")]] <- rowMeans(cts)[seqAnno$gene_name]
@@ -93,16 +132,15 @@ convert_genomics_se <- function(se, dataDir) {
     seqAnno[[paste0(count, "_", param$refGroup, "_Mean")]] <- rowMeans(cts[ , isRef, drop=FALSE])[seqAnno$gene_name]
   }
   
-  # make the sample names an actual column to make it easier to bind to things:
-  dataset$names <- rownames(dataset)
   
-  # get the list of genes to go in as input options:
-  genes <- seqAnno$gene_name[order(seqAnno$pValue)]
   
-  # get contrast 
+  # Prepare the contrast info ----
   design <- param$comparison
   designLevels <- design %>% strsplit(split = "--over--") %>% .[[1]]
   
+  
+  
+  # Prepare the GO info ----
   allPathwaysDEG <- c(
     unique(unlist(strsplit(x = c(seqAnno$`GO BP`), "; "))),
     unique(unlist(strsplit(x = c(seqAnno$`GO MF`), "; "))),
@@ -110,13 +148,10 @@ convert_genomics_se <- function(se, dataDir) {
   )
   goTerms <- clusterProfiler::go2term(allPathwaysDEG)
   allPathways <- paste(goTerms[,1], goTerms[,2])
-  
+  goObjects <- list(runGO = param$runGO)
   if (param$runGO) {
-    # Get the pathway objects 
-    ora <- metadata(se)$enrichResult
-    gsea <- metadata(se)$enrichResultGSEA
-    oraHTML <- file.path(dataDir, list.files(dataDir)[grep("ORA_results.xlsx", list.files(dataDir))])
-    gseaHTML <- file.path(dataDir, list.files(dataDir)[grep("GSEA_results.xlsx", list.files(dataDir))])
+    goObjects$ora <- metadata(se)$enrichResult
+    goObjects$gsea <- metadata(se)$enrichResultGSEA
   }
   
   if (param$runGO) {
@@ -129,38 +164,17 @@ convert_genomics_se <- function(se, dataDir) {
       "designLevels" = designLevels,
       "dataset" = dataset,
       "factors" = factors,
-      "factorNames" = factorNames,
-      "degHTML" = file.path(dataDir, list.files(dataDir)[grep("xlsx", list.files(dataDir))]) %>% .[!grepl("ORA|GSEA", .)],
+      "factorLevels" = factorLevels,
       "countList" = countList,
       "genes" = genes,
-      "factorLevels" = factorLevels,
       "allPathways" = allPathways,
-      "ora" = ora,
-      "oraHTML" = oraHTML,
-      "gsea" = gsea,
-      "gseaHTML" = gseaHTML
-    )
-    )
-  } else {
-    return(list(
-      "dataType" = "RNASeq",
-      "se" = se,
-      "param" = param,
-      "seqAnno" = seqAnno,
-      "design" = design,
-      "designLevels" = designLevels,
-      "dataset" = dataset,
-      "factors" = factors,
-      "factorNames" = factorNames,
-      "degHTML" = file.path(dataDir, list.files(dataDir)[grep("xlsx", list.files(dataDir))]) %>% .[!grepl("ORA|GSEA", .)],
-      "countList" = countList,
-      "genes" = genes,
-      "factorLevels" = factorLevels,
-      "allPathways" = allPathways
+      "goObjects" = goObjects,
+      "groupingName" = param$groupingName
     )
     )
   }
 }
+
 
 #' convert_proteomics_se
 #' @export
@@ -190,7 +204,9 @@ convert_proteomics_se <- function(se) {
   
   # Get the main columns from the metadata that are plottable 
   factors <- colnames(dataset)[grep("Sample|Name|names|channel|raw\\.file", colnames(dataset), invert = T, ignore.case = T)]
-  factorNames <- colnames(dataset)[grep("Sample|Name|names|channel|raw\\.file", colnames(dataset), invert = T, ignore.case = T)]
+  factorLevels <- lapply(factors, function(f) {
+    levels(as.factor(dataset[[f]]))
+  }) %>% setNames(factors)
   
   # Sort numeric factor levels
   for (x in factors) {
@@ -213,17 +229,6 @@ convert_proteomics_se <- function(se) {
   # Get the protein IDs
   genes <- unique(unlist(lapply(seq_along(seqAnnoList), function(x) {seqAnnoList[[x]][["gene_name"]]})))
   
-  # Get a vector of all the levels of each plottable column
-  factorLevels <- NULL
-  for (i in seq_along(dataset[factors])){
-    factorLevels[[i]] <- paste0(
-      colnames(dataset[factors[[i]]]),
-      ": ",
-      levels(as.factor(dataset[, factors[i]])))
-  }
-  factorLevels <- unlist(factorLevels)
-  names(factorLevels) <- factorLevels %>% gsub("\\ |\\:", "_", .)
-  
   # Return the final list
   return(list(
     "dataType" = "proteomics",
@@ -232,11 +237,11 @@ convert_proteomics_se <- function(se) {
     "contrasts" = contrasts,
     "dataset" = dataset,
     "factors" = factors,
-    "factorNames" = factorNames,
     "countList" = countList,
     "genes" = genes,
-    "factorLevels" = factorLevels
-  )
+    "factorLevels" = factorLevels,
+    "groupingName" = factors[[1]]
+    )
   )
 }
 
@@ -255,4 +260,28 @@ zscore <- function(x) {
     return(rep(0, length(x)))
   }
   (x - m) / s
+}
+
+#' generateParams
+#' @export
+generateParams <- function(
+    sampleGroup = "diff", refGroup = "undiff", groupingName = "Condition", 
+    comparison = "diff--over--undiff", featureLevel = "gene", 
+    runGO = TRUE, fdrThreshORA = 0.05, fdrThreshGSEA = 0.05, pValThreshGO = 0.01, 
+    log2RatioThreshGO = 0, backgroundExpression = 10, refBuild = "GRCh38"
+    ) {
+  return(list(
+    sampleGroup = sampleGroup,
+    refGroup = refGroup,
+    groupingName = groupingName,
+    comparison = comparison,
+    featureLevel = featureLevel,
+    runGO = runGO,
+    fdrThreshORA = fdrThreshORA,
+    fdrThreshGSEA = fdrThreshGSEA,
+    pValThreshGO = pValThreshGO,
+    log2RatioThreshGO = log2RatioThreshGO,
+    backgroundExpression = backgroundExpression,
+    refBuild = refBuild
+  ))
 }

@@ -56,7 +56,10 @@ tabItem(
             checkboxInput(inputId = "volcanoLabelAllDown", label = "Label all Down", value = FALSE),
             helpText("You can both label all up/down features and select specific features."),
             tags$b("Annotate volcano plot with specific features?"),
-            selectizeInput(inputId = "volcanoGenes", label = "Select features to annotate", choices = "", selected = "", multiple = TRUE),
+            selectizeInput(
+              inputId = "volcanoGenes", label = "Select features to annotate", choices = NULL, selected = NULL, multiple = TRUE,
+              options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
+              ),
             textAreaInput(inputId = "volcanoGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4", cols = 1),
             hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
             h5(
@@ -72,35 +75,38 @@ tabItem(
             title = "Figure settings",
             h4("Plot settings"),
             splitLayout(
-              sliderInput(inputId = "figWidthVolcano", label = "Width", min = 100, max = 2000, value = 800, step = 10, width = "85%"),
-              sliderInput(inputId = "figHeightVolcano", label = "Height", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
-              sliderInput(inputId = "textSizeVolcano", label = "Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = TRUE)
+              sliderInput(inputId = "figWidthVolcano", label = "Width", min = 100, max = 2000, value = 700, step = 10, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "figHeightVolcano", label = "Height", min = 100, max = 2000, value = 480, step = 10, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "textSizeVolcano", label = "Font Size", min = 4, max = 30, value = 14, step = 0.5, width = "85%", ticks = FALSE)
             ),
             splitLayout(
-              sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 3, step = 0.5, width = "85%", ticks = TRUE),
-              sliderInput(inputId = "alphaVolcano", label = "Dot alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "85%", ticks = TRUE),
-              sliderInput(inputId = "volcanoPointBorder", label = "Dot border", min = 0, max = 1, value = 0.2, step = 0.1, width = "85%"),
+              sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 3, step = 0.5, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "alphaVolcano", label = "Dot alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "volcanoPointBorder", label = "Dot border", min = 0, max = 1, value = 0.2, step = 0.1, width = "85%", ticks = FALSE)
             ),
             br(),
             splitLayout(
               checkboxInput(inputId = "showAxesVolcano", label = "Axes lines?", value = TRUE),
-              checkboxInput(inputId = "boldVolcano", label = "Bold?", value = TRUE),
-              checkboxInput(inputId = "showLinesVolcano", label = "Grid lines?", value = TRUE)
+              checkboxInput(inputId = "borderVolcano", label = "Plot Border?", value = TRUE),
+              checkboxInput(inputId = "showLinesVolcano", label = "Grid lines?", value = FALSE)
             ),
             hr(style = "border-top: 1px solid #000000;"), h4("Annotation settings"),
             numericInput(inputId = "volcanoLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 10, step = 1, width = "33%"),
             helpText("Increasing the number of overlapping labels will label more features, but can take a *very* long time to generate"),
             splitLayout(
-              sliderInput(inputId = "geneLabelNudgeVolcanoX", label = "Nudge Labels X", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
-              sliderInput(inputId = "geneLabelNudgeVolcanoY", label = "Nudge Labels Y", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
-              sliderInput(inputId = "geneLabelSizeVolcano", label = "Label Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = TRUE)
+              sliderInput(inputId = "geneLabelNudgeVolcanoX", label = "Nudge Labels X", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "geneLabelNudgeVolcanoY", label = "Nudge Labels Y", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "geneLabelSizeVolcano", label = "Label Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = FALSE)
             )
           ),
           tabPanel(
-            title = "Download settings",
+            title = "Download",
             selectInput(inputId = "downloadFormatVolcano", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
             selectInput(inputId = "dpiVolcano", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
-            textInput(inputId = "filnameVolcano", label = "Enter filename", value = "Volcano")
+            textInput(inputId = "filnameVolcano", label = "Enter filename", value = "Volcano"),
+            downloadButton(outputId = "dlVolcanoPlotButton", HTML("Download Volcano Plot")),
+            downloadButton(outputId = "dlVolcanoDFButton", HTML("Download Volcano Results Table (Excel)")),
+            downloadButton(outputId = "dlMAPlotButton", HTML("Download MA Plot (PDF)"))
           )
         )
       )
@@ -121,22 +127,26 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        helpText("If you click and drag on the volcano plot to select features, they will automatically be added to your feature bucket in other tabs too, e.g., boxplots, heatmaps."),
-        textOutput("volcanoDesign"),
-        downloadButton(outputId = "dlVolcanoPlotButton", HTML("Download Volcano Plot")),
-        downloadButton(outputId = "dlVolcanoDFButton", HTML("Download Volcano Results Table (Excel)")),
-        br(), br(),
-        plotOutput("volcanoStatic", inline = TRUE, brush = "volcanoBrush"),
-        br(), br(),
-        DT::dataTableOutput("volcanoBrushTable")
+        tabsetPanel(
+          tabPanel(
+            title = "Static",
+            helpText("If you click and drag on the volcano plot to select features, they will automatically be added to your feature bucket in other tabs too, e.g., boxplots, heatmaps."),
+            textOutput("volcanoDesign"),
+            plotOutput("volcanoStatic", inline = TRUE, brush = "volcanoBrush"),
+            br(), br(),
+            DT::dataTableOutput("volcanoBrushTable")
+          ),
+          tabPanel(
+            title = "Interactive",
+            plotlyOutput("volcanoPlotly", inline = TRUE, height = "auto")
+          )
+        )
       ),
       box(
         title = "MA Plot", 
         width = NULL,
         solidHeader = TRUE, 
         status = "primary", 
-        downloadButton(outputId = "dlMAPlotButton", HTML("Download MA Plot (PDF)")),
-        br(), br(),
         plotOutput("MAPlot", inline = TRUE, brush = "MABrush"),
         DT::dataTableOutput("MABrushTable")
       )

@@ -1,9 +1,25 @@
+zscore <- function(x) {
+  # Remove NAs for mean and sd calculation
+  if (all(is.na(x))) {
+    # If all values are NA, return all NAs
+    return(rep(NA, length(x)))
+  }
+  m <- mean(x, na.rm = TRUE)
+  s <- sd(x, na.rm = TRUE)
+  if (is.na(s) || s == 0) {
+    # If sd is NA (all NAs) or zero (no variance), return zeros (or NAs)
+    return(rep(0, length(x)))
+  }
+  (x - m) / s
+}
+
 req(!is.null(inputDataReactive()$dataType))
 
 if (inputDataReactive()$dataType == "proteomics") {
   output$heatmapProteomicsColumnSelectUI <- renderUI({
     selectInput(inputId = "heatmapProteomicsColumnSelect", label = "Select main factor to plot by", choices = inputDataReactive()$factors, selected = inputDataReactive()$factors[1], multiple = F)
   })
+  outputOptions(output, "heatmapProteomicsColumnSelectUI", suspendWhenHidden = FALSE)
   groupingNameHeatmap <- eventReactive(input$heatmapProteomicsColumnSelect, {
     return(list(
       "gn" = input$heatmapProteomicsColumnSelect
@@ -19,11 +35,13 @@ if (inputDataReactive()$dataType == "proteomics") {
       "Clustering by row/column may break the heatmap for proteomics data, due 
       to the high number of NA values in the count table.")
   })
+  outputOptions(output, "clusterWarningProteomics", suspendWhenHidden = FALSE)
   updateCheckboxInput(session = session, inputId = "clusterColsHeatmap", value = FALSE)
   updateCheckboxInput(session = session, inputId = "clusterRowsHeatmap", value = FALSE)
   updateCheckboxInput(session = session, inputId = "heatmapLog2", value = FALSE)
 }
 
+# Update inputs ----
 updateSelectInput(
   session = session, 
   inputId = "heatmapCounts", 
@@ -55,6 +73,7 @@ observeEvent({genesReactive}, {
         input_id = "excludeBucketHeatmap")
     )
   })
+  outputOptions(output, "geneBucket3", suspendWhenHidden = FALSE)
 })
 
 observeEvent(input$resetGeneBucketHeatmap, {
@@ -80,6 +99,7 @@ observeEvent(groupingNameHeatmap(), {
         input_id = "hmExcludeBucket")
     )
   })
+  outputOptions(output, "heatmapBucket", suspendWhenHidden = FALSE)
   updateCheckboxGroupInput(
     session = session,
     inputId = "heatmapFactors",
@@ -98,15 +118,12 @@ if (inputDataReactive()$dataType == "proteomics") {
 observeEvent(inputDataReactive(), {
   if (inputDataReactive()$dataType == "RNASeq") {
     req(!is.null(inputDataReactive()$allPathways))
-    output$heatmapGOUI1 <- renderUI({
-      selectInput(
-        inputId = "heatmapGoInput",
-        choices = inputDataReactive()$allPathways,
-        selected = "",
-        label = "Or, select the GO Term you wish to plot",
-        selectize = TRUE
-      )
-    })
+    updateSelectizeInput(
+      session,
+      inputId = "heatmapGoInput",
+      choices = inputDataReactive()$allPathways,
+      server = TRUE  # ← this is what activates server-side mode
+    )
     output$heatmapGOUI2 <- renderUI({
       numericInput(
         inputId = "heatmapGoExpr",
@@ -116,6 +133,7 @@ observeEvent(inputDataReactive(), {
         max = 1e100
       )
     })
+    outputOptions(output, "heatmapGOUI2", suspendWhenHidden = FALSE)
   } else {
     output$heatmapGOUI1 <- renderUI({
       h5("Proteomics data doesn't support GO terms.")
@@ -124,24 +142,6 @@ observeEvent(inputDataReactive(), {
 })
 
 updateSelectInput(session = session, inputId = "heatmapBatch", choices = c("None", inputDataReactive()$factors), selected = "None")
-
-if (inputDataReactive()$dataType == "RNASeq") {
-  output$heatmapGOUI <- renderUI({
-    helpText("You can also plot the expression of features annotated to a given GO term (again, irrespective of p-value from the DE test).")
-    selectizeInput(
-      inputId = "heatmapGoInput",
-      choices = c(),
-      label = "Or, select the GO Term you wish to plot"
-    )
-    numericInput(
-      inputId = "heatmapGoExpr",
-      label = "Minimum median feature expression for GO plot",
-      value = 0.05,
-      min = 0,
-      max = 1e100
-    )
-  })
-}
 
 observeEvent(inputDataReactive(), {
   if (inputDataReactive()$dataType == "proteomics") {
@@ -157,20 +157,17 @@ if (inputDataReactive()$dataType == "proteomics") {
     output$nrPeptidesHeatmapUI <- renderUI({
       sliderInput(inputId = "nrPeptideHeatmap", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
     })
+    outputOptions(output, "nrPeptidesHeatmapUI", suspendWhenHidden = FALSE)
   } else {
     output$nrPeptidesHeatmapUI <- renderUI({ NULL })
   }
 }
 
 observeEvent(input$heatmapZScore, {
-  if (input$heatmapZScore == "Z-Score") {
+  if (input$heatmapZScore %in% c("Z-Score", "Centred")) {
     updateNumericInput(session = session, inputId = "heatmapAtLow", value = -2, min = -10, max = 10, step = 0.1)
     updateNumericInput(session = session, inputId = "heatmapAtMid", value = 0, min = -10, max = 10, step = 0.1)
     updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 2, min = -10, max = 10, step = 0.1)
-  } else if (input$heatmapZScore == "Centred") {
-    updateNumericInput(session = session, inputId = "heatmapAtLow", value = -1, min = -10, max = 10, step = 0.1)
-    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 0, min = -10, max = 10, step = 0.1)
-    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 1, min = -10, max = 10, step = 0.1)
   } else if (input$heatmapLog2 & input$heatmapZScore == "None") {
     updateNumericInput(session = session, inputId = "heatmapAtLow", value = 0, min = -10, max = 10, step = 0.1)
     updateNumericInput(session = session, inputId = "heatmapAtMid", value = 6, min = -10, max = 10, step = 0.1)
@@ -182,6 +179,9 @@ observeEvent(input$heatmapZScore, {
   }
 })
 
+
+
+# figure making ----
 observeEvent(
   {
     input$textSizeHeatmap
@@ -212,7 +212,6 @@ observeEvent(
     input$heatmapDownloadFormat
     input$heatmapFilename
     input$nrPeptideHeatmap
-    input$heatmapCustomTitle
     input$heatmapFeatureDirection
     input$heatmapLog2
     input$heatmapZScore
@@ -224,10 +223,16 @@ observeEvent(
     })
     input$contrastSelected
     groupingNameHeatmap()
+    input$keepBucketHeatmap
+    input$heatmapCustomTitle
+    input$heatmapGoInput
+    input$heatmapGoExpr
   }, ignoreNULL = FALSE, ignoreInit = TRUE, {
     tryCatch({
       if (!is.null(input$hmKeepBucket)) {
         
+        figuresDataReactive[["heatmapDEFeatures"]] <- NULL
+        # Get some variables ----
         if (inputDataReactive()$dataType == "proteomics") {
           design <- input$contrastSelected
           seqAnnoHeatmap <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
@@ -248,45 +253,45 @@ observeEvent(
           pTypeHeatmap <- "fdr"
         }
         
-        # get the metadata for plotting
+        
+        # Prepare the metadata for the top annotation ----
         datasetHeatmap <- inputDataReactive()$dataset
         datasetHeatmap <- datasetHeatmap[which(datasetHeatmap[[groupingNameHeatmap()$gn]] %in% input$hmKeepBucket), ]
-        
         # Set the factor levels per the bucket list order
         datasetHeatmap[[groupingNameHeatmap()$gn]] <- factor(datasetHeatmap[[groupingNameHeatmap()$gn]], input$hmKeepBucket)
         datasetHeatmap <- datasetHeatmap[order(datasetHeatmap[[groupingNameHeatmap()$gn]]), ]
         
-        # Subset count matrix:
+        
+        # Prepare the selected count matrix ----
         countsHeatmap <- inputDataReactive()$countList[[input$heatmapCounts]]
         countsHeatmap <- countsHeatmap[, rownames(datasetHeatmap)]
-        
         # Apply the following in this specific order as required: Log2, batch correct, Z-scale
-        # If the user wants to log2, then do that
-        if (input$heatmapLog2 & input$heatmapCounts %in% c("FPKM", "TPM", "Normalised")) {
+        ## If the user wants to log2, then do that
+        if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
           countsHeatmap <- log2(countsHeatmap + 1)
         }
-        # If the user wants to remove batch effect, then do that
+        ## If the user wants to remove batch effect, then do that
         if (input$heatmapBatch != "None") {
           countsHeatmap <- limma::removeBatchEffect(countsHeatmap, datasetHeatmap[[input$heatmapBatch]])
         }
-        # If the user wants to plot gene-wise Z-scores, then do that 
+        ## If the user wants to plot gene-wise Z-scores, then do that 
         if (input$heatmapZScore == "Z-Score") {
           countsHeatmapz <- t(apply(countsHeatmap, 1, zscore))
           colnames(countsHeatmapz) <- colnames(countsHeatmap)
           countsHeatmap <- countsHeatmapz
           rm(countsHeatmapz)
         }
-        # If the user wants to centre the counts, then do that
+        ## If the user wants to centre the counts, then do that
         if (input$heatmapZScore == "Centred") {
           countsHeatmap <- sweep(countsHeatmap, 1, rowMeans(countsHeatmap, na.rm = T))
         }
-        # Fix the proteomics rownames
+        ## Fix the proteomics rownames
         if (inputDataReactive()$dataType == "proteomics") {
           rownames(countsHeatmap) <- gsub("\\~.*", "", rownames(countsHeatmap))
         }
-        countsHeatmap <- countsHeatmap[!is.na(rownames(countsHeatmap)), ]
         
-        # Get the heatmap colour palette to use
+        
+        # Prepare colours and generate top annotation ----
         at <- c(input$heatmapAtLow, input$heatmapAtMid, input$heatmapAtHigh)
         if (input$heatmapLimitCPalette == "None") {
           heatmapColours <- colorRamp2(
@@ -300,14 +305,12 @@ observeEvent(
             heatmapColours <- rev(colorRampPalette(brewer.pal(9, input$heatmapLimitCPalette))(64))
           }
         }
-        
         # Top Annotation
         colourListHeatmap <- setNames(lapply(inputDataReactive()$factors, function(f) {
           setNames(lapply(unique(datasetHeatmap[[f]]), function(k) {
-            paste0(col2hex(input[[paste0("GroupColour", f, "__", k)]]), "FF")
+            paste0(col2hex(input[[paste0("GroupColour", f, k)]]), "FF")
           }), unique(datasetHeatmap[[f]]))
         }), inputDataReactive()$factors)
-        
         if (any(input$heatmapFactors != "")) {
           p1 <- paste(lapply(input$heatmapFactors, function(g) {
             paste0("'", g, "' = datasetHeatmap[['", g, "']]")
@@ -315,7 +318,7 @@ observeEvent(
           ha <- paste0(
             "HeatmapAnnotation("
             , p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")), gp = gpar(col = 'black', lwd = 0.5))"
-            )
+          )
           ha <- eval(parse(text = ha))
           for (f in c(input$heatmapFactors)) {
             for (l in levels(as.factor(datasetHeatmap[, f]))) {
@@ -325,23 +328,45 @@ observeEvent(
           }
         }
         
-        # Draw the heatmaps
-        output[["heatmapDesignBoth Directions"]] <- renderText({design})
+        
+        # DE Heatmaps ----
         # Get the features only in the specified DE direction
         geneDirections <- list(
-          "Both" = seqAnnoHeatmap$gene_name[seqAnnoHeatmap[[pTypeHeatmap]] < input$pThresholdHeatmap & abs(seqAnnoHeatmap$log2Ratio) >= input$lfcHeatmap],
-          "Up-regulated" = seqAnnoHeatmap$gene_name[seqAnnoHeatmap[[pTypeHeatmap]] < input$pThresholdHeatmap & seqAnnoHeatmap$log2Ratio >= input$lfcHeatmap],
-          "Down-regulated" = seqAnnoHeatmap$gene_name[seqAnnoHeatmap[[pTypeHeatmap]] < input$pThresholdHeatmap & seqAnnoHeatmap$log2Ratio <= -input$lfcHeatmap]
+          "Both" = seqAnnoHeatmap$gene_name[
+            which(
+              seqAnnoHeatmap[[pTypeHeatmap]] <= as.numeric(input$pThresholdHeatmap) & 
+                abs(seqAnnoHeatmap$log2Ratio) >= as.numeric(input$lfcHeatmap)
+              )
+            ],
+          "Up-regulated" = seqAnnoHeatmap$gene_name[
+            which(
+              seqAnnoHeatmap[[pTypeHeatmap]] <= as.numeric(input$pThresholdHeatmap) & 
+                seqAnnoHeatmap$log2Ratio >= as.numeric(input$lfcHeatmap)
+            )
+          ],
+          "Down-regulated" = seqAnnoHeatmap$gene_name[
+            which(
+              seqAnnoHeatmap[[pTypeHeatmap]] <= as.numeric(input$pThresholdHeatmap) & 
+                seqAnnoHeatmap$log2Ratio <= -as.numeric(input$lfcHeatmap)
+            )
+          ]
         )
-        countsHeatmapUpDown <- countsHeatmap[match(geneDirections[[input$heatmapFeatureDirection]], rownames(countsHeatmap)), ]
-        countsHeatmapSig <- countsHeatmapUpDown
+        
+        ntp <- min(input$heatmapGeneNumber, length(geneDirections[[input$heatmapFeatureDirection]]))
+        gtp <- rownames(countsHeatmap)[match(geneDirections[[input$heatmapFeatureDirection]][1:ntp], rownames(countsHeatmap))]
+        rtp <- grep(paste0("^", gtp, "$", collapse = "|"), rownames(countsHeatmap))
+        
+        countsHeatmapSig <- countsHeatmap[rtp, ]
+        countsHeatmapSig <- countsHeatmapSig[match(gtp, rownames(countsHeatmapSig)),]
+        countsHeatmapSig <- countsHeatmapSig[!is.na(rownames(countsHeatmapSig)), ]
+        output[["heatmapDesignBoth Directions"]] <- renderText({design})
         if (as.numeric(input$heatmapGeneNumber) <= nrow(countsHeatmapSig)) {
           countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
         } 
         rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
         
         hmName <- paste(input$heatmapCounts %>% gsub("\\+", "\n\\+", .))
-        if (input$heatmapLog2) {
+        if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
           hmName <- paste(hmName, "\n(Log2)")
         }
         if (input$heatmapZScore == "Z-Score") {
@@ -370,7 +395,7 @@ observeEvent(
           column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
           column_title = paste("Top", nrow(countsHeatmapSig), "DE Features:\n", design),
           heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
-        ) %>% draw(merge_legend = TRUE)
+        )
         figuresDataReactive[["heatmapDEFeatures"]] <- heatmap
         
         # Download the count file
@@ -384,13 +409,66 @@ observeEvent(
           paste0("Number of features per settings chosen: ", nrow(countsHeatmapSig))
         })
         
-        # Make a custom heatmap from the genes selected
-        observeEvent({
-          input$keepBucketHeatmap
-        }, {
-          hmCustomMatrix <- countsHeatmap[input$keepBucketHeatmap, ]
-          ch <- ComplexHeatmap::Heatmap(
-            matrix = hmCustomMatrix,
+        
+        
+        # Custom heatmap ----
+        req(input$keepBucketHeatmap != "")
+        
+        if (length(input$keepBucketHeatmap) == 1) {
+          countsHeatmapCustom <- t(as.matrix(countsHeatmap[input$keepBucketHeatmap,]))
+          rownames(countsHeatmapCustom) <- input$keepBucketHeatmap
+        } else {
+          countsHeatmapCustom <- countsHeatmap[input$keepBucketHeatmap, ]
+        }
+        req(nrow(countsHeatmapCustom) >= 1)
+        ch <- ComplexHeatmap::Heatmap(
+          matrix = countsHeatmapCustom,
+          top_annotation = ha,
+          name = input$heatmapCounts,
+          cluster_columns = input$clusterColsHeatmap,
+          cluster_rows = input$clusterRowsHeatmap,
+          show_column_names = input$colnamesHeatmap,
+          show_row_names = input$geneNamesHeatmap,
+          col = heatmapColours,
+          column_title = paste(input$heatmapCustomTitle),
+          rect_gp = gpar(col = "white", lwd = 0.5)
+        )
+        figuresDataReactive$heatmapCustom <- ch
+        
+        output[[paste0("dlHeatmapDFButtonCustom")]] <- downloadHandler(
+          filename = function() {
+            paste0(design, "_Custom_heatmap.xlsx")
+          },
+          content = function(file) {
+            openxlsx::write.xlsx((as.data.frame(countsHeatmapCustom) %>% rownames_to_column("gene_name")), file = file)
+          }
+        )
+        
+        
+        # GO heatmap ----
+        if (inputDataReactive()$dataType == "RNASeq") {
+          goToPlot <- NULL
+          goGenes <- NULL
+          countsHeatmapGO <- NULL
+          
+          req(input$heatmapGoInput != "")
+          
+          goToPlot <- gsub(" .*", "", input$heatmapGoInput)
+          goGenes <- seqAnnoHeatmap$gene_name[with(seqAnnoHeatmap, grepl(goToPlot, paste(`GO BP`, `GO MF`, `GO CC`)))]
+          
+          goGenes <- goGenes[which(goGenes %in% rownames(countsHeatmap))]
+          if (length(goGenes) == 1) {
+            countsHeatmapGO <- t(as.matrix(countsHeatmap[goGenes,]))
+            rownames(countsHeatmapGO) <- goGenes
+          } else {
+            countsHeatmapGO <- countsHeatmap[goGenes, ]
+            countsHeatmapGO <- countsHeatmapGO[abs(rowMedians(countsHeatmapGO)) >= input$heatmapGoExpr, ]
+          }
+          req(nrow(countsHeatmapGO) >= 1)
+          req(ncol(countsHeatmapGO) == ha@anno_list[[1]]@fun@n)
+          
+          gh <- ComplexHeatmap::Heatmap(
+            matrix = countsHeatmapGO,
             top_annotation = ha,
             name = input$heatmapCounts,
             cluster_columns = input$clusterColsHeatmap,
@@ -398,58 +476,18 @@ observeEvent(
             show_column_names = input$colnamesHeatmap,
             show_row_names = input$geneNamesHeatmap,
             col = heatmapColours,
-            column_title = paste(input$heatmapCustomTitle),
+            column_title = sub("\\s+", "\n", input$heatmapGoInput),
             rect_gp = gpar(col = "white", lwd = 0.5)
-          ) %>% draw(merge_legend = TRUE)
-          figuresDataReactive$heatmapCustom <- ch
-          
-          output[[paste0("dlHeatmapDFButtonCustom")]] <- downloadHandler(
+          )
+          figuresDataReactive$heatmapGO <- gh
+          output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(
             filename = function() {
-              paste0(design, "_Custom_heatmap.xlsx")
+              paste0(design, "_GO_heatmap.xlsx")
             },
             content = function(file) {
-              openxlsx::write.xlsx((as.data.frame(hmCustomMatrix) %>% rownames_to_column("gene_name")), file = file)
+              openxlsx::write.xlsx((as.data.frame(countsHeatmapGO) %>% rownames_to_column("gene_name")), file = file)
             }
           )
-        })
-        
-        # heatmapGoInput
-        if (inputDataReactive()$dataType == "RNASeq") {
-          observeEvent({
-            input$heatmapGoInput
-            input$heatmapGoExpr
-          }, ignoreInit = T, {
-            goToPlot <- gsub(" .*", "", input$heatmapGoInput)
-            goGenes <- seqAnnoHeatmap$gene_name[with(seqAnnoHeatmap, grepl(goToPlot, paste(`GO BP`, `GO MF`, `GO CC`)))]
-            
-            if(!is.null(goGenes)) {
-              hmGOMatrix <- countsHeatmap[rownames(countsHeatmap) %in% goGenes, ] %>% as.matrix()
-              hmGOMatrix <- hmGOMatrix[abs(rowMedians(hmGOMatrix)) >= input$heatmapGoExpr, ]
-              
-              # Output heatmaps
-              gh <- ComplexHeatmap::Heatmap(
-                matrix = hmGOMatrix,
-                top_annotation = ha,
-                name = input$heatmapCounts,
-                cluster_columns = input$clusterColsHeatmap,
-                cluster_rows = input$clusterRowsHeatmap,
-                show_column_names = input$colnamesHeatmap,
-                show_row_names = input$geneNamesHeatmap,
-                col = heatmapColours,
-                column_title = sub("\\s+", "\n", input$heatmapGoInput),
-                rect_gp = gpar(col = "white", lwd = 0.5)
-              ) %>% draw(merge_legend = TRUE)
-              figuresDataReactive$heatmapGO <- gh
-              output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(
-                filename = function() {
-                  paste0(design, "_GO_heatmap.xlsx")
-                },
-                content = function(file) {
-                  openxlsx::write.xlsx((as.data.frame(hmGOMatrix) %>% rownames_to_column("gene_name")), file = file)
-                }
-              )
-            }
-          })
         }
         
       }

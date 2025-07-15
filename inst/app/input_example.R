@@ -1,3 +1,26 @@
+is_url <- function(dataDir) {
+  return(grepl("^https?://", dataDir)) 
+}
+dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+# dataDir <- "/srv/gstore/projects/p28466/eq2_dnaj1dnaj2dnaj3pepe--over--WT_2025-07-07--12-43-22/dnaj1dnaj2dnaj3pepe--over--WT"
+# dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/../jStore/p2699/bfabric/Proteomics/SummarizedExperiment/2023/2023-11/2023-11-23/workunit_o31423_p2699_GeneSymbolRollUp_unpaired/SummarizedExperiment.rds"
+if (is_url(dataDir)) {
+  se <- readRDS(url(dataDir))  # If it's a URL
+} else {
+  se <- readRDS(file.path(dataDir, "deResult.rds"))
+}
+inputDataReactive <- reactive({
+  # Load proteomics data ----
+  if (grepl("rds|zip", dataDir)) {
+    return(convert_proteomics_se(se))
+  }
+  
+  # Load RNA Seq data ----
+  if (file.exists(file.path(dataDir, "deResult.rds"))) {
+    return(convert_genomics_se(se, dataDir))
+  }
+})
+inputDataReactive()$dataType
 input <- list()
 names(inputDataReactive())
 
@@ -16,12 +39,12 @@ colourPaletteList <- list(
 )
 
 input$colourPalette <- c("Dark2", "Paired")
+i <- 1
+j <- 13
 for (i in seq_along(inputDataReactive()$factorLevels)) {
-  input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]] <- rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[i]
-}
-
-for (i in seq_along(1:50)) {
-  input[[paste0("GroupColour", i)]] <- rep(RColorBrewer::brewer.pal(12, "Paired"), 10)[i]
+  for (j in seq_along(inputDataReactive()$factorLevels[[i]])) {
+    input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[i], inputDataReactive()$factorLevels[[i]][j])]] <- rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j]
+  }
 }
 input$selectedTable_ORA_rows_selected <- 1:5
 input$textSizeORA <- 12
@@ -31,7 +54,7 @@ input$featureCalcPValue <- 0.05
 input$featureCalcLFC <- 0
 
 input$pcaFactor1 <- inputDataReactive()$factors[1]
-input$pcaGroups <- inputDataReactive()$designLevels
+input$pcaGroups <- inputDataReactive()$factorLevels[[1]]
 # input$pcaGroups <- levels(inputDataReactive()$dataset$G_)
 input$pcaCounts <- "Normalised + Log2"
 input$pcaAddEllipses <- TRUE
@@ -98,11 +121,11 @@ input$boxplotShowPHeight <- 1
 input$boxplotShowPLabelSize <- 3
 input$boxplotShowPBracketSize <- 3
 input$boxplotShowPTipSizeA <- 0
-input$boxplotShowPTipSizeB <- 1
+input$boxplotShowPTipSizeB <- 0
 input$boxplotShowPDodge <- 1
 input$boxplotPointBorder <- 0.5
 input$boxplotCountsLog <- FALSE
-input$boxplotZScore <- TRUE
+input$boxplotZScore <- FALSE
 
 input$boxplotGenes <- inputDataReactive()$genes[1:5]
 input$boxplotGenesText <- inputDataReactive()$genes[6:10]
@@ -124,7 +147,7 @@ input$boxplotMeanLine <- 0.5
 # input$boxplotPoints
 input$boxplotThemeChoice <- "Prism"
 input$boxplotVertLines <- FALSE
-input$boxplotGrey <- TRUE
+input$boxplotGrey <- FALSE
 input$boxplotNCol <- 3
 input$textSizeBoxplot <- 12
 input$figWidthBoxplot <- 600
@@ -188,6 +211,7 @@ input$heatmapFactor2 <- ""
 input$showClusterColDend <- TRUE
 input$showClusterRowDend <- TRUE
 input$heatmapGoInput <- "GO:0042254 ribosome biogenesis"
+# input$heatmapGoInput <- inputDataReactive()$seqAnno$`GO BP`[[2]] %>% strsplit("; ") %>% .[[1]] %>% .[1]
 input$heatmapGoExpr <- 0.05
 input$heatmapLog2 <- TRUE
 input$heatmapZScore <- "Centred"
@@ -310,4 +334,38 @@ if (inputDataReactive()$dataType == "proteomics") {
 } else if (inputDataReactive()$dataType == "RNASeq") {
   groupingNameHeatmap <- reactive(return(list("gn" = inputDataReactive()$param$groupingName)))
 }
+# groupingNameHeatmap <- reactive(return(list("gn" = "Condition")))
 input$keepBucketHeatmap <- inputDataReactive()$genes[c(1, 4, 5, 6, 9)]
+input$boxplotBatch <- "None"
+dataSummary <- function(data, varname, groupnames){
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE),
+      se = sqrt(sd(x[[col]]) / length(x[[col]])))
+  }
+  data_sum <- ddply(
+    data, groupnames, .fun=summary_func, varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+if (inputDataReactive()$dataType == "RNASeq") {
+  seqAnnoReactive <- reactiveValues("sa" = inputDataReactive()$seqAnno, "saF" = NULL)
+  design <- inputDataReactive()$design
+  designLevels <- inputDataReactive()$designLevels
+} else if (inputDataReactive()$dataType == "proteomics") {
+  seqAnnoReactive <- reactiveValues("sa" = NULL, "saF" = NULL)
+  seqAnnoReactive$sa = inputDataReactive()$seqAnnoList[[input$contrastSelected]]
+  seqAnnoReactive$sa <- seqAnnoReactive$sa %>% dplyr::select("gene_name", "log2Ratio", "pValue", "fdr")
+  seqAnnoReactive$saF <- seqAnnoReactive$sa
+  design <- input$contrastSelected
+}
+input$barplotSDorSE <- "SE"
+input$boxplotShowPJust <- 1
+input$boxplotYScaleFree <- TRUE
+input$boxplotPlotBorder <- TRUE
+input$borderVolcano <- TRUE
+input$oraLabelAlpha <- 0.9
+input$geneLabelSizeVolcano <- 2
+input$showAxesVolcano <- TRUE
+input$showLinesVolcano <- TRUE
+input$pcaBatch <- "None"

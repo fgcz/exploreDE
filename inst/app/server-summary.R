@@ -32,29 +32,35 @@ colourPaletteList <- list(
 )
 
 output$colourPaletteUI <- renderUI({
-  selectInput(
+  selectizeInput(
     inputId = "colourPalette", 
     label = "Colour Palette",
     choices = names(colourPaletteList), 
     selected = names(colourPaletteList)[1],
-    multiple = TRUE
+    multiple = TRUE, width = "85%",
+    options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
   )
 })
+outputOptions(output, "colourPaletteUI", suspendWhenHidden = FALSE)
 
 # Colour picker for each of the groups in Condition:
 observeEvent(input$colourPalette, {
   output$colourPickerUI <- renderUI({
     lapply(seq_along(factorLevels), function(i) {
-      colourpicker::colourInput(
-        inputId = paste0("GroupColour", names(factorLevels)[[i]]),
-        label = factorLevels[[i]],
-        value =  rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[i],
-        palette = "square",
-        closeOnClick = TRUE,
-        returnName = TRUE
-      )
+      lapply(seq_along(factorLevels[[i]]), function(j) {
+        colourpicker::colourInput(
+          inputId = paste0("GroupColour", names(factorLevels)[[i]], factorLevels[[i]][[j]]),
+          label = paste0(names(factorLevels)[i], ": ", factorLevels[[i]][j]),
+          value =  rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j],
+          palette = "square",
+          closeOnClick = TRUE,
+          returnName = TRUE, 
+          width = "85%"
+        )
+      })
     })
   })
+  outputOptions(output, "colourPickerUI", suspendWhenHidden = FALSE)
 })
 
 saved_inputs <- reactiveVal(data.frame(Input = character(), Value = character(), stringsAsFactors = FALSE))

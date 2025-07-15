@@ -29,7 +29,7 @@ ui = dashboardPage(
     tags$li(
       title = "Please include the URL to the dataset in your email.",
       a(
-        href = 'mailto:sequencing@fgcz.ethz.ch?subject=exploreDE-shiny-app-feedback', 
+        href = 'mailto:sequencing@fgcz.ethz.ch?subject=exploreDE-shiny-app-feedback&body=Please%20include%20the%20URL%20you%20are%20having%20issues%20with.%20Thanks!%0A%0A', 
         "Request Features/Report Bugs"), 
       class = "dropdown"
     ),
@@ -56,13 +56,13 @@ ui = dashboardPage(
     shinyjs::useShinyjs(),
     sidebarMenu(
       id = "tabs",
-        menuItem(text = "Results Summary", tabName = "summaryTab",  icon = icon("list")),
-        menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
-        menuItem(text = "Volcano Plots", tabName = "volcanoTab", icon = icon("wifi")),
-        menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
-        menuItem(text = "PCA Plots", tabName = "pcaPlotTab", icon = icon("meteor")),
-        menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),
-        menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
+      menuItem(text = "Results Summary", tabName = "summaryTab",  icon = icon("list")),
+      menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
+      menuItem(text = "Volcano Plots", tabName = "volcanoTab", icon = icon("wifi")),
+      menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
+      menuItem(text = "PCA Plots", tabName = "pcaPlotTab", icon = icon("meteor")),
+      menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),
+      menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
       conditionalPanel(
         condition = "output.test=='RNASeq'",
         sidebarMenu(
@@ -71,7 +71,8 @@ ui = dashboardPage(
           menuItem(text = "GO Tile Plots", tabName = "goTileTab", icon = icon("table")),
           menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))
         )
-      )
+      ),
+      menuItem(text= "Colours", tabName = "colourTab", icon = icon("palette"))
     )
   ), 
   dashboardBody(
@@ -127,7 +128,8 @@ ui = dashboardPage(
       source("ui-tab-hypergeo2.R", local = TRUE)$value,
       source("ui-tab-gsea2.R", local = TRUE)$value,
       source("ui-tab-goTile.R", local = TRUE)$value,
-      source("ui-tab-kegg.R", local = TRUE)$value
+      source("ui-tab-kegg.R", local = TRUE)$value,
+      source("ui-tab-colour.R", local = TRUE)$value
     )
   )
 )

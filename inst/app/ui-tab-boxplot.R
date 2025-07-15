@@ -75,11 +75,17 @@ tabItem(
           ),
           tabPanel(
             title = "Figure settings", 
-            tags$b("X Axis Label Settings"),
+            h4("X Axis Settings"),
             checkboxInput(inputId = "boxplotShowConditions", label = "Show condition labels", value = FALSE),
             checkboxInput(inputId = "boxplotConditionFormat", label = "Change _./ etc. to line break", value = FALSE),
             sliderInput(inputId = "boxplotConditionAngle", label = "Condition label angle", min = 0, max = 90, value = 45, step = 45, width = "33%"),
+            hr(style = "border-top: 1px solid #000000;"), 
+            h4("Y Axis settings"),
+            checkboxInput(inputId = "boxplotYScaleFree", label = "Scale free y-axis?", value = FALSE),
+            hr(style = "border-top: 1px solid #000000;"), 
+            h4("Point settings"),
             tags$b("Toggle to plot and/or dots, mean bar, violins, etc."),
+            checkboxInput(inputId = "boxplotPlotBorder", label = "Show border", value = TRUE),
             checkboxInput(inputId = "boxplotShowPoint", label = "Show points", value = TRUE),
             checkboxInput(inputId = "boxplotShowMeanBar", label = "Show mean bar", value = TRUE),
             checkboxInput(inputId = "boxplotMeanBarFront", label = "Bring mean bar to front", value = FALSE),
@@ -87,37 +93,34 @@ tabItem(
             checkboxInput(inputId = "boxplotShowViolin", label = "Show violins", value = FALSE),
             helpText("If you select both box and violin, you'll get neither!"),
             splitLayout(
-              sliderInput(inputId = "boxplotPointSize", label = "Point size", value = 4, min = 0.5, max = 20, step = 0.5, width = "80%"),
-              sliderInput(inputId = "boxplotPointDodge", label = "Point dodge", min = 1, max = 5, value = 2, step = 0.25, width = "80%"),
-              sliderInput(inputId = "boxplotPointAlpha", label = "Point alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "80%"),
+              sliderInput(inputId = "boxplotPointSize", label = "Point size", value = 4, min = 0.5, max = 20, step = 0.5, width = "80%", ticks = F),
+              sliderInput(inputId = "boxplotPointDodge", label = "Point dodge", min = 1, max = 5, value = 2, step = 0.25, width = "80%", ticks = F),
+              sliderInput(inputId = "boxplotPointAlpha", label = "Point alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "80%", ticks = F)
             ),
             splitLayout(
-              sliderInput(inputId = "boxplotPointBorder", label = "Point border", min = 0, max = 2, value = 0.5, step = 0.1, width = "80%"),
-              sliderInput(inputId = "boxplotBoxAlpha", label = "Box/violin alpha", min = 0.1, max = 1, value = 0.2, step = 0.1, width = "80%"),
-              sliderInput(inputId = "boxplotMeanLine", label = "Mean bar width", min = 0, max = 1, value = 0.5, step = 0.1, width = "80%")
-            ),
-            hr(style = "border-top: 1px solid #000000;"), h4("DE P-value"),
+              sliderInput(inputId = "boxplotPointBorder", label = "Point border", min = 0, max = 2, value = 0.5, step = 0.1, width = "80%", ticks = F),
+              sliderInput(inputId = "boxplotBoxAlpha", label = "Box/violin alpha", min = 0.1, max = 1, value = 0.2, step = 0.1, width = "80%", ticks = F),
+              sliderInput(inputId = "boxplotMeanLine", label = "Mean bar width", min = 0, max = 1, value = 0.5, step = 0.1, width = "80%", ticks = F)
+            )
+          ),
+          tabPanel(
+            title = "DE P-values",
             tags$b("Show p-value stars on plot?"),
-            helpText("The highlight tool doesn't work when you have p-values displayed."),
             checkboxInput(inputId = "boxplotShowP", label = "Show me those stars!", value = FALSE),
+            help("Adds adjusted p-values from the DE results to the plot for the current contrast."),
             splitLayout(
-              # sliderInput(inputId = "boxplotShowPHeight", label = "P height", value = 1, min = 0, max = 10, step = 1, width = "80%"),
-              sliderInput(inputId = "boxplotShowPLabelSize", label = "P size", min = 0, max = 10, value = 3, step = 0.5, width = "80%"),
-              sliderInput(inputId = "boxplotShowPDodge", label = "P height", min = 0, max = 10, value = 1, step = 0.5, width = "80%")
+              sliderInput(inputId = "boxplotShowPLabelSize", label = "P size", min = 0, max = 10, value = 3, step = 0.5, width = "80%", ticks = F),
+              sliderInput(inputId = "boxplotShowPJust", label = "P just", value = 1, min = -1, max = 1, step = 0.1, width = "80%", ticks = F),
+              sliderInput(inputId = "boxplotShowPDodge", label = "P height", min = 0, max = 10, value = 1, step = 0.5, width = "80%", ticks = F)
               ),
             splitLayout(
-              sliderInput(inputId = "boxplotShowPBracketSize", label = "Bracket size", min = 0, max = 10, value = 3, step = 0.5, width = "80%"),
-              sliderInput(inputId = "boxplotShowPTipSizeA", label = "Tip length A", min = 0, max = 25, value = 0, step = 0.5, width = "80%"),
-              sliderInput(inputId = "boxplotShowPTipSizeB", label = "Tip length B", min = 0, max = 25, value = 0, step = 0.5, width = "80%")
+              sliderInput(inputId = "boxplotShowPBracketSize", label = "Bracket size", min = 0, max = 10, value = 3, step = 0.5, width = "80%", ticks = F),
+              sliderInput(inputId = "boxplotShowPTipSizeA", label = "Tip length A", min = 0, max = 25, value = 0, step = 0.5, width = "80%", ticks = F),
+              sliderInput(inputId = "boxplotShowPTipSizeB", label = "Tip length B", min = 0, max = 25, value = 0, step = 0.5, width = "80%", ticks = F)
             )
           ),
           tabPanel(
             title = "Size Options",
-            # selectInput(
-            #   inputId = "boxplotThemeChoice",
-            #   label = "Prefer another plot theme?", 
-            #   choices = c("Prism", "Minimal", "BW", "Classic", "Void"), 
-            #   selected = "Prism"),
             tags$b("Add dotted vertical lines between each group?"),
             checkboxInput(
               inputId = "boxplotVertLines", 
@@ -129,19 +132,20 @@ tabItem(
               inputId = "boxplotGrey",
               label = "Make plots greyscale",
               value = FALSE),
-            numericInput(inputId = "boxplotNCol", label = "Number of columns", min = 1, max = 10, value = 3, step = 1),
+            numericInput(inputId = "boxplotNCol", label = "Number of columns", min = 1, max = 10, value = 3, step = 1, width = "70%"),
             splitLayout(
-              sliderInput(inputId = "textSizeBoxplot", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%"),
-              sliderInput(inputId = "figWidthBoxplot", label = "Figure Width", min = 100, max = 2000, value = 850, step = 10, width = "85%"),
-              sliderInput(inputId = "figHeightBoxplot", label = "Figure Height", min = 100, max = 2000, value = 600, step = 10, width = "85%")
+              sliderInput(inputId = "textSizeBoxplot", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = F),
+              sliderInput(inputId = "figWidthBoxplot", label = "Figure Width", min = 100, max = 2000, value = 850, step = 10, width = "85%", ticks = F),
+              sliderInput(inputId = "figHeightBoxplot", label = "Figure Height", min = 100, max = 2000, value = 600, step = 10, width = "85%", ticks = F)
             )
           ),
           tabPanel(
-            title = "Download Settings",
-            # selectInput(inputId = "boxplotDownloadFormat", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
-            # selectInput(inputId = "boxplotDPI", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
+            title = "Download",
+            downloadButton(outputId = "dlBoxplotButtonCounts", label = paste("Download Boxplot Counts")),
+            help("You can download a small Excel file of the counts of the features you have selected. You can use these counts to quickly make figures in, e.g., Graphpad."), 
+            downloadButton(outputId = "boxplotDL", label = paste("Download Boxplot (PDF)")),
+            downloadButton(outputId = "barplotDL", label = paste("Download Barplot (PDF)")),
             selectInput(inputId = "boxplotFont", label = "Font", choices = c("serif", "sans", "mono"), selected = "sans")
-            # textInput(inputId = "boxplotFilename", label = "Enter filename", value = "Feature_Boxplot"),
           )
         )
       )
@@ -154,46 +158,19 @@ tabItem(
         solidHeader = TRUE,
         status = "primary",
         textOutput("boxplotDesign"),
-        downloadButton(
-          outputId = "dlBoxplotButtonCounts",
-          label = paste("Download Boxplot Counts")
-        ), br(),
-        tags$p(
-          "You can download a small Excel file of the counts of the features you have selected. You can use these counts to quickly make figures in, e.g., Graphpad."
-        ), br(),
         tabsetPanel(
           id = "boxbarplots",
           tabPanel(
             title = "Boxplot",
-            br(),
-            downloadButton(
-              outputId = "dlBoxplotButton",
-              label = paste("Download Boxplot (PDF)")
-            ),
-            br(), br(),
-            withSpinner(
-              plotOutput(
-                outputId = "boxplotStatic", 
-                inline = TRUE, 
-                brush = "boxplotBrush"
-              ),
-              color="#19a7cf"
-            ),
-            DT::dataTableOutput(outputId = "boxplotBrushTable")
+            withSpinner(plotOutput(outputId = "boxplotStatic", inline = TRUE, brush = "boxplotBrush"), color = "#93bac2"),
+            DT::dataTableOutput(outputId = "boxplotTable")
           ),
           tabPanel(
             title = "Barplot",
+            plotOutput(outputId = "barplotStatic", inline = TRUE),
             br(),
             checkboxInput(inputId = "showDotsBarplot", label = "Show dots?", value = TRUE),
-            downloadButton(
-              outputId = "dlBarplotButton",
-              label = paste("Download Barplot (PDF)")
-            ),
-            br(),
-            plotOutput(
-              outputId = "barplotStatic", 
-              inline = TRUE
-            )
+            radioButtons(inputId = "barplotSDorSE", label = "Error bars?", choices = c("None", "SE", "SD"))
           )
         )
       )
