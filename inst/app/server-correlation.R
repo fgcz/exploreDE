@@ -61,6 +61,12 @@ observeEvent({
   req(input$correlationGene1 != input$correlationGene2)
   req(nchar(input$correlationGene1) > 1 & nchar(input$correlationGene2) > 1)
   
+  # prepare the metadat
+  datasetCorrelation <- inputDataReactive()$dataset %>% data.frame(check.names = F)
+  if (!"Name" %in% colnames(datasetCorrelation)) {
+    datasetCorrelation <- datasetCorrelation %>% rownames_to_column("Name")
+  }
+  
   # get the counts 
   countsCorrelation <- inputDataReactive()$countList[[input$correlationCounts]][c(input$correlationGene1, input$correlationGene2),]
   
@@ -79,12 +85,12 @@ observeEvent({
     t %>%
     data.frame(check.names = F) %>% 
     rownames_to_column("Name") %>% 
-    left_join((inputDataReactive()$dataset %>% data.frame(check.names = F) %>% rownames_to_column("Name")), by = "Name")
+    left_join(datasetCorrelation, by = "Name")
   countsCorrelation <- countsCorrelation[which(countsCorrelation[[input$correlationColourBy]] %in% input$correlationKeepBucket),]
   
   # get the colours 
   coloursCorrelation <- setNames(lapply(input$correlationKeepBucket, function(k) {
-    paste0(col2hex(input[[paste0("GroupColour", input$correlationColourBy, "__", k)]]), "FF")
+    paste0(col2hex(input[[paste0("GroupColour", input$correlationColourBy, k)]]), "FF")
   }), input$correlationKeepBucket)
   
   # get the correct coefficient 

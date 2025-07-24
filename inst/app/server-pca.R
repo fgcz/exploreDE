@@ -135,7 +135,10 @@ observeEvent(
     }
     
     # Get the PCA results
-    pcaResults <- tryCatch({ prcomp(na.omit(countsPCA), center = input$pcaCentre, scale. = input$pcaScale) }, error = function(e){ cat("ERROR :", conditionMessage(e), "\n") })
+    pcaResults <- NULL
+    if (ncol(countsPCA) > 2 & nrow(countsPCA) > 2) {
+      pcaResults <- prcomp(na.omit(countsPCA), center = input$pcaCentre, scale. = input$pcaScale)
+    }
     if (!is.null(pcaResults)) {
       
       pc_eigenvalues <- pcaResults$sdev^2

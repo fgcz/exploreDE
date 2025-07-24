@@ -74,8 +74,7 @@ tabItem(
           tabPanel(
             title = "Main settings",
             h4("Feature selection"),
-            uiOutput(outputId = "heatmapColumnSelectUI", inline = TRUE),
-            helpText("Plot the feature expression per sample of DE features, based on thresholds."),
+            helpText("Plot the feature expression per sample of DE features, based on thresholds. If you don't see a plot, start by turning the p-value to raw."),
             numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 2000, value = 50, step = 1),
             numericInput(inputId = "lfcHeatmap", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
             selectInput(inputId = "pTypeHeatmap", choices = c("FDR", "Raw"), label = "P-Value:", selected = "Raw"),
@@ -92,6 +91,8 @@ tabItem(
             helpText("Calculates per-gene Z-Scores. Works on any count method."),
             
             hr(style = "border-top: 1px solid #000000;"), h4("Heatmap settings"),
+            helpText("New! Select the factors to add as annotations. Click and drag to change their order. Sample order is determined by sorting in the factor orders. The first factor is considered the 'main' one and you can change order/remove groups using the bucket below."),
+            uiOutput(outputId = "heatmapColumnSelectUI", inline = TRUE),
             uiOutput(outputId = "clusterWarningProteomics", inline = TRUE),
             splitLayout(
               checkboxInput(inputId = "clusterColsHeatmap", label = "Cluster samples?", value = TRUE),
