@@ -1,64 +1,63 @@
-if (inputDataReactive()$dataType == "RNASeq") {
-  design <- inputDataReactive()$design
-  output$pcaDesign <- renderText({design})
-  updateSelectInput(session = session, inputId = "pcaCounts", choices = names(inputDataReactive()$countList), selected = "Normalised + Log2")
-} else if (inputDataReactive()$dataType == "proteomics") {
-  design <- input$contrastSelected
-  output$pcaDesign <- renderText({design})
-  updateSelectInput(session = session, inputId = "pcaCounts", choices = names(inputDataReactive()$countList), selected = "transformedData")
-}
-
-updateSelectInput(
-  session = session,
-  inputId = "pcaBatch",
-  choices = c("None", inputDataReactive()$factors),
-  selected = "None"
-)
-
-lapply(c(1:2), function(i) {
-  selected <- switch(
-    i,
-    "1" = inputDataReactive()$factors[1],
-    "2" = "None"
-  )
+observeEvent(inputDataReactive(), {
+  if (inputDataReactive()$dataType == "RNASeq") {
+    design <- inputDataReactive()$design
+    output$pcaDesign <- renderText({design})
+    updateSelectInput(session = session, inputId = "pcaCounts", choices = names(inputDataReactive()$countList), selected = "Normalised + Log2")
+  } else if (inputDataReactive()$dataType == "proteomics") {
+    design <- input$contrastSelected
+    output$pcaDesign <- renderText({design})
+    updateSelectInput(session = session, inputId = "pcaCounts", choices = names(inputDataReactive()$countList), selected = "transformedData")
+  }
   updateSelectInput(
     session = session,
-    inputId = paste0("pcaFactor", i),
+    inputId = "pcaBatch",
     choices = c("None", inputDataReactive()$factors),
-    selected = selected
+    selected = "None"
   )
-})
-observeEvent({
-  input$pcaFactor1
-  }, ignoreNULL = FALSE, ignoreInit = TRUE, {
+  lapply(c(1:2), function(i) {
+    selected <- switch(
+      i,
+      "1" = inputDataReactive()$factors[1],
+      "2" = "None"
+    )
+    updateSelectInput(
+      session = session,
+      inputId = paste0("pcaFactor", i),
+      choices = c("None", inputDataReactive()$factors),
+      selected = selected
+    )
+  })
+  observeEvent({
+    input$pcaFactor1
+    }, ignoreNULL = FALSE, ignoreInit = TRUE, {
+      updateCheckboxGroupInput(
+        session = session,
+        inputId = paste0("pcaGroups"),
+        choices = levels(as.factor(inputDataReactive()$dataset[, input$pcaFactor1])),
+        selected = levels(as.factor(inputDataReactive()$dataset[, input$pcaFactor1]))
+      )
+  })
+  observeEvent(input[["pcaFactor1"]], ignoreInit = T, {
     updateCheckboxGroupInput(
       session = session,
-      inputId = paste0("pcaGroups"),
-      choices = levels(as.factor(inputDataReactive()$dataset[, input$pcaFactor1])),
-      selected = levels(as.factor(inputDataReactive()$dataset[, input$pcaFactor1]))
+      inputId = "pcaGroups",
+      choices = levels(as.factor(inputDataReactive()$dataset[[input[["pcaFactor1"]]]])),
+      selected = levels(as.factor(inputDataReactive()$dataset[[input[["pcaFactor1"]]]]))
     )
-})
-
-observeEvent(input[["pcaFactor1"]], ignoreInit = T, {
-  updateCheckboxGroupInput(
-    session = session,
-    inputId = "pcaGroups",
-    choices = levels(as.factor(inputDataReactive()$dataset[[input[["pcaFactor1"]]]])),
-    selected = levels(as.factor(inputDataReactive()$dataset[[input[["pcaFactor1"]]]]))
-  )
-})
-
-if (inputDataReactive()$dataType == "proteomics") {
-  req(!is.null(inputDataReactive()$seqAnnoList))
-  if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
-    output$nrPeptidesPCAUI <- renderUI({
-      sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
-    })
-    outputOptions(output, "nrPeptidesPCAUI", suspendWhenHidden = FALSE)
-  } else {
-    output$nrPeptidesPCAUI <- renderUI({ NULL })
+  })
+  if (inputDataReactive()$dataType == "proteomics") {
+    req(inputDataReactive()$seqAnnoList)
+    if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+      output$nrPeptidesPCAUI <- renderUI({
+        sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
+      })
+      outputOptions(output, "nrPeptidesPCAUI", suspendWhenHidden = FALSE)
+    } else {
+      output$nrPeptidesPCAUI <- renderUI({ NULL })
+    }
   }
-}
+})
+
 
 observeEvent(
   {
@@ -95,12 +94,13 @@ observeEvent(
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
+    inputDataReactive()
   },
   ignoreInit = TRUE, ignoreNULL = FALSE,
   {
     
-    req(!is.null(inputDataReactive()$dataset))
-  
+    req(inputDataReactive()$dataset)
+    
     # Get the colours for the condition levels
     coloursPCA <- setNames(lapply(input$pcaGroups, function(k) {
       paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, k)]]), "FF")
@@ -133,8 +133,6 @@ observeEvent(
     if (ncol(countsPCA) > input$pcaTopN) {
       countsPCA <- countsPCA[, names(head(sort(sapply(countsPCA, sd, na.rm = FALSE), decreasing = TRUE), n = input$pcaTopN))]
     }
-    req(length(dim(countsPCA)) == 2)
-    req(ncol(countsPCA) > 2)
     
     # Get the PCA results
     pcaResults <- tryCatch({ prcomp(na.omit(countsPCA), center = input$pcaCentre, scale. = input$pcaScale) }, error = function(e){ cat("ERROR :", conditionMessage(e), "\n") })
@@ -206,7 +204,7 @@ observeEvent(
           pcaPlot <- pcaPlot + stat_ellipse(aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]), geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE)
           pcaPlot <- pcaPlot + scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
         }
-        pcaPlot <- pcaPlot + geom_point(aes_string(fill = input$pcaFactor1), size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA)
+        pcaPlot <- pcaPlot + geom_point(aes(fill = .data[[input$pcaFactor1]]), size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA)
         pcaPlot <- pcaPlot + guides(fill = guide_legend(override.aes = list(shape = 21, size = input$dotSizePCA, stroke = input$dotBorderPCA)))
       } else {
         pcaPlot <- ggplot(data = pc_scores, aes(x = .data[[input$pcaX]], y = .data[[input$pcaY]], shape = .data[[input$pcaFactor2]]))
@@ -214,7 +212,7 @@ observeEvent(
           pcaPlot <- pcaPlot + stat_ellipse(aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]), geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE)
           pcaPlot <- pcaPlot + scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
         }
-        pcaPlot <- pcaPlot + geom_point(aes_string(fill = input$pcaFactor1), size = input$dotSizePCA, alpha = input$alphaPCA, stroke = input$dotBorderPCA)
+        pcaPlot <- pcaPlot + geom_point(aes(fill = .data[[input$pcaFactor1]]), size = input$dotSizePCA, alpha = input$alphaPCA, stroke = input$dotBorderPCA)
         pcaPlot <- pcaPlot + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25, 8, 3, 4), times = 10))[1:nlevels(as.factor(datasetPCA[[input$pcaFactor2]]))])
         pcaPlot <- pcaPlot + guides(fill = guide_legend(override.aes = list(shape = 21)))
       }
@@ -281,7 +279,7 @@ observeEvent(
       pairedPlot <- ggpairs(
         data = pc_scores, 
         columns = 2:6, 
-        aes_string(fill = input$pcaFactor1, alpha = input$alphaPCA), 
+        aes(fill = .data[[input$pcaFactor1]], alpha = input$alphaPCA),
         upper = list(continuous = wrap("points", alpha = input$alphaPCA, size = input$dotSizePCA, alpha = input$alphaPCA, pch = 21, stroke = input$dotBorderPCA)),
         lower = list(continuous = wrap("points", alpha = input$alphaPCA, size = input$dotSizePCA, alpha = input$alphaPCA, pch = 21, stroke = input$dotBorderPCA)),
         diag = list(continuous = wrap("densityDiag", size = 0.3), discrete = "barDiag", na = "naDiag")
@@ -321,7 +319,7 @@ observeEvent(
 
 output$pcaStatic <- renderPlot(
   {
-    req(!is.null(figuresDataReactive$pcaStatic))
+    req(figuresDataReactive$pcaStatic)
     figuresDataReactive$pcaStatic
   },
   width = function(){as.numeric(input$figWidthPCA)},
@@ -346,7 +344,7 @@ output$dlPCAPlotButton <- downloadHandler(
 
 output$pcaPaired <- renderPlot(
   {
-    req(!is.null(figuresDataReactive$pcaPaired))
+    req(figuresDataReactive$pcaPaired)
     figuresDataReactive$pcaPaired
   },
   width = function(){as.numeric(input$figWidthPCA)},

@@ -13,21 +13,19 @@ zscore <- function(x) {
   (x - m) / s
 }
 
-req(!is.null(inputDataReactive()$dataType))
-
-if (inputDataReactive()$dataType == "proteomics") {
-  output$heatmapProteomicsColumnSelectUI <- renderUI({
-    selectInput(inputId = "heatmapProteomicsColumnSelect", label = "Select main factor to plot by", choices = inputDataReactive()$factors, selected = inputDataReactive()$factors[1], multiple = F)
-  })
-  outputOptions(output, "heatmapProteomicsColumnSelectUI", suspendWhenHidden = FALSE)
-  groupingNameHeatmap <- eventReactive(input$heatmapProteomicsColumnSelect, {
-    return(list(
-      "gn" = input$heatmapProteomicsColumnSelect
-    ))
-  })
-} else if (inputDataReactive()$dataType == "RNASeq") {
-  groupingNameHeatmap <- reactive(return(list("gn" = inputDataReactive()$param$groupingName)))
-}
+req(inputDataReactive()$dataType)
+defaultColumn <- switch(inputDataReactive()$dataType, "RNASeq" = "groupingName", "proteomics" = "factors")
+output$heatmapColumnSelectUI <- renderUI({
+  selectizeInput(
+    inputId = "heatmapColumnSelect", 
+    label = "Select main factor to plot by", 
+    choices = inputDataReactive()$factors, 
+    selected = inputDataReactive()[[defaultColumn]][1], 
+    multiple = T,
+    options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
+    )
+})
+outputOptions(output, "heatmapColumnSelectUI", suspendWhenHidden = FALSE)
 
 if (inputDataReactive()$dataType == "proteomics") {
   output$clusterWarningProteomics <- renderUI({
@@ -83,7 +81,9 @@ observeEvent(input$resetGeneBucketHeatmap, {
   output$heatmapCustom <- NULL
 }, ignoreNULL = T, ignoreInit = T)
 
-observeEvent(groupingNameHeatmap(), {
+observeEvent({
+  input$heatmapColumnSelect
+  }, {
   output$heatmapBucket <- renderUI({
     bucket_list(
       header = "Drag and drop groups in order to be plotted",
@@ -91,7 +91,7 @@ observeEvent(groupingNameHeatmap(), {
       orientation = "horizontal",
       add_rank_list(
         text = "Include these groups",
-        labels = as.list(unique(levels(as.factor(inputDataReactive()$dataset[[groupingNameHeatmap()$gn]])))),
+        labels = as.list(unique(levels(as.factor(inputDataReactive()$dataset[[input$heatmapColumnSelect[[1]]]])))),
         input_id = "hmKeepBucket"),
       add_rank_list(
         text = "Exclude these groups",
@@ -100,24 +100,12 @@ observeEvent(groupingNameHeatmap(), {
     )
   })
   outputOptions(output, "heatmapBucket", suspendWhenHidden = FALSE)
-  updateCheckboxGroupInput(
-    session = session,
-    inputId = "heatmapFactors",
-    choices = inputDataReactive()$factors,
-    selected = groupingNameHeatmap()$gn
-  )
 })
 
-if (inputDataReactive()$dataType == "proteomics") {
-  observeEvent(
-    input$heatmapProteomicsColumnSelect,{
-      updateCheckboxGroupInput(session = session, inputId = "heatmapFactors", selected = input$heatmapProteomicsColumnSelect)
-    })
-}
 
 observeEvent(inputDataReactive(), {
   if (inputDataReactive()$dataType == "RNASeq") {
-    req(!is.null(inputDataReactive()$allPathways))
+    req(inputDataReactive()$allPathways)
     updateSelectizeInput(
       session,
       inputId = "heatmapGoInput",
@@ -152,7 +140,7 @@ observeEvent(inputDataReactive(), {
 })
 
 if (inputDataReactive()$dataType == "proteomics") {
-  req(!is.null(inputDataReactive()$seqAnnoList))
+  req(inputDataReactive()$seqAnnoList)
   if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
     output$nrPeptidesHeatmapUI <- renderUI({
       sliderInput(inputId = "nrPeptideHeatmap", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
@@ -179,7 +167,7 @@ observeEvent(input$heatmapZScore, {
   }
 })
 
-
+ht_opt$message = FALSE
 
 # figure making ----
 observeEvent(
@@ -197,7 +185,6 @@ observeEvent(
     input$heatmapLimitCPaletteRev
     input$heatmapGeneNumber
     input$hmKeepBucket
-    input$heatmapFactors
     input$heatmapCounts
     input$clusterRowsHeatmap
     input$clusterColsHeatmap
@@ -222,11 +209,11 @@ observeEvent(
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
     })
     input$contrastSelected
-    groupingNameHeatmap()
     input$keepBucketHeatmap
     input$heatmapCustomTitle
     input$heatmapGoInput
     input$heatmapGoExpr
+    input$heatmapColumnSelect
   }, ignoreNULL = FALSE, ignoreInit = TRUE, {
     tryCatch({
       if (!is.null(input$hmKeepBucket)) {
@@ -256,10 +243,14 @@ observeEvent(
         
         # Prepare the metadata for the top annotation ----
         datasetHeatmap <- inputDataReactive()$dataset
-        datasetHeatmap <- datasetHeatmap[which(datasetHeatmap[[groupingNameHeatmap()$gn]] %in% input$hmKeepBucket), ]
-        # Set the factor levels per the bucket list order
-        datasetHeatmap[[groupingNameHeatmap()$gn]] <- factor(datasetHeatmap[[groupingNameHeatmap()$gn]], input$hmKeepBucket)
-        datasetHeatmap <- datasetHeatmap[order(datasetHeatmap[[groupingNameHeatmap()$gn]]), ]
+        datasetHeatmap <- datasetHeatmap[which(datasetHeatmap[[input$heatmapColumnSelect[[1]]]] %in% input$hmKeepBucket), ]
+        datasetHeatmap[[input$heatmapColumnSelect[[1]]]] <- factor(
+          datasetHeatmap[[input$heatmapColumnSelect[[1]]]],
+          levels = input$hmKeepBucket
+        )
+        
+        # Get the sample order
+        datasetHeatmap <- datasetHeatmap %>% dplyr::arrange(across(all_of(input$heatmapColumnSelect)))
         
         
         # Prepare the selected count matrix ----
@@ -311,8 +302,8 @@ observeEvent(
             paste0(col2hex(input[[paste0("GroupColour", f, k)]]), "FF")
           }), unique(datasetHeatmap[[f]]))
         }), inputDataReactive()$factors)
-        if (any(input$heatmapFactors != "")) {
-          p1 <- paste(lapply(input$heatmapFactors, function(g) {
+        if (any(input$heatmapColumnSelect != "")) {
+          p1 <- paste(lapply(input$heatmapColumnSelect, function(g) {
             paste0("'", g, "' = datasetHeatmap[['", g, "']]")
           }), collapse = ",")
           ha <- paste0(
@@ -320,7 +311,7 @@ observeEvent(
             , p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")), gp = gpar(col = 'black', lwd = 0.5))"
           )
           ha <- eval(parse(text = ha))
-          for (f in c(input$heatmapFactors)) {
+          for (f in c(input$heatmapColumnSelect)) {
             for (l in levels(as.factor(datasetHeatmap[, f]))) {
               ha@anno_list[[f]]@color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
               ha@anno_list[[f]]@fun@var_env$color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
@@ -412,19 +403,17 @@ observeEvent(
         
         
         # Custom heatmap ----
-        req(input$keepBucketHeatmap != "")
-        
         if (length(input$keepBucketHeatmap) == 1) {
           countsHeatmapCustom <- t(as.matrix(countsHeatmap[input$keepBucketHeatmap,]))
           rownames(countsHeatmapCustom) <- input$keepBucketHeatmap
         } else {
           countsHeatmapCustom <- countsHeatmap[input$keepBucketHeatmap, ]
         }
-        req(nrow(countsHeatmapCustom) >= 1)
         ch <- ComplexHeatmap::Heatmap(
           matrix = countsHeatmapCustom,
           top_annotation = ha,
           name = input$heatmapCounts,
+          use_raster = FALSE, 
           cluster_columns = input$clusterColsHeatmap,
           cluster_rows = input$clusterRowsHeatmap,
           show_column_names = input$colnamesHeatmap,
@@ -451,8 +440,6 @@ observeEvent(
           goGenes <- NULL
           countsHeatmapGO <- NULL
           
-          req(input$heatmapGoInput != "")
-          
           goToPlot <- gsub(" .*", "", input$heatmapGoInput)
           goGenes <- seqAnnoHeatmap$gene_name[with(seqAnnoHeatmap, grepl(goToPlot, paste(`GO BP`, `GO MF`, `GO CC`)))]
           
@@ -464,12 +451,11 @@ observeEvent(
             countsHeatmapGO <- countsHeatmap[goGenes, ]
             countsHeatmapGO <- countsHeatmapGO[abs(rowMedians(countsHeatmapGO)) >= input$heatmapGoExpr, ]
           }
-          req(nrow(countsHeatmapGO) >= 1)
-          req(ncol(countsHeatmapGO) == ha@anno_list[[1]]@fun@n)
-          
+
           gh <- ComplexHeatmap::Heatmap(
             matrix = countsHeatmapGO,
             top_annotation = ha,
+            use_raster = FALSE, 
             name = input$heatmapCounts,
             cluster_columns = input$clusterColsHeatmap,
             cluster_rows = input$clusterRowsHeatmap,
@@ -499,7 +485,7 @@ observeEvent(
 lapply(c("DEFeatures", "Custom", "GO"), function(sig) {
   output[[paste0("heatmap", sig)]] <- renderPlot(
     {
-      req(!is.null(figuresDataReactive[[paste0("heatmap", sig)]]))
+      req(figuresDataReactive[[paste0("heatmap", sig)]])
       draw(figuresDataReactive[[paste0("heatmap", sig)]], merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
     },
     width = function(){as.numeric(input$figWidthHeatmap)},

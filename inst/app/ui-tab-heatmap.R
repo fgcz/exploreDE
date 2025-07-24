@@ -74,7 +74,7 @@ tabItem(
           tabPanel(
             title = "Main settings",
             h4("Feature selection"),
-            uiOutput(outputId = "heatmapProteomicsColumnSelectUI", inline = TRUE),
+            uiOutput(outputId = "heatmapColumnSelectUI", inline = TRUE),
             helpText("Plot the feature expression per sample of DE features, based on thresholds."),
             numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 2000, value = 50, step = 1),
             numericInput(inputId = "lfcHeatmap", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
@@ -106,8 +106,6 @@ tabItem(
               checkboxInput(inputId = "colnamesHeatmap", label = "Show sample names?", value = TRUE),
               checkboxInput(inputId = "geneNamesHeatmap", label = "Show feature names?", value = TRUE)
             ),
-            checkboxGroupInput(inputId = "heatmapFactors", label = "Select which factors should be displayed", choices = NULL, selected = NULL),
-            
             
             hr(style = "border-top: 1px solid #000000;"), h4("Groups to plot"),
             uiOutput("heatmapBucket")

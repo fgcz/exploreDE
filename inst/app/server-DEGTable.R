@@ -1,4 +1,4 @@
-req(!is.null(inputDataReactive()$dataType))
+req(inputDataReactive()$dataType)
 
 observeEvent({
   genesReactive
