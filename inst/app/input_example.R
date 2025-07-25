@@ -456,7 +456,6 @@ if (inputDataReactive()$dataType == "proteomics") {
 # input$heatmapScale <- "Continuous"
 input$pTypeHeatmap <- "Raw"
 # input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[3]])))
-input$hmKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[,inputDataReactive()$factors[1]])))
 input$heatmapCounts <- switch(inputDataReactive()$dataType, "RNASeq" = "TPM", "proteomics" = "transformedData")
 input$xCoord <- 10
 input$yCoord <- 10
@@ -494,7 +493,7 @@ input$figHeightHeatmap <- 800
 input$figWidthHeatmap <- 1000
 input$textSizeHeatmap <- 12
 input$heatmapBatch <- "None"
-input$heatmapLimitCPalette <- "RdBu"
+input$heatmapLimitCPalette <- "PRGn"
 input$heatmapLimitCPaletteRev <- FALSE
 input$heatmapLimitCHigh <- 1e5
 input$heatmapLimitCMid <- 1e4
@@ -508,9 +507,9 @@ input$heatmapGoExpr <- 0.05
 input$heatmapLog2 <- TRUE
 input$heatmapZScore <- "Centred"
 input$heatmapFeatureDirection <- "Both"
-input$heatmapAtLow <- -1
+input$heatmapAtLow <- -4
 input$heatmapAtMid <- 0
-input$heatmapAtHigh <- 1
+input$heatmapAtHigh <- 4
 
 input$pTypeVolcano <- "FDR"
 input$lfcVolcano <- 0.25
@@ -651,3 +650,11 @@ input$geneLabelSizeVolcano <- 2
 input$showAxesVolcano <- TRUE
 input$showLinesVolcano <- TRUE
 input$pcaBatch <- "None"
+genesToPlot <- inputDataReactive()$seqAnno$gene_name[1:5]
+input$cellBorderSizeHeatmap <- 5
+input$cellBorderColourHeatmap1 <- "black"
+input$cellBorderColourHeatmap2 <- "black"
+
+for (i in seq_along(input$heatmapColumnSelect)) {
+  input[[paste0("hmKeepBucket", i)]] <- unique(levels(as.factor(inputDataReactive()$dataset[,input$heatmapColumnSelect[i]])))
+}

@@ -111,7 +111,9 @@ tabItem(
             ),
             
             hr(style = "border-top: 1px solid #000000;"), h4("Groups to plot"),
-            uiOutput("heatmapBucket")
+            lapply(1:10, function(i) {
+              uiOutput(paste0("heatmapBucket", i))
+            })
           ),
           
           tabPanel(
