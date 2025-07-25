@@ -1,18 +1,3 @@
-zscore <- function(x) {
-  # Remove NAs for mean and sd calculation
-  if (all(is.na(x))) {
-    # If all values are NA, return all NAs
-    return(rep(NA, length(x)))
-  }
-  m <- mean(x, na.rm = TRUE)
-  s <- sd(x, na.rm = TRUE)
-  if (is.na(s) || s == 0) {
-    # If sd is NA (all NAs) or zero (no variance), return zeros (or NAs)
-    return(rep(0, length(x)))
-  }
-  (x - m) / s
-}
-
 req(inputDataReactive()$dataType)
 defaultColumn <- switch(inputDataReactive()$dataType, "RNASeq" = "groupingName", "proteomics" = "factors")
 output$heatmapColumnSelectUI <- renderUI({
@@ -214,6 +199,9 @@ observeEvent(
     input$heatmapGoInput
     input$heatmapGoExpr
     input$heatmapColumnSelect
+    input$cellBorderSizeHeatmap
+    input$cellBorderColourHeatmap1
+    input$cellBorderColourHeatmap2
   }, ignoreNULL = FALSE, ignoreInit = TRUE, {
     tryCatch({
       if (!is.null(input$hmKeepBucket)) {
@@ -267,10 +255,7 @@ observeEvent(
         }
         ## If the user wants to plot gene-wise Z-scores, then do that 
         if (input$heatmapZScore == "Z-Score") {
-          countsHeatmapz <- t(apply(countsHeatmap, 1, zscore))
-          colnames(countsHeatmapz) <- colnames(countsHeatmap)
-          countsHeatmap <- countsHeatmapz
-          rm(countsHeatmapz)
+          countsHeatmap <- t(scale(t(countsHeatmap)))
         }
         ## If the user wants to centre the counts, then do that
         if (input$heatmapZScore == "Centred") {
@@ -290,10 +275,12 @@ observeEvent(
             colors = c(input$heatmapColourRed, input$heatmapColourWhite, input$heatmapColourBlue)
           )
         } else {
+          palette_colours <- brewer.pal(9, input$heatmapLimitCPalette)
+          selected_colours <- palette_colours[c(1, 5, 9)]
           if (input$heatmapLimitCPaletteRev) {
-            heatmapColours <- colorRampPalette(brewer.pal(9, input$heatmapLimitCPalette))(64)
+            heatmapColours <- colorRamp2(breaks = at, colors = selected_colours)
           } else {
-            heatmapColours <- rev(colorRampPalette(brewer.pal(9, input$heatmapLimitCPalette))(64))
+            heatmapColours <- colorRamp2(at, rev(selected_colours))
           }
         }
         # Top Annotation
@@ -308,7 +295,7 @@ observeEvent(
           }), collapse = ",")
           ha <- paste0(
             "HeatmapAnnotation("
-            , p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")), gp = gpar(col = 'black', lwd = 0.5))"
+            , p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")), gp = gpar(col = '", input$cellBorderColourHeatmap1, "', lwd = ", input$cellBorderSizeHeatmap/10,"))"
           )
           ha <- eval(parse(text = ha))
           for (f in c(input$heatmapColumnSelect)) {
@@ -376,7 +363,7 @@ observeEvent(
           show_row_names = input$geneNamesHeatmap,
           show_column_dend = input$showClusterColDend, 
           show_row_dend = input$showClusterRowDend, 
-          rect_gp = gpar(col = "white", lwd = 0.5),
+          rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap/10),
           use_raster = FALSE,
           row_dend_width = unit(1, "cm"),
           column_dend_height = unit(1, "cm"),
@@ -420,7 +407,7 @@ observeEvent(
           show_row_names = input$geneNamesHeatmap,
           col = heatmapColours,
           column_title = paste(input$heatmapCustomTitle),
-          rect_gp = gpar(col = "white", lwd = 0.5)
+          rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap/10)
         )
         figuresDataReactive$heatmapCustom <- ch
         
@@ -463,7 +450,7 @@ observeEvent(
             show_row_names = input$geneNamesHeatmap,
             col = heatmapColours,
             column_title = sub("\\s+", "\n", input$heatmapGoInput),
-            rect_gp = gpar(col = "white", lwd = 0.5)
+            rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap/10)
           )
           figuresDataReactive$heatmapGO <- gh
           output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(

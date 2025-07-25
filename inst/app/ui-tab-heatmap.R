@@ -72,7 +72,7 @@ tabItem(
         status = "primary",
         tabsetPanel(
           tabPanel(
-            title = "Main settings",
+            title = "Feature settings",
             h4("Feature selection"),
             helpText("Plot the feature expression per sample of DE features, based on thresholds. If you don't see a plot, start by turning the p-value to raw."),
             numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 2000, value = 50, step = 1),
@@ -89,8 +89,10 @@ tabItem(
             helpText("Only applies to counts not already in log space."),
             radioButtons(inputId = "heatmapZScore", label = "Centre or use Z-Scores?", choices = c("None", "Centred", "Z-Score"), selected = "Centred"),
             helpText("Calculates per-gene Z-Scores. Works on any count method."),
-            
-            hr(style = "border-top: 1px solid #000000;"), h4("Heatmap settings"),
+          ),
+          
+          tabPanel(
+            title = "Heatmap settings",
             helpText("New! Select the factors to add as annotations. Click and drag to change their order. Sample order is determined by sorting in the factor orders. The first factor is considered the 'main' one and you can change order/remove groups using the bucket below."),
             uiOutput(outputId = "heatmapColumnSelectUI", inline = TRUE),
             uiOutput(outputId = "clusterWarningProteomics", inline = TRUE),
@@ -110,15 +112,15 @@ tabItem(
             
             hr(style = "border-top: 1px solid #000000;"), h4("Groups to plot"),
             uiOutput("heatmapBucket")
-            ),
+          ),
           
           tabPanel(
             title = "Figure settings",
             h4("Heatmap colours"),
             splitLayout(
-              colourpicker::colourInput(inputId = "heatmapColourRed", label = "High", value = "firebrick4", width = "85%"),
-              colourpicker::colourInput(inputId = "heatmapColourWhite", label = "Mid", value = "white", width = "85%"),
               colourpicker::colourInput(inputId = "heatmapColourBlue", label = "Low", value = "dodgerblue4", width = "85%"),
+              colourpicker::colourInput(inputId = "heatmapColourWhite", label = "Mid", value = "white", width = "85%"),
+              colourpicker::colourInput(inputId = "heatmapColourRed", label = "High", value = "firebrick4", width = "85%"),
               cellArgs = list(style = "overflow: visible;")
             ),
             splitLayout(
@@ -129,6 +131,11 @@ tabItem(
             ),
             selectInput(inputId = "heatmapLimitCPalette", label = "Or, select palette", choices = c("None", rownames(brewer.pal.info)[which(brewer.pal.info$category %in% c("div", "seq"))]), selected = ""),
             checkboxInput(inputId = "heatmapLimitCPaletteRev", "Reverse palette", value = FALSE),
+            splitLayout(
+              colourpicker::colourInput(inputId = "cellBorderColourHeatmap1", label = "Anno. border colour", value = "black", width = "85%", palette = "limited"),
+              colourpicker::colourInput(inputId = "cellBorderColourHeatmap2", label = "Cell border colour", value = "white", width = "85%", palette = "limited"),
+              sliderInput(inputId = "cellBorderSizeHeatmap", label = "Cell border size", min = 0, max = 10, value = 5, step = 1, ticks = F, width = "85%"),
+            ),
             splitLayout(
               sliderInput(inputId = "textSizeHeatmap", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = FALSE),
               sliderInput(inputId = "figWidthHeatmap", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10, width = "85%", ticks = FALSE),

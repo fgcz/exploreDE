@@ -209,6 +209,7 @@ boxplotCountsReactive <- eventReactive({
   
   # Get the count data
   countsBoxplot <- inputDataReactive()$countList[[input$boxplotCounts]]
+  
   # Apply the following in this specific order as required: Log2, batch correct, Z-scale
   # If the user wants to log2, then do that
   if (input$boxplotCountsLog) {
@@ -224,10 +225,11 @@ boxplotCountsReactive <- eventReactive({
   }
   # If the user wants to plot gene-wise Z-scores, then do that 
   if (input$boxplotZScore) {
-    countsBoxplotz <- t(apply(countsBoxplot, 1, zscore))
-    colnames(countsBoxplotz) <- colnames(countsBoxplot)
-    countsBoxplot <- countsBoxplotz
-    rm(countsBoxplotz)
+    countsBoxplot <- t(scale(t(countsBoxplot)))
+    # countsBoxplotz <- t(apply(countsBoxplot, 1, zscore))
+    # colnames(countsBoxplotz) <- colnames(countsBoxplot)
+    # countsBoxplot <- countsBoxplotz
+    # rm(countsBoxplotz)
   }
   # Clean up proteomics feature names 
   if (inputDataReactive()$dataType == "proteomics") {
