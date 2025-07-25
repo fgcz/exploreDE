@@ -3,7 +3,7 @@ defaultColumn <- switch(inputDataReactive()$dataType, "RNASeq" = "groupingName",
 output$heatmapColumnSelectUI <- renderUI({
   selectizeInput(
     inputId = "heatmapColumnSelect", 
-    label = "Select main factor to plot by", 
+    label = "Select factors to plot by", 
     choices = inputDataReactive()$factors, 
     selected = inputDataReactive()[[defaultColumn]][1], 
     multiple = T,
@@ -72,7 +72,7 @@ observeEvent({
   lapply(seq_along(input$heatmapColumnSelect), function(i) {
     output[[paste0("heatmapBucket", i)]] <- renderUI({
       bucket_list(
-        header = "Drag and drop groups in order to be plotted",
+        header = input$heatmapColumnSelect[[i]],
         group_name = paste0("hmBucket", i),
         orientation = "horizontal",
         add_rank_list(
