@@ -128,6 +128,7 @@ observeEvent(
     if (input$pcaBatch != "None") {
       countsPCA <- limma::removeBatchEffect(countsPCA, datasetPCA[[input$pcaBatch]])
     }
+    
     countsPCA <- as.data.frame(t(countsPCA))
     # Get the n genes with greatest standard deviation for the PCA plot
     if (ncol(countsPCA) > input$pcaTopN) {
@@ -137,8 +138,15 @@ observeEvent(
     # Get the PCA results
     pcaResults <- NULL
     if (ncol(countsPCA) > 2 & nrow(countsPCA) > 2) {
-      pcaResults <- prcomp(na.omit(countsPCA), center = input$pcaCentre, scale. = input$pcaScale)
+      pcaResults <- tryCatch({
+        prcomp(na.omit(countsPCA), center = input$pcaCentre, scale. = input$pcaScale)
+      }, error = function(e) {
+        cat("PCA error:", e$message, "\n")
+        return(NULL)
+      })
     }
+    
+    # Show error message in the else block where it's more relevant
     if (!is.null(pcaResults)) {
       
       pc_eigenvalues <- pcaResults$sdev^2
@@ -314,8 +322,15 @@ observeEvent(
       })
       
     } else {
+      # Show notification when PCA fails and user would see the results
+      # showNotification(
+      #   "PCA analysis failed. Try selecting fewer features in the 'Top N features' input to reduce missing data.",
+      #   type = "warning",
+      #   duration = 8
+      # )
+      
       output$pcaNAWarning <- renderUI({
-        print("I'm sorry! I think there are too many NAs in your count data for me to be able to calculate PCA results. If you think there is a mistake, please reach out to your bioinformatics coach for more help!")
+        h4("PCA analysis failed due to insufficient data after removing missing values.", style = "color: orange;")
       })
     }
 })

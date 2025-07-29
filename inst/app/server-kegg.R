@@ -1,5 +1,4 @@
 if(inputDataReactive()$dataType == "RNASeq") {
-
   se <- inputDataReactive()$se
   param <- inputDataReactive()$param
   design <- inputDataReactive()$design
@@ -30,37 +29,37 @@ if(inputDataReactive()$dataType == "RNASeq") {
     }, ignoreInit = TRUE,
     {
       # tryCatch({
-        if (input$pTypeKEGG == "Raw") {
-          pTypeKEGG <- "pValue"
-        } else {
-          pTypeKEGG <- "fdr"
-        }
-        
-        switch(
-          spp,
-          "Human" = {spp = "hsa"},
-          "Mouse" = {spp = "mmu"},
-          "Rat" = {spp = "rno"}
-        )
-        
-        if (grepl("^[0-9]", input$keggInput)) {
-          keggInput <- paste0(spp, input$keggInput)
-        } else {
-          keggInput <- input$keggInput
-        }
-        
-        gD <- metadata(se)$enrichInput$log2Ratio[
-          names(metadata(se)$enrichInput$log2Ratio) %in% inputDataReactive()$seqAnno$gene_id[
+      if (input$pTypeKEGG == "Raw") {
+        pTypeKEGG <- "pValue"
+      } else {
+        pTypeKEGG <- "fdr"
+      }
+      
+      switch(
+        spp,
+        "Human" = {spp = "hsa"},
+        "Mouse" = {spp = "mmu"},
+        "Rat" = {spp = "rno"}
+      )
+      
+      if (grepl("^[0-9]", input$keggInput)) {
+        keggInput <- paste0(spp, input$keggInput)
+      } else {
+        keggInput <- input$keggInput
+      }
+      
+      gD <- metadata(se)$enrichInput$log2Ratio[
+        names(metadata(se)$enrichInput$log2Ratio) %in% inputDataReactive()$seqAnno$gene_id[
           which(inputDataReactive()$seqAnno[[pTypeKEGG]] <= as.numeric(input$pThresholdKEGG) & abs(inputDataReactive()$seqAnno$log2Ratio) >= as.numeric(input$lfcKEGG))
-          ]
         ]
-        
-        outfile <- paste0(keggInput, ".pathview.png")
-        keggPlotReactive$outfile <- outfile
-        keggPlotReactive$gD = gD
-        keggPlotReactive$keggInput = keggInput
-        keggPlotReactive$spp = spp
-        
+      ]
+      
+      outfile <- paste0(keggInput, ".pathview.png")
+      keggPlotReactive$outfile <- outfile
+      keggPlotReactive$gD = gD
+      keggPlotReactive$keggInput = keggInput
+      keggPlotReactive$spp = spp
+      
       # }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
     }
   )
@@ -74,17 +73,38 @@ if(inputDataReactive()$dataType == "RNASeq") {
 
 output$keggOutput <- renderImage({
   req(!is.null(keggPlotReactive$outfile))
-  pathview(
-    gene.data = keggPlotReactive$gD,
-    gene.idtype = "ENSEMBL",
-    pathway.id = keggPlotReactive$keggInput,
-    key.pos = "bottomright",
-    species = keggPlotReactive$spp, 
-    low = list("gene" = "dodgerblue3"),
-    mid = list("gene" = "lightgrey"),
-    high = list("gene" = "indianred3"),
-    kegg.native = TRUE,
-    limit = list(gene = input$keggLimitColour))
-  list(src = keggPlotReactive$outfile, 
-       contentType = 'image/png')
+  
+  # Use temporary directory to avoid Docker permissions issues
+  temp_dir <- tempdir()
+  old_wd <- getwd()
+  
+  tryCatch({
+    # Change to temp directory where we have write permissions
+    setwd(temp_dir)
+    
+    pathview(
+      gene.data = keggPlotReactive$gD,
+      gene.idtype = "ENSEMBL",
+      pathway.id = keggPlotReactive$keggInput,
+      key.pos = "bottomright",
+      species = keggPlotReactive$spp, 
+      low = list("gene" = "dodgerblue3"),
+      mid = list("gene" = "lightgrey"),
+      high = list("gene" = "indianred3"),
+      kegg.native = TRUE,
+      limit = list(gene = input$keggLimitColour))
+    
+    # Get the full path to the generated file
+    output_file <- file.path(temp_dir, keggPlotReactive$outfile)
+    
+    list(src = output_file, 
+         contentType = 'image/png')
+    
+  }, error = function(e) {
+    cat("KEGG plot error:", conditionMessage(e), "\n")
+    NULL
+  }, finally = {
+    # Always restore working directory
+    setwd(old_wd)
+  })
 }, deleteFile = TRUE)
