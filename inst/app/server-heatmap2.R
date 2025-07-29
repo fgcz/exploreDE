@@ -293,7 +293,6 @@ observeEvent(
           paste0(col2hex(input[[paste0("GroupColour", f, l)]]), "FF")
         }) %>% setNames((levels(datasetHeatmap[[f]])))
       }) %>% setNames(input$heatmapColumnSelect)
-      
       if (any(input$heatmapColumnSelect != "")) {
         p1 <- paste(lapply(input$heatmapColumnSelect, function(g) {
           paste0("'", g, "' = datasetHeatmap[['", g, "']]")
@@ -310,7 +309,6 @@ observeEvent(
           }
         }
       }
-      
       
       # DE Heatmaps ----
       # Get the features only in the specified DE direction
@@ -444,7 +442,7 @@ observeEvent(
           countsHeatmapGO <- countsHeatmap[goGenes, ]
           countsHeatmapGO <- countsHeatmapGO[abs(rowMedians(countsHeatmapGO)) >= input$heatmapGoExpr, ]
         }
-        
+        req(nrow(datasetHeatmap) == ncol(countsHeatmapGO))
         gh <- ComplexHeatmap::Heatmap(
           matrix = countsHeatmapGO,
           top_annotation = ha,
