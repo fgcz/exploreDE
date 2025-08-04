@@ -520,7 +520,7 @@ output$dlBoxplotButtonCounts <- downloadHandler(
   content = function(file) {
     req(!is.null(boxplotCountsReactive()$countsBoxplotMelt))
     writexl::write_xlsx(
-      boxplotCountsReactive()$countsBoxplotMelt[, c("names", "Condition", "Feature", "Counts", "log2Ratio", "fdr")],
+      boxplotCountsReactive()$countsBoxplotMelt,
       path = file)
   }
 )
