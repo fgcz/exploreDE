@@ -474,7 +474,7 @@ observeEvent(
         "<extra></extra>"
       ),
       marker = list(
-        size = input$dotSizeVolcano,
+        size = input$dotSizeVolcano*2,
         color = "fill_colour",
         line = list(
           color = "black",

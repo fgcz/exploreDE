@@ -199,8 +199,9 @@ observeEvent(
     input$heatmapGoInput
     input$heatmapGoExpr
     input$heatmapColumnSelect
-    input$cellBorderSizeHeatmap
+    input$cellBorderSizeHeatmap1
     input$cellBorderColourHeatmap1
+    input$cellBorderSizeHeatmap2
     input$cellBorderColourHeatmap2
     lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
       input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
@@ -299,7 +300,7 @@ observeEvent(
         }), collapse = ",")
         ha <- paste0(
           "HeatmapAnnotation("
-          , p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")), gp = gpar(col = '", input$cellBorderColourHeatmap1, "', lwd = ", input$cellBorderSizeHeatmap/10,"))"
+          , p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")), gp = gpar(col = '", input$cellBorderColourHeatmap1, "', lwd = ", input$cellBorderSizeHeatmap1/10,"))"
         )
         ha <- eval(parse(text = ha))
         for (f in c(input$heatmapColumnSelect)) {
@@ -367,7 +368,7 @@ observeEvent(
         show_row_names = input$geneNamesHeatmap,
         show_column_dend = input$showClusterColDend, 
         show_row_dend = input$showClusterRowDend, 
-        rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap/10),
+        rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2/10),
         use_raster = FALSE,
         row_dend_width = unit(1, "cm"),
         column_dend_height = unit(1, "cm"),
@@ -403,15 +404,23 @@ observeEvent(
       ch <- ComplexHeatmap::Heatmap(
         matrix = countsHeatmapCustom,
         top_annotation = ha,
-        name = input$heatmapCounts,
-        use_raster = FALSE, 
+        name = hmName,
         cluster_columns = input$clusterColsHeatmap,
         cluster_rows = input$clusterRowsHeatmap,
         show_column_names = input$colnamesHeatmap,
         show_row_names = input$geneNamesHeatmap,
-        col = heatmapColours,
+        show_column_dend = input$showClusterColDend, 
+        show_row_dend = input$showClusterRowDend, 
+        rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2/10),
+        use_raster = FALSE,
+        row_dend_width = unit(1, "cm"),
+        column_dend_height = unit(1, "cm"),
+        col = heatmapColours, 
+        row_names_gp = gpar(fontsize = input$textSizeHeatmap),
+        column_names_gp = gpar(fontsize = input$textSizeHeatmap), 
+        column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
         column_title = paste(input$heatmapCustomTitle),
-        rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap/10)
+        heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
       )
       figuresDataReactive$heatmapCustom <- ch
       
@@ -446,15 +455,23 @@ observeEvent(
         gh <- ComplexHeatmap::Heatmap(
           matrix = countsHeatmapGO,
           top_annotation = ha,
-          use_raster = FALSE, 
-          name = input$heatmapCounts,
+          name = hmName,
           cluster_columns = input$clusterColsHeatmap,
           cluster_rows = input$clusterRowsHeatmap,
           show_column_names = input$colnamesHeatmap,
           show_row_names = input$geneNamesHeatmap,
-          col = heatmapColours,
+          show_column_dend = input$showClusterColDend, 
+          show_row_dend = input$showClusterRowDend, 
+          rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2/10),
+          use_raster = FALSE,
+          row_dend_width = unit(1, "cm"),
+          column_dend_height = unit(1, "cm"),
+          col = heatmapColours, 
+          row_names_gp = gpar(fontsize = input$textSizeHeatmap),
+          column_names_gp = gpar(fontsize = input$textSizeHeatmap), 
+          column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
           column_title = sub("\\s+", "\n", input$heatmapGoInput),
-          rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap/10)
+          heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
         )
         figuresDataReactive$heatmapGO <- gh
         output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(

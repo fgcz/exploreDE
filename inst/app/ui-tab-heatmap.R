@@ -136,8 +136,11 @@ tabItem(
             checkboxInput(inputId = "heatmapLimitCPaletteRev", "Reverse palette", value = FALSE),
             splitLayout(
               colourpicker::colourInput(inputId = "cellBorderColourHeatmap1", label = "Anno. border colour", value = "black", width = "85%", palette = "limited"),
-              colourpicker::colourInput(inputId = "cellBorderColourHeatmap2", label = "Cell border colour", value = "white", width = "85%", palette = "limited"),
-              sliderInput(inputId = "cellBorderSizeHeatmap", label = "Cell border size", min = 0, max = 10, value = 5, step = 1, ticks = F, width = "85%"),
+              sliderInput(inputId = "cellBorderSizeHeatmap1", label = "Anno. border size", min = 0, max = 20, value = 5, step = 1, ticks = F, width = "85%"),
+            ),
+            splitLayout(
+              colourpicker::colourInput(inputId = "cellBorderColourHeatmap2", label = "Cell border colour", value = "black", width = "85%", palette = "limited"),
+              sliderInput(inputId = "cellBorderSizeHeatmap2", label = "Cell border size", min = 0, max = 20, value = 2, step = 1, ticks = F, width = "85%"),
             ),
             splitLayout(
               sliderInput(inputId = "textSizeHeatmap", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = FALSE),
