@@ -108,9 +108,10 @@ observeEvent(
     
     # Keep only the groups selected:
     datasetPCA <- inputDataReactive()$dataset
+    datasetPCA$Name <- factor(datasetPCA$Name, levels = datasetPCA$Name)
     datasetPCA <- datasetPCA[datasetPCA[[input$pcaFactor1]] %in% input$pcaGroups, ]
     countsPCA <- inputDataReactive()$countList[[input$pcaCounts]]
-    countsPCA <- countsPCA[, rownames(datasetPCA)]
+    countsPCA <- countsPCA[, datasetPCA$Name]
     
     # If proteomics and minimum number of peptides selected, subset the counts
     if (inputDataReactive()$dataType == "proteomics") {
@@ -161,8 +162,9 @@ observeEvent(
         as_tibble(rownames = "gene")
       pc_scores <- pcaResults$x
       pc_scores <- pc_scores %>%
-        as_tibble(rownames = "sample")
-      pc_scores <- left_join(pc_scores, datasetPCA, by = c("sample" = "names"))
+        as_tibble(rownames = "Name")
+      pc_scores$Name <- factor(pc_scores$Name, levels = pc_scores$Name)
+      pc_scores <- left_join(pc_scores, datasetPCA, by = "Name")
       
       updateSelectInput(session = session, inputId = "pcaX", choices = pc_eigenvalues$PC, selected = input$pcaX)
       updateSelectInput(session = session, inputId = "pcaY", choices = pc_eigenvalues$PC, selected = input$pcaY)
@@ -238,7 +240,7 @@ observeEvent(
       if (input$pcaShowNames) {
         pcaPlot <- pcaPlot +
           geom_label_repel(
-            aes(label = sample, fill = .data[[input$pcaFactor1]]),
+            aes(label = Name, fill = .data[[input$pcaFactor1]]),
             force = 2,
             nudge_y = as.numeric(input$geneLabelNudgePCAY)/10,
             nudge_x = as.numeric(input$geneLabelNudgePCAX)/10, 
@@ -314,21 +316,14 @@ observeEvent(
       output$pcaBrushTable <- renderDataTable({
         brushed_df <- brushedPoints(pc_scores, input$pcaBrush, xvar = input$pcaX, yvar = input$pcaY)
         DT::datatable(
-          data = brushed_df[, c("sample", factorNames, input$pcaX, input$pcaY)],
+          data = brushed_df[, c("Name", factorNames, input$pcaX, input$pcaY)],
           filter = "top",
           caption = "Click and drag over dots on the PCA plot to see those samples in this table.",
           rownames = F) %>% 
           DT::formatRound(columns = c(input$pcaX, input$pcaY), digits = 3)
       })
-      
+      output$pcaNAWarning <- NULL
     } else {
-      # Show notification when PCA fails and user would see the results
-      # showNotification(
-      #   "PCA analysis failed. Try selecting fewer features in the 'Top N features' input to reduce missing data.",
-      #   type = "warning",
-      #   duration = 8
-      # )
-      
       output$pcaNAWarning <- renderUI({
         h4("PCA analysis failed due to insufficient data after removing missing values.", style = "color: orange;")
       })

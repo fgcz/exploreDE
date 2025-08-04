@@ -10,18 +10,6 @@ dataSummary <- function(data, varname, groupnames){
   return(data_sum)
 }
 
-zscore <- function(x) {
-  if (all(is.na(x))) {
-    return(rep(NA, length(x)))
-  }
-  m <- mean(x, na.rm = TRUE)
-  s <- sd(x, na.rm = TRUE)
-  if (is.na(s) || s == 0) {
-    return(rep(0, length(x)))
-  }
-  (x - m) / s
-}
-
 # Update a bunch of input options ----
 output$boxplotStatic <- renderPlot({NULL})
 
@@ -206,6 +194,7 @@ boxplotCountsReactive <- eventReactive({
     genesToPlot <- genesToPlot[1:50]
   }
   datasetBoxplot <- inputDataReactive()$dataset
+  datasetBoxplot$Name <- factor(datasetBoxplot$Name, levels = datasetBoxplot$Name)
   
   # Get the count data
   countsBoxplot <- inputDataReactive()$countList[[input$boxplotCounts]]
@@ -226,21 +215,17 @@ boxplotCountsReactive <- eventReactive({
   # If the user wants to plot gene-wise Z-scores, then do that 
   if (input$boxplotZScore) {
     countsBoxplot <- t(scale(t(countsBoxplot)))
-    # countsBoxplotz <- t(apply(countsBoxplot, 1, zscore))
-    # colnames(countsBoxplotz) <- colnames(countsBoxplot)
-    # countsBoxplot <- countsBoxplotz
-    # rm(countsBoxplotz)
   }
   # Clean up proteomics feature names 
   if (inputDataReactive()$dataType == "proteomics") {
     rownames(countsBoxplot) <- gsub("\\~.*", "", rownames(countsBoxplot))
   }
   countsBoxplot <- as.data.frame(t(countsBoxplot))
-  countsBoxplot$names <- rownames(countsBoxplot)
-  countsBoxplot <- countsBoxplot %>% dplyr::select(all_of(c("names", genesToPlot)))
+  countsBoxplot$Name <- rownames(countsBoxplot)
+  countsBoxplot <- countsBoxplot %>% dplyr::select(all_of(c("Name", genesToPlot)))
   
   # Add the metadata
-  countsBoxplot <- left_join(countsBoxplot, datasetBoxplot[,c("names", inputDataReactive()$factors)], by = "names")
+  countsBoxplot <- left_join(countsBoxplot, datasetBoxplot[,c("Name", inputDataReactive()$factors)], by = "Name")
   
   # Include only the conditions selected
   countsBoxplot <- countsBoxplot[countsBoxplot[[input$boxplotFactor1]] %in% input$boxKeepBucket, ]
@@ -249,9 +234,10 @@ boxplotCountsReactive <- eventReactive({
   countsBoxplot[[input$boxplotFactor1]] <- factor(
     countsBoxplot[[input$boxplotFactor1]],
     input$boxKeepBucket)
+  countsBoxplot[["Name"]] <- factor(countsBoxplot[["Name"]], levels = countsBoxplot[["Name"]])
   
   # melt the table
-  countsBoxplotMelt <- reshape2:::melt.data.frame(data = countsBoxplot, id.vars = c("names", inputDataReactive()$factors), value.name = "Counts", variable.name = "Feature")
+  countsBoxplotMelt <- reshape2:::melt.data.frame(data = countsBoxplot, id.vars = c("Name", inputDataReactive()$factors), value.name = "Counts", variable.name = "Feature")
   countsBoxplotMelt$Feature <- as.factor(x = countsBoxplotMelt$Feature)
   
   # Force the order of the genes as factor so the order the genes are
@@ -487,7 +473,7 @@ observeEvent({
       yvar = "Counts"
     )
     DT::datatable(
-      data = boxplot_brushed_df[, c("names", input$boxplotFactor1, "Feature", "Counts", "log2Ratio", "fdr"), drop = FALSE],
+      data = boxplot_brushed_df[, c("Name", input$boxplotFactor1, "Feature", "Counts", "log2Ratio", "fdr"), drop = FALSE],
       filter = "top", 
       rownames = F) %>%
       DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%

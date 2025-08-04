@@ -39,7 +39,10 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   
   
   # Prepare the metadata table ----
-  dataset <- data.frame(colData(se), check.names = FALSE)
+  # dataset <- data.frame(colData(se), check.names = FALSE) # removed because sometimes rownames are just numbers, e.g., 1, 2, 3, etc.
+  dataset <- read_tsv(file.path(dataDir, "../input_dataset.tsv"), show_col_types = F) %>% data.frame(check.names = F)
+  dataset[["Name"]] <- factor(dataset[["Name"]], levels = dataset[["Name"]])
+  rownames(dataset) <- dataset$Name
   # Get the factors that should be available for plotting 
   factors <- colnames(dataset)[grep("\\[Factor]", colnames(dataset))]
   # Remove [Factor] from colnames and factors
@@ -80,7 +83,7 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   }
   
   # The app doesn't like empty strings in the factor columns, so for now, add "None" to those entries 
-  dataset <- dataset %>% mutate_all(~ifelse(. == "", "None", .))
+  # dataset <- dataset %>% mutate_all(~ifelse(. == "", "None", .))
   if (is.null(param$groupingName)) {
     param$groupingName <- factors[[1]]
   }
@@ -92,9 +95,6 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
       param$refGroup, 
       unique(dataset[[param$groupingName]])[!unique(dataset[[param$groupingName]]) %in% c(param$sampleGroup, param$refGroup)])
   )
-  # make the sample names an actual column to make it easier to bind to things:
-  dataset$names <- rownames(dataset)
-  
   
   
   # Prepare the count files ----

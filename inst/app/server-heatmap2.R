@@ -213,6 +213,7 @@ observeEvent(
     # tryCatch({
     if (!is.null(input$hmKeepBucket1)) {
       
+      set.seed(2)
       figuresDataReactive[["heatmapDEFeatures"]] <- NULL
       # Get some variables ----
       if (inputDataReactive()$dataType == "proteomics") {
@@ -248,7 +249,7 @@ observeEvent(
       
       # Prepare the selected count matrix ----
       countsHeatmap <- inputDataReactive()$countList[[input$heatmapCounts]]
-      countsHeatmap <- countsHeatmap[, rownames(datasetHeatmap)]
+      countsHeatmap <- countsHeatmap[, datasetHeatmap$Name]
       # Apply the following in this specific order as required: Log2, batch correct, Z-scale
       ## If the user wants to log2, then do that
       if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {

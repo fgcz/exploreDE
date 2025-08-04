@@ -66,6 +66,7 @@ observeEvent({
   if (!"Name" %in% colnames(datasetCorrelation)) {
     datasetCorrelation <- datasetCorrelation %>% rownames_to_column("Name")
   }
+  datasetCorrelation$Name <- factor(datasetCorrelation$Name, levels = datasetCorrelation$Name)
   
   # get the counts 
   countsCorrelation <- inputDataReactive()$countList[[input$correlationCounts]][c(input$correlationGene1, input$correlationGene2),]
