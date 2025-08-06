@@ -150,18 +150,18 @@ observeEvent(input$gseaType, {
       er_symbol <- er
       colsToTable <- c("Description", "enrichmentScore", "NES", "qvalue", "core_enrichment")
     }
+    # Prepare log2 ratio data for plotting
+    log2RatioGSEA <- metadata(se)$enrichInput$seqAnno$log2Ratio
+    names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno$gene_name
+    log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
+    
+    # Update reactive values
+    gseaToUse$er <- er
+    gseaToUse$er_symbol <- er_symbol
+    gseaToUse$log2RatioGSEA <- log2RatioGSEA
+    gseaToUse$colsToTable <- colsToTable
   }
   
-  # Prepare log2 ratio data for plotting
-  log2RatioGSEA <- metadata(se)$enrichInput$seqAnno$log2Ratio
-  names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno$gene_name
-  log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
-  
-  # Update reactive values
-  gseaToUse$er <- er
-  gseaToUse$er_symbol <- er_symbol
-  gseaToUse$log2RatioGSEA <- log2RatioGSEA
-  gseaToUse$colsToTable <- colsToTable
   
   # Clear existing plots
   for (x in names(gseaPlotReactive)) {
