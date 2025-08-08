@@ -127,6 +127,17 @@ observeEvent(inputDataReactive()$dataType, {
         tags$p("For the full list of citations required for the generation of these results, and/or for a written methods section, please email us at sequencing@fgcz.ethz.ch.")
       )
     })
+    output$countsDownloadUI <- renderUI({
+      tagList(
+        hr(style = "border-top: 1px solid #000000;"),
+        h4("Download Count Files"),
+        helpText("Select the type of count data you wish to download for all samples in the dataset."),
+        selectizeInput(inputId = "downloadCount", "Select Count Table", choices = NULL, width = "33%"),
+        downloadButton("downloadTable", "Download selected count file"),
+        checkboxInput(inputId = "log2DownloadedCounts", label = "Log2 Counts?", value = FALSE),
+        helpText("Log2 adds a psuedocount of 1, and only works on counts not already in log2 scale.")
+      )
+    })
   } else if (inputDataReactive()$dataType == "proteomics") {
     output$referencesText <- renderUI({
       box(
@@ -142,6 +153,15 @@ observeEvent(inputDataReactive()$dataType, {
         tags$b("exploreDE Shiny app: Leary and Rehrauer, 2023"),
         tags$p("Peter Leary, & Hubert Rehrauer. (2023). exploreDEG Interactive Shiny App. Zenodo. https://doi.org/10.5281/zenodo.10026461"),
         tags$p("For the full list of citations required for the generation of these results, and/or for a written methods section, please email us at proteomics@fgcz.ethz.ch.")
+      )
+    })
+    output$countsDownloadUI <- renderUI({
+      tagList(
+        hr(style = "border-top: 1px solid #000000;"),
+        h4("Download Feature Value Files"),
+        helpText("Select the type of value data you wish to download for all samples in the dataset. For proteomics, this would be intensity values."),
+        selectizeInput(inputId = "downloadCount", "Select Value Table", choices = NULL, width = "33%"),
+        downloadButton("downloadTable", "Download selected file")
       )
     })
   }
@@ -165,11 +185,16 @@ observe({
   # Create a link to download the counts as an Excel file
   output$downloadTable <- downloadHandler(
     filename = function() {
-      paste0(input$downloadCount, "_counts", ".xlsx")
+      paste0(input$downloadCount, "_values", ".xlsx")
     },
     content = function(file) { 
       if (inputDataReactive()$dataType == "RNASeq") {
-        writexl::write_xlsx(as.data.frame(countList[[input$downloadCount]]) %>% rownames_to_column("gene_name") %>% left_join(inputDataReactive()$seqAnno[,c("gene_id", "transcript_id", "gene_name")]), path = file) 
+        ctdl <- countList[[input$downloadCount]]
+        if (input$log2DownloadedCounts & !input$downloadCount %in% c("Normalised + Log2", "VST")) {
+          ctdl <- log2(ctdl+1)
+        }
+        ctdl <- as.data.frame(ctdl) %>% rownames_to_column("gene_name") %>% left_join(inputDataReactive()$seqAnno[,c("gene_id", "transcript_id", "gene_name")])
+        writexl::write_xlsx(ctdl, path = file) 
       } else if (inputDataReactive()$dataType == "proteomics") {
         writexl::write_xlsx(as.data.frame(countList[[input$downloadCount]]) %>% rownames_to_column("gene_name"), path = file) 
       }

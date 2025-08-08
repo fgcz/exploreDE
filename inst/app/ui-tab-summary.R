@@ -32,15 +32,7 @@ tabItem(
           hr(style = "border-top: 1px solid #000000;"), h4("Download App Settings"),
           helpText("Download all the app settings as either an Excel sheet, or as a qs file of the settings as a list."),
           downloadButton("downloadInputsE", "Download settings (Excel)"), downloadButton("downloadInputsR", "Download settings (qs)"),
-          hr(style = "border-top: 1px solid #000000;"), h4("Download Count Files"),
-          helpText("Select the type of count data you wish to download for all samples in the dataset."),
-          selectizeInput(
-            inputId = "downloadCount", 
-            "Select Count Table", 
-            choices = c(), 
-            width = "33%"
-            ),
-          downloadButton("downloadTable", "Download selected count file")
+          uiOutput("countsDownloadUI")
         ),
         uiOutput(outputId = "referencesText"),
       ),

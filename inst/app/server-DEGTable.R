@@ -25,10 +25,10 @@ if (inputDataReactive()$dataType == "RNASeq") {
   # Create the download link in XLSX format:
   output$dlDEGTable <- downloadHandler(
     filename = function() {
-      basename(inputDataReactive()$degHTML)
+      paste0("DE_results_", inputDataReactive()$param$comparison, ".xlsx")
     },
     content = function(file) {
-      file.copy(from = inputDataReactive()$degHTML, to = file)
+      openxlsx::write.xlsx(x = inputDataReactive()$seqAnno, file = file)
     }
   )
   #
