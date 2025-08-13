@@ -39,8 +39,11 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   
   
   # Prepare the metadata table ----
-  # dataset <- data.frame(colData(se), check.names = FALSE) # removed because sometimes rownames are just numbers, e.g., 1, 2, 3, etc.
-  dataset <- read_tsv(file.path(dataDir, "../input_dataset.tsv"), show_col_types = F) %>% data.frame(check.names = F)
+  if (file.exists(file.path(dataDir, "../input_dataset.tsv"))) {
+    dataset <- read_tsv(file.path(dataDir, "../input_dataset.tsv"), show_col_types = F) %>% data.frame(check.names = F)
+  } else {
+    dataset <- data.frame(colData(se), check.names = FALSE)
+  }
   dataset <- dataset[which(dataset$Name %in% param$samples), ]
   dataset[["Name"]] <- factor(dataset[["Name"]], levels = dataset[["Name"]])
   rownames(dataset) <- dataset$Name
