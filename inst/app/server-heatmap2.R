@@ -335,14 +335,21 @@ observeEvent(
         ]
       )
       
+      # Get the number of top genes to display
       ntp <- min(input$heatmapGeneNumber, length(geneDirections[[input$heatmapFeatureDirection]]))
       req(ntp > 0)
-      gtp <- rownames(countsHeatmap)[match(geneDirections[[input$heatmapFeatureDirection]][1:ntp], rownames(countsHeatmap))]
-      rtp <- grep(paste0("^", gtp, "$", collapse = "|"), rownames(countsHeatmap))
       
-      countsHeatmapSig <- countsHeatmap[rtp, ]
-      countsHeatmapSig <- countsHeatmapSig[match(gtp, rownames(countsHeatmapSig)),]
-      countsHeatmapSig <- countsHeatmapSig[!is.na(rownames(countsHeatmapSig)), ]
+      # Get the top gene names
+      top_genes <- geneDirections[[input$heatmapFeatureDirection]][1:ntp]
+      
+      # Filter heatmap data to only include genes that exist in both lists
+      # This combines the matching and filtering in one step
+      countsHeatmapSig <- countsHeatmap[rownames(countsHeatmap) %in% top_genes, , drop = FALSE]
+      
+      # Reorder to match the original gene direction order
+      gene_order <- top_genes[top_genes %in% rownames(countsHeatmapSig)]
+      countsHeatmapSig <- countsHeatmapSig[gene_order, , drop = FALSE]
+      
       output[["heatmapDesignBoth Directions"]] <- renderText({design})
       if (as.numeric(input$heatmapGeneNumber) <= nrow(countsHeatmapSig)) {
         countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
