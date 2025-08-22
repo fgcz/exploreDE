@@ -1,8 +1,8 @@
 output$correlationStatic <- renderPlot({NULL})
 
 # Update some inputs 
-updateSelectizeInput(session = session, inputId = "correlationGene1", label = "Feature 1", choices = inputDataReactive()$genes, selected = "", server = TRUE)
-updateSelectizeInput(session = session, inputId = "correlationGene2", label = "Feature 1", choices = inputDataReactive()$genes, selected = "", server = TRUE)
+updateSelectizeInput(session = session, inputId = "correlationGene1", label = "Feature X", choices = inputDataReactive()$genes, selected = "", server = TRUE)
+updateSelectizeInput(session = session, inputId = "correlationGene2", label = "Feature Y", choices = inputDataReactive()$genes, selected = "", server = TRUE)
 updateSelectInput(session = session, inputId = "correlationColourBy", label = "Select column to colour by", choices = inputDataReactive()$factors, selected =  inputDataReactive()$factors[[1]])
 updateSelectInput(session = session, inputId = "correlationShapeBy", label = "Select column to shape by", choices = c("None", inputDataReactive()$factors), selected =  "None")
 updateSelectInput(session = session, inputId = "correlationCounts", label = "Select count method to plot", choices = names(inputDataReactive()$countList), selected = switch(inputDataReactive()$dataType, "RNASeq" = "Normalised + Log2", "proteomics" = "transformedData"))
