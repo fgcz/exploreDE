@@ -159,8 +159,8 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
     goObjects$gsea <- metadata(se)$enrichResultGSEA
   }
   
-  if (param$runGO) {
-    return(list(
+  return(
+    list(
       "dataType" = "RNASeq",
       "se" = se,
       "param" = param,
@@ -176,8 +176,7 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
       "goObjects" = goObjects,
       "groupingName" = param$groupingName
     )
-    )
-  }
+  )
 }
 
 
