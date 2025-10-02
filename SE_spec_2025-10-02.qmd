@@ -1,0 +1,128 @@
+---
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+# rowData -- features (var)
+
+```
+Feature Annotation Table (only one, same for all DE tests in this SE)
+• ID column -- hardcoded, match rownames of all assays 
+  • Unique per row 
+  • Gene ID 
+  • Protein ID
+  • Whatever 
+• Annotations (for filtering/subsetting): 
+  • Labels -- optional, not hardcoded, not unique per row 
+      • Gene symbol 
+      • Entrez ID 
+      • Ensembl gene ID
+      • UniProtID 
+      • FlyDBID 
+  • Description -- hardcoded
+      • Text about the gene (searchable)
+  • Assignment method (metabolomics, required, e.g., MS1, MS2, manual annotation)
+• Numeric annotations (to filter/subset by)
+  • NrPeptides
+  • Global baseMean
+
+DE Tables (1 per DE test performed)
+• DE Results:
+  • Required: Effect_
+    • Log2fc -- `log2Ratio`, `log2FC`, `grep("^log2")`, `lfc`
+    • For the volcano plot x-axis
+  • Required: Scores_:
+    • Raw p-value -- `p-value`
+    • Adjusted p-value/FDR/q-value -- `adjusted_p_val`/`FDR`/`q-value`
+    • For the volcano plot y-axis 
+  • Optional:
+    • Model name 
+    • DE baseMean
+      • for MA plot (DESeq2:`rowData(metadata(se)$nativeResult$dds)$baseMean`, edgeR:`metadata(se)$nativeResult$AveLogCPM`)
+    • t-statistic 
+    • ... 
+```
+
+# colData -- samples (obs)
+
+```         
+• sample_id (required, first column, matches colnames of all assays)
+• sample label
+• b-fabric sample ID 
+• Factor -- E.g., condition, sex, grouping, treatment, batch, timepoint, genotype
+  • We also need to know which factor[s] column was used as the basis for DE 
+  • How to handle categorical vs numerical factors for plotting? 
+  • Store this in the metadata? Or in the colData with a special colname? 
+• Organism 
+• Feature level (isoform/gene, peptide/protein)
+• ... 
+  • Read counts
+  • Creatinine concentration
+```
+
+# Assays -- counts (x)
+
+```         
+• raw (required, only 1) (in linear space, not normalised) 
+• normalisedAbundance (at least 1) (linear space, normalised) 
+    • TPM 
+• transformedAbundance (at least 1) (log space, normalised or unnormalised) 
+  • log2 TPM 
+  • VST, voom 
+• ... 
+  • E.g., number of peptides per sample etc.
+  • E.g., SD of the abundances, retention time 
+```
+
+# Metadata (unstructured)
+
+```         
+• Pathway analyses 
+  • clusterProfiler gseaResult/enrichResult objects 
+  • Alternative data frame:
+    • GO category 
+    • GO IDs as rows 
+    • GO description 
+    • Number of genes mapped 
+    • Number of genes in set 
+    • Enrichment Score
+    • FDR 
+    • Method
+    • Feature lists (genes, protein IDs)
+      • Mapped IDs (row data ID)
+      • Internal IDs
+      • ... 
+• sampleGroup
+• Only for genomics:
+  • refGroup
+  • groupingName
+  • can be removed if using the proposed format (as it'll be in the DE rowData name[s])
+• comparison
+• featureLevel
+• runGO -- should be removed/replaced by searching in metadata(se)
+• fdrThreshORA -- should be removed/replaced by manual thresholding 
+• fdrThreshGSEA -- should be removed/replaced by manual thresholding
+• pValThreshGO -- not necessary, can be removed 
+• log2RatioThreshGO -- not necessary, can be removed 
+• backgroundExpression -- is used and derived from sushi currently 
+• refBuild -- only used for KEGG, as well as FPKM/TPM generation 
+```
+
+# Tab requirements 
+
+```
+• DE tabs -- requires the DE rowData tables, metadata
+  • DE summary
+  • Volcano plot
+  • ORA/GSEA 
+  • GO tile plot 
+  • KEGG
+• Pure visualisation tabs -- requires feature rowData, colData, assays
+  • PCA plot
+  • Heatmap
+  • Boxplot
+  • Correlation plot 
+• Can show certain tabs using something like:
+  • `condition = "output.test=='exploreDE'"`
+```
