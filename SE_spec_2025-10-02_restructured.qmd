@@ -70,8 +70,8 @@ All column names use prefixes to identify their type and purpose. This enables a
 Option 2 would store column mappings in metadata:
 
 ```{r option2-metadata-mapping}
-metadata(se)$var$label <- "entrez_id"
-metadata(se)$obs$label <- "sample_label"
+metadata(se)$var$label <- c("entrez_id", "ensembl_gene_id", "uniprot_id", "flydb_id", "assignment_method", "nr_peptides", "global_base_mean")
+metadata(se)$obs$factor <- c("condition", "batch", "sex", "timepoint", "genotype")
 ```
 
 This was **rejected** in favor of the prefix-based approach for better discoverability.
@@ -504,29 +504,11 @@ Additional numeric or string matrices with feature-level information per sample.
 
 # Metadata (Unstructured / uns)
 
-Unstructured metadata stored in `metadata(se)` as a list.
+Unstructured metadata stored in `metadata(se)`
 
-**Code example:**
+- to represent differential expression analysis annotations not stored in the DE tables.
+- to represent hierarchical data structures not stored in the rowData tables.
 
-```{r metadata-example}
-# Metadata list
-metadata_list <- list(
-  de_tests = list(
-    treated_vs_control = list(
-      contrast_name = "treated_vs_control",
-      contrast_formula = paste("factor_condition_treated", 
-                               "- factor_condition_control"),
-      factor_used = "factor_condition",
-      assay_used = "transformed_vst",
-      ref_group = "control",
-      test_group = "treated",
-      method = "DESeq2"
-    )
-  ),
-  ref_build = "GRCh38",
-  background_expression = c(100, 50, 1000)
-)
-```
 
 ## Pathway Analyses
 
@@ -556,7 +538,7 @@ If native objects are not used, store pathway results as data frames with the fo
 | `feature_ids` | list | List of mapped feature IDs (matching rowData rownames) |
 | `feature_labels` | list | List of human-readable feature labels |
 
-**Implementation note:** Reviewed ClusterProfiler's `enrichResult` structure and STRING-DB web API for compatibility.
+**TODO:** Review ClusterProfiler's `enrichResult` structure and STRING-DB web API for compatibility.
 
 ---
 
