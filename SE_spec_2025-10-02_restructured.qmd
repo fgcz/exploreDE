@@ -358,6 +358,7 @@ metadata(se)$de_tests <- list(
     assay_used = "transformed_vst",
     ref_group = "control",
     test_group = "treatmentB"
+    model 
   ),
   timepoint8h_vs_0h = list(
     contrast_name = "timepoint8h_vs_0h",
@@ -658,6 +659,22 @@ rowData(se)[["exploreDE_feature_annotation"]][1:3, ]
 rowData(se)[["DE_treated_vs_control"]][1:3, ]
 metadata(se)$de_tests$treated_vs_control
 ```
+
+---
+
+# TODO : Dimensionality Reduction Results
+
+## Storage of PCA, UMAP, and Other Embeddings
+
+Dimensionality reduction analyses (PCA, UMAP, t-SNE) are computationally intensive and should be cached to avoid re-computation.
+
+### Use Case: PCA for Missing Value Imputation
+
+**Problem:** PCA-based imputation is computationally expensive, especially with:
+- Large feature sets (genes, proteins)
+- Multiple missing values
+- Iterative imputation algorithms (e.g., NIPALS, EM-based)
+
 
 ---
 
