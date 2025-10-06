@@ -109,16 +109,16 @@ validate_assays <- function(se, add_result) {
     return()
   }
 
-  # Check for required raw assay
-  raw_assays <- names(assays_list)[grepl("^raw_", names(assays_list))]
-  if (length(raw_assays) == 0) {
-    add_result("raw_assay", "WARNING", "No raw assay found (recommended: raw_counts)")
+  # Check for assays with distribution prefixes
+  dist_assays <- names(assays_list)[grepl("^(exponential_|poisson_|normal_)", names(assays_list))]
+  if (length(dist_assays) == 0) {
+    add_result("dist_assay", "WARNING", "No assay with distribution prefix found (recommended: exponential_*, poisson_*, or normal_*)")
   } else {
-    add_result("raw_assay", "PASS", paste("Found raw assay(s):", paste(raw_assays, collapse = ", ")))
+    add_result("dist_assay", "PASS", paste("Found assay(s) with distribution prefix:", paste(dist_assays, collapse = ", ")))
   }
 
   # Check assay naming conventions
-  valid_prefixes <- c("raw_", "normalized_", "transformed_", "label_")
+  valid_prefixes <- c("exponential_", "poisson_", "normal_", "label_")
   invalid_names <- names(assays_list)[!grepl(paste0("^(", paste(valid_prefixes, collapse = "|"), ")"), names(assays_list))]
 
   if (length(invalid_names) > 0) {
@@ -150,33 +150,29 @@ validate_coldata <- function(se, add_result) {
     return()
   }
 
-  # Check required columns
-  required_cols <- c("sample_id")
-  missing_cols <- required_cols[!required_cols %in% colnames(col_data)]
-
-  if (length(missing_cols) > 0) {
-    add_result(
-      "coldata_required", "ERROR",
-      paste("Missing required columns:", paste(missing_cols, collapse = ", "))
-    )
+  # Check for rownames (required)
+  if (is.null(rownames(col_data)) || all(rownames(col_data) == "")) {
+    add_result("coldata_rownames", "ERROR", "colData missing rownames (sample identifiers)")
+  } else if (any(duplicated(rownames(col_data)))) {
+    add_result("coldata_rownames", "ERROR", "colData rownames are not unique")
   } else {
-    add_result("coldata_required", "PASS", "Required colData columns present")
+    add_result("coldata_rownames", "PASS", "colData rownames are present and unique")
   }
 
-  # Check sample_id uniqueness
+  # Check for sample_id column (optional but recommended)
   if ("sample_id" %in% colnames(col_data)) {
     if (any(duplicated(col_data$sample_id))) {
-      add_result("sample_id_unique", "ERROR", "sample_id values are not unique")
+      add_result("sample_id_unique", "WARNING", "sample_id values are not unique")
     } else {
-      add_result("sample_id_unique", "PASS", "sample_id values are unique")
+      add_result("sample_id_unique", "PASS", "sample_id column is present and unique")
     }
-  }
 
-  # Check rowname consistency
-  if (!all(rownames(col_data) == col_data$sample_id)) {
-    add_result("coldata_rownames", "WARNING", "rownames don't match sample_id (this is acceptable)")
+    # Check if sample_id matches rownames
+    if (!all(rownames(col_data) == col_data$sample_id)) {
+      add_result("sample_id_rowname_match", "WARNING", "rownames don't match sample_id (acceptable if both are valid)")
+    }
   } else {
-    add_result("coldata_rownames", "PASS", "rownames match sample_id")
+    add_result("sample_id_column", "INFO", "No sample_id column (using rownames as identifiers)")
   }
 
   # Check factor columns
@@ -214,10 +210,10 @@ validate_rowdata <- function(se, add_result) {
     return()
   }
 
-  # Check for feature annotation table
-  feature_tables <- names(row_data_list)[grepl("exploreDE_feature_annotation|feature_annotation", names(row_data_list))]
+  # Check for feature annotation table (gene_id, protein_id, peptide_id, etc.)
+  feature_tables <- names(row_data_list)[grepl("_id$|feature_annotation", names(row_data_list))]
   if (length(feature_tables) == 0) {
-    add_result("feature_annotation", "WARNING", "No feature annotation table found")
+    add_result("feature_annotation", "WARNING", "No feature annotation table found (expected: gene_id, protein_id, peptide_id, etc.)")
   } else {
     add_result("feature_annotation", "PASS", paste("Found feature annotation table:", paste(feature_tables, collapse = ", ")))
   }
@@ -238,8 +234,8 @@ validate_rowdata <- function(se, add_result) {
 
 #' Validate individual rowData table
 validate_rowdata_table <- function(table, table_name, add_result) {
-  # Check required columns for feature annotation
-  if (grepl("feature_annotation|exploreDE", table_name)) {
+  # Check required columns for feature annotation (tables ending with _id or containing feature_annotation)
+  if (grepl("_id$|feature_annotation", table_name)) {
     if (!"description" %in% colnames(table)) {
       add_result(
         paste0("table_", table_name, "_description"), "WARNING",
@@ -323,7 +319,8 @@ validate_metadata <- function(se, add_result) {
 
 #' Validate DE test metadata
 validate_de_test_metadata <- function(de_test, test_name, add_result) {
-  required_fields <- c("contrast_name", "contrast_formula", "factor_used", "assay_used", "ref_group", "test_group")
+  # Required fields per specification
+  required_fields <- c("assay_used", "factor_used")
   missing_fields <- required_fields[!required_fields %in% names(de_test)]
 
   if (length(missing_fields) > 0) {
@@ -333,6 +330,16 @@ validate_de_test_metadata <- function(de_test, test_name, add_result) {
     )
   } else {
     add_result(paste0("de_test_", test_name, "_required"), "PASS", "All required fields present")
+  }
+
+  # Optional fields (check if present)
+  optional_fields <- c("contrast_formula", "model")
+  present_optional <- optional_fields[optional_fields %in% names(de_test)]
+  if (length(present_optional) > 0) {
+    add_result(
+      paste0("de_test_", test_name, "_optional"), "INFO",
+      paste("Optional fields present:", paste(present_optional, collapse = ", "))
+    )
   }
 }
 
@@ -453,7 +460,7 @@ create_example_se <- function() {
   sample_ids <- c("sample1", "sample2", "sample3", "sample4")
 
   # Create assays
-  raw_counts <- matrix(
+  exponential_counts <- matrix(
     c(
       100, 150, 200, 180,
       50, 60, 20, 25,
@@ -463,7 +470,11 @@ create_example_se <- function() {
     dimnames = list(gene_ids, sample_ids)
   )
 
-  transformed_vst <- log2(raw_counts + 1)
+  # Transformed abundance (log2) - normal distribution
+  normal_vst <- log2(exponential_counts + 1)
+
+  # Normalized abundance (TPM - example) - exponential distribution
+  exponential_tpm <- exponential_counts / colSums(exponential_counts) * 1e6
 
   # Create colData
   col_data <- DataFrame(
@@ -498,27 +509,25 @@ create_example_se <- function() {
   metadata_list <- list(
     de_tests = list(
       treated_vs_control = list(
-        contrast_name = "treated_vs_control",
-        contrast_formula = "factor_condition_treated - factor_condition_control",
+        assay_used = "normal_vst",
         factor_used = "factor_condition",
-        assay_used = "transformed_vst",
-        ref_group = "control",
-        test_group = "treated",
-        method = "DESeq2"
+        contrast_formula = "factor_condition_treated - factor_condition_control",
+        model = "DESeq2"
       )
     ),
-    ref_build = "GRCh38",
-    background_expression = c(100, 50, 1000)
+    hierarchy_definition = c("gene_id"),
+    ref_build = "GRCh38"
   )
 
   # Construct SummarizedExperiment
   se <- SummarizedExperiment(
     assays = list(
-      raw_counts = raw_counts,
-      transformed_vst = transformed_vst
+      exponential_counts = exponential_counts,
+      normal_vst = normal_vst,
+      exponential_tpm = exponential_tpm
     ),
     rowData = list(
-      exploreDE_feature_annotation = feature_annotation,
+      gene_id = feature_annotation,
       DE_treated_vs_control = de_treated_vs_control
     ),
     colData = col_data,

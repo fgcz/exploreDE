@@ -1,9 +1,9 @@
 ---
-title: "SummarizedExperiment Data Structure Specification for exploreDE"
+title: "SummarizedExperiment/AnnData Structure Specification for exploreDE"
 author: 
-  - "Peter Denis Timothy Leary"
-  - "V-Tec Polski"
-  - "Claude Auto Cursor"
+  - "PL"
+  - "WEW"
+  - "Claude AI"
 date: "2025-10-02"
 format: 
   html: 
@@ -18,8 +18,10 @@ format:
     documentclass: article
     fontsize: 11pt
     colorlinks: true
+    tbl-cap-location: top
+    fig-pos: 'H'
 execute:
-  eval: false
+  eval: true
   echo: true
   warning: false
   message: false
@@ -41,50 +43,125 @@ The specification bridges two ecosystem formats:
 
 | Component | SummarizedExperiment | AnnData | Description |
 |-----------|---------------------|---------|-------------|
-| Features  | `rowData`           | `var`   | Gene/protein annotations and DE results |
-| Samples   | `colData`           | `obs`   | Sample metadata and experimental factors |
-| Counts    | `assays`            | `X`     | Raw/normalized/transformed abundance matrices |
+| Features  | `rowData`           | `var`   | annotation of Variables/ Features (Gene/protein/Metabolite annotations and DE results) |
+| Samples   | `colData`           | `obs`   | annotation of Observations (Sample metadata and experimental factors) |
+| Counts    | `assays`            | `X`/`layers`     | Raw/normalized/transformed abundance matrices |
 | Other     | `metadata`          | `uns`   | Unstructured metadata (pathways, settings) |
+
+
 
 ## Column Naming Convention
 
-**Adopted approach: Column prefixes encode semantic type** (Option 1)
+**Adopted approach: Column prefixes encode semantic type**
 
 All column names use prefixes to identify their type and purpose. This enables automatic discovery and type-aware filtering/subsetting.
 
-### Standard Prefixes
+### Standard Column Names Prefixes
 
-| Prefix | Type | Usage | Example |
+| Container | Prefix | Type | Usage | Example |
 |--------|------|-------|---------|
-| `label_` | string or numeric | Feature/sample annotations, identifiers | `label_gene_symbol`, `label_nr_peptides` |
-| `hierarchy_` | string or numeric | Hierarchical data structure (combined columns must be distinct) | `hierarchy_protein`, `hierarchy_peptide`, `hierarchy_site` |
-| `effect_` | numeric | Effect sizes for DE (volcano x-axis) | `effect_log2fc` |
-| `score_` | numeric | Statistical scores for DE (volcano y-axis) | `score_p_value`, `score_fdr` |
-| `factor_` | categorical or numeric | Experimental factors/covariates | `factor_condition`, `factor_batch` |
-| `raw_` | numeric | Raw, unnormalized abundance | `raw_counts` |
-| `normalized_` | numeric | Normalized abundance (linear space) | `normalized_tpm` |
-| `transformed_` | numeric | Transformed abundance (log space) | `transformed_vst` |
+| `var` | `label_` | string or numeric | Feature/sample annotations, identifiers | `label_gene_symbol`, `label_nr_peptides` |
+| `var` | `hierarchy_` | string or numeric | Hierarchical data structure (combined columns must be distinct) | `hierarchy_protein`, `hierarchy_peptide`, `hierarchy_site` |
+| `var` | `effect_` | numeric | Effect sizes for DE (volcano x-axis) | `effect_log2fc` |
+| `var` | `score_` | numeric | Statistical scores for DE (volcano y-axis) | `score_p_value`, `score_fdr` |
+| `obs` | `factor_` | categorical or numeric | Experimental factors/covariates | `factor_condition`, `factor_batch` |
+| `assays` | `exponential_*` | numeric | Raw, unnormalized abundance | e.g. `exponential_counts` |
+| `assays` | `exponential_*` | numeric | Normalized abundance (linear space) | e.g. `exponential_tpm` |
+| `assays` | `normal_` | numeric | Transformed abundance (log space) | `normal_vsn` |
 
 ### Alternative Approach (Not Used)
 
 Option 2 would store column mappings in metadata:
 
-```{r option2-metadata-mapping}
-metadata(se)$var$label <- c("entrez_id", "ensembl_gene_id", "uniprot_id", "flydb_id", "assignment_method", "nr_peptides", "global_base_mean")
+```{r option2-metadata-mapping, eval=FALSE}
+metadata(se)$var$label <- c("entrez_id", "ensembl_gene_id", "uniprot_id", "flydb_id", 
+"assignment_method", "nr_peptides", "global_base_mean")
 metadata(se)$obs$factor <- c("condition", "batch", "sex", "timepoint", "genotype")
 ```
 
 This was **rejected** in favor of the prefix-based approach for better discoverability.
 
+
 ---
 
-# rowData (Features / var)
+# Assays/ Layers/ X (Counts / Abundances/ Intesnities)
 
-Feature annotations and differential expression results stored as columns in `rowData()`.
+- Abundance matrices stored in `assays()`. Rows = features, columns = samples.
+- Abundance matrices stored in `layers` in AnnData, Rows = obs, columns = vars.
 
-**Code example structure:**
+The prefix encodes the distribution of the data: e.g. 'exponential_', 'poisson_', 'normal_' etc.
+First assay is used for exploreDE's "raw_" field.
 
-Each section below includes executable R code snippets. These snippets build upon each other to construct a complete SummarizedExperiment object. See the Complete Example section for the final assembly.
+**Important:** Annotate in `metadata(se)` which assay was used for each DE test.
+
+**Code example:**
+
+```{r assays-example}
+library(SummarizedExperiment)
+# Define gene IDs (used throughout)
+gene_ids <- c("GENE001", "GENE002", "GENE003")
+sample_ids <- c("sample1", "sample2", "sample3", "sample4")
+
+# Create count matrices
+exponential_counts <- matrix(
+  c(100, 150, 200, 180,
+    50, 60, 20, 25,
+    1000, 1100, 1050, 1020),
+  nrow = 3, ncol = 4,
+  dimnames = list(gene_ids, sample_ids)
+)
+
+# Transformed abundance (log2) - normal distribution
+normal_vst <- log2(exponential_counts + 1)
+
+# Normalized abundance (TPM - example) - exponential distribution
+exponential_tpm <- exponential_counts / colSums(exponential_counts) * 1e6
+
+se <- SummarizedExperiment(
+  assays = list(
+    exponential_counts = exponential_counts,
+    normal_vst = normal_vst,
+    exponential_tpm = exponential_tpm
+  ))
+
+```
+
+
+| Assay Pattern | Type | Cardinality |  Distribution |  Description |
+|:---------------|:------|:-------------|:-------|:---------------|
+| `exponential_*` | numeric | 0:N | exponential | exponentially distributed counts or intensities |
+| `poisson_*` | numeric | 0:N | poisson | poisson distributed counts or intensities |
+| `normal_*` | numeric | 0:N | normal | Normalized abundance |
+| `label_*` | numeric/factor/string | 0:N | None | Feature-specific numeric or string matrices with feature-level information per sample |
+
+
+
+**Examples**
+
+| Assay Name | Description |
+|:------------|:-------------|
+| `exponential_tpm` | Transcripts per million |
+| `exponential_fpkm` | Fragments per kilobase per million |
+| `normal_log2_tpm` | Log2-transformed TPM |
+| `normal_vst` | Variance stabilizing transformation (DESeq2) |
+| `normal_voom` | Voom transformation (limma) |
+| `normal_vsn` | Variance stabilizing normalization |
+| `label_nr_peptides` | Number of peptides quantified per protein per sample |
+| `label_stdev` | Standard deviation of technical replicates  |
+| `label_retention_time` | Chromatographic retention time (metabolomics) |
+
+
+---
+
+# Var  (rawData/Features)
+
+Feature annotations and differential expression results stored in `var` or `rowData()`.
+
+We can store genes, proteins, peptides, metabolites etc. in the `var` container.
+To identify which type of data is stored we can use the following:
+
+- anndata : `data.var.index.name = 'gene_id'`
+- SummarizedExperiment : `rawData(se)[[`gene_id`]] <- DataFrame()`
 
 ## Feature Annotation Table
 
@@ -92,12 +169,26 @@ Each section below includes executable R code snippets. These snippets build upo
 
 All columns can be used for filtering and subsetting. Column types (string, integer, numeric) determine available filter operations.
 
+
+| Column Name |  Type | Required? | Distinct? | Description |
+|-------------|------|-----------|-------------|
+| `<rowname>` | string | Yes | Yes | Row identifier matching rownames of all assays (e.g., gene ID, protein ID, Ensembl ID) |
+| `description` | string | Yes | Yes? | Free-text description (searchable) |
+| `label_gene_symbol` | string | No | No | Human-readable gene symbol |
+| `label_entrez_id` | string | No | No | NCBI Entrez Gene ID |
+| `label_ensembl_gene_id` | string | No | No | Ensembl gene identifier |
+| `label_uniprot_id` | string | No | No | UniProt accession |
+| `label_flydb_id` | string | No | No | FlyBase identifier |
+| `label_nr_peptides` | numeric | No | No | Number of peptides quantifying this protein |
+| `label_global_base_mean` | numeric | No | No | Mean abundance across all samples |
+| `label_assignment_method` | string | No | No | Annotation method (MS1, MS2, manual) |
+
+
 **Code example:**
 
 ```{r feature-annotation-example}
 #| warning: false
 #| message: false
-library(SummarizedExperiment)
 
 # Define gene IDs (used throughout)
 gene_ids <- c("GENE001", "GENE002", "GENE003")
@@ -110,42 +201,40 @@ feature_annotation <- DataFrame(
   label_entrez_id = c("7157", "672", "1956"),
   label_global_base_mean = c(150.5, 42.3, 1050.2)
 )
+
+rowData(se)[["gene_id"]] <- feature_annotation
+
+rowData(se)
+
 ```
 
-### Required Columns
-
-| Column Name | Type | Distinct? | Description |
-|-------------|------|-----------|-------------|
-| `<rowname>` | string | Yes | Row identifier matching rownames of all assays (e.g., gene ID, protein ID, Ensembl ID) |
-| `description` | string | No | Free-text description (searchable) |
-
-### Optional Annotation Columns (prefix: `label_`)
-
-Labels are optional, not hardcoded, and not necessarily distinct per row.
-
-| Column Name | Type | Example Use Case | Description |
-|-------------|------|------------------|-------------|
-| `label_gene_symbol` | string | Genomics | Human-readable gene symbol |
-| `label_entrez_id` | string | Genomics | NCBI Entrez Gene ID |
-| `label_ensembl_gene_id` | string | Genomics | Ensembl gene identifier |
-| `label_uniprot_id` | string | Proteomics | UniProt accession |
-| `label_flydb_id` | string | Genomics (Drosophila) | FlyBase identifier |
-| `label_nr_peptides` | numeric | Proteomics | Number of peptides quantifying this protein |
-| `label_global_base_mean` | numeric | Any | Mean abundance across all samples |
-| `label_assignment_method` | string | Metabolomics | Annotation method (MS1, MS2, manual) |
-
-**Note:** Column names are flexible (e.g., `label_Entrez ID` is also acceptable).
-
-### Hierarchical Data Columns (prefix: `hierarchy_`)
+## Hierarchical Data Columns (prefix: `hierarchy_`)
 
 For proteomics and other hierarchical omics data, use `hierarchy_` columns to encode multi-level relationships. Individual hierarchy columns do not need to be distinct, but **all hierarchy columns combined must ensure distinct rows** (matching the `<rowname>` identifiers).
 
-**Protein-level hierarchy:**
 
-| Column Name | Type | Description | Example Values |
-|-------------|------|-------------|----------------|
-| `<rowname>` | string | Distinct row identifier | "P04637", "P38398" |
-| `hierarchy_protein` | string | Protein identifier | "P53_HUMAN", "BRCA1_HUMAN" |
+- Each `hierarchy_*` column alone may contain duplicates
+- The **combination** of all `hierarchy_*` columns must uniquely identify each row
+- This allows rollup/aggregation from lower to higher levels (e.g., peptide -> protein)
+- The hierarchy levels should be ordered left-to-right from coarsest to finest granularity
+
+**Representing Hierarchies**
+
+Store hierarchy data in columns, define structure in metadata.
+
+```r
+# Data: hierarchy_* columns in rowData
+var <- DataFrame(row.names = "PEPTIDE_001", 
+hierarchy_protein = "P53_HUMAN",
+hierarchy_peptide = "SVTEQGAELSNEER",
+hierarchy_peptidoform = "SVTEQGAELSNEER[Phospho]",
+hierarchy_ion = "762.3442_2")
+
+# Structure: metadata defines levels and relationships
+metadata(se)$hierarchy_definition <- c("protein", "peptide", "peptidoform", "ion")
+```
+
+
 
 **Peptide-level hierarchy:**
 
@@ -154,6 +243,33 @@ For proteomics and other hierarchical omics data, use `hierarchy_` columns to en
 | `<rowname>` | string | Distinct row identifier | "PEPTIDE_001", "PEPTIDE_002", "PEPTIDE_003" |
 | `hierarchy_protein` | string | Protein identifier | "P53_HUMAN", "P53_HUMAN", "P53_HUMAN" |
 | `hierarchy_peptide` | string | Peptide sequence | "SVTEQGAELSNEER", "ALPNNTSSSPQPK", "CSDSDGLAPPQHLIR" |
+
+
+**Example**
+
+```{r peptide-hierarchy-example}
+# Peptide-level proteomics feature annotation
+peptide_annotation <- DataFrame(
+  row.names = paste0("PEPTIDE_", 1:5),
+  hierarchy_protein = c("P53_HUMAN", "P53_HUMAN", "P53_HUMAN", 
+                        "BRCA1_HUMAN", "BRCA1_HUMAN"),
+  hierarchy_peptide = c("SVTEQGAELSNEER", "ALPNNTSSSPQPK", 
+                        "CSDSDGLAPPQHLIR", "TLNIFGSTR", "QETSVFDCNK"),
+  description = c("Tumor suppressor p53", "Tumor suppressor p53", 
+                  "Tumor suppressor p53", "BRCA1 DNA repair", 
+                  "BRCA1 DNA repair"),
+  label_gene_symbol = c("TP53", "TP53", "TP53", "BRCA1", "BRCA1"),
+  label_uniprot_id = c("P04637", "P04637", "P04637", "P38398", "P38398"),
+  label_nr_peptides_per_protein = c(3, 3, 3, 2, 2)
+)
+
+# Check that hierarchy columns combined are distinct
+nrow(peptide_annotation) == nrow(unique(peptide_annotation[, 
+  c("hierarchy_protein", "hierarchy_peptide")]))
+
+metadata(se)$hierarchy_definition <- c("protein", "peptide")
+```
+
 
 **Peptidoform and ion-level hierarchy:**
 
@@ -164,6 +280,8 @@ For proteomics and other hierarchical omics data, use `hierarchy_` columns to en
 | `hierarchy_peptide` | string | Peptide sequence | "SVTEQGAELSNEER" |
 | `hierarchy_peptidoform` | string | Modified peptide sequence | "SVTEQGAELSNEER[Phospho]" |
 | `hierarchy_ion` | string | Precursor ion (m/z, charge) | "762.3442_2", "508.5628_3" |
+
+
 
 **Phosphoproteomics - site-level hierarchy:**
 
@@ -186,31 +304,8 @@ When tracking phosphorylation multiplicity (multiple phosphorylation events on t
 | `hierarchy_site` | string | Single phosphorylation site | "S199", "S199", "S199", "S396" |
 | `hierarchy_multiplicity` | integer | Number of phosphorylations on peptide | 1, 2, 3, 2 |
 
-**Code example (peptide-level data):**
 
-```{r peptide-hierarchy-example}
-# Peptide-level proteomics feature annotation
-peptide_annotation <- DataFrame(
-  row.names = paste0("PEPTIDE_", 1:5),
-  hierarchy_protein = c("P53_HUMAN", "P53_HUMAN", "P53_HUMAN", 
-                        "BRCA1_HUMAN", "BRCA1_HUMAN"),
-  hierarchy_peptide = c("SVTEQGAELSNEER", "ALPNNTSSSPQPK", 
-                        "CSDSDGLAPPQHLIR", "TLNIFGSTR", "QETSVFDCNK"),
-  description = c("Tumor suppressor p53", "Tumor suppressor p53", 
-                  "Tumor suppressor p53", "BRCA1 DNA repair", 
-                  "BRCA1 DNA repair"),
-  label_gene_symbol = c("TP53", "TP53", "TP53", "BRCA1", "BRCA1"),
-  label_uniprot_id = c("P04637", "P04637", "P04637", "P38398", "P38398"),
-  label_nr_peptides_per_protein = c(3, 3, 3, 2, 2)
-)
-
-# Check that hierarchy columns combined are distinct
-nrow(peptide_annotation) == nrow(unique(peptide_annotation[, 
-  c("hierarchy_protein", "hierarchy_peptide")]))
-```
-
-**Code example (phosphoproteomics with multiplicity):**
-
+Example:
 ```{r phospho-multiplicity-example}
 # Phosphosite-level data with multiplicity
 # Each row represents a specific site at a specific multiplicity level
@@ -232,32 +327,10 @@ phospho_annotation <- DataFrame(
 # Check that hierarchy columns combined are distinct
 nrow(phospho_annotation) == nrow(unique(phospho_annotation[, 
   c("hierarchy_protein", "hierarchy_site", "hierarchy_multiplicity")]))
+
+metadata(se)$hierarchy_definition <- c("protein", "site", "multiplicity")
 ```
 
-**Important notes:**
-
-- Each `hierarchy_*` column alone may contain duplicates
-- The **combination** of all `hierarchy_*` columns must uniquely identify each row
-- This allows rollup/aggregation from lower to higher levels (e.g., peptide → protein)
-- The hierarchy levels should be ordered left-to-right from coarsest to finest granularity
-
-### Representing Hierarchies
-
-**Approach:** Store hierarchy data in columns, define structure in metadata.
-
-```r
-# Data: hierarchy_* columns in rowData
-hierarchy_protein = "P53_HUMAN"
-hierarchy_peptide = "SVTEQGAELSNEER"
-hierarchy_peptidoform = "SVTEQGAELSNEER[Phospho]"
-hierarchy_ion = "762.3442_2"
-
-# Structure: metadata defines levels and relationships
-metadata(se)$hierarchy_definition <- list(
-  levels = c("protein", "peptide", "peptidoform", "ion"))
-```
-
-**Why this works:** Columns enable standard operations (filtering, grouping); metadata documents structure and aggregation rules.
 
 ---
 
@@ -283,91 +356,59 @@ de_treated_vs_control <- DataFrame(
 )
 
 # Access DE results from a SummarizedExperiment
+rowData(se)[["DE_treated_vs_control"]] <- de_treated_vs_control
+
 de_results <- rowData(se)[["DE_treated_vs_control"]]
 ```
 
 ### Required DE Columns
 
-| Column Name | Type | Distinct? | Description |
-|-------------|------|-----------|-------------|
-| `<rowname>` | string | Yes | Row identifier matching rownames of feature annotation table and all assays |
+| Column Name | Type | Distinct? | Alternative Names |Description |
+|-------------|------|-----------|-------------------|-------------|
+| `<rowname>` | string | Yes |                      | Row identifier matching rownames of feature annotation table and all assays |
+| `effect_*` | numeric | No |  `log2Ratio`, `log2FC`, `lfc` | Log2 fold change or other effect size |
+| `score_*` | numeric | No |  `score_pvalue`, `score_adjusted_p_val`, `score_q_value` | Raw p-value, adjusted p-value / FDR / q-value |
+| `label_*` | numeric/string | No |  `label_model_name`, `label_de_base_mean`, `label_t_statistic`, `label_n_missing`, `label_ci_upper`, `label_ci_lower` | Additional statistics or metadata, either numeric or string |
 
-#### Effect Size (prefix: `effect_`)
+- effect_ : Used for volcano plot x-axis.
+- score_ : Used for volcano plot y-axis. At least one score column required.
+- label_ : Additional statistics or metadata, either numeric or string.
 
-Used for volcano plot x-axis.
-
-| Column Pattern | Type | Alternative Names | Description |
-|----------------|------|-------------------|-------------|
-| `effect_*` | numeric | `log2Ratio`, `log2FC`, `lfc` | Log2 fold change or other effect size |
-
-**Example:** `effect_log2fc`, `effect_log2fc_conditionB_vs_conditionA`
-
-#### Statistical Scores (prefix: `score_`)
-
-Used for volcano plot y-axis. At least one score column required.
-
-| Column Pattern | Type | Alternative Names | Description |
-|----------------|------|-------------------|-------------|
-| `score_p_value` | numeric | `score_pvalue` | Raw p-value |
-| `score_fdr` | numeric | `score_adjusted_p_val`, `score_q_value` | Adjusted p-value / FDR / q-value |
-
-**Example:** `score_p_value_conditionB_vs_conditionA`, `score_fdr`
-
-### Optional DE Columns (prefix: `label_`)
-
-Additional statistics or metadata, either numeric or string.
-
-| Column Name | Type | Description |
-|-------------|------|-------------|
-| `label_model_name` | string | Statistical model used (e.g., "DESeq2", "limma") |
-| `label_de_base_mean` | numeric | Mean abundance for this DE test (for MA plots) |
-| `label_t_statistic` | numeric | t-statistic or other test statistic |
-| `label_n_missing` | numeric | Number of missing values |
-| `label_ci_upper` | numeric | Upper confidence interval bound |
-| `label_ci_lower` | numeric | Lower confidence interval bound |
 
 **Note for MA plots:**
 
 - DESeq2: `rowData(metadata(se)$nativeResult$dds)$baseMean`
 - edgeR: `metadata(se)$nativeResult$AveLogCPM`
 
-### DE Test Metadata
 
-For each DE test, the following information should be stored in:
+For each DE test, the following information should be stored in the metadata/uns:
 
 `metadata(se)$de_tests[[<name_of_contrast>]]`:
 
-| Field | Type | Description | Example |
-|-------|------|-------------|---------|
-| `contrast_name` | string | Distinct identifier for this DE test | `"treatmentB_vs_control"` |
-| `contrast_formula` | string | Exact mathematical formula | `"factor_treatment_B - factor_treatment_control"` |
-| `factor_used` | character vector | Which `factor_*` column(s) from `colData` were used | `c("factor_treatment", "factor_batch")` |
-| `assay_used` | string | Which assay was used for DE | `"transformed_vst"` |
-| `ref_group` | string | Reference/control group | `"control"` |
-| `test_group` | string | Treatment/comparison group | `"treatmentB"` |
+| Field | Required? | Type | Description | Example |
+|-------|------|-------------|---------|---------|
+| `assay_used` | Yes | string | Which assay was used for DE | `"normal_vsn"` |
+| `factor_used` | Yes | character vector | Which `factor_*` column(s) from `colData` were used | `c("factor_treatment", "factor_batch")` |
+| `contrast_formula` | No | string | Exact mathematical formula | `"factor_treatment_B - factor_treatment_control"` |
+| `model` | No | string | Statistical model used (e.g., "DESeq2", "limma", "prolfqua") | `"DESeq2"` |
 
 **Example:**
 
 ```{r de-metadata-example}
 metadata(se)$de_tests <- list(
   treatmentB_vs_control = list(
-    contrast_name = "treatmentB_vs_control",
+    assay_used = "normal_vst",
+    factor_used = c("factor_condition", "factor_batch"),
     contrast_formula = paste("factor_condition_treatmentB", 
                              "- factor_condition_control"),
-    factor_used = c("factor_condition", "factor_batch"),
-    assay_used = "transformed_vst",
-    ref_group = "control",
-    test_group = "treatmentB"
-    model 
+    model = "DESeq2"
   ),
   timepoint8h_vs_0h = list(
-    contrast_name = "timepoint8h_vs_0h",
+    assay_used = "normal_vst",
+    factor_used = "factor_timepoint",
     contrast_formula = paste("factor_timepoint_8", 
                              "- factor_timepoint_0"),
-    factor_used = "factor_timepoint",
-    assay_used = "transformed_vst",
-    ref_group = "0h",
-    test_group = "8h"
+    model = "DESeq2"
   )
 )
 
@@ -378,9 +419,30 @@ de_metadata <- metadata(se)$de_tests$treatmentB_vs_control
 
 ---
 
-# colData (Samples / obs)
+# Samples/ obs / colData
 
 Sample metadata and experimental design information stored in `colData()`.
+
+
+
+| Column Name | Type | Required? | Distinct? | Description |
+|-------------|:------|:-----------|:----------|:-------------|
+| `<rowname>` | string | Yes | Yes |  Sample identifier matching colnames of all assays (typically same as `sample_id`) |
+| `sample_label` | string | No | Yes | Human-readable sample name |
+| `b-fabric_sample_id` | string | No | No | B-Fabric database ID |
+| `factor_*` | categorical or numeric | No | no | Experimental factors (condition, sex, treatment, batch, timepoint, genotype) |
+| `organism` | string | No | No | Species name |
+| `feature_level` | string | No | No | Feature type (isoform/gene, peptide/protein) |
+| `label_*` | string or numeric | No | No | Sample-level annotations (read counts, creatinine concentration, etc.) |
+
+
+**Factors:** Categorical or continuous covariates used in experimental design.
+
+- `factor_condition` (e.g., "control", "treated")
+- `factor_sex` (e.g., "M", "F")
+- `factor_batch` (e.g., "batch1", "batch2")
+- `factor_timepoint` (numeric, e.g., 0, 2, 4, 8 hours)
+- `factor_genotype` (e.g., "WT", "KO")
 
 **Code example:**
 
@@ -401,109 +463,8 @@ col_data <- DataFrame(
 )
 ```
 
-## Required Columns
 
-| Column Name | Type | Distinct? | Position | Description |
-|-------------|------|-----------|----------|-------------|
-| `<rowname>` | string | Yes | Row names | Sample identifier matching colnames of all assays (typically same as `sample_id`) |
-| `sample_id` | string | Yes | First column | Sample identifier matching colnames of all assays |
-
-## Optional Columns
-
-| Column Pattern | Type | Distinct? | Description |
-|----------------|------|-----------|-------------|
-| `sample_label` | string | Yes | Human-readable sample name |
-| `b-fabric_sample_id` | string | Yes | B-Fabric database ID |
-| `factor_*` | categorical or numeric | No | Experimental factors (condition, sex, treatment, batch, timepoint, genotype) |
-| `organism` | string | No | Species name |
-| `feature_level` | string | No | Feature type (isoform/gene, peptide/protein) |
-| `label_*` | string or numeric | No | Sample-level annotations (read counts, creatinine concentration, etc.) |
-
-### Experimental Factors (prefix: `factor_`)
-
-Categorical or continuous covariates used in experimental design.
-
-**Examples:**
-
-- `factor_condition` (e.g., "control", "treated")
-- `factor_sex` (e.g., "M", "F")
-- `factor_batch` (e.g., "batch1", "batch2")
-- `factor_timepoint` (numeric, e.g., 0, 2, 4, 8 hours)
-- `factor_genotype` (e.g., "WT", "KO")
-
-
----
-
-# Assays (Counts / X)
-
-Abundance matrices stored in `assays()`. Rows = features, columns = samples.
-
-**Important:** Annotate in `metadata(se)` which assay was used for each DE test.
-
-**Code example:**
-
-```{r assays-example}
-# Create count matrices
-raw_counts <- matrix(
-  c(100, 150, 200, 180,
-    50, 60, 20, 25,
-    1000, 1100, 1050, 1020),
-  nrow = 3, ncol = 4,
-  dimnames = list(gene_ids, sample_ids)
-)
-
-# Transformed abundance (log2)
-transformed_vst <- log2(raw_counts + 1)
-
-# Normalized abundance (TPM - example)
-normalized_tpm <- raw_counts / colSums(raw_counts) * 1e6
-```
-
-## Required Assays
-
-| Assay Pattern | Type | Cardinality | Space | Normalization | Description |
-|---------------|------|-------------|-------|---------------|-------------|
-| `raw_*` | numeric | 1 | Linear | None | Raw, unnormalized counts or intensities |
-
-**Example:** `raw_counts`
-
-## Optional Assays
-
-### Normalized Abundances (prefix: `normalized_`)
-
-Linear space, normalized. 
-
-**Note:** May not be needed for proteomics/metabolomics workflows.
-
-| Assay Name | Description |
-|------------|-------------|
-| `normalized_tpm` | Transcripts per million |
-| `normalized_fpkm` | Fragments per kilobase per million |
-
-### Transformed Abundances (prefix: `transformed_`)
-
-Log space, normalized or unnormalized. At least one transformed assay recommended.
-
-| Assay Name | Description |
-|------------|-------------|
-| `transformed_log2_tpm` | Log2-transformed TPM |
-| `transformed_vst` | Variance stabilizing transformation (DESeq2) |
-| `transformed_voom` | Voom transformation (limma) |
-| `transformed_vsn` | Variance stabilizing normalization |
-
-### Feature-Specific Assays (prefix: `label_`)
-
-Additional numeric or string matrices with feature-level information per sample.
-
-**Examples:**
-
-- `label_nr_peptides` (numeric): Number of peptides quantified per protein per sample
-- `label_stdev` (numeric): Standard deviation of technical replicates  
-- `label_retention_time` (numeric): Chromatographic retention time (metabolomics)
-
----
-
-# Metadata (Unstructured / uns)
+# Metadata / uns
 
 Unstructured metadata stored in `metadata(se)`
 
@@ -511,18 +472,17 @@ Unstructured metadata stored in `metadata(se)`
 - to represent hierarchical data structures not stored in the rowData tables.
 
 
-## Pathway Analyses
+## TODO : Pathway Analyses Results
 
 Pathway enrichment and gene set analysis results.
 
-### ClusterProfiler Objects
 
 Store native objects for compatibility:
 
 - `gseaResult` objects (Gene Set Enrichment Analysis)
 - `enrichResult` objects (Over-Representation Analysis)
 
-### Alternative: Data Frame Format
+### Alternative: Data Frame Format **to be discussed**
 
 If native objects are not used, store pathway results as data frames with the following columns:
 
@@ -562,9 +522,9 @@ gene_ids <- c("GENE001", "GENE002", "GENE003")
 sample_ids <- c("sample1", "sample2", "sample3", "sample4")
 
 # ============================================================================
-# 2. Create assays (Section 3)
+# 2. Create assays (Section 1: Assays)
 # ============================================================================
-raw_counts <- matrix(
+exponential_counts <- matrix(
   c(100, 150, 200, 180,
     50, 60, 20, 25,
     1000, 1100, 1050, 1020),
@@ -572,10 +532,14 @@ raw_counts <- matrix(
   dimnames = list(gene_ids, sample_ids)
 )
 
-transformed_vst <- log2(raw_counts + 1)
+# Transformed abundance (log2) - normal distribution
+normal_vst <- log2(exponential_counts + 1)
+
+# Normalized abundance (TPM - example) - exponential distribution
+exponential_tpm <- exponential_counts / colSums(exponential_counts) * 1e6
 
 # ============================================================================
-# 3. Create colData (Section 2)
+# 3. Create colData (Section 3: Samples/obs)
 # ============================================================================
 col_data <- DataFrame(
   row.names = sample_ids,
@@ -589,7 +553,7 @@ col_data <- DataFrame(
 )
 
 # ============================================================================
-# 4. Create rowData (Section 1)
+# 4. Create rowData (Section 2: Var/Features)
 # ============================================================================
 # Feature annotation table (shared across all DE tests)
 feature_annotation <- DataFrame(
@@ -611,23 +575,20 @@ de_treated_vs_control <- DataFrame(
 )
 
 # ============================================================================
-# 5. Create metadata (Section 4)
+# 5. Create metadata (Section 4: Metadata/uns)
 # ============================================================================
 metadata_list <- list(
   de_tests = list(
     treated_vs_control = list(
-      contrast_name = "treated_vs_control",
+      assay_used = "normal_vst",
+      factor_used = "factor_condition",
       contrast_formula = paste("factor_condition_treated", 
                                "- factor_condition_control"),
-      factor_used = "factor_condition",
-      assay_used = "transformed_vst",
-      ref_group = "control",
-      test_group = "treated",
-      method = "DESeq2"
+      model = "DESeq2"
     )
   ),
-  ref_build = "GRCh38",
-  background_expression = c(100, 50, 1000)
+  hierarchy_definition = c("gene_id"),
+  ref_build = "GRCh38"
 )
 
 # ============================================================================
@@ -635,11 +596,12 @@ metadata_list <- list(
 # ============================================================================
 se <- SummarizedExperiment(
   assays = list(
-    raw_counts = raw_counts,
-    transformed_vst = transformed_vst
+    exponential_counts = exponential_counts,
+    normal_vst = normal_vst,
+    exponential_tpm = exponential_tpm
   ),
   rowData = list(
-    exploreDE_feature_annotation = feature_annotation,
+    gene_id = feature_annotation,
     DE_treated_vs_control = de_treated_vs_control
   ),
   colData = col_data,
@@ -653,9 +615,10 @@ se <- SummarizedExperiment(
 se
 
 # Access different components
-assays(se)$raw_counts[1:3, 1:4]
+assays(se)$exponential_counts[1:3, 1:4]
+assays(se)$normal_vst[1:3, 1:4]
 colData(se)[1:4, ]
-rowData(se)[["exploreDE_feature_annotation"]][1:3, ]
+rowData(se)[["gene_id"]][1:3, ]
 rowData(se)[["DE_treated_vs_control"]][1:3, ]
 metadata(se)$de_tests$treated_vs_control
 ```
@@ -684,16 +647,52 @@ Dimensionality reduction analyses (PCA, UMAP, t-SNE) are computationally intensi
 
 The `validate_summarized_experiment()` function checks if a SummarizedExperiment object conforms to this specification.
 
-### Validator Function
+The validator performs the following checks:
+
+1. **Basic Structure**: Confirms object is a SummarizedExperiment
+2. **Required Components**: Verifies presence of assays, rowData, colData, metadata
+3. **Assays**: 
+   - Checks for at least one assay with distribution prefix
+   - Validates naming conventions (`exponential_*`, `poisson_*`, `normal_*`, `label_*`)
+   - Ensures consistent dimensions
+4. **colData**:
+   - Verifies row names are present and distinct
+   - Checks for `factor_*` columns
+   - Validates column naming conventions
+5. **rowData**:
+   - Looks for feature annotation table (e.g., `gene_id`, `protein_id`, `peptide_id`)
+   - Identifies DE tables (`DE_*`)
+   - Validates required columns (description, `effect_*`, `score_*`)
+   - Checks naming conventions (`label_*`, `hierarchy_*`, `effect_*`, `score_*`)
+6. **Metadata**:
+   - Validates DE test metadata structure (`metadata(se)$de_tests`)
+   - Checks required fields (`assay_used`, `factor_used`)
+   - Validates optional fields (`contrast_formula`, `model`)
+7. **Consistency**:
+   - Ensures row/column dimensions match across components
+   - Validates DE table names match metadata keys
+   - Verifies assay names referenced in metadata exist
+
+## Validation Result Structure
+
+The validation function returns a list with:
+
+- `overall_status`: "PASS" or "FAIL"
+- `errors`: Critical issues preventing use
+- `warnings`: Non-critical issues or recommendations
+- `checks`: Detailed per-check results with status and messages
+
+
+## Usage Examples
 
 ```{r validation-source}
 #| eval: true
 #| warning: false
 #| message: false
 source("validate_summarized_experiment.R")
+validate_summarized_experiment(se, verbose = TRUE)
 ```
 
-### Usage Example
 
 ```{r validation-example}
 #| eval: true
@@ -715,40 +714,8 @@ if (validation_result$overall_status == "PASS") {
 }
 ```
 
-### What the Validator Checks
 
-The validator performs the following checks:
 
-1. **Basic Structure**: Confirms object is a SummarizedExperiment
-2. **Required Components**: Verifies presence of assays, rowData, colData, metadata
-3. **Assays**: 
-   - Checks for raw assay(s)
-   - Validates naming conventions (`raw_`, `normalized_`, `transformed_`, `label_`)
-   - Ensures consistent dimensions
-4. **colData**:
-   - Verifies required `sample_id` column
-   - Checks `sample_id` uniqueness
-   - Validates factor columns (`factor_*`)
-5. **rowData**:
-   - Looks for feature annotation table
-   - Identifies DE tables (`DE_*`)
-   - Validates required columns (description, effect, score)
-   - Checks naming conventions
-6. **Metadata**:
-   - Validates DE test metadata structure
-   - Checks required fields (contrast_name, contrast_formula, factor_used, assay_used, ref_group, test_group)
-7. **Consistency**:
-   - Ensures row/column dimensions match across components
-   - Validates DE table names match metadata
-
-### Validation Result Structure
-
-The validation function returns a list with:
-
-- `overall_status`: "PASS" or "FAIL"
-- `errors`: Critical issues preventing use
-- `warnings`: Non-critical issues or recommendations
-- `checks`: Detailed per-check results with status and messages
 
 ---
 
