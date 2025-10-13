@@ -58,6 +58,13 @@ tabItem(
               sliderInput(inputId = "correlationLabelPosY", label = "Nudge label y", min = 0, max = 20, value = 0, step = 1, ticks = FALSE, width = "85%")
             ),
             uiOutput("correlationGroupBucket")
+          ),
+          tabPanel(
+            title = "Download", 
+            helpText("Download the displayed counts in Excel:"),
+            downloadButton(outputId = "dlCorrelationCounts", label = paste("Download Counts")),
+            br(), helpText("Download the figure in PDF:"),
+            downloadButton(outputId = "dlCorrelationButton", label = paste("Download Correlation (PDF)")),
           )
         )
       )
@@ -69,8 +76,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        downloadButton(outputId = "dlCorrelationButton", label = paste("Download Correlation (PDF)")),
-        br(), br(),
+        br(),
         plotOutput(outputId = "correlationStatic", inline = TRUE)
       )
     )
