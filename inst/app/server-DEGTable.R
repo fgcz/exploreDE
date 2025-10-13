@@ -89,12 +89,14 @@ if (inputDataReactive()$dataType == "RNASeq") {
     } else {
       featureCalcPType <- "fdr"
     }
-    seqAnnoCalc <- inputDataReactive()$seqAnno[inputDataReactive()$seqAnno$usedInTest == TRUE,] %>% dplyr::select(all_of(c(featureCalcPType, "log2Ratio")))
+    seqAnnoCalc <- inputDataReactive()$seqAnno[inputDataReactive()$seqAnno$usedInTest == TRUE,] #%>% dplyr::select(all_of(c(featureCalcPType, "log2Ratio")))
     seqAnnoCalc <- seqAnnoCalc[which(seqAnnoCalc[[featureCalcPType]] <= as.numeric(input$featureCalcPValue) & abs(seqAnnoCalc[["log2Ratio"]]) >= as.numeric(input$featureCalcLFC)),]
+    
     seqAnnoCalcTable <- data.frame(
       "Up" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] >= as.numeric(input$featureCalcLFC)),]),
       "Down" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] <= -as.numeric(input$featureCalcLFC)),])
     )
+    
     output$featureCalcTable <- function() {
       seqAnnoCalcTable %>%
         kable(
@@ -106,6 +108,17 @@ if (inputDataReactive()$dataType == "RNASeq") {
           position = "left"
         )
     }
+    
+    # Download the results
+    output$dlfeatureCalcTable <- downloadHandler(
+      filename = function() {paste0(inputDataReactive()$design, "_threshold_matched", ".xlsx")},
+      content = function(file) {
+        writexl::write_xlsx(
+          seqAnnoCalc,
+          path = file
+        )
+      }
+    )
   })
 }
 
@@ -238,8 +251,9 @@ if (inputDataReactive()$dataType == "proteomics") {
         } else {
           featureCalcPType <- "fdr"
         }
-        seqAnnoCalc <- seqAnnoDEG %>% dplyr::select(all_of(c(featureCalcPType, "log2Ratio")))
+        seqAnnoCalc <- seqAnnoDEG #%>% dplyr::select(all_of(c(featureCalcPType, "log2Ratio")))
         seqAnnoCalc <- seqAnnoCalc[which(seqAnnoCalc[[featureCalcPType]] <= as.numeric(input$featureCalcPValue) & abs(seqAnnoCalc[["log2Ratio"]]) >= as.numeric(input$featureCalcLFC)),]
+        
         seqAnnoCalcTable <- data.frame(
           "Up" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] >= as.numeric(input$featureCalcLFC)),]),
           "Down" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] <= -as.numeric(input$featureCalcLFC)),])
@@ -253,8 +267,18 @@ if (inputDataReactive()$dataType == "proteomics") {
               bootstrap_options = "striped",
               full_width = FALSE,
               position = "left"
-            )
+          )
         }
+        # Download the results
+        output$dlfeatureCalcTable <- downloadHandler(
+          filename = function() {"DE_fetures_threshold_matched.xlsx"},
+          content = function(file) {
+            writexl::write_xlsx(
+              seqAnnoCalc,
+              path = file
+            )
+          }
+        )
       })
     }
   )
