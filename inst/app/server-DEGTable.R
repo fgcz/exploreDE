@@ -107,11 +107,7 @@ if (inputDataReactive()$dataType == "RNASeq") {
       featureCalcPType <- "fdr"
     }
     
-    if (featureCalcPType == "fdr") {
-      seqAnnoCalc <- inputDataReactive()$seqAnno[inputDataReactive()$seqAnno$usedInTest == TRUE,]
-    } else {
-      seqAnnoCalc <- inputDataReactive()$seqAnno
-    }
+    seqAnnoCalc <- inputDataReactive()$seqAnno[inputDataReactive()$seqAnno$usedInTest == TRUE,]
     seqAnnoCalc <- seqAnnoCalc[which(seqAnnoCalc[[featureCalcPType]] <= as.numeric(input$featureCalcPValue) & abs(seqAnnoCalc[["log2Ratio"]]) >= as.numeric(input$featureCalcLFC)),]
     
     seqAnnoCalcTable <- data.frame(
