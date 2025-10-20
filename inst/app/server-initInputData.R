@@ -296,6 +296,7 @@ if (!is.null(dataUrl)) {
         title = "Something went wrong",
         "It looks like either the dataset you're looking for doesn't exist, or has not finished being processed in SUSHI yet."
       ))
+      Sys.sleep(30)
       stopApp(returnValue = invisible())
     }
   } else {
