@@ -203,7 +203,7 @@ convert_proteomics_se <- function(se) {
   # Prepare the metadata
   dataset <- as.data.frame(colData(se))
   names <- colnames(dataset)[grep("^Sample$|^Name$|^sampleName$", colnames(dataset), ignore.case = T)]
-  dataset$names <- dataset[[names]]
+  dataset$Name <- dataset[[names]]
   rownames(dataset) <- dataset[[names]]
   
   # Get the main columns from the metadata that are plottable 
