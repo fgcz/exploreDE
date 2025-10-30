@@ -67,6 +67,7 @@ observeEvent({
     datasetCorrelation <- datasetCorrelation %>% rownames_to_column("Name")
   }
   datasetCorrelation$Name <- factor(datasetCorrelation$Name, levels = datasetCorrelation$Name)
+  datasetCorrelation <- datasetCorrelation[, c("Name", grepv(paste0("^", inputDataReactive()$factors, "$", collapse = "|"), colnames(datasetCorrelation)))]
   
   # get the counts 
   countsCorrelation <- inputDataReactive()$countList[[input$correlationCounts]][c(input$correlationGene1, input$correlationGene2),]
@@ -132,6 +133,7 @@ observeEvent({
   corr_plot1 <- corr_plot1 + theme(legend.text = element_text(size = input$textSizeCorrelation, color = "black", face = "bold"))
   corr_plot1
   correlationPlot$plot <- corr_plot1
+  correlationPlot$counts <- countsCorrelation
 })
 
 # view the plot 
@@ -155,5 +157,16 @@ output$dlCorrelationButton <- downloadHandler(
     )
     print(correlationPlot$plot)
     dev.off()
+  }
+)
+# download the counts 
+output$dlCorrelationCounts <- downloadHandler(
+  filename = function() {paste0(inputDataReactive()$design, "CorrelationCounts", ".xlsx")},
+  content = function(file) {
+    req(!is.null(correlationPlot$counts))
+    writexl::write_xlsx(
+      correlationPlot$counts,
+      path = file
+    )
   }
 )

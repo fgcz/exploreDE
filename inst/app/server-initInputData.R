@@ -203,7 +203,7 @@ convert_proteomics_se <- function(se) {
   # Prepare the metadata
   dataset <- as.data.frame(colData(se))
   names <- colnames(dataset)[grep("^Sample$|^Name$|^sampleName$", colnames(dataset), ignore.case = T)]
-  dataset$names <- dataset[[names]]
+  dataset$Name <- dataset[[names]]
   rownames(dataset) <- dataset[[names]]
   
   # Get the main columns from the metadata that are plottable 
@@ -249,23 +249,6 @@ convert_proteomics_se <- function(se) {
   )
 }
 
-#' zscore
-#' @export
-zscore <- function(x) {
-  # Remove NAs for mean and sd calculation
-  if (all(is.na(x))) {
-    # If all values are NA, return all NAs
-    return(rep(NA, length(x)))
-  }
-  m <- mean(x, na.rm = TRUE)
-  s <- sd(x, na.rm = TRUE)
-  if (is.na(s) || s == 0) {
-    # If sd is NA (all NAs) or zero (no variance), return zeros (or NAs)
-    return(rep(0, length(x)))
-  }
-  (x - m) / s
-}
-
 #' generateParams
 #' @export
 generateParams <- function(
@@ -291,7 +274,6 @@ generateParams <- function(
 }
 
 
-
 # Extract the dataset path from the URL string 
 queryList = parseQueryString(session$clientData$url_search) 
 if (is.list(queryList)){
@@ -314,6 +296,7 @@ if (!is.null(dataUrl)) {
         title = "Something went wrong",
         "It looks like either the dataset you're looking for doesn't exist, or has not finished being processed in SUSHI yet."
       ))
+      Sys.sleep(30)
       stopApp(returnValue = invisible())
     }
   } else {
@@ -380,6 +363,10 @@ if (grepl("gstore", dataDir) | exists("fileSE")) {
   message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
   if (is.null(dataUrl)) {
     allowed = TRUE
+  }
+  if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
+    message("Loading SUSHI course data, so no LDAP checks required.")    
+    return(list(allowed = TRUE, ldap_role = "course"))  
   }
   if (allowed) {
     if (grepl("EzResult.RData", dataDir)) {

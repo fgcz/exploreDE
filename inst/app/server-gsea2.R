@@ -210,13 +210,18 @@ output$selectedTable_GSEA <- DT::renderDataTable({
 # Download handler for GSEA results
 output$dlTableGSEA <- downloadHandler(
   filename = function() {
-    paste0(design, "_GSEA_", input$gseaType, ".xlsx")
+    paste0(design, "_GSEA.xlsx")
   },
   content = function(file) {
-    openxlsx::write.xlsx(
-      x = as.data.frame(gsea[[input$gseaType]]@result), 
-      file = file
-    )
+    sheets_list <- list()
+    categories <- c("BP", "CC", "MF")
+    for (category in categories) {
+      enrich_obj <- gsea[[category]]
+      results_df <- as.data.frame(enrich_obj@result)
+      sheet_name <- paste(category, sep = "_")
+      sheets_list[[sheet_name]] <- results_df
+    }
+    write_xlsx(sheets_list, file)
   }
 )
 

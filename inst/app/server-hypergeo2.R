@@ -33,10 +33,21 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
   # Download full ORA results file
   output$dlTableORA <- downloadHandler(
     filename = function() {
-      basename(oraHTML)
+      paste0(design, "_ORA.xlsx")
     },
     content = function(file) {
-      file.copy(from = oraHTML, to = file)
+      sheets_list <- list()
+      categories <- c("BP", "CC", "MF")
+      gene_sets <- c("upGenes", "downGenes", "bothGenes")
+      for (category in categories) {
+        for (gene_set in gene_sets) {
+          enrich_obj <- ora[[category]][[gene_set]]
+          results_df <- as.data.frame(enrich_obj@result)
+          sheet_name <- paste(category, gene_set, sep = "_")
+          sheets_list[[sheet_name]] <- results_df
+        }
+      }
+      write_xlsx(sheets_list, file)
     }
   )
   

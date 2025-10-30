@@ -28,10 +28,27 @@ if (inputDataReactive()$dataType == "RNASeq") {
       paste0("DE_results_", inputDataReactive()$param$comparison, ".xlsx")
     },
     content = function(file) {
-      openxlsx::write.xlsx(x = inputDataReactive()$seqAnno, file = file)
+      wb <- createWorkbook()
+      addWorksheet(wb, "DE Results")
+      
+      # Write as formatted table
+      writeDataTable(
+        wb,
+        sheet = "DE Results",
+        x = inputDataReactive()$seqAnno,
+        startCol = 1,
+        startRow = 1,
+        tableStyle = "TableStyleMedium9",
+        tableName = "DEResults",
+        withFilter = TRUE,
+        bandedRows = TRUE
+      )
+      # Freeze header row
+      freezePane(wb, sheet = "DE Results", firstRow = TRUE)
+      saveWorkbook(wb, file, overwrite = TRUE)
     }
   )
-  #
+  
   # Output the results summary table
   output$resultsTable <- DT::renderDataTable({
     DT::datatable(
@@ -89,12 +106,15 @@ if (inputDataReactive()$dataType == "RNASeq") {
     } else {
       featureCalcPType <- "fdr"
     }
-    seqAnnoCalc <- inputDataReactive()$seqAnno[inputDataReactive()$seqAnno$usedInTest == TRUE,] %>% dplyr::select(all_of(c(featureCalcPType, "log2Ratio")))
+    
+    seqAnnoCalc <- inputDataReactive()$seqAnno[inputDataReactive()$seqAnno$usedInTest == TRUE,]
     seqAnnoCalc <- seqAnnoCalc[which(seqAnnoCalc[[featureCalcPType]] <= as.numeric(input$featureCalcPValue) & abs(seqAnnoCalc[["log2Ratio"]]) >= as.numeric(input$featureCalcLFC)),]
+    
     seqAnnoCalcTable <- data.frame(
       "Up" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] >= as.numeric(input$featureCalcLFC)),]),
       "Down" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] <= -as.numeric(input$featureCalcLFC)),])
     )
+    
     output$featureCalcTable <- function() {
       seqAnnoCalcTable %>%
         kable(
@@ -106,6 +126,31 @@ if (inputDataReactive()$dataType == "RNASeq") {
           position = "left"
         )
     }
+    
+    # Download the results
+    output$dlfeatureCalcTable <- downloadHandler(
+      filename = function() {"DE_features_threshold_matched.xlsx"},
+      content = function(file) {
+        wb <- createWorkbook()
+        addWorksheet(wb, "DE Features")
+        # Write as formatted table
+        writeDataTable(
+          wb,
+          sheet = "DE Features",
+          x = seqAnnoCalc,
+          startCol = 1,
+          startRow = 1,
+          tableStyle = "TableStyleMedium9",  # Choose your preferred style
+          tableName = "DEFeatures",
+          withFilter = TRUE,
+          bandedRows = TRUE,
+          bandedCols = FALSE
+        )
+        # Optional: Freeze the header row
+        freezePane(wb, sheet = "DE Features", firstRow = TRUE)
+        saveWorkbook(wb, file, overwrite = TRUE)
+      }
+    )
   })
 }
 
@@ -127,7 +172,23 @@ if (inputDataReactive()$dataType == "proteomics") {
         },
         content = function(file) {
           tableToWrite <- as.data.frame(rowData(se)[[grep(input$contrastSelected, names(rowData(se)))]])
-          openxlsx::write.xlsx(tableToWrite, file = file)
+          wb <- createWorkbook()
+          addWorksheet(wb, "Full Results")
+          # Write as formatted table
+          writeDataTable(
+            wb,
+            sheet = "Full Results",
+            x = tableToWrite,
+            startCol = 1,
+            startRow = 1,
+            tableStyle = "TableStyleMedium9",
+            tableName = "FullResults",
+            withFilter = TRUE,
+            bandedRows = TRUE
+          )
+          # Freeze header row
+          freezePane(wb, sheet = "Full Results", firstRow = TRUE)
+          saveWorkbook(wb, file, overwrite = TRUE)
         }
       )
       
@@ -238,8 +299,9 @@ if (inputDataReactive()$dataType == "proteomics") {
         } else {
           featureCalcPType <- "fdr"
         }
-        seqAnnoCalc <- seqAnnoDEG %>% dplyr::select(all_of(c(featureCalcPType, "log2Ratio")))
+        seqAnnoCalc <- seqAnnoDEG #%>% dplyr::select(all_of(c(featureCalcPType, "log2Ratio")))
         seqAnnoCalc <- seqAnnoCalc[which(seqAnnoCalc[[featureCalcPType]] <= as.numeric(input$featureCalcPValue) & abs(seqAnnoCalc[["log2Ratio"]]) >= as.numeric(input$featureCalcLFC)),]
+        
         seqAnnoCalcTable <- data.frame(
           "Up" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] >= as.numeric(input$featureCalcLFC)),]),
           "Down" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] <= -as.numeric(input$featureCalcLFC)),])
@@ -253,8 +315,32 @@ if (inputDataReactive()$dataType == "proteomics") {
               bootstrap_options = "striped",
               full_width = FALSE,
               position = "left"
-            )
+          )
         }
+        # Download the results
+        output$dlfeatureCalcTable <- downloadHandler(
+          filename = function() {"DE_features_threshold_matched.xlsx"},
+          content = function(file) {
+            wb <- createWorkbook()
+            addWorksheet(wb, "DE Features")
+            # Write as formatted table
+            writeDataTable(
+              wb,
+              sheet = "DE Features",
+              x = seqAnnoCalc,
+              startCol = 1,
+              startRow = 1,
+              tableStyle = "TableStyleMedium9",  # Choose your preferred style
+              tableName = "DEFeatures",
+              withFilter = TRUE,
+              bandedRows = TRUE,
+              bandedCols = FALSE
+            )
+            # Optional: Freeze the header row
+            freezePane(wb, sheet = "DE Features", firstRow = TRUE)
+            saveWorkbook(wb, file, overwrite = TRUE)
+          }
+        )
       })
     }
   )

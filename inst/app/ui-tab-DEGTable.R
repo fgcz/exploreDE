@@ -29,7 +29,10 @@ tabItem(
           selectInput(inputId = "featureCalcPValue", label = "P-value threshold", choices = c(0.1, 0.05, 0.01, 0.001, 1e-04, 1e-05), selected = 0.05),
           sliderInput(inputId = "featureCalcLFC", label = "Log2 FC threshold (+/-)", min = 0, max = 10, value = 0.5, step = 0.25),
           br(),
-          tableOutput(outputId = "featureCalcTable")
+          tableOutput(outputId = "featureCalcTable"),
+          br(),
+          helpText("Download an Excel file of DE results with only the features that meet these thresholds:"),
+          downloadButton(outputId = "dlfeatureCalcTable", label = paste("Download DE Results")),
         )
       ), 
       column(
