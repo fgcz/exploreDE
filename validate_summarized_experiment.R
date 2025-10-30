@@ -109,26 +109,11 @@ validate_assays <- function(se, add_result) {
     return()
   }
 
-  # Check for assays with distribution prefixes
-  dist_assays <- names(assays_list)[grepl("^(exponential_|poisson_|normal_)", names(assays_list))]
-  if (length(dist_assays) == 0) {
-    add_result("dist_assay", "WARNING", "No assay with distribution prefix found (recommended: exponential_*, poisson_*, or normal_*)")
-  } else {
-    add_result("dist_assay", "PASS", paste("Found assay(s) with distribution prefix:", paste(dist_assays, collapse = ", ")))
-  }
+  # Check that at least one numeric assay exists
+  add_result("assays_presence", "PASS", paste("Found", length(assays_list), "assay(s):", paste(names(assays_list), collapse = ", ")))
 
-  # Check assay naming conventions
-  valid_prefixes <- c("exponential_", "poisson_", "normal_", "label_")
-  invalid_names <- names(assays_list)[!grepl(paste0("^(", paste(valid_prefixes, collapse = "|"), ")"), names(assays_list))]
-
-  if (length(invalid_names) > 0) {
-    add_result(
-      "assay_naming", "WARNING",
-      paste("Assays with non-standard names:", paste(invalid_names, collapse = ", "))
-    )
-  } else {
-    add_result("assay_naming", "PASS", "All assays follow naming conventions")
-  }
+  # Note: Distribution information is not encoded in assay names per specification.
+  # Tools should determine distribution statistically using moment-based classification.
 
   # Check assay dimensions consistency
   if (length(assays_list) > 1) {
@@ -430,7 +415,7 @@ print_validation_results <- function(results) {
   if (length(results$errors) > 0) {
     cat("ERRORS:\n")
     for (error in results$errors) {
-      cat("  ❌", error, "\n")
+      cat("  [ERROR]", error, "\n")
     }
     cat("\n")
   }
@@ -438,7 +423,7 @@ print_validation_results <- function(results) {
   if (length(results$warnings) > 0) {
     cat("WARNINGS:\n")
     for (warning in results$warnings) {
-      cat("  ⚠️", warning, "\n")
+      cat("  [WARN]", warning, "\n")
     }
     cat("\n")
   }
@@ -446,7 +431,7 @@ print_validation_results <- function(results) {
   cat("DETAILED RESULTS:\n")
   for (check_name in names(results$checks)) {
     check <- results$checks[[check_name]]
-    status_icon <- if (check$status == "PASS") "✅" else if (check$status == "WARNING") "⚠️" else "❌"
+    status_icon <- if (check$status == "PASS") "[PASS]" else if (check$status == "WARNING") "[WARN]" else if (check$status == "INFO") "[INFO]" else "[ERROR]"
     cat("  ", status_icon, check_name, ":", check$message, "\n")
   }
 }
@@ -460,7 +445,7 @@ create_example_se <- function() {
   sample_ids <- c("sample1", "sample2", "sample3", "sample4")
 
   # Create assays
-  exponential_counts <- matrix(
+  counts <- matrix(
     c(
       100, 150, 200, 180,
       50, 60, 20, 25,
@@ -470,11 +455,11 @@ create_example_se <- function() {
     dimnames = list(gene_ids, sample_ids)
   )
 
-  # Transformed abundance (log2) - normal distribution
-  normal_vst <- log2(exponential_counts + 1)
+  # Transformed abundance (log2)
+  vst <- log2(counts + 1)
 
-  # Normalized abundance (TPM - example) - exponential distribution
-  exponential_tpm <- exponential_counts / colSums(exponential_counts) * 1e6
+  # Normalized abundance (TPM - example)
+  tpm <- counts / colSums(counts) * 1e6
 
   # Create colData
   col_data <- DataFrame(
@@ -509,7 +494,7 @@ create_example_se <- function() {
   metadata_list <- list(
     de_tests = list(
       treated_vs_control = list(
-        assay_used = "normal_vst",
+        assay_used = "vst",
         factor_used = "factor_condition",
         contrast_formula = "factor_condition_treated - factor_condition_control",
         model = "DESeq2"
@@ -522,9 +507,9 @@ create_example_se <- function() {
   # Construct SummarizedExperiment
   se <- SummarizedExperiment(
     assays = list(
-      exponential_counts = exponential_counts,
-      normal_vst = normal_vst,
-      exponential_tpm = exponential_tpm
+      counts = counts,
+      vst = vst,
+      tpm = tpm
     ),
     rowData = list(
       gene_id = feature_annotation,

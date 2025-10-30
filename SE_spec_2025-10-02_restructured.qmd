@@ -65,9 +65,7 @@ All column names use prefixes to identify their type and purpose. This enables a
 | `var` | `effect_` | numeric | Effect sizes for DE (volcano x-axis) | `effect_log2fc` |
 | `var` | `score_` | numeric | Statistical scores for DE (volcano y-axis) | `score_p_value`, `score_fdr` |
 | `obs` | `factor_` | categorical or numeric | Experimental factors/covariates | `factor_condition`, `factor_batch` |
-| `assays` | `exponential_*` | numeric | Raw, unnormalized abundance | e.g. `exponential_counts` |
-| `assays` | `exponential_*` | numeric | Normalized abundance (linear space) | e.g. `exponential_tpm` |
-| `assays` | `normal_` | numeric | Transformed abundance (log space) | `normal_vsn` |
+| `assays` | `raw_*` | numeric | primary upstream tool output:Raw, unnormalized abundance |
 
 ### Alternative Approach (Not Used)
 
@@ -84,13 +82,14 @@ This was **rejected** in favor of the prefix-based approach for better discovera
 
 ---
 
-# Assays/ Layers/ X (Counts / Abundances/ Intesnities)
+# Assays/ Layers/ X (Counts / Abundances/ Intensities)
 
 - Abundance matrices stored in `assays()`. Rows = features, columns = samples.
 - Abundance matrices stored in `layers` in AnnData, Rows = obs, columns = vars.
 
-The prefix encodes the distribution of the data: e.g. 'exponential_', 'poisson_', 'normal_' etc.
-First assay is used for exploreDE's "raw_" field.
+Assay names should be descriptive of the data type or transformation applied (e.g., `counts`, `tpm`, `vst`, `log2_tpm`).
+
+The distribution of the data (exponential, poisson, normal) is **not encoded in the assay name**. Instead, tools can determine the sampling distribution statistically when needed for visualization or analysis.
 
 **Important:** Annotate in `metadata(se)` which assay was used for each DE test.
 
@@ -103,7 +102,7 @@ gene_ids <- c("GENE001", "GENE002", "GENE003")
 sample_ids <- c("sample1", "sample2", "sample3", "sample4")
 
 # Create count matrices
-exponential_counts <- matrix(
+counts <- matrix(
   c(100, 150, 200, 180,
     50, 60, 20, 25,
     1000, 1100, 1050, 1020),
@@ -111,45 +110,81 @@ exponential_counts <- matrix(
   dimnames = list(gene_ids, sample_ids)
 )
 
-# Transformed abundance (log2) - normal distribution
-normal_vst <- log2(exponential_counts + 1)
+# Transformed abundance (log2)
+vst <- log2(counts + 1)
 
-# Normalized abundance (TPM - example) - exponential distribution
-exponential_tpm <- exponential_counts / colSums(exponential_counts) * 1e6
+# Normalized abundance (TPM - example)
+tpm <- counts / colSums(counts) * 1e6
 
 se <- SummarizedExperiment(
   assays = list(
-    exponential_counts = exponential_counts,
-    normal_vst = normal_vst,
-    exponential_tpm = exponential_tpm
+    counts = counts,
+    vst = vst,
+    tpm = tpm
   ))
 
 ```
 
 
-| Assay Pattern | Type | Cardinality |  Distribution |  Description |
-|:---------------|:------|:-------------|:-------|:---------------|
-| `exponential_*` | numeric | 0:N | exponential | exponentially distributed counts or intensities |
-| `poisson_*` | numeric | 0:N | poisson | poisson distributed counts or intensities |
-| `normal_*` | numeric | 0:N | normal | Normalized abundance |
-| `label_*` | numeric/factor/string | 0:N | None | Feature-specific numeric or string matrices with feature-level information per sample |
+| Assay Type | Description | Examples |
+|:-----------|:------------|:---------|
+| Numeric abundance | Raw, normalized, or transformed abundance data | `counts`, `tpm`, `fpkm`, `intensities` |
+| Transformed abundance | Log-transformed or variance-stabilized data | `log2_tpm`, `vst`, `voom`, `vsn` |
+| Metadata matrices | Feature-specific annotations per sample | `nr_peptides`, `stdev`, `retention_time` |
 
-
-
-**Examples**
+**Common Assay Name Examples**
 
 | Assay Name | Description |
 |:------------|:-------------|
-| `exponential_tpm` | Transcripts per million |
-| `exponential_fpkm` | Fragments per kilobase per million |
-| `normal_log2_tpm` | Log2-transformed TPM |
-| `normal_vst` | Variance stabilizing transformation (DESeq2) |
-| `normal_voom` | Voom transformation (limma) |
-| `normal_vsn` | Variance stabilizing normalization |
-| `label_nr_peptides` | Number of peptides quantified per protein per sample |
-| `label_stdev` | Standard deviation of technical replicates  |
-| `label_retention_time` | Chromatographic retention time (metabolomics) |
+| `counts` | Raw read counts (RNA-seq) |
+| `tpm` | Transcripts per million |
+| `fpkm` | Fragments per kilobase per million |
+| `intensities` | Raw MS intensities (proteomics/metabolomics) |
+| `log2_tpm` | Log2-transformed TPM |
+| `vst` | Variance stabilizing transformation (DESeq2) |
+| `voom` | Voom transformation (limma) |
+| `vsn` | Variance stabilizing normalization |
+| `nr_peptides` | Number of peptides quantified per protein per sample |
+| `stdev` | Standard deviation of technical replicates  |
+| `retention_time` | Chromatographic retention time (metabolomics) |
 
+## Determining Data Distribution
+
+Tools can determine the sampling distribution of assay data statistically using moment-based classification. This approach uses skewness and kurtosis to classify data and suggest appropriate visualization scales.
+
+**Code example:**
+
+```{r classify-scale-function}
+library(moments)
+
+classify_scale <- function(x) {
+  x <- x[is.finite(x)]
+  sk <- skewness(x)
+  ku <- kurtosis(x)
+
+  # Default
+  scale <- "linear"
+  category <- "normal_like"
+
+  # Decision rules
+  # - If data are strictly positive AND right-skewed → log scale
+  # - If skewness > 0.8 OR kurtosis > 5 → "exp_like"
+  if (all(x > 0) && (sk > 0.8 || ku > 5)) {
+    scale <- "log"
+    category <- "exp_like"
+  }
+
+  list(skewness = sk, kurtosis = ku,
+       classification = category,
+       suggested_x_scale = scale)
+}
+
+# Example usage with the assays created above
+classify_scale(as.vector(assays(se)$counts))
+classify_scale(as.vector(assays(se)$vst))
+```
+
+This approach allows visualization tools to automatically select appropriate scales (linear vs. log) and statistical methods based on the empirical distribution of the data, without requiring distribution information to be encoded in assay names.
 
 ---
 
@@ -387,7 +422,7 @@ For each DE test, the following information should be stored in the metadata/uns
 
 | Field | Required? | Type | Description | Example |
 |-------|------|-------------|---------|---------|
-| `assay_used` | Yes | string | Which assay was used for DE | `"normal_vsn"` |
+| `assay_used` | Yes | string | Which assay was used for DE | `"vsn"` |
 | `factor_used` | Yes | character vector | Which `factor_*` column(s) from `colData` were used | `c("factor_treatment", "factor_batch")` |
 | `contrast_formula` | No | string | Exact mathematical formula | `"factor_treatment_B - factor_treatment_control"` |
 | `model` | No | string | Statistical model used (e.g., "DESeq2", "limma", "prolfqua") | `"DESeq2"` |
@@ -397,14 +432,14 @@ For each DE test, the following information should be stored in the metadata/uns
 ```{r de-metadata-example}
 metadata(se)$de_tests <- list(
   treatmentB_vs_control = list(
-    assay_used = "normal_vst",
+    assay_used = "vst",
     factor_used = c("factor_condition", "factor_batch"),
     contrast_formula = paste("factor_condition_treatmentB", 
                              "- factor_condition_control"),
     model = "DESeq2"
   ),
   timepoint8h_vs_0h = list(
-    assay_used = "normal_vst",
+    assay_used = "vst",
     factor_used = "factor_timepoint",
     contrast_formula = paste("factor_timepoint_8", 
                              "- factor_timepoint_0"),
@@ -524,7 +559,7 @@ sample_ids <- c("sample1", "sample2", "sample3", "sample4")
 # ============================================================================
 # 2. Create assays (Section 1: Assays)
 # ============================================================================
-exponential_counts <- matrix(
+counts <- matrix(
   c(100, 150, 200, 180,
     50, 60, 20, 25,
     1000, 1100, 1050, 1020),
@@ -532,11 +567,11 @@ exponential_counts <- matrix(
   dimnames = list(gene_ids, sample_ids)
 )
 
-# Transformed abundance (log2) - normal distribution
-normal_vst <- log2(exponential_counts + 1)
+# Transformed abundance (log2)
+vst <- log2(counts + 1)
 
-# Normalized abundance (TPM - example) - exponential distribution
-exponential_tpm <- exponential_counts / colSums(exponential_counts) * 1e6
+# Normalized abundance (TPM - example)
+tpm <- counts / colSums(counts) * 1e6
 
 # ============================================================================
 # 3. Create colData (Section 3: Samples/obs)
@@ -580,7 +615,7 @@ de_treated_vs_control <- DataFrame(
 metadata_list <- list(
   de_tests = list(
     treated_vs_control = list(
-      assay_used = "normal_vst",
+      assay_used = "vst",
       factor_used = "factor_condition",
       contrast_formula = paste("factor_condition_treated", 
                                "- factor_condition_control"),
@@ -596,9 +631,9 @@ metadata_list <- list(
 # ============================================================================
 se <- SummarizedExperiment(
   assays = list(
-    exponential_counts = exponential_counts,
-    normal_vst = normal_vst,
-    exponential_tpm = exponential_tpm
+    counts = counts,
+    vst = vst,
+    tpm = tpm
   ),
   rowData = list(
     gene_id = feature_annotation,
@@ -615,8 +650,8 @@ se <- SummarizedExperiment(
 se
 
 # Access different components
-assays(se)$exponential_counts[1:3, 1:4]
-assays(se)$normal_vst[1:3, 1:4]
+assays(se)$counts[1:3, 1:4]
+assays(se)$vst[1:3, 1:4]
 colData(se)[1:4, ]
 rowData(se)[["gene_id"]][1:3, ]
 rowData(se)[["DE_treated_vs_control"]][1:3, ]
@@ -652,9 +687,8 @@ The validator performs the following checks:
 1. **Basic Structure**: Confirms object is a SummarizedExperiment
 2. **Required Components**: Verifies presence of assays, rowData, colData, metadata
 3. **Assays**: 
-   - Checks for at least one assay with distribution prefix
-   - Validates naming conventions (`exponential_*`, `poisson_*`, `normal_*`, `label_*`)
-   - Ensures consistent dimensions
+   - Checks for at least one numeric assay
+   - Ensures consistent dimensions across all assays
 4. **colData**:
    - Verifies row names are present and distinct
    - Checks for `factor_*` columns
@@ -706,9 +740,9 @@ validation_result <- validate_summarized_experiment(se_example, verbose = TRUE)
 
 # Check overall status
 if (validation_result$overall_status == "PASS") {
-  cat("\n✅ SummarizedExperiment is valid!\n")
+  cat("\n[PASS] SummarizedExperiment is valid!\n")
 } else {
-  cat("\n❌ Validation failed\n")
+  cat("\n[FAIL] Validation failed\n")
   cat("\nErrors:\n")
   print(validation_result$errors)
 }
