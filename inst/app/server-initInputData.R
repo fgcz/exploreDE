@@ -364,6 +364,10 @@ if (grepl("gstore", dataDir) | exists("fileSE")) {
   if (is.null(dataUrl)) {
     allowed = TRUE
   }
+  if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
+    message("Loading SUSHI course data, so no LDAP checks required.")    
+    return(list(allowed = TRUE, ldap_role = "course"))  
+  }
   if (allowed) {
     if (grepl("EzResult.RData", dataDir)) {
       dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
