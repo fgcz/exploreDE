@@ -32,7 +32,10 @@ editor:
 
 # Overview
 
-This document specifies the data structure standard for storing omics data (genomics, proteomics, metabolomics) and differential expression (DE) analysis results for the `exploreDE` Shiny application.
+This document specifies the data structure standard for storing omics data (genomics, proteomics, metabolomics) and differential expression (DE) analysis results.
+
+
+
 
 ## Data Container Mapping
 
@@ -50,37 +53,6 @@ The specification bridges two ecosystem formats:
 
 
 
-## Column Naming Convention
-
-**Adopted approach: Column prefixes encode semantic type**
-
-All column names use prefixes to identify their type and purpose. This enables automatic discovery and type-aware filtering/subsetting.
-
-### Standard Column Names Prefixes
-
-| Container | Prefix | Type | Usage | Example |
-|--------|------|-------|---------|
-| `var` | `label_` | string or numeric | Feature/sample annotations, identifiers | `label_gene_symbol`, `label_nr_peptides` |
-| `var` | `hierarchy_` | string or numeric | Hierarchical data structure (combined columns must be distinct) | `hierarchy_protein`, `hierarchy_peptide`, `hierarchy_site` |
-| `var` | `effect_` | numeric | Effect sizes for DE (volcano x-axis) | `effect_log2fc` |
-| `var` | `score_` | numeric | Statistical scores for DE (volcano y-axis) | `score_p_value`, `score_fdr` |
-| `obs` | `factor_` | categorical or numeric | Experimental factors/covariates | `factor_condition`, `factor_batch` |
-| `assays` | `raw_*` | numeric | primary upstream tool output:Raw, unnormalized abundance |
-
-### Alternative Approach (Not Used)
-
-Option 2 would store column mappings in metadata:
-
-```{r option2-metadata-mapping, eval=FALSE}
-metadata(se)$var$label <- c("entrez_id", "ensembl_gene_id", "uniprot_id", "flydb_id", 
-"assignment_method", "nr_peptides", "global_base_mean")
-metadata(se)$obs$factor <- c("condition", "batch", "sex", "timepoint", "genotype")
-```
-
-This was **rejected** in favor of the prefix-based approach for better discoverability.
-
-
----
 
 # Assays/ Layers/ X (Counts / Abundances/ Intensities)
 
@@ -188,7 +160,7 @@ This approach allows visualization tools to automatically select appropriate sca
 
 ---
 
-# Var  (rawData/Features)
+# Var/Varm  (rawData/Features)
 
 Feature annotations and differential expression results stored in `var` or `rowData()`.
 
@@ -218,6 +190,8 @@ All columns can be used for filtering and subsetting. Column types (string, inte
 | `label_global_base_mean` | numeric | No | No | Mean abundance across all samples |
 | `label_assignment_method` | string | No | No | Annotation method (MS1, MS2, manual) |
 
+
+The description column is used to store free-text description of the feature e.g. "Amyloid-beta precursor protein", "BRCA1 DNA repair", "EGFR receptor", or for metabolomics compounds "Caffeine", "Theobromine", "Theophylline", etc. this information is primarily used for searching using names used by biologists.
 
 **Code example:**
 
@@ -369,7 +343,7 @@ metadata(se)$hierarchy_definition <- c("protein", "site", "multiplicity")
 
 ---
 
-## Differential Expression Tables
+## Differential Expression Tables (Varm)
 
 **One set of columns per DE test performed.**
 
@@ -458,13 +432,13 @@ de_metadata <- metadata(se)$de_tests$treatmentB_vs_control
 
 Sample metadata and experimental design information stored in `colData()`.
 
-
+TODO: How to accomodate different sample types : e.g. QC samples, and differentiate them from biological samples etc.
 
 | Column Name | Type | Required? | Distinct? | Description |
 |-------------|:------|:-----------|:----------|:-------------|
 | `<rowname>` | string | Yes | Yes |  Sample identifier matching colnames of all assays (typically same as `sample_id`) |
 | `sample_label` | string | No | Yes | Human-readable sample name |
-| `b-fabric_sample_id` | string | No | No | B-Fabric database ID |
+| `bfabric_sample_id` | string | No | No | B-Fabric database ID |
 | `factor_*` | categorical or numeric | No | no | Experimental factors (condition, sex, treatment, batch, timepoint, genotype) |
 | `organism` | string | No | No | Species name |
 | `feature_level` | string | No | No | Feature type (isoform/gene, peptide/protein) |
@@ -503,8 +477,8 @@ col_data <- DataFrame(
 
 Unstructured metadata stored in `metadata(se)`
 
-- to represent differential expression analysis annotations not stored in the DE tables.
-- to represent hierarchical data structures not stored in the rowData tables.
+- to represent differential expression analysis annotations not stored in the DE tables (see section Differential Expression Tables (Varm)).
+- to represent hierarchical data structures not stored in the rowData tables (see section Hierarchical Data Columns).
 
 
 ## TODO : Pathway Analyses Results
