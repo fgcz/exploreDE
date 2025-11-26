@@ -1,23 +1,23 @@
 # Check if GSEA tab is accessed without results
 observeEvent(input$tabs, {
   if (input$tabs == "gseaTab") {
-    if (is.null(inputDataReactive()$goObjects$gsea) || 
-        length(inputDataReactive()$goObjects$gsea) == 0) {
+    if (is.null(inputDataReactive()$goObjects$gsea) ||
+      length(inputDataReactive()$goObjects$gsea) == 0) {
       showModal(modalDialog(
-        title = "No GSEA Results", 
+        title = "No GSEA Results",
         "No pathway analysis was performed for this dataset, so this tab is empty.",
         footer = modalButton("OK")
       ))
       return()
     }
-    
+
     # Check if current selection has no results
-    if (!is.null(input$gseaType) && 
-        !is.null(inputDataReactive()$goObjects$gsea[[input$gseaType]])) {
+    if (!is.null(input$gseaType) &&
+      !is.null(inputDataReactive()$goObjects$gsea[[input$gseaType]])) {
       er <- inputDataReactive()$goObjects$gsea[[input$gseaType]]
       if (is.null(er) || nrow(er@result) == 0) {
         showModal(modalDialog(
-          title = "No GSEA Results", 
+          title = "No GSEA Results",
           "There are no results for this selection."
         ))
       }
@@ -44,14 +44,16 @@ param <- inputDataReactive()$param
 
 # Update GSEA type choices
 updateSelectInput(
-  session = session, 
-  inputId = "gseaType", 
-  choices = names(gsea), 
+  session = session,
+  inputId = "gseaType",
+  choices = names(gsea),
   selected = names(gsea)[[1]]
 )
 
 # Render design output
-output$gseaDesign <- renderText({design})
+output$gseaDesign <- renderText({
+  design
+})
 
 # Set default FDR threshold if missing
 if (is.null(param$fdrThreshGSEA)) {
@@ -93,102 +95,103 @@ output$gseaThreshOverview <- function() {
 gseaToUse <- reactiveValues(er = NULL)
 
 # Main observer for GSEA type changes
-observeEvent(input$gseaType, {
-  
-  gseaToUse$er = NULL
-  gseaToUse$er_symbol = NULL
-  er <- gsea[[input$gseaType]]
-  
-  # Check if results exist and show modal if empty
-  if (input$tabs == "gseaTab" && (is.null(er) || nrow(er@result) == 0)) {
-    showModal(modalDialog(
-      title = "No GSEA Results", 
-      "There are no results for this selection."
-    ))
-    return()
-  }
-  
-  # Process results if they exist
-  if (!is.null(er) && nrow(er@result) > 0) {
-    
-    # Handle GO terms (BP, MF, CC) differently
-    if (input$gseaType %in% c("BP", "MF", "CC")) {
-      er@result$Label <- ""
-      
-      # Create labels for GO terms
-      for (i in seq_along(er@result$Description)) {
-        desc <- er@result$Description[i]
-        label <- paste0(er@result$ID[i], "\n", desc)
-        if (!is.na(label) && nchar(label) > 45) {
-          label <- substr(label, 1, 45)
-        }
-        er@result$Label[i] <- label
-      }
-      colsToTable <- c("Label", "enrichmentScore", "NES", "qvalue", "geneName")
-      # Convert gene IDs to gene names for core enrichment
-      # Split all core enrichment strings and collect unique gene IDs
-      all_core_genes <- er@result$core_enrichment %>%
-        strsplit("/") %>%
-        unlist() %>%
-        unique()
-      
-      # Create lookup table for gene ID to gene name conversion
-      gene_lookup <- setNames(
-        metadata(se)$enrichInput$seqAnno$gene_name,
-        metadata(se)$enrichInput$seqAnno$gene_id
-      )
-      er_symbol <- er
-      # Convert core enrichment from gene IDs to gene names
-      er_symbol@result$core_enrichment <- vapply(er_symbol@result$core_enrichment, function(genes_string) {
-        gene_ids <- strsplit(genes_string, "/")[[1]]
-        gene_names <- gene_lookup[gene_ids]
-        gene_names <- gene_names[!is.na(gene_names)]
-        paste(gene_names, collapse = "/")
-      }, character(1), USE.NAMES = FALSE)
-    } else {
-      # For other pathway databases (e.g., C2)
-      er_symbol <- er
-      colsToTable <- c("Description", "enrichmentScore", "NES", "qvalue", "core_enrichment")
+observeEvent(input$gseaType,
+  {
+    gseaToUse$er <- NULL
+    gseaToUse$er_symbol <- NULL
+    er <- gsea[[input$gseaType]]
+
+    # Check if results exist and show modal if empty
+    if (input$tabs == "gseaTab" && (is.null(er) || nrow(er@result) == 0)) {
+      showModal(modalDialog(
+        title = "No GSEA Results",
+        "There are no results for this selection."
+      ))
+      return()
     }
-    # Prepare log2 ratio data for plotting
-    log2RatioGSEA <- metadata(se)$enrichInput$seqAnno$log2Ratio
-    names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno$gene_name
-    log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
-    
-    # Update reactive values
-    gseaToUse$er <- er
-    gseaToUse$er_symbol <- er_symbol
-    gseaToUse$log2RatioGSEA <- log2RatioGSEA
-    gseaToUse$colsToTable <- colsToTable
-  }
-  
-  
-  # Clear existing plots
-  for (x in names(gseaPlotReactive)) {
-    gseaPlotReactive[[x]] <- NULL
-  }
-  
-  # Reset table selection AFTER updating reactive values
-  shinyjs::delay(100, {
-    proxy <- DT::dataTableProxy("selectedTable_GSEA")
-    DT::selectRows(proxy, NULL)
-  })
-  
-}, ignoreNULL = FALSE, ignoreInit = TRUE)
+
+    # Process results if they exist
+    if (!is.null(er) && nrow(er@result) > 0) {
+      # Handle GO terms (BP, MF, CC) differently
+      if (input$gseaType %in% c("BP", "MF", "CC")) {
+        er@result$Label <- ""
+
+        # Create labels for GO terms
+        for (i in seq_along(er@result$Description)) {
+          desc <- er@result$Description[i]
+          label <- paste0(er@result$ID[i], "\n", desc)
+          if (!is.na(label) && nchar(label) > 45) {
+            label <- substr(label, 1, 45)
+          }
+          er@result$Label[i] <- label
+        }
+        colsToTable <- c("Label", "enrichmentScore", "NES", "qvalue", "geneName")
+        # Convert gene IDs to gene names for core enrichment
+        # Split all core enrichment strings and collect unique gene IDs
+        all_core_genes <- er@result$core_enrichment %>%
+          strsplit("/") %>%
+          unlist() %>%
+          unique()
+
+        # Create lookup table for gene ID to gene name conversion
+        gene_lookup <- setNames(
+          metadata(se)$enrichInput$seqAnno$gene_name,
+          metadata(se)$enrichInput$seqAnno$gene_id
+        )
+        er_symbol <- er
+        # Convert core enrichment from gene IDs to gene names
+        er_symbol@result$core_enrichment <- vapply(er_symbol@result$core_enrichment, function(genes_string) {
+          gene_ids <- strsplit(genes_string, "/")[[1]]
+          gene_names <- gene_lookup[gene_ids]
+          gene_names <- gene_names[!is.na(gene_names)]
+          paste(gene_names, collapse = "/")
+        }, character(1), USE.NAMES = FALSE)
+      } else {
+        # For other pathway databases (e.g., C2)
+        er_symbol <- er
+        colsToTable <- c("Description", "enrichmentScore", "NES", "qvalue", "core_enrichment")
+      }
+      # Prepare log2 ratio data for plotting
+      log2RatioGSEA <- metadata(se)$enrichInput$seqAnno$log2Ratio
+      names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno$gene_name
+      log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
+
+      # Update reactive values
+      gseaToUse$er <- er
+      gseaToUse$er_symbol <- er_symbol
+      gseaToUse$log2RatioGSEA <- log2RatioGSEA
+      gseaToUse$colsToTable <- colsToTable
+    }
+
+
+    # Clear existing plots
+    for (x in names(gseaPlotReactive)) {
+      gseaPlotReactive[[x]] <- NULL
+    }
+
+    # Reset table selection AFTER updating reactive values
+    shinyjs::delay(100, {
+      proxy <- DT::dataTableProxy("selectedTable_GSEA")
+      DT::selectRows(proxy, NULL)
+    })
+  },
+  ignoreNULL = FALSE,
+  ignoreInit = TRUE
+)
 
 # Render the main GSEA table
 output$selectedTable_GSEA <- DT::renderDataTable({
   req(gseaToUse$er, gseaToUse$colsToTable)
-  
+
   DT::datatable(
     data = as.data.frame(gseaToUse$er)[, gseaToUse$colsToTable],
-    filter = "top", 
+    filter = "top",
     class = "cell-border stripe",
-    rownames = FALSE, 
+    rownames = FALSE,
     caption = "Click pathways in this table to add them to the figures on the right"
   ) %>%
     DT::formatStyle(
-      columns = colnames(.$x$data), 
+      columns = colnames(.$x$data),
       `font-size` = "12px"
     ) %>%
     DT::formatSignif(
@@ -199,7 +202,7 @@ output$selectedTable_GSEA <- DT::renderDataTable({
       columns = c("enrichmentScore", "NES"),
       color = styleInterval(cuts = 0, values = c("blue", "darkorange")),
       fontWeight = "bold"
-    ) %>% 
+    ) %>%
     DT::formatStyle(
       columns = "qvalue",
       color = styleInterval(cuts = param$fdrThreshGSEA, values = c("green", "black")),
@@ -226,261 +229,310 @@ output$dlTableGSEA <- downloadHandler(
 )
 
 # Observer for plot generation when rows are selected
-observeEvent({
-  input$textSizeGSEA
-  input$nodeSizeGSEA
-  input$selectedTable_GSEA_rows_selected
-  input$scaleLimGSEA
-  input$gseaMaxOver
-  input$gseaDodgeY
-  input$gseaDodgeX
-  input$nodeBorderGSEA
-  input$ridgePlotColourByGSEA
-  input$gseaLabelAlpha
-  input$gseaVisPType
-  input$gseaVisPThreshold
-  input$gseaVisLFC
-  input$gseaVisFilterMode
-}, {
-  
-  req(gseaToUse$er_symbol)
-  current_er <- isolate(gseaToUse$er)
-  current_er_symbol <- isolate(gseaToUse$er_symbol)
-  req(!is.null(input$selectedTable_GSEA_rows_selected))
-  req(current_er)
-  
-  # Subset enrichment result for selected pathways
-  erRP <- clusterProfiler::slice(current_er, input$selectedTable_GSEA_rows_selected)
-  labelColumn <- ifelse(input$gseaType == "C2", "Description", "Label")
+observeEvent(
+  {
+    input$textSizeGSEA
+    input$nodeSizeGSEA
+    input$selectedTable_GSEA_rows_selected
+    input$scaleLimGSEA
+    input$gseaMaxOver
+    input$gseaDodgeY
+    input$gseaDodgeX
+    input$nodeBorderGSEA
+    input$ridgePlotColourByGSEA
+    input$gseaLabelAlpha
+    input$gseaVisPType
+    input$gseaVisPThreshold
+    input$gseaVisLFC
+    input$gseaVisFilterMode
+  },
+  {
+    req(gseaToUse$er_symbol)
+    current_er <- isolate(gseaToUse$er)
+    current_er_symbol <- isolate(gseaToUse$er_symbol)
+    req(!is.null(input$selectedTable_GSEA_rows_selected))
+    req(current_er)
 
-  # Apply gene filtering based on visualization thresholds
-  log2RatioGSEA <- gseaToUse$log2RatioGSEA
-  log2RatioGSEA_full <- log2RatioGSEA  # Keep full list for reference
-  genes_pass_filter <- names(log2RatioGSEA)  # Default: all genes pass
+    # Subset enrichment result for selected pathways
+    erRP <- clusterProfiler::slice(current_er, input$selectedTable_GSEA_rows_selected)
+    labelColumn <- ifelse(input$gseaType == "C2", "Description", "Label")
 
-  cat("\n=== GSEA Filtering Debug ===\n")
-  cat("Filter mode:", input$gseaVisFilterMode, "\n")
-  cat("P-value type:", input$gseaVisPType, "| Threshold:", input$gseaVisPThreshold, "\n")
-  cat("LFC threshold:", input$gseaVisLFC, "\n")
-  cat("Total genes before filter:", length(log2RatioGSEA), "\n")
+    # Apply gene filtering based on visualization thresholds
+    log2RatioGSEA <- gseaToUse$log2RatioGSEA
+    log2RatioGSEA_full <- log2RatioGSEA # Keep full list for reference
+    genes_pass_filter <- names(log2RatioGSEA) # Default: all genes pass
 
-  if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode != "none") {
-    # Get p-values for genes
-    cat("Checking metadata paths...\n")
-    cat("metadata(se)$seqAnno exists:", !is.null(metadata(se)$seqAnno), "\n")
-    cat("metadata(se)$enrichInput$seqAnno exists:", !is.null(metadata(se)$enrichInput$seqAnno), "\n")
+    cat("\n=== GSEA Filtering Debug ===\n")
+    cat("Filter mode:", input$gseaVisFilterMode, "\n")
+    cat("P-value type:", input$gseaVisPType, "| Threshold:", input$gseaVisPThreshold, "\n")
+    cat("LFC threshold:", input$gseaVisLFC, "\n")
+    cat("Total genes before filter:", length(log2RatioGSEA), "\n")
 
-    # Try the enrichInput path first (like ORA), then fall back to direct path
-    seqAnno <- metadata(se)$enrichInput$seqAnno
-    if (is.null(seqAnno)) {
-      seqAnno <- metadata(se)$seqAnno
-    }
+    if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode != "none") {
+      # Get p-values for genes
+      cat("Checking metadata paths...\n")
+      cat("metadata(se)$seqAnno exists:", !is.null(metadata(se)$seqAnno), "\n")
+      cat("metadata(se)$enrichInput$seqAnno exists:", !is.null(metadata(se)$enrichInput$seqAnno), "\n")
 
-    # Determine which p-value column to use
-    pval_col <- if (!is.null(input$gseaVisPType) && input$gseaVisPType == "FDR") "fdr" else "pValue"
-
-    cat("Looking for column:", pval_col, "\n")
-    if (!is.null(seqAnno)) {
-      cat("seqAnno columns:", paste(colnames(seqAnno), collapse=", "), "\n")
-    } else {
-      cat("seqAnno is NULL!\n")
-    }
-
-    # Validate that the column exists
-    if (!is.null(seqAnno) && pval_col %in% colnames(seqAnno) && "gene_name" %in% colnames(seqAnno)) {
-      # Match genes by name
-      gene_match_idx <- match(names(log2RatioGSEA), seqAnno$gene_name)
-      gene_match_idx <- gene_match_idx[!is.na(gene_match_idx)]
-
-      cat("Matched genes:", length(gene_match_idx), "\n")
-
-      if (length(gene_match_idx) > 0) {
-        # Get p-values for matched genes
-        gene_pvals <- seqAnno[[pval_col]][gene_match_idx]
-        names(gene_pvals) <- seqAnno$gene_name[gene_match_idx]
-
-        # Filter genes based on thresholds
-        genes_pass_filter <- names(log2RatioGSEA)[
-          !is.na(gene_pvals[names(log2RatioGSEA)]) &
-          gene_pvals[names(log2RatioGSEA)] <= input$gseaVisPThreshold &
-          abs(log2RatioGSEA) >= input$gseaVisLFC
-        ]
-        genes_pass_filter <- genes_pass_filter[!is.na(genes_pass_filter)]
-
-        cat("Genes passing filter:", length(genes_pass_filter), "\n")
-
-        # Apply filter mode
-        if (input$gseaVisFilterMode == "genes" && length(genes_pass_filter) > 0) {
-          # Filter genes entirely - only keep genes meeting thresholds
-          log2RatioGSEA <- log2RatioGSEA[names(log2RatioGSEA) %in% genes_pass_filter]
-          cat("After filtering log2RatioGSEA:", length(log2RatioGSEA), "genes\n")
-        }
+      # Try the enrichInput path first (like ORA), then fall back to direct path
+      seqAnno <- metadata(se)$enrichInput$seqAnno
+      if (is.null(seqAnno)) {
+        seqAnno <- metadata(se)$seqAnno
       }
-    } else {
-      cat("Validation failed - column or seqAnno not found\n")
+
+      # Determine which p-value column to use
+      pval_col <- if (!is.null(input$gseaVisPType) && input$gseaVisPType == "FDR") "fdr" else "pValue"
+
+      cat("Looking for column:", pval_col, "\n")
+      if (!is.null(seqAnno)) {
+        cat("seqAnno columns:", paste(colnames(seqAnno), collapse = ", "), "\n")
+      } else {
+        cat("seqAnno is NULL!\n")
+      }
+
+      # Validate that the column exists
+      if (!is.null(seqAnno) && pval_col %in% colnames(seqAnno) && "gene_name" %in% colnames(seqAnno)) {
+        # Match genes by name
+        gene_match_idx <- match(names(log2RatioGSEA), seqAnno$gene_name)
+        gene_match_idx <- gene_match_idx[!is.na(gene_match_idx)]
+
+        cat("Matched genes:", length(gene_match_idx), "\n")
+
+        if (length(gene_match_idx) > 0) {
+          # Get p-values for matched genes
+          gene_pvals <- seqAnno[[pval_col]][gene_match_idx]
+          names(gene_pvals) <- seqAnno$gene_name[gene_match_idx]
+
+          # Filter genes based on thresholds
+          genes_pass_filter <- names(log2RatioGSEA)[
+            !is.na(gene_pvals[names(log2RatioGSEA)]) &
+              gene_pvals[names(log2RatioGSEA)] <= input$gseaVisPThreshold &
+              abs(log2RatioGSEA) >= input$gseaVisLFC
+          ]
+          genes_pass_filter <- genes_pass_filter[!is.na(genes_pass_filter)]
+
+          cat("Genes passing filter:", length(genes_pass_filter), "\n")
+
+          # Apply filter mode
+          if (input$gseaVisFilterMode == "genes" && length(genes_pass_filter) > 0) {
+            # Filter genes entirely - only keep genes meeting thresholds
+            log2RatioGSEA <- log2RatioGSEA[names(log2RatioGSEA) %in% genes_pass_filter]
+            cat("After filtering log2RatioGSEA:", length(log2RatioGSEA), "genes\n")
+          }
+        }
+      } else {
+        cat("Validation failed - column or seqAnno not found\n")
+      }
+      # For "labels" mode, keep all genes in log2RatioGSEA but use genes_pass_filter for labeling
     }
-    # For "labels" mode, keep all genes in log2RatioGSEA but use genes_pass_filter for labeling
-  }
-  cat("=== End Debug ===\n\n")
+    cat("=== End Debug ===\n\n")
 
-  # Network plot
-  cn <- enrichplot::cnetplot(
-    x = current_er_symbol,
-    node_label = "none",
-    foldChange = log2RatioGSEA,
-    showCategory = current_er_symbol@result$Description[input$selectedTable_GSEA_rows_selected],
-    cex.params = list(
-      category_label = input$textSizeGSEA / 15, 
-      gene_label = input$textSizeGSEA / 18, 
-      gene_node = input$nodeSizeGSEA / 10, 
-      category_node = input$nodeSizeGSEA / 8
+    # Network plot
+    cn <- enrichplot::cnetplot(
+      x = current_er_symbol,
+      node_label = "none",
+      foldChange = log2RatioGSEA,
+      showCategory = current_er_symbol@result$Description[input$selectedTable_GSEA_rows_selected],
+      cex.params = list(
+        category_label = input$textSizeGSEA / 15,
+        gene_label = input$textSizeGSEA / 18,
+        gene_node = input$nodeSizeGSEA / 10,
+        category_node = input$nodeSizeGSEA / 8
+      )
     )
-  )
-  
-  # Apply colour scale limits
-  cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange > input$scaleLimGSEA] <- input$scaleLimGSEA
-  cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimGSEA] <- -input$scaleLimGSEA
-  
-  # Add custom styling
-  cn <- cn + 
-    geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderGSEA) +
-    scale_colour_gradient2(
-      name = "fold change", 
-      low = "deepskyblue4", 
-      mid = "white", 
-      high = "firebrick", 
-      midpoint = 0
-    )
-  
-  # Prepare data for labels
-  cd1 <- cn$data
-  cd1$name[!is.na(cd1$foldChange)] <- NA
-  cd1$Label <- NA
-  cd1$Label[seq_along(input$selectedTable_GSEA_rows_selected)] <- 
-    current_er_symbol@result[[labelColumn]][input$selectedTable_GSEA_rows_selected]
-  
-  cd2 <- cn$data
-  cd2$name[is.na(cd2$foldChange)] <- NA
-  # Apply gene label filtering if in "labels" mode
-  if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode == "labels") {
-    cd2$name[!(cd2$name %in% genes_pass_filter)] <- NA
-  }
 
-  # Add gene labels if requested
-  if (input$showGeneLabelsGSEA) {
-    cn <- cn + geom_text_repel(
-      data = cd2, 
-      aes(label = name, x = x, y = y), 
-      size = input$textSizeGSEA / 3, 
-      max.overlaps = input$gseaMaxOver, 
-      nudge_x = input$gseaDodgeX / 10, 
+    # Apply colour scale limits
+    cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange > input$scaleLimGSEA] <- input$scaleLimGSEA
+    cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimGSEA] <- -input$scaleLimGSEA
+
+    # Add custom styling
+    cn <- cn +
+      geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderGSEA) +
+      scale_colour_gradient2(
+        name = "fold change",
+        low = "deepskyblue4",
+        mid = "white",
+        high = "firebrick",
+        midpoint = 0
+      )
+
+    # Prepare data for labels
+    cd1 <- cn$data
+    cd1$name[!is.na(cd1$foldChange)] <- NA
+    cd1$Label <- NA
+    cd1$Label[seq_along(input$selectedTable_GSEA_rows_selected)] <-
+      current_er_symbol@result[[labelColumn]][input$selectedTable_GSEA_rows_selected]
+
+    cd2 <- cn$data
+    cd2$name[is.na(cd2$foldChange)] <- NA
+    # Apply gene label filtering if in "labels" mode
+    if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode == "labels") {
+      cd2$name[!(cd2$name %in% genes_pass_filter)] <- NA
+    }
+
+    # Add gene labels if requested
+    if (input$showGeneLabelsGSEA) {
+      cn <- cn + geom_text_repel(
+        data = cd2,
+        aes(label = name, x = x, y = y),
+        size = input$textSizeGSEA / 3,
+        max.overlaps = input$gseaMaxOver,
+        nudge_x = input$gseaDodgeX / 10,
+        nudge_y = input$gseaDodgeY / 10,
+        fontface = "bold",
+        color = "black",
+        bg.color = "white",
+        bg.r = 0.15,
+        na.rm = TRUE
+      )
+    }
+
+    # Add pathway labels
+    cn <- cn + geom_label_repel(
+      data = cd1,
+      aes(label = Label, x = x, y = y, fill = Label),
+      size = input$textSizeGSEA / 3,
+      max.overlaps = input$gseaMaxOver,
+      nudge_x = input$gseaDodgeX / 10,
       nudge_y = input$gseaDodgeY / 10,
-      fontface = "bold", 
-      color = "black", 
-      bg.color = "white", 
-      bg.r = 0.15, 
+      fontface = "bold",
+      show.legend = FALSE,
+      fill = alpha("white", input$gseaLabelAlpha),
       na.rm = TRUE
     )
-  }
-  
-  # Add pathway labels
-  cn <- cn + geom_label_repel(
-    data = cd1, 
-    aes(label = Label, x = x, y = y, fill = Label), 
-    size = input$textSizeGSEA / 3, 
-    max.overlaps = input$gseaMaxOver, 
-    nudge_x = input$gseaDodgeX / 10, 
-    nudge_y = input$gseaDodgeY / 10, 
-    fontface = "bold", 
-    show.legend = FALSE, 
-    fill = alpha("white", input$gseaLabelAlpha), 
-    na.rm = TRUE
-  )
-  
-  gseaPlotReactive$cnetplot <- cn
-  
-  # Ridge plot
-  rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
-  rp <- rp +
-    scale_y_discrete(labels = erRP@result$Label[match(
-      levels(as.factor(rp$plot_env$gs2val.df$category)), 
-      erRP@result$Description
-    )]) +
-    theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeGSEA)) +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    scale_fill_gradient2(
-      low = "dodgerblue4", 
-      high = "firebrick4", 
-      mid = "white", 
-      midpoint = 0
+
+    gseaPlotReactive$cnetplot <- cn
+
+    # Ridge plot
+    rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
+    rp <- rp +
+      scale_y_discrete(labels = erRP@result$Label[match(
+        levels(as.factor(rp$plot_env$gs2val.df$category)),
+        erRP@result$Description
+      )]) +
+      theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeGSEA)) +
+      geom_vline(xintercept = 0, linetype = "dashed") +
+      scale_fill_gradient2(
+        low = "dodgerblue4",
+        high = "firebrick4",
+        mid = "white",
+        midpoint = 0
+      )
+
+    gseaPlotReactive$ridgeplot <- rp
+
+    # Heatmap - use filtered genes when filtering is active
+    # Prepare matrix for ComplexHeatmap
+    sel_idx <- input$selectedTable_GSEA_rows_selected
+    sel_er <- current_er_symbol@result[sel_idx, ]
+
+    # Extract genes for each pathway
+    pathway_genes <- strsplit(sel_er$core_enrichment, "/")
+    names(pathway_genes) <- sel_er$Description
+
+    # Identify all unique genes across these pathways that also pass the filter
+    all_genes_in_pathways <- unique(unlist(pathway_genes))
+    genes_to_show <- intersect(all_genes_in_pathways, genes_pass_filter)
+
+    if (length(genes_to_show) > 0) {
+      # Create matrix
+      mat <- matrix(NA, nrow = length(genes_to_show), ncol = length(sel_idx))
+      rownames(mat) <- genes_to_show
+      colnames(mat) <- sel_er$Description
+
+      # Fill matrix
+      for (i in seq_along(pathway_genes)) {
+        p_genes <- pathway_genes[[i]]
+        # Genes in this pathway that are to be shown
+        common_genes <- intersect(p_genes, genes_to_show)
+        if (length(common_genes) > 0) {
+          # Get LFCs
+          mat[common_genes, i] <- log2RatioGSEA_full[common_genes]
+        }
+      }
+
+      # Create Heatmap
+      limit <- input$scaleLimGSEA
+      col_fun <- circlize::colorRamp2(
+        c(-limit, 0, limit),
+        c("deepskyblue4", "white", "firebrick")
+      )
+
+      # Custom clustering function to handle NAs (genes not in pathway)
+      clust_fun <- function(m) {
+        m[is.na(m)] <- 0
+        hclust(dist(m))
+      }
+
+      hp <- ComplexHeatmap::Heatmap(
+        mat,
+        name = "Log2FC",
+        col = col_fun,
+        na_col = "grey95",
+        cluster_rows = clust_fun,
+        cluster_columns = clust_fun,
+        show_row_names = TRUE,
+        show_column_names = TRUE,
+        row_names_gp = grid::gpar(fontsize = input$textSizeGSEA),
+        column_names_gp = grid::gpar(fontsize = input$textSizeGSEA),
+        border = TRUE,
+        rect_gp = grid::gpar(col = "black", lwd = 0.5)
+      )
+
+      gseaPlotReactive$heatmap <- hp
+    } else {
+      gseaPlotReactive$heatmap <- NULL
+    }
+
+    # GSEA running score plot
+    rs <- enrichplot::gseaplot2(
+      x = current_er,
+      geneSetID = input$selectedTable_GSEA_rows_selected,
+      color = RColorBrewer::brewer.pal(length(input$selectedTable_GSEA_rows_selected), "Set2")
     )
 
-  gseaPlotReactive$ridgeplot <- rp
+    gseaPlotReactive$runningscore <- rs
 
-  # Heatmap - use filtered genes when filtering is active
-  log2RatioGSEA_heatmap <- gseaToUse$log2RatioGSEA
-  if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode != "none") {
-    log2RatioGSEA_heatmap <- log2RatioGSEA_full[names(log2RatioGSEA_full) %in% genes_pass_filter]
+    # UpSet plot
+    geneSetsUpset <- setNames(
+      lapply(input$selectedTable_GSEA_rows_selected, function(i) {
+        colToUse <- if (input$gseaType %in% c("BP", "MF", "CC")) "geneName" else "core_enrichment"
+        g <- current_er@result[[colToUse]][i] %>%
+          strsplit("/") %>%
+          .[[1]]
+        g[nchar(g) > 1]
+      }),
+      current_er@result[[labelColumn]][input$selectedTable_GSEA_rows_selected]
+    )
+
+    m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
+
+    up <- ComplexHeatmap::UpSet(
+      m = m1,
+      comb_order = order(comb_size(m1), decreasing = TRUE),
+      top_annotation = upset_top_annotation(
+        m1,
+        add_numbers = TRUE,
+        annotation_name_rot = 90,
+        annotation_name_offset = unit(10, "mm")
+      ),
+      left_annotation = upset_left_annotation(m1, add_numbers = TRUE)
+    )
+
+    gseaPlotReactive$upset <- up
   }
-
-  hp <- enrichplot::heatplot(
-    x = current_er_symbol,
-    foldChange = log2RatioGSEA_heatmap,
-    showCategory = current_er_symbol@result$Description[input$selectedTable_GSEA_rows_selected]
-  ) +
-    scale_colour_distiller(palette = "RdBu") +
-    coord_flip()
-  
-  gseaPlotReactive$heatmap <- hp
-  
-  # GSEA running score plot
-  rs <- enrichplot::gseaplot2(
-    x = current_er,
-    geneSetID = input$selectedTable_GSEA_rows_selected,
-    color = RColorBrewer::brewer.pal(length(input$selectedTable_GSEA_rows_selected), "Set2")
-  )
-  
-  gseaPlotReactive$runningscore <- rs
-  
-  # UpSet plot
-  geneSetsUpset <- setNames(
-    lapply(input$selectedTable_GSEA_rows_selected, function(i) {
-      colToUse <- if (input$gseaType %in% c("BP", "MF", "CC")) "geneName" else "core_enrichment"
-      g <- current_er@result[[colToUse]][i] %>% 
-        strsplit("/") %>% 
-        .[[1]]
-      g[nchar(g) > 1]
-    }), 
-    current_er@result[[labelColumn]][input$selectedTable_GSEA_rows_selected]
-  )
-  
-  m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
-  
-  up <- ComplexHeatmap::UpSet(
-    m = m1, 
-    comb_order = order(comb_size(m1), decreasing = TRUE), 
-    top_annotation = upset_top_annotation(
-      m1, 
-      add_numbers = TRUE, 
-      annotation_name_rot = 90, 
-      annotation_name_offset = unit(10, "mm")
-    ), 
-    left_annotation = upset_left_annotation(m1, add_numbers = TRUE)
-  )
-  
-  gseaPlotReactive$upset <- up
-})
+)
 
 # Render plot outputs ----
 
-# Network plot 
+# Network plot
 output$cnetPlot_GSEA <- renderPlot(
   {
     req(!is.null(gseaPlotReactive[["cnetplot"]]))
     gseaPlotReactive[["cnetplot"]]
   },
-  width = as.numeric(input$figWidthGSEA),
-  height = as.numeric(input$figHeightGSEA)
+  width = function() as.numeric(input$figWidthGSEA),
+  height = function() as.numeric(input$figHeightGSEA)
 )
 
 output$dlCnetPlot_GSEA <- downloadHandler(
@@ -489,8 +541,8 @@ output$dlCnetPlot_GSEA <- downloadHandler(
   },
   content = function(file) {
     pdf(
-      file = file, 
-      width = as.numeric(input$figWidthGSEA) / 50, 
+      file = file,
+      width = as.numeric(input$figWidthGSEA) / 50,
       height = as.numeric(input$figHeightGSEA) / 50
     )
     print(gseaPlotReactive[["cnetplot"]])
@@ -502,10 +554,10 @@ output$dlCnetPlot_GSEA <- downloadHandler(
 output$heatmap_GSEA <- renderPlot(
   {
     req(!is.null(gseaPlotReactive[["heatmap"]]))
-    gseaPlotReactive[["heatmap"]]
+    ComplexHeatmap::draw(gseaPlotReactive[["heatmap"]])
   },
-  width = as.numeric(input$figWidthGSEA),
-  height = as.numeric(input$figHeightGSEA * 4)
+  width = function() as.numeric(input$figWidthGSEA),
+  height = function() as.numeric(input$figHeightGSEA * 1.5)
 )
 
 output$dlHeatmap_GSEA <- downloadHandler(
@@ -514,11 +566,11 @@ output$dlHeatmap_GSEA <- downloadHandler(
   },
   content = function(file) {
     pdf(
-      file = file, 
-      width = as.numeric(input$figWidthGSEA) / 25, 
+      file = file,
+      width = as.numeric(input$figWidthGSEA) / 25,
       height = as.numeric(input$figHeightGSEA) / 50
     )
-    print(gseaPlotReactive[["heatmap"]])
+    ComplexHeatmap::draw(gseaPlotReactive[["heatmap"]])
     dev.off()
   }
 )
@@ -529,8 +581,8 @@ output$runningScore_GSEA <- renderPlot(
     req(!is.null(gseaPlotReactive[["runningscore"]]))
     gseaPlotReactive[["runningscore"]]
   },
-  width = as.numeric(input$figWidthGSEA),
-  height = as.numeric(input$figHeightGSEA)
+  width = function() as.numeric(input$figWidthGSEA),
+  height = function() as.numeric(input$figHeightGSEA)
 )
 
 output$dlRunningScore_GSEA <- downloadHandler(
@@ -539,8 +591,8 @@ output$dlRunningScore_GSEA <- downloadHandler(
   },
   content = function(file) {
     pdf(
-      file = file, 
-      width = as.numeric(input$figWidthGSEA) / 50, 
+      file = file,
+      width = as.numeric(input$figWidthGSEA) / 50,
       height = as.numeric(input$figHeightGSEA) / 50
     )
     print(gseaPlotReactive[["runningscore"]])
@@ -548,14 +600,14 @@ output$dlRunningScore_GSEA <- downloadHandler(
   }
 )
 
-# Ridge plot 
+# Ridge plot
 output$ridgePlot_GSEA <- renderPlot(
   {
     req(!is.null(gseaPlotReactive[["ridgeplot"]]))
     gseaPlotReactive[["ridgeplot"]]
   },
-  width = as.numeric(input$figWidthGSEA),
-  height = as.numeric(input$figHeightGSEA)
+  width = function() as.numeric(input$figWidthGSEA),
+  height = function() as.numeric(input$figHeightGSEA)
 )
 
 output$dlRidgePlot_GSEA <- downloadHandler(
@@ -564,8 +616,8 @@ output$dlRidgePlot_GSEA <- downloadHandler(
   },
   content = function(file) {
     pdf(
-      file = file, 
-      width = as.numeric(input$figWidthGSEA) / 50, 
+      file = file,
+      width = as.numeric(input$figWidthGSEA) / 50,
       height = as.numeric(input$figHeightGSEA) / 50
     )
     print(gseaPlotReactive[["ridgeplot"]])
@@ -573,14 +625,14 @@ output$dlRidgePlot_GSEA <- downloadHandler(
   }
 )
 
-# UpSet plot 
+# UpSet plot
 output$upsetPlot_GSEA <- renderPlot(
   {
     req(!is.null(gseaPlotReactive[["upset"]]))
     draw(gseaPlotReactive[["upset"]], padding = unit(c(5, 5, 5, 20), "mm"))
   },
-  width = as.numeric(input$figWidthGSEA) * 1.3,
-  height = as.numeric(input$figHeightGSEA)
+  width = function() as.numeric(input$figWidthGSEA) * 1.3,
+  height = function() as.numeric(input$figHeightGSEA)
 )
 
 output$dlUpset_GSEA <- downloadHandler(
@@ -589,8 +641,8 @@ output$dlUpset_GSEA <- downloadHandler(
   },
   content = function(file) {
     pdf(
-      file = file, 
-      width = as.numeric(input$figWidthGSEA) / 70, 
+      file = file,
+      width = as.numeric(input$figWidthGSEA) / 70,
       height = as.numeric(input$figHeightGSEA) / 90
     )
     print(gseaPlotReactive[["upset"]])
