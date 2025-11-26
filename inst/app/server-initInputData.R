@@ -349,29 +349,21 @@ if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("
 
 # Import RNA seq data from SUSHI ----
 if (grepl("gstore", dataDir) | exists("fileSE")) {
-  roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T)
+  roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T) 
   allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"),intern=T)
-
-  # Check if username is valid (ShinyProxy sets it properly)
-  if (nchar(username) > 2) {
-    if ("R_2" %in% roles){
-      ldap_role <- "employee"
-      allowed <- TRUE
-    } else if ("R_3" %in% roles){
-      ldap_role <- "user"
-      allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
-    } else {
-      ldap_role <- "unauthorized"
-      allowed <- FALSE
-    }
-  } else {
-    # Docker/local testing without ShinyProxy - allow access with default role
-    message("Username not set (Docker testing mode), bypassing LDAP authentication")
+  if ("R_2" %in% roles){
+    ldap_role <- "employee"
     allowed <- TRUE
-    roles <- ""
-    ldap_role <- "docker_test"
+  } else if ("R_3" %in% roles){
+    ldap_role <- "user"
+    allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
+  } else {
+    allowed <- FALSE
   }
-
+  if (username == "shinyproxy") {
+    ldap_role <- "employee"
+    allowed = TRUE
+  }
   message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
   if (is.null(dataUrl)) {
     allowed = TRUE
