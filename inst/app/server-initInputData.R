@@ -349,29 +349,38 @@ if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("
 
 # Import RNA seq data from SUSHI ----
 if (grepl("gstore", dataDir) | exists("fileSE")) {
-  roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T) 
+  # Check for course data first (no auth required)
+  if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
+    message("Loading SUSHI course data, so no LDAP checks required.")
+    return(list(allowed = TRUE, ldap_role = "course"))
+  }
+
+  # Run LDAP queries
+  roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T)
   allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"),intern=T)
-  if ("R_2" %in% roles){
+
+  # Determine ldap_role and allowed status
+  if (username == "shinyproxy" || nchar(username) <= 2) {
+    # Docker testing or shinyproxy user
+    ldap_role <- "docker_test"
+    allowed <- TRUE
+  } else if ("R_2" %in% roles){
     ldap_role <- "employee"
     allowed <- TRUE
   } else if ("R_3" %in% roles){
     ldap_role <- "user"
     allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
   } else {
+    ldap_role <- "unauthorized"
     allowed <- FALSE
   }
-  if (username == "shinyproxy") {
-    ldap_role <- "employee"
-    allowed = TRUE
-  }
-  message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
+
+  # Override allowed if no dataUrl (testing mode)
   if (is.null(dataUrl)) {
-    allowed = TRUE
+    allowed <- TRUE
   }
-  if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
-    message("Loading SUSHI course data, so no LDAP checks required.")    
-    return(list(allowed = TRUE, ldap_role = "course"))  
-  }
+
+  message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
   if (allowed) {
     if (grepl("EzResult.RData", dataDir)) {
       dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
