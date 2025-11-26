@@ -39,7 +39,9 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   
   
   # Prepare the metadata table ----
-  dataset <- data.frame(colData(se), check.names = FALSE)
+  # dataset <- data.frame(colData(se), check.names = FALSE)
+  dataset <- read_tsv(file.path(dataDir, "../input_dataset.tsv"), show_col_types = F) %>% data.frame(check.names = F)
+  dataset[["Name"]] <- factor(dataset[["Name"]], levels = dataset[["Name"]])
   # Get the factors that should be available for plotting 
   factors <- colnames(dataset)[grep("\\[Factor]", colnames(dataset))]
   # Remove [Factor] from colnames and factors
@@ -92,8 +94,6 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
       param$refGroup, 
       unique(dataset[[param$groupingName]])[!unique(dataset[[param$groupingName]]) %in% c(param$sampleGroup, param$refGroup)])
   )
-  # make the sample names an actual column to make it easier to bind to things:
-  dataset$names <- rownames(dataset)
   
   
   
@@ -108,6 +108,7 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   }
   forVST <- as.matrix(assay(se, "counts"))
   mode(forVST) <- "integer"
+  # forVST <- metadata(se)$nativeResult$dds
   vstCountMatrix <- varianceStabilizingTransformation(forVST)
   countList[["VST"]] <- vstCountMatrix
   # For all the counts, match the matrices to the seqAnno order
@@ -155,8 +156,8 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
     goObjects$gsea <- metadata(se)$enrichResultGSEA
   }
   
-  if (param$runGO) {
-    return(list(
+  return(
+    list(
       "dataType" = "RNASeq",
       "se" = se,
       "param" = param,
@@ -172,8 +173,7 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
       "goObjects" = goObjects,
       "groupingName" = param$groupingName
     )
-    )
-  }
+  )
 }
 
 
@@ -200,7 +200,7 @@ convert_proteomics_se <- function(se) {
   # Prepare the metadata
   dataset <- as.data.frame(colData(se))
   names <- colnames(dataset)[grep("^Sample$|^Name$|^sampleName$", colnames(dataset), ignore.case = T)]
-  dataset$names <- dataset[[names]]
+  dataset$Name <- dataset[[names]]
   rownames(dataset) <- dataset[[names]]
   
   # Get the main columns from the metadata that are plottable 
@@ -246,23 +246,6 @@ convert_proteomics_se <- function(se) {
   )
 }
 
-#' zscore
-#' @export
-zscore <- function(x) {
-  # Remove NAs for mean and sd calculation
-  if (all(is.na(x))) {
-    # If all values are NA, return all NAs
-    return(rep(NA, length(x)))
-  }
-  m <- mean(x, na.rm = TRUE)
-  s <- sd(x, na.rm = TRUE)
-  if (is.na(s) || s == 0) {
-    # If sd is NA (all NAs) or zero (no variance), return zeros (or NAs)
-    return(rep(0, length(x)))
-  }
-  (x - m) / s
-}
-
 #' generateParams
 #' @export
 generateParams <- function(
@@ -294,8 +277,20 @@ is_url <- function(dataDir) {
 }
 # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
 # dataDir <- "/srv/gstore/projects/p28466/eq2_dnaj1dnaj2dnaj3pepe--over--WT_2025-07-07--12-43-22/dnaj1dnaj2dnaj3pepe--over--WT"
-dataDir <- "/srv/gstore/projects/p26523/o36354_DESeq2_Variant_CD--over--WT_CD_2025-07-23--16-53-53/Variant_CD--over--WT_CD"
+# dataDir <- "/srv/gstore/projects/p35043/o39540_DESeq2_AGD_Tumor--over--Control_Tumor_2025-10-01--12-34-19/AGD_Tumor--over--Control_Tumor"
+# dataDir <- "/srv/gstore/projects/p26523/o36354_DESeq2_Variant_CD--over--WT_CD_2025-07-23--16-53-53/Variant_CD--over--WT_CD"
+# dataDir <- "/srv/gstore/projects/p33393/o37634_EdgeR_P3NS-shKCNQ2--over--P3NS-shSCR_2025-05-16--13-06-04/P3NS-shKCNQ2--over--P3NS-shSCR"
+# dataDir <- "/srv/gstore/projects/p33393/o37976_DESeq2_BLZ--over--Vehicle_2025-05-16--12-57-24/BLZ--over--Vehicle"
 # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/../jStore/p2699/bfabric/Proteomics/SummarizedExperiment/2023/2023-11/2023-11-23/workunit_o31423_p2699_GeneSymbolRollUp_unpaired/SummarizedExperiment.rds"
+# dataDir <- "/srv/gstore/projects/p26523/o36354_DESeq2_Variant_Inflamed--over--Variant_Non_Inflamed_2025-07-23--16-57-19/Variant_Inflamed--over--Variant_Non_Inflamed"
+# dataDir <- "/srv/gstore/projects/p38300/o38603_DESeq2_Sorbitol_132mg--over--NaCl_corrected_2025-06-30--12-37-44/Sorbitol_132mg--over--NaCl"
+# dataDir <- "/srv/gstore/projects/p2753/EdgeR_Shmt1_KO--over--Shmt1_Ung_dKO_2024-08-09--05-44-48/Shmt1_KO--over--Shmt1_Ung_dKO"
+# dataDir <- "/srv/gstore/projects/p39127/o39272_DESeq2_J1_withDox_withIFN--over--J1_withDox_withoutIFN_2025-09-05--12-17-56/J1_withDox_withIFN--over--J1_withDox_withoutIFN"
+# dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p38633/bfabric/Proteomics/exploreDE/2025/2025-07/2025-07-01//workunit_328724//2913198.rds"
+# dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335484/2997993.rds"
+# dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335485/2997996.rds"
+# dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39763/bfabric/Proteomics/exploreDE/2025/2025-11/2025-11-03/workunit_335997/3012890.rds"
+dataDir <- "/srv/gstore/projects/p39374/o39634_DESeq2_CEPC_COMP--over--CEPC_unstimulated_2025-11-13--09-14-39/CEPC_COMP--over--CEPC_unstimulated"
 if (is_url(dataDir)) {
   se <- readRDS(url(dataDir))  # If it's a URL
 } else {
@@ -352,7 +347,7 @@ input$pcaCounts <- "Normalised + Log2"
 input$pcaAddEllipses <- TRUE
 input$pcaEllipsesAlpha <- 0.2
 # input$pcaCounts <- "transformedData"
-input$pcaBatch <- NULL
+input$pcaBatch <- "None"
 input$pcaTopN <- 2000
 input$pcaCentre = TRUE 
 input$pcaScale = FALSE
@@ -383,11 +378,22 @@ input$downloadFormatPCA <- "PDF"
 input$dpiPCA <- 600
 input$filnamePCA <- "PCA"
 
+# Ordination method options (PCA, PCoA, NMDS, GLM-PCA)
+input$ordinationMethod <- "pca"
+input$ordinationPlotType <- "samples"
+input$pcoaDistance <- "euclidean"
+input$glmpcaFamily <- "poi"
+input$glmpcaMinibatch <- 100
+input$biplotNGenes <- 10
+input$biplotArrowScale <- 1
+input$biplotArrowColour <- "#E41A1C"
+input$nrPeptidePCA <- 2
+
 input$boxplotFactor1 <- inputDataReactive()$factors[1]
 input$keepBucketBoxplot <- inputDataReactive()$genes[1:5]
 # input$keepBucketBoxplot <- grep("Hrh1", inputDataReactive()$genes, value = T)
 input$boxplotCounts <- names(inputDataReactive()$countList)[2]
-input$boxplotBatch <- NULL
+input$boxplotBatch <- "None"
 input$boxplotFactor2 <- "None"
 input$boxKeepBucket <- unique(levels(as.factor(inputDataReactive()$dataset[[input$boxplotFactor1]])))
 input$boxplotShowP <- FALSE
@@ -424,7 +430,7 @@ input$boxplotGenesText <- inputDataReactive()$genes[6:10]
 input$boxplotFactor1 <- inputDataReactive()$factors[1]
 input$boxplotFactor2 <- "None"
 input$boxplotCounts <- names(inputDataReactive()$countList)[2]
-input$boxplotBatch <- NULL
+input$boxplotBatch <- "None"
 input$boxplotShowP <- TRUE
 input$boxplotShowPoint <- TRUE
 input$boxplotShowMeanBar <- TRUE
@@ -535,6 +541,7 @@ input$filnameVolcano <- "Volcano"
 input$oraType <- "BP"
 input$oraDirection <- "upGenes"
 input$gseaType <- "BP"
+# input$gseaType <- "C2"
 input$selectedTable_GSEA_rows_selected <- c(1,2,3,4)
 input$textSizeGSEA <- 12
 
@@ -651,10 +658,16 @@ input$showAxesVolcano <- TRUE
 input$showLinesVolcano <- TRUE
 input$pcaBatch <- "None"
 genesToPlot <- inputDataReactive()$seqAnno$gene_name[1:5]
-input$cellBorderSizeHeatmap <- 5
+input$cellBorderSizeHeatmap1 <- 5
+input$cellBorderSizeHeatmap2 <- 5
 input$cellBorderColourHeatmap1 <- "black"
 input$cellBorderColourHeatmap2 <- "black"
 
+i <- 1
 for (i in seq_along(input$heatmapColumnSelect)) {
   input[[paste0("hmKeepBucket", i)]] <- unique(levels(as.factor(inputDataReactive()$dataset[,input$heatmapColumnSelect[i]])))
 }
+input$pcaCounts <- names(inputDataReactive()$countList)[[2]]
+
+genesReactive <- reactiveValues(genes = NULL)
+genesReactive$genes <- inputDataReactive()$genes[c(1, 4, 5, 6, 9)]

@@ -42,7 +42,10 @@ Imports:
   SingleCellExperiment,
   fresh,
   scuttle,
-  qs2
+  qs2,
+  vegan,
+  glmpca,
+  limma
 Remotes:
   fgcz/exploreDE
 RoxygenNote: 7.3.2

@@ -89,6 +89,14 @@ tabItem(
             helpText("Only applies to counts not already in log space."),
             radioButtons(inputId = "heatmapZScore", label = "Centre or use Z-Scores?", choices = c("None", "Centred", "Z-Score"), selected = "Centred"),
             helpText("Calculates per-gene Z-Scores. Works on any count method."),
+
+            hr(style = "border-top: 1px solid #000000;"), h4("Sample aggregation"),
+            checkboxInput(inputId = "heatmapShowMeans", label = "Show per-condition aggregation (instead of individual samples)", value = FALSE),
+            conditionalPanel(
+              condition = "input.heatmapShowMeans == true",
+              radioButtons(inputId = "heatmapAggMethod", label = "Aggregation method:", choices = c("Mean", "Median"), selected = "Mean", inline = TRUE),
+              helpText("When enabled, samples are grouped by the first selected factor and their aggregated expression is displayed.")
+            ),
           ),
           
           tabPanel(

@@ -17,50 +17,60 @@ invisible(lapply(packagesToLoad, function(pkg) {
 cat("... packages loaded!")
 reactiveConsole(TRUE)
 
-my_theme = create_theme(
+my_theme <- create_theme(
   adminlte_color(
     light_blue = "#86a5bf"
   )
 )
 
-ui = dashboardPage(
+ui <- dashboardPage(
   dashboardHeader(
     title = "Explore DE",
     tags$li(
       title = "Please include the URL to the dataset in your email.",
       a(
-        href = 'mailto:sequencing@fgcz.ethz.ch?subject=exploreDE-shiny-app-feedback&body=Please%20include%20the%20URL%20you%20are%20having%20issues%20with.%20Thanks!%0A%0A', 
-        "Request Features/Report Bugs"), 
+        href = "mailto:sequencing@fgcz.ethz.ch?subject=exploreDE-shiny-app-feedback&body=Please%20include%20the%20URL%20you%20are%20having%20issues%20with.%20Thanks!%0A%0A",
+        "Request Features/Report Bugs"
+      ),
       class = "dropdown"
     ),
     tags$li(
-      a(href = 'http://www.fgcz.ch', 
+      a(
+        href = "http://www.fgcz.ch",
         target = "_blank",
-        img(src = 'fgcz_logo.png', title = "FGCZ", height = "30px"),
-        style = "padding-top:10px; padding-bottom:5px;"),
-      class = "dropdown"),
+        img(src = "fgcz_logo.png", title = "FGCZ", height = "30px"),
+        style = "padding-top:10px; padding-bottom:5px;"
+      ),
+      class = "dropdown"
+    ),
     tags$li(
-      a(href = 'http://www.ethz.ch/en.html',
+      a(
+        href = "http://www.ethz.ch/en.html",
         target = "_blank",
-        img(src = 'eth_logo.png', title = "FGCZ", height = "22px"),
-        style = "padding-top:13px; padding-bottom:10px;"),
-      class = "dropdown"),
+        img(src = "eth_logo.png", title = "FGCZ", height = "22px"),
+        style = "padding-top:13px; padding-bottom:10px;"
+      ),
+      class = "dropdown"
+    ),
     tags$li(
-      a(href = 'http://www.uzh.ch/en.html',
+      a(
+        href = "http://www.uzh.ch/en.html",
         target = "_blank",
-        img(src = 'University_of_Zurich_Logo.png', title = "FGCZ", height = "30px"),
-        style = "padding-top:10px; padding-bottom:5px;"),
-      class = "dropdown")
+        img(src = "University_of_Zurich_Logo.png", title = "FGCZ", height = "30px"),
+        style = "padding-top:10px; padding-bottom:5px;"
+      ),
+      class = "dropdown"
+    )
   ),
   dashboardSidebar(
     shinyjs::useShinyjs(),
     sidebarMenu(
       id = "tabs",
-      menuItem(text = "Results Summary", tabName = "summaryTab",  icon = icon("list")),
+      menuItem(text = "Results Summary", tabName = "summaryTab", icon = icon("list")),
       menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
       menuItem(text = "Volcano Plots", tabName = "volcanoTab", icon = icon("wifi")),
       menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
-      menuItem(text = "PCA Plots", tabName = "pcaPlotTab", icon = icon("meteor")),
+      menuItem(text = "Ordination", tabName = "ordinationTab", icon = icon("meteor")),
       menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),
       menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
       conditionalPanel(
@@ -72,9 +82,9 @@ ui = dashboardPage(
           menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))
         )
       ),
-      menuItem(text= "Colours", tabName = "colourTab", icon = icon("palette"))
+      menuItem(text = "Colours", tabName = "colourTab", icon = icon("palette"))
     )
-  ), 
+  ),
   dashboardBody(
     use_theme(my_theme),
     tags$head(
@@ -111,18 +121,17 @@ ui = dashboardPage(
             .content-wrapper, .right-side {
             background-color: #FFFFFF;
             }
-            "
-            )
-          )
+            ")
         )
-      ),
+      )
+    ),
     use_waiter(),
     tabItems(
       source("ui-tab-summary.R", local = TRUE)$value,
       source("ui-tab-DEGTable.R", local = TRUE)$value,
       source("ui-tab-volcano.R", local = TRUE)$value,
       source("ui-tab-heatmap.R", local = TRUE)$value,
-      source("ui-tab-pca.R", local = TRUE)$value,
+      source("ui-tab-ordination.R", local = TRUE)$value,
       source("ui-tab-boxplot.R", local = TRUE)$value,
       source("ui-tab-correlation.R", local = TRUE)$value,
       source("ui-tab-hypergeo2.R", local = TRUE)$value,
@@ -134,13 +143,13 @@ ui = dashboardPage(
   )
 )
 
-server = function(input, output, session) {
+server <- function(input, output, session) {
   source("server-initInputData.R", local = TRUE)
   source("server-summary.R", local = TRUE)
   source("server-DEGTable.R", local = TRUE)
   source("server-volcano2.R", local = TRUE)
   source("server-heatmap2.R", local = TRUE)
-  source("server-pca.R", local = TRUE)
+  source("server-ordination.R", local = TRUE)
   source("server-boxplot.R", local = TRUE)
   source("server-correlation.R", local = TRUE)
   source("server-hypergeo2.R", local = TRUE)

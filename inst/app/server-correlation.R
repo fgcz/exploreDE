@@ -5,7 +5,11 @@ updateSelectizeInput(session = session, inputId = "correlationGene1", label = "F
 updateSelectizeInput(session = session, inputId = "correlationGene2", label = "Feature Y", choices = inputDataReactive()$genes, selected = "", server = TRUE)
 updateSelectInput(session = session, inputId = "correlationColourBy", label = "Select column to colour by", choices = inputDataReactive()$factors, selected =  inputDataReactive()$factors[[1]])
 updateSelectInput(session = session, inputId = "correlationShapeBy", label = "Select column to shape by", choices = c("None", inputDataReactive()$factors), selected =  "None")
-updateSelectInput(session = session, inputId = "correlationCounts", label = "Select count method to plot", choices = names(inputDataReactive()$countList), selected = switch(inputDataReactive()$dataType, "RNASeq" = "Normalised + Log2", "proteomics" = "transformedData"))
+count_choices <- names(inputDataReactive()$countList)
+default_count <- switch(inputDataReactive()$dataType,
+                       "RNASeq" = "Normalised + Log2",
+                       "proteomics" = if ("transformedData" %in% count_choices) "transformedData" else count_choices[1])
+updateSelectInput(session = session, inputId = "correlationCounts", label = "Select count method to plot", choices = count_choices, selected = default_count)
 updateSelectInput(session = session, inputId = "correlationBatch", label = "Apply a batch-correction to the counts?", choices = c("None", inputDataReactive()$factors), selected = "None")
 updateSliderInput(session = session, inputId = "correlationCorPosX", label = "Label position x", min = 1, max = 100, value = 10, step = 1)
 updateSliderInput(session = session, inputId = "correlationCorPosY", label = "Label position y", min = 1, max = 100, value = 10, step = 1)

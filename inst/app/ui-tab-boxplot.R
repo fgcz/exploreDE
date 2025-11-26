@@ -158,6 +158,7 @@ tabItem(
         solidHeader = TRUE,
         status = "primary",
         textOutput("boxplotDesign"),
+        # uiOutput("boxplotWarn", inline = T),
         tabsetPanel(
           id = "boxbarplots",
           tabPanel(

@@ -25,11 +25,15 @@ if (inputDataReactive()$dataType == "proteomics") {
 }
 
 # Update inputs ----
+count_choices <- names(inputDataReactive()$countList)
+default_count <- switch(inputDataReactive()$dataType,
+                       "RNASeq" = "Normalised + Log2",
+                       "proteomics" = if ("transformedData" %in% count_choices) "transformedData" else count_choices[1])
 updateSelectInput(
-  session = session, 
-  inputId = "heatmapCounts", 
-  choices = names(inputDataReactive()$countList), 
-  selected = switch(inputDataReactive()$dataType, "RNASeq" = "Normalised + Log2", "proteomics" = "transformedData")
+  session = session,
+  inputId = "heatmapCounts",
+  choices = count_choices,
+  selected = default_count
 )
 
 updateSelectizeInput(
@@ -190,6 +194,8 @@ observeEvent(
     input$heatmapFeatureDirection
     input$heatmapLog2
     input$heatmapZScore
+    input$heatmapShowMeans
+    input$heatmapAggMethod
     input$heatmapAtLow
     input$heatmapAtMid
     input$heatmapAtHigh
@@ -271,8 +277,58 @@ observeEvent(
       if (inputDataReactive()$dataType == "proteomics") {
         rownames(countsHeatmap) <- gsub("\\~.*", "", rownames(countsHeatmap))
       }
-      
-      
+
+      ## Calculate per-condition aggregation if requested
+      if (!is.null(input$heatmapShowMeans) && input$heatmapShowMeans) {
+        # Get the grouping factor (first selected factor)
+        grouping_factor <- input$heatmapColumnSelect[1]
+
+        # Determine aggregation method
+        agg_method <- if (!is.null(input$heatmapAggMethod)) input$heatmapAggMethod else "Mean"
+
+        # Calculate aggregation for each condition
+        condition_levels <- levels(as.factor(datasetHeatmap[[grouping_factor]]))
+
+        # Store original rownames before aggregation
+        original_rownames <- rownames(countsHeatmap)
+
+        countsHeatmapAgg <- lapply(condition_levels, function(cond) {
+          sample_names <- datasetHeatmap$Name[datasetHeatmap[[grouping_factor]] == cond]
+          sample_data <- countsHeatmap[, sample_names, drop = FALSE]
+          if (agg_method == "Mean") {
+            rowMeans(sample_data, na.rm = TRUE)
+          } else {
+            rowMedians(as.matrix(sample_data), na.rm = TRUE)
+          }
+        })
+        countsHeatmap <- do.call(cbind, countsHeatmapAgg)
+        colnames(countsHeatmap) <- condition_levels
+        rownames(countsHeatmap) <- original_rownames
+
+        # Clean up NA/NaN/Inf values that can break clustering
+        countsHeatmap[is.na(countsHeatmap) | is.nan(countsHeatmap) | is.infinite(countsHeatmap)] <- 0
+
+        # Update datasetHeatmap to reflect the new structure (one row per condition)
+        datasetHeatmapOriginal <- datasetHeatmap  # Keep original for colors
+        datasetHeatmap <- data.frame(
+          Name = condition_levels,
+          row.names = NULL,
+          stringsAsFactors = FALSE
+        )
+        # Add the grouping factor column
+        datasetHeatmap[[grouping_factor]] <- factor(condition_levels, levels = condition_levels)
+        # Add other factors with their first occurrence values (for annotation)
+        for (f in input$heatmapColumnSelect[-1]) {
+          if (f %in% colnames(datasetHeatmapOriginal)) {
+            datasetHeatmap[[f]] <- sapply(condition_levels, function(cond) {
+              first_val <- datasetHeatmapOriginal[[f]][datasetHeatmapOriginal[[grouping_factor]] == cond][1]
+              as.character(first_val)
+            })
+            datasetHeatmap[[f]] <- factor(datasetHeatmap[[f]])
+          }
+        }
+      }
+
       # Prepare colours and generate top annotation ----
       at <- c(input$heatmapAtLow, input$heatmapAtMid, input$heatmapAtHigh)
       if (input$heatmapLimitCPalette == "None") {
@@ -337,25 +393,8 @@ observeEvent(
       
       # Get the number of top genes to display
       ntp <- min(input$heatmapGeneNumber, length(geneDirections[[input$heatmapFeatureDirection]]))
-      req(ntp > 0)
-      
-      # Get the top gene names
-      top_genes <- geneDirections[[input$heatmapFeatureDirection]][1:ntp]
-      
-      # Filter heatmap data to only include genes that exist in both lists
-      # This combines the matching and filtering in one step
-      countsHeatmapSig <- countsHeatmap[rownames(countsHeatmap) %in% top_genes, , drop = FALSE]
-      
-      # Reorder to match the original gene direction order
-      gene_order <- top_genes[top_genes %in% rownames(countsHeatmapSig)]
-      countsHeatmapSig <- countsHeatmapSig[gene_order, , drop = FALSE]
-      
-      output[["heatmapDesignBoth Directions"]] <- renderText({design})
-      if (as.numeric(input$heatmapGeneNumber) <= nrow(countsHeatmapSig)) {
-        countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
-      } 
-      rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
-      
+
+      # Prepare heatmap name (used by all heatmaps)
       hmName <- paste(input$heatmapCounts %>% gsub("\\+", "\n\\+", .))
       if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
         hmName <- paste(hmName, "\n(Log2)")
@@ -365,7 +404,33 @@ observeEvent(
       } else if (input$heatmapZScore == "Centred") {
         hmName <- paste(hmName, "\n[Centred]")
       }
+
+      # Only generate DE Features heatmap if there are genes to display
+      if (ntp > 0) {
+        # Get the top gene names
+        top_genes <- geneDirections[[input$heatmapFeatureDirection]][1:ntp]
+
+      # Filter heatmap data to only include genes that exist in both lists
+      # This combines the matching and filtering in one step
+      countsHeatmapSig <- countsHeatmap[rownames(countsHeatmap) %in% top_genes, , drop = FALSE]
+
+      # Reorder to match the original gene direction order
+      gene_order <- top_genes[top_genes %in% rownames(countsHeatmapSig)]
+      countsHeatmapSig <- countsHeatmapSig[gene_order, , drop = FALSE]
+
+      output[["heatmapDesignBoth Directions"]] <- renderText({design})
+      if (as.numeric(input$heatmapGeneNumber) <= nrow(countsHeatmapSig)) {
+        countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
+      }
+      rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
       
+      # Determine aggregation label for title
+      agg_label <- ""
+      if (!is.null(input$heatmapShowMeans) && input$heatmapShowMeans) {
+        agg_method <- if (!is.null(input$heatmapAggMethod)) input$heatmapAggMethod else "Mean"
+        agg_label <- paste0("(Per-condition ", tolower(agg_method), "s)")
+      }
+
       heatmap <- ComplexHeatmap::Heatmap(
         matrix = countsHeatmapSig,
         top_annotation = ha,
@@ -374,17 +439,17 @@ observeEvent(
         cluster_rows = input$clusterRowsHeatmap,
         show_column_names = input$colnamesHeatmap,
         show_row_names = input$geneNamesHeatmap,
-        show_column_dend = input$showClusterColDend, 
-        show_row_dend = input$showClusterRowDend, 
+        show_column_dend = input$showClusterColDend,
+        show_row_dend = input$showClusterRowDend,
         rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2/10),
         use_raster = FALSE,
         row_dend_width = unit(1, "cm"),
         column_dend_height = unit(1, "cm"),
-        col = heatmapColours, 
+        col = heatmapColours,
         row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-        column_names_gp = gpar(fontsize = input$textSizeHeatmap), 
+        column_names_gp = gpar(fontsize = input$textSizeHeatmap),
         column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-        column_title = paste("Top", nrow(countsHeatmapSig), "DE Features:\n", design),
+        column_title = paste("Top", nrow(countsHeatmapSig), "DE Features", agg_label, ":\n", design),
         heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
       )
       figuresDataReactive[["heatmapDEFeatures"]] <- heatmap
@@ -399,9 +464,38 @@ observeEvent(
       output[["hGNDE"]] <- renderText({
         paste0("Number of features per settings chosen: ", nrow(countsHeatmapSig))
       })
-      
-      
-      
+      } else {
+        # When no DEGs are found (ntp = 0), provide informative placeholders
+        figuresDataReactive[["heatmapDEFeatures"]] <- NULL
+
+        output[["heatmapDesignBoth Directions"]] <- renderText({
+          paste("No features found meeting current thresholds for:", design)
+        })
+
+        output[["hGNDE"]] <- renderText({
+          "Number of features per settings chosen: 0"
+        })
+
+        output[["dlHeatmapDFButtonDEFeatures"]] <- downloadHandler(
+          filename = function() { "no_data.txt" },
+          content = function(file) {
+            writeLines(
+              paste0(
+                "No differentially expressed features found for: ", design, "\n\n",
+                "Current filter settings:\n",
+                "- P-value type: ", input$pTypeHeatmap, "\n",
+                "- P-value threshold: ", input$pThresholdHeatmap, "\n",
+                "- Log2 fold-change threshold: ", input$lfcHeatmap, "\n",
+                "- Feature direction: ", input$heatmapFeatureDirection, "\n\n",
+                "Try adjusting these thresholds to find more features."
+              ),
+              file
+            )
+          }
+        )
+      } # End if (ntp > 0) - DE Features heatmap section
+
+
       # Custom heatmap ----
       if (length(input$keepBucketHeatmap) == 1) {
         countsHeatmapCustom <- t(as.matrix(countsHeatmap[input$keepBucketHeatmap,]))
@@ -417,17 +511,17 @@ observeEvent(
         cluster_rows = input$clusterRowsHeatmap,
         show_column_names = input$colnamesHeatmap,
         show_row_names = input$geneNamesHeatmap,
-        show_column_dend = input$showClusterColDend, 
-        show_row_dend = input$showClusterRowDend, 
+        show_column_dend = input$showClusterColDend,
+        show_row_dend = input$showClusterRowDend,
         rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2/10),
         use_raster = FALSE,
         row_dend_width = unit(1, "cm"),
         column_dend_height = unit(1, "cm"),
-        col = heatmapColours, 
+        col = heatmapColours,
         row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-        column_names_gp = gpar(fontsize = input$textSizeHeatmap), 
+        column_names_gp = gpar(fontsize = input$textSizeHeatmap),
         column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-        column_title = paste(input$heatmapCustomTitle),
+        column_title = paste(input$heatmapCustomTitle, agg_label),
         heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
       )
       figuresDataReactive$heatmapCustom <- ch
@@ -468,17 +562,17 @@ observeEvent(
           cluster_rows = input$clusterRowsHeatmap,
           show_column_names = input$colnamesHeatmap,
           show_row_names = input$geneNamesHeatmap,
-          show_column_dend = input$showClusterColDend, 
-          show_row_dend = input$showClusterRowDend, 
+          show_column_dend = input$showClusterColDend,
+          show_row_dend = input$showClusterRowDend,
           rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2/10),
           use_raster = FALSE,
           row_dend_width = unit(1, "cm"),
           column_dend_height = unit(1, "cm"),
-          col = heatmapColours, 
+          col = heatmapColours,
           row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-          column_names_gp = gpar(fontsize = input$textSizeHeatmap), 
+          column_names_gp = gpar(fontsize = input$textSizeHeatmap),
           column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-          column_title = sub("\\s+", "\n", input$heatmapGoInput),
+          column_title = paste(sub("\\s+", "\n", input$heatmapGoInput), if (agg_label != "") paste0("\n", agg_label) else ""),
           heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
         )
         figuresDataReactive$heatmapGO <- gh
@@ -512,6 +606,22 @@ lapply(c("DEFeatures", "Custom", "GO"), function(sig) {
       paste(input$heatmapFilename, sig, tolower(input$heatmapDownloadFormat), sep = ".")
     },
     content = function(file) {
+      # Safety check: ensure heatmap object exists before drawing
+      heatmap_obj <- figuresDataReactive[[paste0("heatmap", sig)]]
+      if (is.null(heatmap_obj)) {
+        # Create informative placeholder file
+        if (tolower(input$heatmapDownloadFormat) == "pdf") {
+          pdf(file = file, width = 8, height = 6)
+          plot.new()
+          text(0.5, 0.5, paste("No data available for", sig, "heatmap\n\nPlease adjust filter settings or select features."), cex = 1.2)
+          dev.off()
+        } else {
+          writeLines(paste("No data available for", sig, "heatmap. Please adjust filter settings or select features."), file)
+        }
+        return()
+      }
+
+      # Heatmap exists, proceed with normal download
       if (input$heatmapDownloadFormat == "PDF") {
         pdf(file = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60))
       } else if (input$heatmapDownloadFormat == "SVG") {
@@ -519,7 +629,7 @@ lapply(c("DEFeatures", "Custom", "GO"), function(sig) {
       } else if (input$heatmapDownloadFormat == "PNG") {
         png(filename = file, width = as.numeric(input$figWidthHeatmap/60), height = as.numeric(input$figHeightHeatmap/60), units = "in", res = as.numeric(input$heatmapDPI))
       }
-      draw(figuresDataReactive[[paste0("heatmap", sig)]], merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
+      draw(heatmap_obj, merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
       dev.off()
     }
   )

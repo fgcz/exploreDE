@@ -156,6 +156,10 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
     input$oraDodgeX
     input$nodeBorderORA
     input$oraLabelAlpha
+    input$oraVisPType
+    input$oraVisPThreshold
+    input$oraVisLFC
+    input$oraVisFilterMode
   }, ignoreNULL = FALSE, ignoreInit = TRUE, {
     
     req(!is.null(input$selectedTable_ORA_rows_selected))
@@ -178,6 +182,64 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
     log2RatioORA <- metadata(se)$enrichInput$seqAnno$log2Ratio[metadata(se)$enrichInput$seqAnno$gene_id %in% sigGeneIds]
     names(log2RatioORA) <- metadata(se)$enrichInput$seqAnno$gene_name[metadata(se)$enrichInput$seqAnno$gene_id %in% sigGeneIds]
     log2RatioORA <- sort(log2RatioORA, decreasing = T)
+
+    # Apply gene filtering based on visualization thresholds
+    log2RatioORA_full <- log2RatioORA  # Keep full list for reference
+    genes_pass_filter <- names(log2RatioORA)  # Default: all genes pass
+
+    cat("\n=== ORA Filtering Debug ===\n")
+    cat("Filter mode:", input$oraVisFilterMode, "\n")
+    cat("P-value type:", input$oraVisPType, "| Threshold:", input$oraVisPThreshold, "\n")
+    cat("LFC threshold:", input$oraVisLFC, "\n")
+    cat("Total genes before filter:", length(log2RatioORA), "\n")
+
+    if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode != "none") {
+      # Get p-values for genes
+      seqAnno <- metadata(se)$enrichInput$seqAnno
+
+      # Determine which p-value column to use
+      pval_col <- if (!is.null(input$oraVisPType) && input$oraVisPType == "FDR") "fdr" else "pValue"
+
+      cat("Looking for column:", pval_col, "\n")
+      cat("seqAnno columns:", paste(colnames(seqAnno), collapse=", "), "\n")
+
+      # Validate that the column exists
+      if (!is.null(seqAnno) && pval_col %in% colnames(seqAnno) && "gene_name" %in% colnames(seqAnno)) {
+        # Match genes by name
+        gene_match_idx <- match(names(log2RatioORA), seqAnno$gene_name)
+        gene_match_idx <- gene_match_idx[!is.na(gene_match_idx)]
+
+        cat("Matched genes:", length(gene_match_idx), "\n")
+
+        if (length(gene_match_idx) > 0) {
+          # Get p-values for matched genes
+          gene_pvals <- seqAnno[[pval_col]][gene_match_idx]
+          names(gene_pvals) <- seqAnno$gene_name[gene_match_idx]
+
+          # Filter genes based on thresholds
+          genes_pass_filter <- names(log2RatioORA)[
+            !is.na(gene_pvals[names(log2RatioORA)]) &
+            gene_pvals[names(log2RatioORA)] <= input$oraVisPThreshold &
+            abs(log2RatioORA) >= input$oraVisLFC
+          ]
+          genes_pass_filter <- genes_pass_filter[!is.na(genes_pass_filter)]
+
+          cat("Genes passing filter:", length(genes_pass_filter), "\n")
+
+          # Apply filter mode
+          if (input$oraVisFilterMode == "genes" && length(genes_pass_filter) > 0) {
+            # Filter genes entirely - only keep genes meeting thresholds
+            log2RatioORA <- log2RatioORA[names(log2RatioORA) %in% genes_pass_filter]
+            cat("After filtering log2RatioORA:", length(log2RatioORA), "genes\n")
+          }
+        }
+      } else {
+        cat("Validation failed - column or seqAnno not found\n")
+      }
+      # For "labels" mode, keep all genes in log2RatioORA but use genes_pass_filter for labeling
+    }
+    cat("=== End Debug ===\n\n")
+
     er@result$geneID <- er@result$geneName
     nl <- "category"
     if (input$showGeneLabelsORA) {
@@ -206,6 +268,10 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
     cd1$Label[1:length(input$selectedTable_ORA_rows_selected)] <- er@result$Label[input$selectedTable_ORA_rows_selected]
     cd2 <- cn$data
     cd2$name[is.na(cd2$foldChange)] <- NA
+    # Apply gene label filtering if in "labels" mode
+    if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode == "labels") {
+      cd2$name[!(cd2$name %in% genes_pass_filter)] <- NA
+    }
     # Some reason, enrichplot changed the default such that up is blue and down is red. We prefer the opposite... 
     if (input$oraDirection == "upGenes") {
       cn <- cn + scale_color_gradientn(name = "fold change", colours = c("white", "firebrick"))
@@ -225,9 +291,15 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
       data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeORA/3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX/10, nudge_y = input$oraDodgeY/10, fontface = "bold", show.legend = F, fill = alpha(c("white"), input$oraLabelAlpha), na.rm = T)
     oraPlotReactive$cnetplot <- cn
     
+    # For heatmap, use filtered genes when filtering is active
+    log2RatioORA_heatmap <- log2RatioORA
+    if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode != "none") {
+      log2RatioORA_heatmap <- log2RatioORA_full[names(log2RatioORA_full) %in% genes_pass_filter]
+    }
+
     hp <- enrichplot::heatplot(
       x = er,
-      foldChange = log2RatioORA,
+      foldChange = log2RatioORA_heatmap,
       showCategory = er@result$Description[input$selectedTable_ORA_rows_selected]
     ) + coord_flip() + theme_prism(axis_text_angle = 90)
     if (input$oraDirection == "upGenes") {

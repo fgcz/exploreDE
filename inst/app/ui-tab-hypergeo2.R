@@ -153,6 +153,35 @@ tabItem(
           sliderInput(inputId = "figHeightORA", label = "Figure Height", min = 100, max = 2000, value = 400, step = 10, width = "85%"),
           sliderInput(inputId = "figWidthORA", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%")
         )
+      ),
+      box(
+        title = "Gene Filtering (Visualisation Only)",
+        width = NULL,
+        solidHeader = TRUE,
+        collapsible = TRUE,
+        collapsed = TRUE,
+        status = "warning",
+        helpText("IMPORTANT: These thresholds only affect visualisation (network plots and heatmaps). They do NOT change the ORA results, which were pre-calculated."),
+        column(
+          width = 6,
+          h4("Threshold Settings"),
+          selectInput(inputId = "oraVisPType", label = "P-Value Type:", choices = c("FDR", "Raw"), selected = "Raw", width = "85%"),
+          numericInput(inputId = "oraVisPThreshold", label = "P-Value Threshold:", value = 0.05, min = 0, max = 1, step = 0.01, width = "85%"),
+          numericInput(inputId = "oraVisLFC", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25, width = "85%")
+        ),
+        column(
+          width = 6,
+          h4("Filter Mode"),
+          radioButtons(
+            inputId = "oraVisFilterMode",
+            label = "How to apply filtering:",
+            choices = c("Show all genes" = "none", "Filter labels only" = "labels", "Filter genes entirely" = "genes"),
+            selected = "none"
+          ),
+          helpText("'Show all genes': Display all genes, label all genes."),
+          helpText("'Filter labels only': Display all genes, but only label those meeting thresholds."),
+          helpText("'Filter genes entirely': Only display/show genes meeting thresholds.")
+        )
       )
     )
   )
