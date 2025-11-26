@@ -592,6 +592,19 @@ ordinationResults <- reactive({
     }
     countsRaw <- countsRaw[, datasetOrd$Name]
 
+    # Show waiter during GLM-PCA computation
+    waiter <- waiter::Waiter$new(
+      id = "pcaStatic",
+      html = tagList(
+        waiter::spin_fading_circles(),
+        h4("Computing GLM-PCA..."),
+        p("This may take 1-2 minutes for large datasets")
+      ),
+      color = "#86a5bf"
+    )
+    waiter$show()
+    on.exit(waiter$hide(), add = TRUE)
+
     ord_result <- calculate_glmpca(
       counts = countsRaw,
       family = input$glmpcaFamily,
@@ -688,6 +701,18 @@ observeEvent(inputDataReactive(), {
         max = n_features
       )
     }
+  }
+})
+
+# Show notification when GLM-PCA is selected
+observeEvent(input$ordinationMethod, {
+  if (!is.null(input$ordinationMethod) && input$ordinationMethod == "glmpca") {
+    showNotification(
+      "GLM-PCA computation may take 1-2 minutes for large datasets. Please be patient.",
+      type = "message",
+      duration = 8,
+      closeButton = TRUE
+    )
   }
 })
 

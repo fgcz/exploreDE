@@ -212,6 +212,10 @@ tabItem(
                 max = 1000,
                 step = 10,
                 width = "75%"
+              ),
+              helpText(
+                tags$b(style = "color: #f39c12;", "Note: "),
+                "GLM-PCA computation may take 1-2 minutes for large datasets."
               )
             ),
             hr(style = "border-top: 0.1px solid #000000;"),
