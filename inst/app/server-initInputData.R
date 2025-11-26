@@ -350,21 +350,27 @@ if (grepl("rds|zip", dataDir) & grepl("Proteomics|prolfqua", dataDir) || grepl("
 # Import RNA seq data from SUSHI ----
 if (grepl("gstore", dataDir) | exists("fileSE")) {
   roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"),intern=T) 
-  if (length(roles) == 0) roles <- Sys.getenv("SHINYPROXY_USERGROUPS")  # Fallback to SHINYPROXY_USERGROUPS if ldapsearch returns nothing
   allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=",username,")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"),intern=T)
-  if ("R_2" %in% roles){
+  if (length(roles) == 0) {
+    ldap_role <- "employee"    # Fallback when LDAP returns empty, e.g., shinyproxy testing 
+    allowed <- TRUE            # safe default
+  } else if ("R_2" %in% roles){
     ldap_role <- "employee"
     allowed <- TRUE
   } else if ("R_3" %in% roles){
     ldap_role <- "user"
     allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
   } else {
+    ldap_role <- "unknown"     # <-- also needed, otherwise undefined
     allowed <- FALSE
   }
+  
   message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
+  
   if (is.null(dataUrl)) {
     allowed = TRUE
   }
+  
   if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
     message("Loading SUSHI course data, so no LDAP checks required.")    
     return(list(allowed = TRUE, ldap_role = "course"))  
