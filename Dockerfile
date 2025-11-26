@@ -3,6 +3,9 @@ FROM fgcz_base_image:latest
 # Pin ggplot2 to version 3.5.2 for brush compatibility
 RUN Rscript -e 'pak::pkg_install("ggplot2@3.5.2", ask = FALSE, dependencies = NA)'
 
+# Install glmpca for GLM-PCA ordination analysis
+RUN Rscript -e 'pak::pkg_install("glmpca", ask = FALSE, dependencies = NA)'
+
 # exploreDE is a special case where it is developed on gitlab but the app is hosted on github
 # RUN Rscript -e "devtools::install_github('fgcz/exploreDE', dependencies = FALSE, upgrade = 'never', force = TRUE, quiet = TRUE)"
 
