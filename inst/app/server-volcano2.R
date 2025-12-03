@@ -88,6 +88,25 @@ observeEvent(input$resetGeneBucketVolcano,
     genesReactive$genes <- NULL
     updateSelectizeInput(session, inputId = "volcanoGenes", choices = inputDataReactive()$genes, selected = NULL, server = T)
     updateTextAreaInput(session, inputId = "volcanoGenesText", value = NULL)
+
+    # Force re-render the bucket UI with empty values
+    output$geneBucket2 <- renderUI({
+      bucket_list(
+        header = "Drag and drop features in order to be plotted",
+        group_name = "bucket_list_group",
+        orientation = "horizontal",
+        add_rank_list(
+          text = "Include these features in this order",
+          labels = NULL,
+          input_id = "volcanoKeepBucketGenes"
+        ),
+        add_rank_list(
+          text = "Exclude these features",
+          labels = NULL,
+          input_id = "boxExcludeBucketGenes"
+        )
+      )
+    })
   },
   ignoreNULL = T,
   ignoreInit = T
