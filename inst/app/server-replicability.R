@@ -231,7 +231,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
         colors_mat <- colors_mat[match(labels(dend), dataset$Name), , drop = FALSE]
     }
 
-    par(mar = c(15, 8, 4, 2))
+    par(mar = c(20, 8, 6, 4))
     plot(dend,
         main = paste0("Cluster Dendrogram (", input$replicabilityDistMethod, "/", input$replicabilityClustMethod, "): ", title_suffix),
         xlab = "", sub = "", cex = input$replicabilityTextSize / 10
@@ -407,7 +407,7 @@ output$replicabilityDownloadDendrogram <- downloadHandler(
             colors_mat <- colors_mat[match(labels(dend), dataset$Name), , drop = FALSE]
         }
 
-        par(mar = c(15, 8, 4, 2))
+        par(mar = c(20, 8, 6, 4))
         plot(dend,
             main = paste("Cluster Dendrogram (", input$replicabilityDistMethod, "/", input$replicabilityClustMethod, ")"),
             xlab = "", sub = "", cex = input$replicabilityTextSize / 10
