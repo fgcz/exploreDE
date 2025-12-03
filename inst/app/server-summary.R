@@ -6,21 +6,21 @@ countList <- inputDataReactive()$countList
 factorLevels <- inputDataReactive()$factorLevels
 
 catalystCols <- c(
-  "#DC050C", "#FB8072", "#1965B0", "#7BAFDE", "#882E72", "#B17BA6", 
-  "#FF7B00", "#FDC362", "#E7298A", "#E78AC3", "#33A02C", "#B2DF8A", 
-  "#55A1B1", "#8DD3C7", "#A6761D", "#E6AB02", "#7570B3", "#BEAED4", 
-  "#666666", "#999999", "#aa8282", "#d4b7b7", "#8600bf", "#ba5ce3", 
+  "#DC050C", "#FB8072", "#1965B0", "#7BAFDE", "#882E72", "#B17BA6",
+  "#FF7B00", "#FDC362", "#E7298A", "#E78AC3", "#33A02C", "#B2DF8A",
+  "#55A1B1", "#8DD3C7", "#A6761D", "#E6AB02", "#7570B3", "#BEAED4",
+  "#666666", "#999999", "#aa8282", "#d4b7b7", "#8600bf", "#ba5ce3",
   "#808000", "#aeae5c", "#1e90ff", "#00bfff", "#56ff0d", "#ffff00"
 )
-catalystCols <- c(catalystCols[c(seq(1,30, by = 2), seq(2, 30, by = 2))])
+catalystCols <- c(catalystCols[c(seq(1, 30, by = 2), seq(2, 30, by = 2))])
 cc2 <- catalystCols
 cc2 <- colorspace::darken(cc2, 0.4)
 catalystCols <- c(catalystCols, cc2)
 catalystCols <- paste0(catalystCols, "FF")
 
 n <- 60
-qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
-col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+qual_col_pals <- brewer.pal.info[brewer.pal.info$category == "qual", ]
+col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 colourPaletteList <- list(
   "Catalyst colours" = catalystCols,
   "Paired" = brewer.pal(12, "Paired"),
@@ -33,12 +33,12 @@ colourPaletteList <- list(
 
 output$colourPaletteUI <- renderUI({
   selectizeInput(
-    inputId = "colourPalette", 
+    inputId = "colourPalette",
     label = "Colour Palette",
-    choices = names(colourPaletteList), 
+    choices = names(colourPaletteList),
     selected = names(colourPaletteList)[1],
     multiple = TRUE, width = "85%",
-    options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
+    options = list(placeholder = "Select features", plugins = list("remove_button", "drag_drop", "restore_on_backspace", "clear_button"))
   )
 })
 outputOptions(output, "colourPaletteUI", suspendWhenHidden = FALSE)
@@ -51,10 +51,10 @@ observeEvent(input$colourPalette, {
         colourpicker::colourInput(
           inputId = paste0("GroupColour", names(factorLevels)[[i]], factorLevels[[i]][[j]]),
           label = paste0(names(factorLevels)[i], ": ", factorLevels[[i]][j]),
-          value =  rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j],
+          value = rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j],
           palette = "square",
           closeOnClick = TRUE,
-          returnName = TRUE, 
+          returnName = TRUE,
           width = "85%"
         )
       })
@@ -74,7 +74,9 @@ observe({
   saved_inputs(current_inputs)
 })
 output$dlColourTemplate <- downloadHandler(
-  filename = function() {paste0(design, "_colour_template.xlsx")},
+  filename = function() {
+    paste0(design, "_colour_template.xlsx")
+  },
   content = function(file) {
     colourTemplate <- saved_inputs()
     colnames(colourTemplate) <- c("Level", "Colour")
@@ -85,14 +87,14 @@ output$dlColourTemplate <- downloadHandler(
 )
 
 observeEvent(input$importColourFile, {
-  importedColours <- openxlsx::read.xlsx(input$importColourFile[1, 'datapath'], colNames = T)
+  importedColours <- openxlsx::read.xlsx(input$importColourFile[1, "datapath"], colNames = T)
   importedColours <- importedColours %>% data.frame(check.names = F)
-  
+
   colourTemplate <- saved_inputs()
   colnames(colourTemplate) <- c("Level", "Colour")
   colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
-  
-  if(any(!importedColours$Level %in% colourTemplate$Level)) {
+
+  if (any(!importedColours$Level %in% colourTemplate$Level)) {
     shinyalert::shinyalert(title = "Uh oh...", text = "You uploaded a file that has different factors and/or levels to the dataset. Are you sure it's from this study?", closeOnEsc = TRUE, closeOnClickOutside = TRUE, showCancelButton = TRUE)
   } else {
     lapply(importedColours$Level, function(l) {
@@ -110,13 +112,13 @@ observeEvent(inputDataReactive()$dataType, {
         solidHeader = TRUE,
         status = "primary",
         tags$p("Do you want to compare the results in this DE test with other DE tests you have run? Then, good news, because there is an app for just that! Head to https://fgcz-shiny.uzh.ch/multiDEG to find out more!"),
-        h4("Try the MultiDEG app:", a("MultiDEG", href="https://fgcz-shiny.uzh.ch/multiDEG/", target = "_blank"))
+        h4("Try the MultiDEG app:", a("MultiDEG", href = "https://fgcz-shiny.uzh.ch/multiDEG/", target = "_blank"))
       )
     })
     output$referencesText <- renderUI({
       box(
         title = "Cite us!",
-        width = NULL, 
+        width = NULL,
         solidHeader = TRUE,
         status = "primary",
         tags$p("If you plan to publish results generated in SUSHI, and/or figures from this app, please consider citing us!"),
@@ -132,7 +134,7 @@ observeEvent(inputDataReactive()$dataType, {
         hr(style = "border-top: 1px solid #000000;"),
         h4("Download Count Files"),
         helpText("Select the type of count data you wish to download for all samples in the dataset."),
-        selectizeInput(inputId = "downloadCount", "Select Count Table", choices = NULL, width = "33%"),
+        selectizeInput(inputId = "downloadCount", "Select Count Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
         downloadButton("downloadTable", "Download selected count file"),
         checkboxInput(inputId = "log2DownloadedCounts", label = "Log2 Counts?", value = FALSE),
         helpText("Log2 adds a psuedocount of 1, and only works on counts not already in log2 scale.")
@@ -142,12 +144,12 @@ observeEvent(inputDataReactive()$dataType, {
     output$referencesText <- renderUI({
       box(
         title = "Cite us!",
-        width = NULL, 
+        width = NULL,
         solidHeader = TRUE,
         status = "primary",
         tags$p("If you plan to publish results generated in b-fabric and prolfqua, and/or figures from this app, please consider citing us!"),
         tags$b("prolfqua: A Comprehensive R‑Package for Proteomics Differential Expression Analysis, Wolski et al., 2023"),
-        tags$p('Witold E. Wolski, Paolo Nanni, Jonas Grossmann, Maria d’Errico, Ralph Schlapbach, and Christian Panse. Journal of Proteome Research 2023 22 (4), 1092-1104. DOI: 10.1021/acs.jproteome.2c00441'),
+        tags$p("Witold E. Wolski, Paolo Nanni, Jonas Grossmann, Maria d’Errico, Ralph Schlapbach, and Christian Panse. Journal of Proteome Research 2023 22 (4), 1092-1104. DOI: 10.1021/acs.jproteome.2c00441"),
         tags$b("b-fabric: Panse et al., 2022"),
         tags$p('Panse, Christian, Trachsel, Christian and Türker, Can. "Bridging data management platforms and visualization tools to enable ad-hoc and smart analytics in life sciences" Journal of Integrative Bioinformatics, vol. 19, no. 4, 2022, pp. 20220031. https://doi.org/10.1515/jib-2022-0031'),
         tags$b("exploreDE Shiny app: Leary and Rehrauer, 2023"),
@@ -160,53 +162,73 @@ observeEvent(inputDataReactive()$dataType, {
         hr(style = "border-top: 1px solid #000000;"),
         h4("Download Feature Value Files"),
         helpText("Select the type of value data you wish to download for all samples in the dataset. For proteomics, this would be intensity values."),
-        selectizeInput(inputId = "downloadCount", "Select Value Table", choices = NULL, width = "33%"),
+        selectizeInput(inputId = "downloadCount", "Select Value Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
         downloadButton("downloadTable", "Download selected file")
+      )
+    })
+  } else if (inputDataReactive()$dataType == "CountQC") {
+    output$countsDownloadUI <- renderUI({
+      tagList(
+        hr(style = "border-top: 1px solid #000000;"),
+        h4("Download Count Files"),
+        helpText("Select the type of count data you wish to download for all samples in the dataset."),
+        selectizeInput(inputId = "downloadCount", "Select Count Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
+        downloadButton("downloadTable", "Download selected count file"),
+        checkboxInput(inputId = "log2DownloadedCounts", label = "Log2 Counts?", value = FALSE),
+        helpText("Log2 adds a psuedocount of 1, and only works on counts not already in log2 scale.")
       )
     })
   }
 })
 
-updateSelectInput(session = session, inputId = "downloadCount", choices = names(countList), selected = names(countList)[1])
+# updateSelectInput(session = session, inputId = "downloadCount", choices = names(countList), selected = names(countList)[1])
 
 observe({
-  
   # Create a table of the samples available in this app instance
   output$inputTable <- function() {
     cD <- inputDataReactive()$dataset
     cD <- cD %>% rownames_to_column("Sample ID")
-    cD <- cD %>% dplyr::select(all_of(c("Sample ID", inputDataReactive()$factorNames)))
+    cD <- cD %>% dplyr::select(all_of(c("Sample ID", inputDataReactive()$factors)))
     kable(
-      cD, 
-      row.names = FALSE, format = "html") %>%
+      cD,
+      row.names = FALSE, format = "html"
+    ) %>%
       kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
   }
-  
+
   # Create a link to download the counts as an Excel file
   output$downloadTable <- downloadHandler(
     filename = function() {
       paste0(input$downloadCount, "_values", ".xlsx")
     },
-    content = function(file) { 
-      if (inputDataReactive()$dataType == "RNASeq") {
+    content = function(file) {
+      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC")) {
         ctdl <- countList[[input$downloadCount]]
         if (input$log2DownloadedCounts & !input$downloadCount %in% c("Normalised + Log2", "VST")) {
-          ctdl <- log2(ctdl+1)
+          ctdl <- log2(ctdl + 1)
         }
-        ctdl <- as.data.frame(ctdl) %>% rownames_to_column("gene_name") %>% left_join(inputDataReactive()$seqAnno[,c("gene_id", "transcript_id", "gene_name")])
-        writexl::write_xlsx(ctdl, path = file) 
+        ctdl <- as.data.frame(ctdl) %>% rownames_to_column("gene_name")
+
+        # Try to add annotation columns if they exist
+        anno_cols <- c("gene_id", "transcript_id", "gene_name")
+        valid_cols <- intersect(anno_cols, colnames(inputDataReactive()$seqAnno))
+        if (length(valid_cols) > 0) {
+          ctdl <- ctdl %>% left_join(inputDataReactive()$seqAnno[, valid_cols, drop = FALSE], by = "gene_name")
+        }
+
+        writexl::write_xlsx(ctdl, path = file)
       } else if (inputDataReactive()$dataType == "proteomics") {
-        writexl::write_xlsx(as.data.frame(countList[[input$downloadCount]]) %>% rownames_to_column("gene_name"), path = file) 
+        writexl::write_xlsx(as.data.frame(countList[[input$downloadCount]]) %>% rownames_to_column("gene_name"), path = file)
       }
     }
   )
-  
-  # Download all currently selected inputs 
+
+  # Download all currently selected inputs
   output$downloadInputsE <- downloadHandler(
     filename = function() {
       "Input_Options.xlsx"
     },
-    content = function(file) { 
+    content = function(file) {
       x <- saved_inputs()
       colnames(x) <- c("Input", "Value")
       writexl::write_xlsx(x, path = file)
@@ -216,21 +238,21 @@ observe({
     filename = function() {
       "Input_Options.qs"
     },
-    content = function(file) { 
+    content = function(file) {
       qs::qsave(x = saved_inputs(), file = file, nthreads = 8)
     }
   )
-  
+
   # Download current reactive data
   output$downloadData <- downloadHandler(
     filename = function() {
       paste0("exploreDE_Data_", format(Sys.time(), "%Y-%m-%d_%H.%M.%S"), ".qs")
     },
-    content = function(file) { 
+    content = function(file) {
       qs::qsave(x = inputDataReactive(), file = file, nthreads = 8)
     }
   )
-  
+
   # Proteomics: Create metadata table
   if (inputDataReactive()$dataType == "proteomics") {
     output$settingsTable <- function() {
@@ -243,20 +265,20 @@ observe({
         contrastSummary,
         row.names = FALSE,
         format = "html"
-        ) %>%
+      ) %>%
         kable_styling(
           bootstrap_options = "striped", full_width = FALSE,
           position = "left"
         )
     }
   }
-  
+
   # RNA Seq: Create settings and thresholds table
   if (inputDataReactive()$dataType == "RNASeq") {
     output$settingsTable <- function() {
       kable(makeCountResultSummary(inputDataReactive()$param, se),
-            row.names = TRUE,
-            col.names = "Setting", format = "html"
+        row.names = TRUE,
+        col.names = "Setting", format = "html"
       ) %>%
         kable_styling(
           bootstrap_options = "striped", full_width = FALSE,
@@ -271,13 +293,38 @@ observe({
           sum(rowData(se)$isPresentProbe)
       }
       knitr::kable(as.data.frame(settings),
-                   format = "html",
-                   col.names = "Number", row.names = TRUE
+        format = "html",
+        col.names = "Number", row.names = TRUE
       ) %>%
         kable_styling(
           bootstrap_options = "striped", full_width = FALSE,
           position = "left"
         )
+    }
+  } else if (inputDataReactive()$dataType == "CountQC") {
+    output$settingsTable <- function() {
+      param <- inputDataReactive()$param
+      settings <- character()
+
+      if (!is.null(param$refBuild)) settings["Reference:"] <- param$refBuild
+      if (!is.null(param$normMethod)) settings["Normalization method:"] <- param$normMethod
+      if (!is.null(param$signalThreshold)) settings["Log2 signal threshold:"] <- param$signalThreshold
+      if (!is.null(param$signalThreshold)) settings["Linear signal threshold:"] <- round(2^param$signalThreshold, 2)
+      if (!is.null(param$featureLevel)) settings["Feature level:"] <- param$featureLevel
+      settings["Number of features:"] <- nrow(se)
+      if (!is.null(param$countColumn)) settings["Data Column Used:"] <- param$countColumn
+
+      kable(as.data.frame(settings),
+        row.names = TRUE,
+        col.names = "Setting", format = "html"
+      ) %>%
+        kable_styling(
+          bootstrap_options = "striped", full_width = FALSE,
+          position = "left"
+        )
+    }
+    output$summaryTable <- function() {
+      NULL
     }
   }
 })

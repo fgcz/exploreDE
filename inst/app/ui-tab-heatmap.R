@@ -11,19 +11,20 @@ tabItem(
         collapsible = TRUE,
         collapsed = TRUE,
         tags$p(
-          "These heatmaps show the expression counts of the most 
-          differentially expressed features (i.e., lowest p-value) 
-          across the sample groups selected. The plots are split
-          into four main sections. The first, 'Both', shows the most 
-          differentially expressed features in either direction, i.e.,
-          both positive and negative log fold changes. The second
-          and third show features with either positive ('Up') or negative
-          ('Down') log fold changes only. The last, 'Custom', will show
-          features selected from the custom heatmap input. When selecting 
-          features for the custom heatmap, the features in the list are in 
-          order of p-value, and can be searched for by typing in 
-          the feature name. They will automatically be added to the plot. 
-          feature names can also be pasted in the text box."
+          "These heatmaps show the expression counts of the most variable or
+          differentially expressed features across the sample groups selected."
+        ),
+        tags$p(
+          tags$b("For RNA-Seq and proteomics data:"), " Features are selected based on
+          differential expression p-values. The plots are split into 'Both' (features
+          with significant changes in either direction), 'Up' (positive log fold changes),
+          and 'Down' (negative log fold changes). The 'Custom' tab allows you to select
+          specific features of interest."
+        ),
+        tags$p(
+          tags$b("For CountQC data:"), " Features are selected based on standard deviation
+          (variability) across all samples, showing the most variable features regardless
+          of their association with any particular experimental condition."
         ),
         tags$p(
           "Values on the heatmap can be on a continuous or diverging
@@ -74,13 +75,21 @@ tabItem(
           tabPanel(
             title = "Feature settings",
             h4("Feature selection"),
-            helpText("Plot the feature expression per sample of DE features, based on thresholds. If you don't see a plot, start by turning the p-value to raw."),
-            numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 2000, value = 50, step = 1),
-            numericInput(inputId = "lfcHeatmap", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
-            selectInput(inputId = "pTypeHeatmap", choices = c("FDR", "Raw"), label = "P-Value:", selected = "Raw"),
-            selectInput(inputId = "pThresholdHeatmap", choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05),
-            selectInput(inputId = "heatmapFeatureDirection", label = "Feature DE direction", choices = c("Both", "Up-regulated", "Down-regulated"), selected = "Both", multiple = FALSE),
-            uiOutput(outputId = "nrPeptidesHeatmapUI"),
+            conditionalPanel(
+              condition = "output.test == 'RNASeq' || output.test == 'proteomics'",
+              helpText("Plot the feature expression per sample of DE features, based on thresholds. If you don't see a plot, start by turning the p-value to raw."),
+              numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 2000, value = 50, step = 1),
+              numericInput(inputId = "lfcHeatmap", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
+              selectInput(inputId = "pTypeHeatmap", choices = c("FDR", "Raw"), label = "P-Value:", selected = "Raw"),
+              selectInput(inputId = "pThresholdHeatmap", choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05),
+              selectInput(inputId = "heatmapFeatureDirection", label = "Feature DE direction", choices = c("Both", "Up-regulated", "Down-regulated"), selected = "Both", multiple = FALSE),
+              uiOutput(outputId = "nrPeptidesHeatmapUI")
+            ),
+            conditionalPanel(
+              condition = "output.test == 'CountQC'",
+              helpText("Features are selected by standard deviation (variability across samples). More variable features will be shown."),
+              numericInput(inputId = "heatmapGeneNumberCountQC", label = "Number of Features on Heatmap", min = 5, max = 5000, value = 2000, step = 10)
+            ),
             
             hr(style = "border-top: 1px solid #000000;"), h4("Count settings"),
             selectInput(inputId = "heatmapCounts", label = "Select count method to plot", choices = "", selected = ""),
@@ -177,7 +186,7 @@ tabItem(
         tabsetPanel(
           id = "sig",
           tabPanel(
-            title = "DE Features",
+            title = uiOutput("heatmapTabTitle", inline = TRUE),
             textOutput("heatmapDesignBoth Directions"), br(),
             downloadButton(outputId = "dlHeatmapButtonDEFeatures", label = "Download Heatmap"),
             downloadButton(outputId = "dlHeatmapDFButtonDEFeatures", label = "Download Counts"), br(),

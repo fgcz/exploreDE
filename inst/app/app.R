@@ -9,7 +9,7 @@ packagesToLoad <- c(
   "ComplexHeatmap", "clusterProfiler", "DT", "colourpicker", "writexl", "circlize",
   "ezRun", "kableExtra", "ggrepel", "gplots", "sortable", "waiter", "ggprism", "ggbeeswarm",
   "rstatix", "gridExtra", "shinylogs", "parallel", "plyr", "shinycssloaders", "GGally", "patchwork",
-  "Matrix", "SingleCellExperiment", "fresh", "pathview", "openxlsx"
+  "Matrix", "SingleCellExperiment", "fresh", "pathview", "openxlsx", "dendextend"
 )
 invisible(lapply(packagesToLoad, function(pkg) {
   suppressPackageStartupMessages(suppressWarnings(library(pkg, character.only = TRUE, quietly = TRUE)))
@@ -64,26 +64,7 @@ ui <- dashboardPage(
   ),
   dashboardSidebar(
     shinyjs::useShinyjs(),
-    sidebarMenu(
-      id = "tabs",
-      menuItem(text = "Results Summary", tabName = "summaryTab", icon = icon("list")),
-      menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
-      menuItem(text = "Volcano Plots", tabName = "volcanoTab", icon = icon("wifi")),
-      menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
-      menuItem(text = "Ordination", tabName = "ordinationTab", icon = icon("meteor")),
-      menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),
-      menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
-      conditionalPanel(
-        condition = "output.test=='RNASeq'",
-        sidebarMenu(
-          menuItem(text = "Over-Representation Analysis", tabName = "oraTab", icon = icon("hubspot")),
-          menuItem(text = "Gene Set Enrichment Analysis", tabName = "gseaTab", icon = icon("hubspot")),
-          menuItem(text = "GO Tile Plots", tabName = "goTileTab", icon = icon("table")),
-          menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))
-        )
-      ),
-      menuItem(text = "Colours", tabName = "colourTab", icon = icon("palette"))
-    )
+    sidebarMenuOutput("sidebarMenu")
   ),
   dashboardBody(
     use_theme(my_theme),
@@ -121,6 +102,12 @@ ui <- dashboardPage(
             .content-wrapper, .right-side {
             background-color: #FFFFFF;
             }
+            .sidebar-menu > li.header {
+              font-size: 16px;
+              font-weight: bold;
+              color: #b8c7ce;
+              padding: 10px 25px 10px 15px;
+            }
             ")
         )
       )
@@ -128,17 +115,18 @@ ui <- dashboardPage(
     use_waiter(),
     tabItems(
       source("ui-tab-summary.R", local = TRUE)$value,
-      source("ui-tab-DEGTable.R", local = TRUE)$value,
-      source("ui-tab-volcano.R", local = TRUE)$value,
+      source("ui-tab-boxplot.R", local = TRUE)$value,
       source("ui-tab-heatmap.R", local = TRUE)$value,
       source("ui-tab-ordination.R", local = TRUE)$value,
-      source("ui-tab-boxplot.R", local = TRUE)$value,
       source("ui-tab-correlation.R", local = TRUE)$value,
+      source("ui-tab-colour.R", local = TRUE)$value,
+      source("ui-tab-DEGTable.R", local = TRUE)$value,
+      source("ui-tab-volcano.R", local = TRUE)$value,
       source("ui-tab-hypergeo2.R", local = TRUE)$value,
       source("ui-tab-gsea2.R", local = TRUE)$value,
       source("ui-tab-goTile.R", local = TRUE)$value,
       source("ui-tab-kegg.R", local = TRUE)$value,
-      source("ui-tab-colour.R", local = TRUE)$value
+      source("ui-tab-replicability.R", local = TRUE)$value
     )
   )
 )
@@ -156,6 +144,48 @@ server <- function(input, output, session) {
   source("server-gsea2.R", local = TRUE)
   source("server-goTile.R", local = TRUE)
   source("server-kegg.R", local = TRUE)
+  source("server-replicability.R", local = TRUE)
+
+  output$sidebarMenu <- renderMenu({
+    req(inputDataReactive())
+    dataType <- inputDataReactive()$dataType
+
+    # 0. Tabs 
+    menuItems <- list(
+      menuItem(text = "Results Summary", tabName = "summaryTab", icon = icon("list")),
+      menuItem(text = "Colours", tabName = "colourTab", icon = icon("palette")),
+      
+      # 1. Count tabs (Always shown)
+      tags$li(class = "header", "Counts"),
+      menuItem(text = "Ordination", tabName = "ordinationTab", icon = icon("meteor")),
+      menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
+      menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),
+      menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
+      menuItem(text = "Replicability", tabName = "replicabilityTab", icon = icon("copy"))
+    )
+
+    # 2. DE tabs (Shown if NOT CountQC)
+    if (dataType != "CountQC") {
+      menuItems <- c(menuItems, list(
+        tags$li(class = "header", "DE Results"),
+        menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
+        menuItem(text = "Volcano Plots", tabName = "volcanoTab", icon = icon("wifi"))
+      ))
+    }
+
+    # 3. Pathway tabs (Shown ONLY if RNASeq)
+    if (dataType == "RNASeq") {
+      menuItems <- c(menuItems, list(
+        tags$li(class = "header", "Pathway Analyses"),
+        menuItem(text = "Over-Representation Analysis", tabName = "oraTab", icon = icon("hubspot")),
+        menuItem(text = "Gene Set Enrichment Analysis", tabName = "gseaTab", icon = icon("hubspot")),
+        menuItem(text = "GO Tile Plots", tabName = "goTileTab", icon = icon("table")),
+        menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))
+      ))
+    }
+
+    sidebarMenu(id = "tabs", .list = menuItems)
+  })
 }
 
 shinyApp(ui = ui, server = server)

@@ -17,7 +17,15 @@ tabItem(
           br(), 
           tableOutput("summaryTable"),
         ),
-        uiOutput(outputId = "linkToMultiDEG")
+        uiOutput(outputId = "linkToMultiDEG"),
+        box(
+          title = paste("Input dataset"),
+          width = NULL,
+          solidHeader = TRUE,
+          status = "primary",
+          helpText("The list of samples that are included in the entire dataset, and their factor columns."),
+          tableOutput("inputTable")
+        )
       ),
       column(
         width = 6,
@@ -35,16 +43,22 @@ tabItem(
           uiOutput("countsDownloadUI")
         ),
         uiOutput(outputId = "referencesText"),
-      ),
-      column(
-        width = 12,
         box(
-          title = paste("Input dataset"),
-          width = 6,
+          title = "Updates, December 2025",
+          width = NULL,
           solidHeader = TRUE,
           status = "primary",
-          helpText("The list of samples that are included in the entire dataset, and their factor columns."),
-          tableOutput("inputTable")
+          tags$b("Exciting new updates to your favourite shiny app, to help you have even more fun with your data into 2026!"),
+          br(), br(),
+          tags$p("Introducing explodeDE v 3.5.0! What's new?"),
+          tags$p("- App now supports CountQC data and more proteomics data types! As such, the tabs have been rejigged."),
+          tags$p("- PCA has been reborn as ordination, and now supports MDS, NMDS, and my favourite new feature, biplot mode!"),
+          tags$p("- A new 'Replicability' tab has been added to show sample-to-sample correlations and replicate consistency."),
+          tags$p("- In the heatmaps tab, you can now group the samples by a factor column, and plot the mean or median per group."),
+          helpText("It's hidden right at the bottom of the settings box..."),
+          tags$p("- In the volcano tab, if you select a feature to highlight, but then drop it into the exclude bucket, it'll remove the feature from the plot entirely."),
+          tags$p("- In the ORA and GSEA tabs, you can now filter which genes are highlighted/displayed in the figures. The box is hidden at the bottom of the page."),
+          tags$p("Most of these new features are here because of user requests, so please keep the feedback coming!")
         )
       )
     )

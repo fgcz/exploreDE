@@ -25,6 +25,7 @@ updateSelectInput(
   choices = names(inputDataReactive()$countList),
   selected = switch(inputDataReactive()$dataType,
     "RNASeq" = "Normalised + Log2",
+    "CountQC" = "Normalised + Log2",
     "proteomics" = "transformedData"
   )
 )
@@ -50,11 +51,18 @@ updateSelectInput(
   selected = "None"
 )
 
+# Automatically set batch correction if grouping2Name exists
+batchDefault <- "None"
+if (!is.null(inputDataReactive()$param$grouping2Name)) {
+  if (inputDataReactive()$param$grouping2Name %in% inputDataReactive()$factors) {
+    batchDefault <- inputDataReactive()$param$grouping2Name
+  }
+}
 updateSelectInput(
   session = session,
   inputId = "boxplotBatch",
   choices = c("None", inputDataReactive()$factors),
-  selected = "None"
+  selected = batchDefault
 )
 
 observeEvent(
@@ -91,6 +99,9 @@ if (inputDataReactive()$dataType == "RNASeq") {
   output$boxplotDesign <- renderText({
     inputDataReactive()$design
   })
+} else if (inputDataReactive()$dataType == "CountQC") {
+  seqAnnoReactive <- reactiveValues("sa" = inputDataReactive()$seqAnno, "saF" = NULL)
+  design <- inputDataReactive()$design
 } else if (inputDataReactive()$dataType == "proteomics") {
   seqAnnoReactive <- reactiveValues("sa" = NULL, "saF" = NULL)
   observeEvent(input$contrastSelected,
@@ -141,7 +152,10 @@ observeEvent(
     }), c("boxplotGenesText", "volcanoGenesText", "heatmapGenesText"))
 
     # Get the genes that were click-selected in the DE table
-    degMATable <- seqAnnoReactive$sa[order(seqAnnoReactive$sa$pValue), ]
+    degMATable <- seqAnnoReactive$sa
+    if (inputDataReactive()$dataType != "CountQC") {
+      degMATable <- seqAnnoReactive$sa[order(seqAnnoReactive$sa$pValue), ]
+    }
     degMATable <- degMATable$gene_name[input$degTable_rows_selected]
 
     volcanoBrushGenes <- NULL
@@ -259,7 +273,7 @@ boxplotCountsReactive <- eventReactive(
     # Apply the following in this specific order as required: Log2, batch correct, Z-scale
     # If the user wants to log2, then do that
     if (input$boxplotCountsLog) {
-      if (inputDataReactive()$dataType == "RNASeq") {
+      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC")) {
         if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
           countsBoxplot <- log2(countsBoxplot + 1)
         }
@@ -310,26 +324,27 @@ boxplotCountsReactive <- eventReactive(
     }
 
     # add the DE results
-    countsBoxplotMelt$fdr <- seqAnnoReactive$sa$fdr[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$gene_name)]
-    countsBoxplotMelt$fdr[is.na(countsBoxplotMelt$fdr)] <- 1
-    countsBoxplotMelt$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$gene_name)]
-    countsBoxplotMelt$log2Ratio[is.na(countsBoxplotMelt$log2Ratio)] <- 0
-    countsBoxplotMelt <- add_significance(
-      countsBoxplotMelt,
-      p.col = "fdr",
-      output.col = "stars",
-      cutpoints = c(0, 1e-04, 0.001, 0.01, 0.05, 1),
-      symbols = c("****", "***", "**", "*", "ns")
-    )
-    countsBoxplotMelt$group1 <- designLevels[1]
-    countsBoxplotMelt$group2 <- designLevels[2]
-    countsBoxplotMelt$y.position <- lapply(genesToPlot, function(g) {
-      rep(
-        max(countsBoxplotMelt$Counts[countsBoxplotMelt$Feature == g], na.rm = T),
-        nrow(countsBoxplotMelt[countsBoxplotMelt$Feature == g, ])
+    if (inputDataReactive()$dataType != "CountQC") {
+      countsBoxplotMelt$fdr <- seqAnnoReactive$sa$fdr[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$gene_name)]
+      countsBoxplotMelt$fdr[is.na(countsBoxplotMelt$fdr)] <- 1
+      countsBoxplotMelt$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$gene_name)]
+      countsBoxplotMelt$log2Ratio[is.na(countsBoxplotMelt$log2Ratio)] <- 0
+      countsBoxplotMelt <- add_significance(
+        countsBoxplotMelt,
+        p.col = "fdr",
+        output.col = "stars",
+        cutpoints = c(0, 1e-04, 0.001, 0.01, 0.05, 1),
+        symbols = c("****", "***", "**", "*", "ns")
       )
-    }) %>% unlist()
-
+      countsBoxplotMelt$group1 <- designLevels[1]
+      countsBoxplotMelt$group2 <- designLevels[2]
+      countsBoxplotMelt$y.position <- lapply(genesToPlot, function(g) {
+        rep(
+          max(countsBoxplotMelt$Counts[countsBoxplotMelt$Feature == g], na.rm = T),
+          nrow(countsBoxplotMelt[countsBoxplotMelt$Feature == g, ])
+        )
+      }) %>% unlist()
+    }
 
     # Get a data frame for the barplots
     countsBarplot <- dataSummary(
@@ -339,8 +354,10 @@ boxplotCountsReactive <- eventReactive(
     )
     countsBarplot[[input$boxplotFactor1]] <- factor(countsBarplot[[input$boxplotFactor1]], levels = input$boxKeepBucket)
     countsBarplot$Feature <- factor(countsBarplot$Feature, genesToPlot)
-    for (f in c("fdr", "log2Ratio", "stars", "group1", "group2", "y.position")) {
-      countsBarplot[[f]] <- countsBoxplotMelt[match(countsBarplot$Feature, countsBoxplotMelt$Feature), f]
+    if (inputDataReactive()$dataType != "CountQC") {
+      for (f in c("fdr", "log2Ratio", "stars", "group1", "group2", "y.position")) {
+        countsBarplot[[f]] <- countsBoxplotMelt[match(countsBarplot$Feature, countsBoxplotMelt$Feature), f]
+      }
     }
 
     return(list(
@@ -390,8 +407,11 @@ observeEvent(
     input$boxplotShowPJust
     input$boxplotYScaleFree
     input$boxplotPlotBorder
+    # Add all color picker inputs as dependencies so plot updates when colors change
     lapply(seq_along(inputDataReactive()$factorLevels), function(i) {
-      input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
+      lapply(seq_along(inputDataReactive()$factorLevels[[i]]), function(j) {
+        input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]], inputDataReactive()$factorLevels[[i]][[j]])]]
+      })
     })
   },
   ignoreNULL = FALSE,
@@ -540,13 +560,20 @@ output$boxplotTable <- renderDataTable({
     xvar = input$boxplotFactor1,
     yvar = "Counts"
   )
+  if (inputDataReactive()$dataType != "CountQC") {
+    colsToShowHere <- c("Name", input$boxplotFactor1, "Feature", "Counts", "log2Ratio", "fdr")
+    colsToFormat <- c("Counts", "fdr", "log2Ratio")
+  } else {
+    colsToShowHere <- c("Name", input$boxplotFactor1, "Feature", "Counts")
+    colsToFormat <- c("Counts")
+  }
   DT::datatable(
-    data = boxplot_brushed_df[, c("Name", input$boxplotFactor1, "Feature", "Counts", "log2Ratio", "fdr"), drop = FALSE],
+    data = boxplot_brushed_df[, colsToShowHere, drop = FALSE],
     filter = "top",
     rownames = F
   ) %>%
     DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
-    formatSignif(c("Counts", "fdr", "log2Ratio"), digits = 3)
+    formatSignif(colsToFormat, digits = 3)
 })
 
 lapply(c("boxplot", "barplot"), function(b) {
@@ -586,3 +613,13 @@ output$dlBoxplotButtonCounts <- downloadHandler(
     )
   }
 )
+
+# Show/Hide DE P-values tab based on data type
+observe({
+  req(inputDataReactive())
+  if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics")) {
+    showTab(inputId = "boxplotSettingsTabs", target = "dePValuesTab")
+  } else {
+    hideTab(inputId = "boxplotSettingsTabs", target = "dePValuesTab")
+  }
+})

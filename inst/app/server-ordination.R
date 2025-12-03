@@ -474,6 +474,8 @@ designReactive <- reactive({
     } else {
       return("No contrast selected")
     }
+  } else if (inputDataReactive()$dataType == "CountQC") {
+    return(inputDataReactive()$design)
   }
   return("Unknown")
 })
@@ -640,12 +642,24 @@ observeEvent(inputDataReactive(), {
     count_choices <- names(inputDataReactive()$countList)
     default_count <- if ("transformedData" %in% count_choices) "transformedData" else count_choices[1]
     updateSelectInput(session = session, inputId = "pcaCounts", choices = count_choices, selected = default_count)
+  } else if (inputDataReactive()$dataType == "CountQC") {
+    output$pcaDesign <- renderText({
+      designReactive()
+    })
+    updateSelectInput(session = session, inputId = "pcaCounts", choices = names(inputDataReactive()$countList), selected = "VST")
+  }
+  # Automatically set batch correction if grouping2Name exists
+  batchDefault <- "None"
+  if (!is.null(inputDataReactive()$param$grouping2Name)) {
+    if (inputDataReactive()$param$grouping2Name %in% inputDataReactive()$factors) {
+      batchDefault <- inputDataReactive()$param$grouping2Name
+    }
   }
   updateSelectInput(
     session = session,
     inputId = "pcaBatch",
     choices = c("None", inputDataReactive()$factors),
-    selected = "None"
+    selected = batchDefault
   )
   lapply(c(1:2), function(i) {
     selected <- switch(i,
@@ -780,8 +794,11 @@ observeEvent(
     input$biplotArrowColour
     input$biplotArrowColourX
     input$biplotArrowColourY
+    # Add all color picker inputs as dependencies so plot updates when colors change
     lapply(seq_along(inputDataReactive()$factorLevels), function(i) {
-      input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
+      lapply(seq_along(inputDataReactive()$factorLevels[[i]]), function(j) {
+        input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]], inputDataReactive()$factorLevels[[i]][[j]])]]
+      })
     })
     inputDataReactive()
   },

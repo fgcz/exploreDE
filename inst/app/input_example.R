@@ -275,7 +275,7 @@ generateParams <- function(
 is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir)) 
 }
-# dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
 # dataDir <- "/srv/gstore/projects/p28466/eq2_dnaj1dnaj2dnaj3pepe--over--WT_2025-07-07--12-43-22/dnaj1dnaj2dnaj3pepe--over--WT"
 # dataDir <- "/srv/gstore/projects/p35043/o39540_DESeq2_AGD_Tumor--over--Control_Tumor_2025-10-01--12-34-19/AGD_Tumor--over--Control_Tumor"
 # dataDir <- "/srv/gstore/projects/p26523/o36354_DESeq2_Variant_CD--over--WT_CD_2025-07-23--16-53-53/Variant_CD--over--WT_CD"
@@ -290,7 +290,12 @@ is_url <- function(dataDir) {
 # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335484/2997993.rds"
 # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335485/2997996.rds"
 # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39763/bfabric/Proteomics/exploreDE/2025/2025-11/2025-11-03/workunit_335997/3012890.rds"
-dataDir <- "/srv/gstore/projects/p39374/o39634_DESeq2_CEPC_COMP--over--CEPC_unstimulated_2025-11-13--09-14-39/CEPC_COMP--over--CEPC_unstimulated"
+# dataDir <- "/srv/gstore/projects/p39374/o39634_DESeq2_CEPC_COMP--over--CEPC_unstimulated_2025-11-13--09-14-39/CEPC_COMP--over--CEPC_unstimulated"
+# dataDir <- "/srv/gstore/projects/p23793/o32655_CountQC_2023-10-05--18-33-15/Count_QC/counts-sswoowrqapiv-EzResult.RData"
+# dataDir <- "/srv/gstore/projects/p23793/o32655_CountQC_2023-10-05--18-33-15/Count_QC/counts-sswoowrqapiv-EzResult.RData" # CountQC
+# dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39763/bfabric/Proteomics/exploreDE/2025/2025-11/2025-11-03/workunit_335997/3012890.rds" # Proteomics
+# dataDir <- "/srv/gstore/projects/p39374/o39634_DESeq2_IVD_Disc_Matrix--over--IVD_unstimulated_2025-11-13--09-20-35/IVD_Disc_Matrix--over--IVD_unstimulated" # twoFactor
+
 if (is_url(dataDir)) {
   se <- readRDS(url(dataDir))  # If it's a URL
 } else {

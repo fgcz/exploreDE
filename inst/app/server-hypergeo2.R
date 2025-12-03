@@ -111,11 +111,11 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
     },
     {
       er <- ora[[input$oraType]][[input$oraDirection]]
-      if (input$tabs == "oraTab") {
+      # if (input$tabs == "oraTab") {
         if (is.null(er) || nrow(er@result) == 0) {
           showModal(modalDialog(title = "No ORA Results", "There are no results for this selection."))
         }
-      }
+      # }
       if (!is.null(er) && nrow(er@result) != 0) {
         er@result$Label <- ""
         for (i in seq_along(er@result$Description)) {

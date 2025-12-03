@@ -49,18 +49,32 @@ observeEvent(
   },
   {
     output$geneBucket2 <- renderUI({
+      # Preserve current bucket state
+      currentInclude <- if (!is.null(input$volcanoKeepBucketGenes)) input$volcanoKeepBucketGenes else c()
+      currentExclude <- if (!is.null(input$boxExcludeBucketGenes)) input$boxExcludeBucketGenes else c()
+
+      # Get new genes that aren't already in either bucket
+      newGenes <- genesReactive$genes
+      if (!is.null(newGenes)) {
+        alreadyInBuckets <- c(currentInclude, currentExclude)
+        newGenes <- newGenes[!newGenes %in% alreadyInBuckets]
+      }
+
+      # Combine: keep existing include genes + add new ones
+      includeBucket <- unique(c(currentInclude, newGenes))
+
       bucket_list(
         header = "Drag and drop features in order to be plotted",
         group_name = "bucket_list_group",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these features in this order",
-          labels = genesReactive$genes,
+          labels = includeBucket,
           input_id = "volcanoKeepBucketGenes"
         ),
         add_rank_list(
           text = "Exclude these features",
-          labels = NULL,
+          labels = currentExclude,
           input_id = "boxExcludeBucketGenes"
         )
       )
@@ -85,9 +99,13 @@ observeEvent(
     input$contrastSelected
     inputDataReactive()
   },
-  ignoreInit = FALSE,
+  ignoreInit = TRUE,
   ignoreNULL = TRUE,
   {
+    # Volcano plots are only applicable for RNASeq and proteomics data with DE results
+    # CountQC data does not have differential expression results
+    req(inputDataReactive()$dataType %in% c("RNASeq", "proteomics"))
+
     if (inputDataReactive()$dataType == "RNASeq") {
       seqAnno <- inputDataReactive()$seqAnno
       design <- inputDataReactive()$design
@@ -100,6 +118,8 @@ observeEvent(
 
     if (inputDataReactive()$dataType == "proteomics") {
       req(!is.null(input$contrastSelected))
+      req(!is.null(inputDataReactive()$seqAnnoList))
+      req(input$contrastSelected %in% names(inputDataReactive()$seqAnnoList))
       seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
       seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, log2Ratio, pValue, fdr)
 
@@ -193,6 +213,7 @@ volcanoResultsList <- eventReactive(
     input$pThresholdVolcano
     input$volcanoShowGenes
     input$volcanoKeepBucketGenes
+    input$boxExcludeBucketGenes
     input$contrastSelected
     input$nrPeptideVolcano
     input$showImputedVolcano
@@ -204,6 +225,10 @@ volcanoResultsList <- eventReactive(
   ignoreInit = TRUE,
   ignoreNULL = FALSE,
   {
+    # Volcano plots are only applicable for RNASeq and proteomics data with DE results
+    # CountQC data does not have differential expression results
+    req(inputDataReactive()$dataType %in% c("RNASeq", "proteomics"))
+
     if (inputDataReactive()$dataType == "RNASeq") {
       seqAnno <- inputDataReactive()$seqAnno
       design <- inputDataReactive()$design
@@ -213,6 +238,9 @@ volcanoResultsList <- eventReactive(
       seqAnnoFilt <- seqAnno[which(seqAnno$usedInTest), ]
     }
     if (inputDataReactive()$dataType == "proteomics") {
+      req(!is.null(input$contrastSelected))
+      req(!is.null(inputDataReactive()$seqAnnoList))
+      req(input$contrastSelected %in% names(inputDataReactive()$seqAnnoList))
       seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
       if (!is.null(input$nrPeptideVolcano)) {
         if (any(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano)) {
@@ -237,6 +265,10 @@ volcanoResultsList <- eventReactive(
       output$volcanoDesign <- renderText({
         input$contrastSelected
       })
+    }
+
+    if (!is.null(input$boxExcludeBucketGenes)) {
+      seqAnnoFilt <- seqAnnoFilt[!seqAnnoFilt$gene_name %in% input$boxExcludeBucketGenes, ]
     }
 
     if (input$pTypeVolcano == "Raw") {
@@ -409,7 +441,6 @@ observeEvent(
     }
     maplot <- maplot + guides()
     figuresDataReactive$volcanoMA <- maplot
-
 
     # Create the volcano plot
     volcanoStatic <- ggplot(

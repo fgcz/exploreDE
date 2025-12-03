@@ -10,7 +10,14 @@ default_count <- switch(inputDataReactive()$dataType,
                        "RNASeq" = "Normalised + Log2",
                        "proteomics" = if ("transformedData" %in% count_choices) "transformedData" else count_choices[1])
 updateSelectInput(session = session, inputId = "correlationCounts", label = "Select count method to plot", choices = count_choices, selected = default_count)
-updateSelectInput(session = session, inputId = "correlationBatch", label = "Apply a batch-correction to the counts?", choices = c("None", inputDataReactive()$factors), selected = "None")
+# Automatically set batch correction if grouping2Name exists
+batchDefault <- "None"
+if (!is.null(inputDataReactive()$param$grouping2Name)) {
+  if (inputDataReactive()$param$grouping2Name %in% inputDataReactive()$factors) {
+    batchDefault <- inputDataReactive()$param$grouping2Name
+  }
+}
+updateSelectInput(session = session, inputId = "correlationBatch", label = "Apply a batch-correction to the counts?", choices = c("None", inputDataReactive()$factors), selected = batchDefault)
 updateSliderInput(session = session, inputId = "correlationCorPosX", label = "Label position x", min = 1, max = 100, value = 10, step = 1)
 updateSliderInput(session = session, inputId = "correlationCorPosY", label = "Label position y", min = 1, max = 100, value = 10, step = 1)
 
@@ -57,8 +64,11 @@ observeEvent({
   input$correlationMaxOverlaps
   input$correlationLabelPosX
   input$correlationLabelPosY
-  lapply(seq_along(inputDataReactive()$factorLevels), function (i) {
-    input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]])]]
+  # Add all color picker inputs as dependencies so plot updates when colors change
+  lapply(seq_along(inputDataReactive()$factorLevels), function(i) {
+    lapply(seq_along(inputDataReactive()$factorLevels[[i]]), function(j) {
+      input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]], inputDataReactive()$factorLevels[[i]][[j]])]]
+    })
   })
 }, ignoreNULL = TRUE, ignoreInit = TRUE, {
   
