@@ -24,7 +24,7 @@ tabItem(
           can use different distance metrics and is more flexible. ",
           tags$b("NMDS"), " (Non-metric Multidimensional Scaling) preserves rank-order
           distances and is robust to non-linear relationships. ",
-          tags$b("GLM-PCA"), " uses generalized linear models and is specifically designed
+          tags$b("GLM-PCA"), " uses generalised linear models and is specifically designed
           for count data (RNA-seq)."
         ),
         tags$p(

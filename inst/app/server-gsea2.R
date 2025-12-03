@@ -257,7 +257,7 @@ observeEvent(
     erRP <- clusterProfiler::slice(current_er, input$selectedTable_GSEA_rows_selected)
     labelColumn <- ifelse(input$gseaType == "C2", "Description", "Label")
 
-    # Apply gene filtering based on visualization thresholds
+    # Apply gene filtering based on visualisation thresholds
     log2RatioGSEA <- gseaToUse$log2RatioGSEA
     log2RatioGSEA_full <- log2RatioGSEA # Keep full list for reference
     genes_pass_filter <- names(log2RatioGSEA) # Default: all genes pass

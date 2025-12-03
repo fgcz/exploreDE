@@ -24,7 +24,25 @@ output$replicabilityFactorSelectUI <- renderUI({
     )
 })
 
-# Reactive for calculating correlation and clustering
+# Update break values based on correlation data
+observeEvent(replicabilityData(), {
+    req(replicabilityData())
+
+    # Get all correlation data
+    all_corr <- replicabilityData()$all$corr
+    top100_corr <- replicabilityData()$top100$corr
+
+    # Use the min/mean/max from all genes
+    corr_min <- min(all_corr, na.rm = TRUE)
+    corr_mean <- mean(all_corr, na.rm = TRUE)
+    corr_max <- max(all_corr, na.rm = TRUE)
+
+    # Update the numeric inputs
+    updateNumericInput(session, "replicabilityAtLow", value = round(corr_min, 2))
+    updateNumericInput(session, "replicabilityAtMid", value = round(corr_mean, 2))
+    updateNumericInput(session, "replicabilityAtHigh", value = round(corr_max, 2))
+})
+
 # Reactive for calculating correlation and clustering
 replicabilityData <- reactive({
     req(input$replicabilityCounts)
@@ -132,7 +150,7 @@ make_rep_heatmap <- function(data, title_suffix = "") {
             col = colourList,
             show_legend = TRUE,
             annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-            gp = gpar(col = input$replicabilityBorderColor, lwd = input$replicabilityBorderSize)
+            gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
         )
 
         ha_left <- rowAnnotation(
@@ -140,14 +158,30 @@ make_rep_heatmap <- function(data, title_suffix = "") {
             col = colourList,
             show_legend = FALSE,
             annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-            gp = gpar(col = input$replicabilityBorderColor, lwd = input$replicabilityBorderSize)
+            gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
         )
+    }
+
+    # Get color breaks
+    at <- c(input$replicabilityAtLow, input$replicabilityAtMid, input$replicabilityAtHigh)
+
+    # Determine color scheme - use palette if selected, otherwise use manual colors
+    if (!is.null(input$replicabilityPalette) && input$replicabilityPalette != "None") {
+        palette_colours <- brewer.pal(9, input$replicabilityPalette)
+        selected_colours <- palette_colours[c(1, 5, 9)]
+        if (input$replicabilityPaletteRev) {
+            heatmap_colours <- colorRamp2(at, selected_colours)
+        } else {
+            heatmap_colours <- colorRamp2(at, rev(selected_colours))
+        }
+    } else {
+        heatmap_colours <- colorRamp2(at, c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh))
     }
 
     hm <- ComplexHeatmap::Heatmap(
         data$corr,
         name = "Correlation",
-        col = colorRamp2(c(-1, 0, 1), c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh)),
+        col = heatmap_colours,
         top_annotation = ha_top,
         left_annotation = ha_left,
         show_row_names = input$replicabilityShowNames,
@@ -155,12 +189,12 @@ make_rep_heatmap <- function(data, title_suffix = "") {
         row_names_gp = row_names_gp,
         column_names_gp = column_names_gp,
         heatmap_legend_param = list(title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold")),
-        rect_gp = gpar(col = input$replicabilityBorderColor, lwd = input$replicabilityBorderSize),
+        rect_gp = gpar(col = input$replicabilityBorderColor2, lwd = input$replicabilityBorderSize2 / 10),
         column_title = paste0("Correlation Heatmap: ", title_suffix),
         column_title_gp = gpar(fontsize = input$replicabilityTextSize + 2, fontface = "bold")
     )
 
-    draw(hm, merge_legend = TRUE)
+    draw(hm, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
 }
 
 # Helper function for Dendrogram
@@ -295,21 +329,37 @@ output$replicabilityDownloadHeatmap <- downloadHandler(
                 col = colourList,
                 show_legend = TRUE,
                 annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-                gp = gpar(col = input$replicabilityBorderColor, lwd = input$replicabilityBorderSize)
+                gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
             )
             ha_left <- rowAnnotation(
                 df = anno_df,
                 col = colourList,
                 show_legend = FALSE,
                 annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-                gp = gpar(col = input$replicabilityBorderColor, lwd = input$replicabilityBorderSize)
+                gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
             )
+        }
+
+        # Get color breaks
+        at <- c(input$replicabilityAtLow, input$replicabilityAtMid, input$replicabilityAtHigh)
+
+        # Determine color scheme - use palette if selected, otherwise use manual colors
+        if (!is.null(input$replicabilityPalette) && input$replicabilityPalette != "None") {
+            palette_colours <- brewer.pal(9, input$replicabilityPalette)
+            selected_colours <- palette_colours[c(1, 5, 9)]
+            if (input$replicabilityPaletteRev) {
+                heatmap_colours <- colorRamp2(at, selected_colours)
+            } else {
+                heatmap_colours <- colorRamp2(at, rev(selected_colours))
+            }
+        } else {
+            heatmap_colours <- colorRamp2(at, c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh))
         }
 
         hm <- ComplexHeatmap::Heatmap(
             data$corr,
             name = "Correlation",
-            col = colorRamp2(c(-1, 0, 1), c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh)),
+            col = heatmap_colours,
             top_annotation = ha_top,
             left_annotation = ha_left,
             show_row_names = input$replicabilityShowNames,
@@ -317,11 +367,11 @@ output$replicabilityDownloadHeatmap <- downloadHandler(
             row_names_gp = row_names_gp,
             column_names_gp = column_names_gp,
             heatmap_legend_param = list(title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold")),
-            rect_gp = gpar(col = input$replicabilityBorderColor, lwd = input$replicabilityBorderSize)
+            rect_gp = gpar(col = input$replicabilityBorderColor2, lwd = input$replicabilityBorderSize2 / 10)
         )
 
         pdf(file, width = input$figWidthReplicability / 72, height = input$figHeightReplicability / 72)
-        draw(hm, merge_legend = TRUE)
+        draw(hm, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
         dev.off()
     }
 )

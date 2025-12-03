@@ -112,9 +112,9 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
     {
       er <- ora[[input$oraType]][[input$oraDirection]]
       # if (input$tabs == "oraTab") {
-        if (is.null(er) || nrow(er@result) == 0) {
-          showModal(modalDialog(title = "No ORA Results", "There are no results for this selection."))
-        }
+      if (is.null(er) || nrow(er@result) == 0) {
+        showModal(modalDialog(title = "No ORA Results", "There are no results for this selection."))
+      }
       # }
       if (!is.null(er) && nrow(er@result) != 0) {
         er@result$Label <- ""
@@ -190,7 +190,7 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
       names(log2RatioORA) <- metadata(se)$enrichInput$seqAnno$gene_name[metadata(se)$enrichInput$seqAnno$gene_id %in% sigGeneIds]
       log2RatioORA <- sort(log2RatioORA, decreasing = T)
 
-      # Apply gene filtering based on visualization thresholds
+      # Apply gene filtering based on visualisation thresholds
       log2RatioORA_full <- log2RatioORA # Keep full list for reference
       genes_pass_filter <- names(log2RatioORA) # Default: all genes pass
 
