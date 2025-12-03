@@ -314,7 +314,9 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl)) {
-  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/" # RNASeq
+  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/" # RNASeq
+  # dataDir <- "/srv/gstore/projects/p39374/o39634_DESeq2_IVD_Disc_Matrix--over--IVD_unstimulated_2025-11-13--09-20-35/IVD_Disc_Matrix--over--IVD_unstimulated" # twoFactor
+  dataDir <- "/srv/gstore/projects/p38738/o40056_EdgeR_HDM_F2_STI--over--HDM_F2_2025-11-30--08-06-19/HDM_F2_STI--over--HDM_F2"
   projectFromUrl <- "p3009" # JLR 2025
   dataType <- "demo"
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = 600, closeButton = TRUE)
@@ -389,7 +391,7 @@ if (dataType %in% c("gStore", "demo")) {
 
   if (allowed) {
     # If RNA Seq, load that
-    if (grepl("DESeq2|edgeR|Limma", dataDir)) {
+    if (grepl("DESeq2|EdgeR|Limma", dataDir, ignore.case = TRUE)) {
       # Check if it's an old format URL, if so, reformat
       if (grepl("EzResult.RData", dataDir)) {
         dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
@@ -421,7 +423,7 @@ if (dataType %in% c("gStore", "demo")) {
 
 # Generate inputDataReactive ----
 inputDataReactive <- reactive({
-  waiter <- waiter::Waiter$new(fadeout = TRUE, color = "#86a5bf")
+  waiter <- waiter::Waiter$new(fadeout = TRUE, color = "#527085")
   waiter$show()
   on.exit(waiter$hide())
 

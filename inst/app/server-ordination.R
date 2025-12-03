@@ -602,7 +602,7 @@ ordinationResults <- reactive({
         h4("Computing GLM-PCA..."),
         p("This may take 1-2 minutes for large datasets")
       ),
-      color = "#86a5bf"
+      color = "#527085"
     )
     waiter$show()
     on.exit(waiter$hide(), add = TRUE)

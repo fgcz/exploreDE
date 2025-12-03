@@ -114,33 +114,33 @@ tabItem(
             title = "Network plot",
             downloadButton(outputId = "dlCnetPlot_GSEA", label = paste("Download Network Plot: PDF")),
             br(), br(),
-            withSpinner(plotOutput(outputId = "cnetPlot_GSEA", inline = TRUE), color = "#93bac2"),
+            withSpinner(plotOutput(outputId = "cnetPlot_GSEA", inline = TRUE), color = "#6E8D9E"),
             checkboxInput(inputId = "showGeneLabelsGSEA", label = "Show gene names?", value = TRUE)
           ),
           tabPanel(
             title = "Heatmap",
             downloadButton(outputId = "dlHeatmap_GSEA", label = paste("Download Heatmap: PDF")),
             br(), br(),
-            withSpinner(plotOutput(outputId = "heatmap_GSEA", inline = TRUE), color = "#93bac2")
+            withSpinner(plotOutput(outputId = "heatmap_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Running Score",
             downloadButton(outputId = "dlRunningScore_GSEA", label = paste("Download Running Score Plot: PDF")),
             br(), br(),
-            withSpinner(plotOutput(outputId = "runningScore_GSEA", inline = TRUE), color = "#93bac2")
+            withSpinner(plotOutput(outputId = "runningScore_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Ridge Plot",
             selectInput(inputId = "ridgePlotColourByGSEA", label = "Colour plot by", choices = c("p.adjust", "enrichmentScore", "NES"), selected = "NES"),
             downloadButton(outputId = "dlRidgePlot_GSEA", label = paste("Download Ridge Plot: PDF")),
             br(), br(),
-            withSpinner(plotOutput(outputId = "ridgePlot_GSEA", inline = TRUE), color = "#93bac2")
+            withSpinner(plotOutput(outputId = "ridgePlot_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Upset plot",
             downloadButton(outputId = "dlUpset_GSEA", label = paste("Download Upset Plot: PDF")),
             br(), br(),
-            withSpinner(plotOutput(outputId = "upsetPlot_GSEA", inline = TRUE), color = "#93bac2")
+            withSpinner(plotOutput(outputId = "upsetPlot_GSEA", inline = TRUE), color = "#6E8D9E")
           )
         )
       ),

@@ -88,7 +88,8 @@ tabItem(
             conditionalPanel(
               condition = "output.test == 'CountQC'",
               helpText("Features are selected by standard deviation (variability across samples). More variable features will be shown."),
-              numericInput(inputId = "heatmapGeneNumberCountQC", label = "Number of Features on Heatmap", min = 5, max = 5000, value = 2000, step = 10)
+              numericInput(inputId = "heatmapGeneNumberCountQC", label = "Number of Features on Heatmap", min = 5, max = 5000, value = 2000, step = 10),
+              helpText("Plotting > 1000 genes will take a few moments...")
             ),
             
             hr(style = "border-top: 1px solid #000000;"), h4("Count settings"),
@@ -104,13 +105,14 @@ tabItem(
             conditionalPanel(
               condition = "input.heatmapShowMeans == true",
               radioButtons(inputId = "heatmapAggMethod", label = "Aggregation method:", choices = c("Mean", "Median"), selected = "Mean", inline = TRUE),
-              helpText("When enabled, samples are grouped by the first selected factor and their aggregated expression is displayed.")
+              helpText("When enabled, samples are grouped by the first selected factor and their aggregated expression is displayed."),
+              helpText("Additionally, not all secondary factors will be addable to the heatmap annotation (since there can be multiple per merged group).")
             ),
           ),
           
           tabPanel(
             title = "Heatmap settings",
-            helpText("New! Select the factors to add as annotations. Click and drag to change their order. Sample order is determined by sorting in the factor orders. The first factor is considered the 'main' one and you can change order/remove groups using the bucket below."),
+            helpText("Select the factors to add as annotations. Click and drag to change their order. Sample order is determined by sorting in the factor orders. The first factor is considered the 'main' one and you can change order/remove groups using the bucket below."),
             uiOutput(outputId = "heatmapColumnSelectUI", inline = TRUE),
             uiOutput(outputId = "clusterWarningProteomics", inline = TRUE),
             splitLayout(
@@ -192,7 +194,7 @@ tabItem(
             downloadButton(outputId = "dlHeatmapDFButtonDEFeatures", label = "Download Counts"), br(),
             withSpinner(
               plotOutput("heatmapDEFeatures", inline = TRUE),
-              color = "#93bac2"
+              color = "#6E8D9E"
             ),
             textOutput("hGNDE")
           ),
@@ -218,7 +220,7 @@ tabItem(
               downloadButton(outputId = paste0("dlHeatmapDFButtonCustom"), label = "Download Counts (Excel)"), br(),
               withSpinner(
                 plotOutput(paste0("heatmapCustom"), inline = TRUE),
-                color = "#93bac2"
+                color = "#6E8D9E"
               )
             )
           ),
@@ -241,7 +243,7 @@ tabItem(
               downloadButton(outputId = paste0("dlHeatmapDFButtonGO"), label = "Download Counts (Excel)"), br(),
               withSpinner(
                 plotOutput(paste0("heatmapGO"), inline = TRUE),
-                color = "#93bac2"
+                color = "#6E8D9E"
               )
             )
           )

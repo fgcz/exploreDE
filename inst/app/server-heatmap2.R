@@ -159,26 +159,35 @@ observeEvent(
     input$heatmapColumnSelect
   },
   {
-    lapply(seq_along(input$heatmapColumnSelect), function(i) {
-      output[[paste0("heatmapBucket", i)]] <- renderUI({
-        bucket_list(
-          header = input$heatmapColumnSelect[[i]],
-          group_name = paste0("hmBucket", i),
-          orientation = "horizontal",
-          add_rank_list(
-            text = "Include these groups",
-            labels = as.list(unique(levels(as.factor(inputDataReactive()$dataset[[input$heatmapColumnSelect[[i]]]])))),
-            input_id = paste0("hmKeepBucket", i)
-          ),
-          add_rank_list(
-            text = "Exclude these groups",
-            labels = NULL,
-            input_id = paste0("hmExcludeBucket", i)
+    # Clear all buckets first (up to 10)
+    for (i in 1:10) {
+      output[[paste0("heatmapBucket", i)]] <- renderUI({ NULL })
+    }
+
+    # Only render buckets if there are factors selected
+    if (!is.null(input$heatmapColumnSelect) && length(input$heatmapColumnSelect) > 0 &&
+        !all(input$heatmapColumnSelect == "")) {
+      lapply(seq_along(input$heatmapColumnSelect), function(i) {
+        output[[paste0("heatmapBucket", i)]] <- renderUI({
+          bucket_list(
+            header = input$heatmapColumnSelect[[i]],
+            group_name = paste0("hmBucket", i),
+            orientation = "horizontal",
+            add_rank_list(
+              text = "Include these groups",
+              labels = as.list(unique(levels(as.factor(inputDataReactive()$dataset[[input$heatmapColumnSelect[[i]]]])))),
+              input_id = paste0("hmKeepBucket", i)
+            ),
+            add_rank_list(
+              text = "Exclude these groups",
+              labels = NULL,
+              input_id = paste0("hmExcludeBucket", i)
+            )
           )
-        )
+        })
+        outputOptions(output, paste0("heatmapBucket", i), suspendWhenHidden = FALSE)
       })
-      outputOptions(output, paste0("heatmapBucket", i), suspendWhenHidden = FALSE)
-    })
+    }
   }
 )
 
@@ -290,6 +299,15 @@ observeEvent(
   ignoreNULL = FALSE,
   ignoreInit = TRUE,
   {
+    # Check if user has removed all factors - if so, clear the plot
+    if (is.null(input$heatmapColumnSelect) || length(input$heatmapColumnSelect) == 0 ||
+        all(input$heatmapColumnSelect == "")) {
+      figuresDataReactive[["heatmapDEFeatures"]] <- NULL
+      figuresDataReactive[["heatmapCustom"]] <- NULL
+      figuresDataReactive[["heatmapGO"]] <- NULL
+      return(NULL)
+    }
+
     # tryCatch({
     if (!is.null(input$hmKeepBucket1)) {
       set.seed(2)
@@ -324,19 +342,33 @@ observeEvent(
       }
       # Get the sample order
       datasetHeatmap <- datasetHeatmap %>% dplyr::arrange(across(all_of(input$heatmapColumnSelect)))
-
-
+      
       # Prepare the selected count matrix ----
       countsHeatmap <- inputDataReactive()$countList[[input$heatmapCounts]]
       countsHeatmap <- countsHeatmap[, datasetHeatmap$Name]
+
+      # Store original dataset BEFORE any aggregation for batch correction
+      datasetHeatmapOriginal <- datasetHeatmap
+
       # Apply the following in this specific order as required: Log2, batch correct, Z-scale
       ## If the user wants to log2, then do that
       if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
         countsHeatmap <- log2(countsHeatmap + 1)
       }
-      ## If the user wants to remove batch effect, then do that
+      ## If the user wants to remove batch effect, then do that (use ORIGINAL dataset)
       if (input$heatmapBatch != "None") {
-        countsHeatmap <- limma::removeBatchEffect(countsHeatmap, datasetHeatmap[[input$heatmapBatch]])
+        req(input$heatmapBatch %in% colnames(datasetHeatmapOriginal))
+        # Check that batch factor has more than one level after filtering
+        batch_levels <- unique(datasetHeatmapOriginal[[input$heatmapBatch]])
+        if (length(batch_levels) > 1) {
+          countsHeatmap <- limma::removeBatchEffect(x = countsHeatmap, batch = datasetHeatmapOriginal[[input$heatmapBatch]])
+        } else {
+          showNotification(
+            paste0("Batch correction skipped: '", input$heatmapBatch, "' has only ", length(batch_levels), " level in the selected samples"),
+            type = "warning",
+            duration = 5
+          )
+        }
       }
       ## If the user wants to plot gene-wise Z-scores, then do that
       if (input$heatmapZScore == "Z-Score") {
@@ -358,10 +390,10 @@ observeEvent(
 
         # Determine aggregation method
         agg_method <- if (!is.null(input$heatmapAggMethod)) input$heatmapAggMethod else "Mean"
-
+        
         # Calculate aggregation for each condition
         condition_levels <- levels(as.factor(datasetHeatmap[[grouping_factor]]))
-
+        
         # Store original rownames before aggregation
         original_rownames <- rownames(countsHeatmap)
 
@@ -382,7 +414,7 @@ observeEvent(
         countsHeatmap[is.na(countsHeatmap) | is.nan(countsHeatmap) | is.infinite(countsHeatmap)] <- 0
 
         # Update datasetHeatmap to reflect the new structure (one row per condition)
-        datasetHeatmapOriginal <- datasetHeatmap # Keep original for colors
+        # Note: datasetHeatmapOriginal already stored above for batch correction
         datasetHeatmap <- data.frame(
           Name = condition_levels,
           row.names = NULL,
@@ -390,14 +422,34 @@ observeEvent(
         )
         # Add the grouping factor column
         datasetHeatmap[[grouping_factor]] <- factor(condition_levels, levels = condition_levels)
-        # Add other factors with their first occurrence values (for annotation)
+
+        # Check if additional factors can be annotated when showing means/medians
+        # They can only be shown if they don't vary within each aggregated group
         for (f in input$heatmapColumnSelect[-1]) {
           if (f %in% colnames(datasetHeatmapOriginal)) {
-            datasetHeatmap[[f]] <- sapply(condition_levels, function(cond) {
-              first_val <- datasetHeatmapOriginal[[f]][datasetHeatmapOriginal[[grouping_factor]] == cond][1]
-              as.character(first_val)
-            })
-            datasetHeatmap[[f]] <- factor(datasetHeatmap[[f]])
+            # Check if this factor varies within each condition group
+            varies_within_groups <- any(sapply(condition_levels, function(cond) {
+              vals <- unique(datasetHeatmapOriginal[[f]][datasetHeatmapOriginal[[grouping_factor]] == cond])
+              length(vals) > 1
+            }))
+
+            if (varies_within_groups) {
+              # Show warning and stop - cannot annotate with this factor
+              showNotification(
+                paste0("Cannot add '", f, "' to annotation: it has multiple values within '", grouping_factor, "' groups when showing aggregated data (mean/median). Please uncheck 'Show Mean/Median' or remove '", f, "' from the annotation."),
+                type = "error",
+                duration = 10
+              )
+              # Skip adding this factor to prevent crash
+              next
+            } else {
+              # Factor is constant within groups - safe to annotate
+              datasetHeatmap[[f]] <- sapply(condition_levels, function(cond) {
+                first_val <- datasetHeatmapOriginal[[f]][datasetHeatmapOriginal[[grouping_factor]] == cond][1]
+                as.character(first_val)
+              })
+              datasetHeatmap[[f]] <- factor(datasetHeatmap[[f]])
+            }
           }
         }
       }
@@ -433,10 +485,13 @@ observeEvent(
           p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")), gp = gpar(col = '", input$cellBorderColourHeatmap1, "', lwd = ", input$cellBorderSizeHeatmap1 / 10, "))"
         )
         ha <- eval(parse(text = ha))
+        # Only apply colors for factors that actually exist in datasetHeatmap
         for (f in c(input$heatmapColumnSelect)) {
-          for (l in levels(as.factor(datasetHeatmap[, f]))) {
-            ha@anno_list[[f]]@color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
-            ha@anno_list[[f]]@fun@var_env$color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
+          if (f %in% colnames(datasetHeatmap)) {
+            for (l in levels(as.factor(datasetHeatmap[, f]))) {
+              ha@anno_list[[f]]@color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
+              ha@anno_list[[f]]@fun@var_env$color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
+            }
           }
         }
       }

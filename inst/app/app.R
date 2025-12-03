@@ -19,7 +19,7 @@ reactiveConsole(TRUE)
 
 my_theme <- create_theme(
   adminlte_color(
-    light_blue = "#86a5bf"
+    light_blue = "#527085"
   )
 )
 
@@ -76,37 +76,57 @@ ui <- dashboardPage(
             .shiny-split-layout > div {
               overflow: visible;
             }
+            .box {
+              box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+              transition: all 0.3s ease;
+            }
+            .box:hover {
+              box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            }
             .box.box-solid.box-primary>.box-header {
-            color:#fff; background:#86a5bf}
+              color:#fff;
+              background: linear-gradient(135deg, #527085 0%, #8FA9B8 100%);
+            }
             .box.box-solid.box-primary{
-            border-bottom-color:#86a5bf;
-            border-left-color:#86a5bf;
-            border-right-color:#86a5bf;
-            border-top-color:#86a5bf;
+              border-bottom-color:#527085;
+              border-left-color:#527085;
+              border-right-color:#527085;
+              border-top-color:#527085;
             }
             .box.box-solid.box-success>.box-header {
-            color:#fff; background:#99adad}
+              color:#fff;
+              background: linear-gradient(135deg, #99adad 0%, #b8c7ce 100%);
+            }
             .box.box-solid.box-success{
-            border-bottom-color:#99adad;
-            border-left-color:#99adad;
-            border-right-color:#99adad;
-            border-top-color:#99adad;
+              border-bottom-color:#99adad;
+              border-left-color:#99adad;
+              border-right-color:#99adad;
+              border-top-color:#99adad;
             }
             .skin-blue .main-sidebar .sidebar .sidebar-menu a:hover{
-            background-color: #93bac2;
+              background-color: #6E8D9E;
+              transition: background-color 0.3s ease;
             }
             .skin-blue .sidebar-menu > li:hover > a {
-              border-left-color: #455b73;
+              border-left-color: #3A5060;
+            }
+            /* Main Header Gradient */
+            .skin-blue .main-header .logo {
+              background: linear-gradient(135deg, #527085 0%, #8FA9B8 100%) !important;
+            }
+            .skin-blue .main-header .navbar {
+              background: linear-gradient(135deg, #527085 0%, #8FA9B8 100%) !important;
             }
             /* body */
             .content-wrapper, .right-side {
-            background-color: #FFFFFF;
+              background-color: #FFFFFF;
             }
             .sidebar-menu > li.header {
               font-size: 16px;
               font-weight: bold;
               color: #b8c7ce;
               padding: 10px 25px 10px 15px;
+              text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
             }
             ")
         )
@@ -150,11 +170,11 @@ server <- function(input, output, session) {
     req(inputDataReactive())
     dataType <- inputDataReactive()$dataType
 
-    # 0. Tabs 
+    # 0. Tabs
     menuItems <- list(
       menuItem(text = "Results Summary", tabName = "summaryTab", icon = icon("list")),
       menuItem(text = "Colours", tabName = "colourTab", icon = icon("palette")),
-      
+
       # 1. Count tabs (Always shown)
       tags$li(class = "header", "Counts"),
       menuItem(text = "Ordination", tabName = "ordinationTab", icon = icon("meteor")),
