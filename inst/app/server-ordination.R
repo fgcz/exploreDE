@@ -204,11 +204,10 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", minibatch = NULL) {
   # Name the columns before converting to tibble
   component_names <- paste0("dim", 1:L)
   colnames(glmpca_result$factors) <- component_names
-  colnames(glmpca_result$loadings) <- component_names
 
   list(
     scores = as_tibble(glmpca_result$factors, rownames = "Name"),
-    loadings = as_tibble(glmpca_result$loadings, rownames = "gene"),
+    loadings = NULL, # GLM-PCA loadings are on a different scale, biplot not supported
     variance = NULL, # GLM-PCA doesn't have simple variance explained like PCA
     method = "GLM-PCA",
     component_names = component_names,
@@ -1015,11 +1014,11 @@ observeEvent(
         if (!is.null(input$biplotNGenes)) input$biplotNGenes else 10
       }
 
-      # Prepare biplot data
+      # Prepare biplot data (use validated axis selections)
       biplot_data <- prepare_biplot_data(
         ordination_result = ord_res,
-        pc_x = input$pcaX,
-        pc_y = input$pcaY,
+        pc_x = x_selected,
+        pc_y = y_selected,
         top_n = biplot_top_n,
         custom_genes = biplot_custom_genes,
         selection_method = input$biplotGeneSelectionMethod
@@ -1027,10 +1026,14 @@ observeEvent(
 
       # If biplot_data is NULL (no loadings available), fall back to samples-only plot
       if (is.null(biplot_data)) {
+        # Create temporary input with validated axis selections
+        input_validated <- reactiveValuesToList(input)
+        input_validated$pcaX <- x_selected
+        input_validated$pcaY <- y_selected
         pcaPlot <- plot_ordination_samples(
           ordination_result = ord_res,
           pc_scores = pc_scores,
-          input = input,
+          input = input_validated,
           coloursPCA = coloursPCA
         )
       } else {
@@ -1043,10 +1046,14 @@ observeEvent(
           input$biplotArrowColour
         }
 
+        # Create temporary input with validated axis selections
+        input_validated <- reactiveValuesToList(input)
+        input_validated$pcaX <- x_selected
+        input_validated$pcaY <- y_selected
         pcaPlot <- plot_ordination_biplot(
           ordination_result = ord_res,
           pc_scores = pc_scores,
-          input = input,
+          input = input_validated,
           coloursPCA = coloursPCA,
           biplot_data = biplot_data,
           arrow_scale = input$biplotArrowScale,
@@ -1055,11 +1062,14 @@ observeEvent(
         )
       }
     } else {
-      # Samples only plot
+      # Samples only plot (use validated axis selections)
+      input_validated <- reactiveValuesToList(input)
+      input_validated$pcaX <- x_selected
+      input_validated$pcaY <- y_selected
       pcaPlot <- plot_ordination_samples(
         ordination_result = ord_res,
         pc_scores = pc_scores,
-        input = input,
+        input = input_validated,
         coloursPCA = coloursPCA
       )
     }
