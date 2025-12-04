@@ -366,7 +366,7 @@ if (dataType == "proteomics") {
 # Import RNA-seq/CountQC data from SUSHI ----
 if (dataType %in% c("gStore", "demo")) {
   # Run LDAP queries ----
-  Check for course data first (no auth required)
+  # Check for course data first (no auth required)
   if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
     message("Loading SUSHI course data, so no LDAP checks required.")
     return(list(allowed = TRUE, ldap_role = "course"))
