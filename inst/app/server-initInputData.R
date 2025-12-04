@@ -298,7 +298,7 @@ if (!is.null(dataUrl)) {
   if (grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) {
     dataDir <- paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl)
     dataType <- "proteomics"
-  } else if (grepl("CountQC|DESeq2|edgeR|Limma", dataUrl)) {
+  } else if (grepl("CountQC|DESeq2|EdgeR|Limma", dataUrl, ignore.case = TRUE)) {
     urlDataRoot <- c("/srv/gstore/projects", "/srv/GT/analysis/course_sushi/public/gstore/projects")
     dataDir <- file.path(urlDataRoot, dataUrl)
     dataDir <- dataDir[file.exists(dataDir)][1]
@@ -366,28 +366,28 @@ if (dataType == "proteomics") {
 # Import RNA-seq/CountQC data from SUSHI ----
 if (dataType %in% c("gStore", "demo")) {
   # Run LDAP queries ----
-  # Check for course data first (no auth required)
-  # if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
-  #   message("Loading SUSHI course data, so no LDAP checks required.")
-  #   return(list(allowed = TRUE, ldap_role = "course"))
-  # }
-  # roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"), intern = T)
-  # allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"), intern = T)
-  # 
-  # # Determine ldap_role and allowed status
-  # if ("R_2" %in% roles) {
-  #   ldap_role <- "employee"
-  #   allowed <- TRUE
-  # } else if ("R_3" %in% roles) {
-  #   ldap_role <- "user"
-  #   allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
-  # } else {
-  #   ldap_role <- "unauthorized"
-  #   allowed <- FALSE
-  # }
-  # message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
-  # 
-  # if (allowed) {
+  Check for course data first (no auth required)
+  if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
+    message("Loading SUSHI course data, so no LDAP checks required.")
+    return(list(allowed = TRUE, ldap_role = "course"))
+  }
+  roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"), intern = T)
+  allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"), intern = T)
+
+  # Determine ldap_role and allowed status
+  if ("R_2" %in% roles) {
+    ldap_role <- "employee"
+    allowed <- TRUE
+  } else if ("R_3" %in% roles) {
+    ldap_role <- "user"
+    allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
+  } else {
+    ldap_role <- "unauthorized"
+    allowed <- FALSE
+  }
+  message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
+
+  if (allowed) {
     # If RNA Seq, load that
     if (grepl("DESeq2|EdgeR|Limma", dataDir, ignore.case = TRUE)) {
       # Check if it's an old format URL, if so, reformat
@@ -415,7 +415,7 @@ if (dataType %in% c("gStore", "demo")) {
         footer = NULL
       ))
     }
-  # }
+  }
 }
 
 
