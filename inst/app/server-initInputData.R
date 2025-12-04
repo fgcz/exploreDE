@@ -366,26 +366,34 @@ if (dataType == "proteomics") {
 # Import RNA-seq/CountQC data from SUSHI ----
 if (dataType %in% c("gStore", "demo")) {
   # Run LDAP queries ----
-  # Check for course data first (no auth required)
-  if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
-    message("Loading SUSHI course data, so no LDAP checks required.")
-    return(list(allowed = TRUE, ldap_role = "course"))
-  }
-  roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"), intern = T)
-  allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"), intern = T)
-
-  # Determine ldap_role and allowed status
-  if ("R_2" %in% roles) {
-    ldap_role <- "employee"
+  # Check for demo data first (no auth required)
+  if (dataType == "demo") {
+    message("Loading demo data, so no LDAP checks required.")
     allowed <- TRUE
-  } else if ("R_3" %in% roles) {
-    ldap_role <- "user"
-    allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
+    ldap_role <- "demo"
+  # Check for course data (no auth required)
+  } else if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
+    message("Loading SUSHI course data, so no LDAP checks required.")
+    allowed <- TRUE
+    ldap_role <- "course"
   } else {
-    ldap_role <- "unauthorized"
-    allowed <- FALSE
+    # Only run LDAP checks for gStore data that's not demo or course
+    roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"), intern = T)
+    allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"), intern = T)
+
+    # Determine ldap_role and allowed status
+    if ("R_2" %in% roles) {
+      ldap_role <- "employee"
+      allowed <- TRUE
+    } else if ("R_3" %in% roles) {
+      ldap_role <- "user"
+      allowed <- ifelse(projectFromUrl %in% allowedProjects, TRUE, FALSE)
+    } else {
+      ldap_role <- "unauthorized"
+      allowed <- FALSE
+    }
+    message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
   }
-  message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
 
   if (allowed) {
     # If RNA Seq, load that

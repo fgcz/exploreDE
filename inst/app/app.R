@@ -147,6 +147,10 @@ ui <- dashboardPage(
       source("ui-tab-goTile.R", local = TRUE)$value,
       source("ui-tab-kegg.R", local = TRUE)$value,
       source("ui-tab-replicability.R", local = TRUE)$value
+    ),
+    tags$footer(
+      style = "text-align: center; padding: 20px; color: #999; font-size: 12px; border-top: 1px solid #eee; margin-top: 20px;",
+      HTML("Made with &hearts; in Switzerland 🇨🇭")
     )
   )
 )
