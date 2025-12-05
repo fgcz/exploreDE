@@ -179,6 +179,7 @@ ui <- dashboardPage(
       source("ui-tab-kegg.R", local = TRUE)$value,
       source("ui-tab-replicability.R", local = TRUE)$value,
       source("ui-tab-multi-data-selection.R", local = TRUE)$value,
+      source("ui-tab-multi-de-table.R", local = TRUE)$value,
       source("ui-tab-multi-boxplot.R", local = TRUE)$value,
       source("ui-tab-multi-upset.R", local = TRUE)$value,
       source("ui-tab-multi-tile.R", local = TRUE)$value,
@@ -187,7 +188,7 @@ ui <- dashboardPage(
       source("ui-tab-multi-kegg.R", local = TRUE)$value
     ),
     tags$footer(
-      style = "text-align: center; padding: 20px; color: #999; font-size: 12px; border-top: 1px solid #eee; margin-top: 20px;",
+      style = "text-align: center; padding: 20px; color: #999; font-size: 16px; border-top: 1px solid #eee; margin-top: 20px;",
       HTML("Made with &hearts; in Switzerland 🇨🇭")
     )
   )
@@ -211,6 +212,7 @@ server <- function(input, output, session) {
   source("server-kegg.R", local = TRUE)
   source("server-replicability.R", local = TRUE)
   source("server-multi-data-selection.R", local = TRUE)
+  source("server-multi-de-table.R", local = TRUE)
   source("server-multi-upset.R", local = TRUE)
   source("server-multi-bubble.R", local = TRUE)
   source("server-multi-heatmap.R", local = TRUE)
@@ -285,6 +287,9 @@ server <- function(input, output, session) {
 
       if (hasData) {
         # Generic tabs (always shown if data exists)
+        multiDETableItem <- menuItem(text = "Integrated DE Table", tabName = "multiDETableTab", icon = icon("table"))
+        multiDETableItem$attribs$class <- paste(multiDETableItem$attribs$class, "multi-menu-item")
+
         multiBoxplotItem <- menuItem(text = "Multi-Contrast Boxplots", tabName = "multiBoxplotTab", icon = icon("chart-bar"))
         multiBoxplotItem$attribs$class <- paste(multiBoxplotItem$attribs$class, "multi-menu-item")
 
@@ -294,7 +299,7 @@ server <- function(input, output, session) {
         multiTileItem <- menuItem(text = "DE Tile Plots", tabName = "multiTilePlotTab", icon = icon("th"))
         multiTileItem$attribs$class <- paste(multiTileItem$attribs$class, "multi-menu-item")
 
-        menuItems <- c(menuItems, list(multiBoxplotItem, multiUpsetItem, multiTileItem))
+        menuItems <- c(menuItems, list(multiDETableItem, multiBoxplotItem, multiUpsetItem, multiTileItem))
 
         # Pathway tabs (only for RNASeq)
         if (dataType == "RNASeq") {

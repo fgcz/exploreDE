@@ -335,15 +335,11 @@ if (!is.null(projectFromUrl) && projectFromUrl != "") {
     projectPath <- file.path("/srv/gstore/projects", projectFromUrl)
     if (dir.exists(projectPath)) {
         multiProjectInfo$projectDir <- projectPath
-        message("DEBUG: Set multiProjectInfo$projectDir to ", projectPath)
     } else {
         # Try course directory
         projectPath <- file.path("/srv/GT/analysis/course_sushi/public/gstore/projects", projectFromUrl)
         if (dir.exists(projectPath)) {
             multiProjectInfo$projectDir <- projectPath
-            message("DEBUG: Set multiProjectInfo$projectDir to ", projectPath)
-        } else {
-            message("DEBUG: Could not find project directory for ", projectFromUrl)
         }
     }
 }

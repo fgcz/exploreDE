@@ -3,7 +3,29 @@ tabItem(
     fluidRow(
         column(
             width = 12,
-            uiOutput("multiDataSelectionBoxUI"),
+            box(
+                title = "Multi-Contrast Analysis",
+                width = NULL,
+                solidHeader = TRUE,
+                status = "success",
+                tags$b(
+                    "Easily compare differential expression results across multiple contrasts or analysis methods!"
+                ),
+                tags$p(
+                    "Load datasets from your current project to visualise overlapping genes, pathway enrichments, and expression patterns across different comparisons. "
+                ),
+                tags$p(
+                    "If you load multiple DE results from the same FeatureCounts dataset (RNA-seq) or multiple proteomics datasets, you can create integrated boxplots to compare expression levels directly. "
+                ),
+                tags$p(
+                    "Select contrasts below to begin your integrated analysis."
+                )
+            ),
+            shinycssloaders::withSpinner(
+                uiOutput("multiDataSelectionBoxUI"),
+                type = 4,
+                color = "#527085"
+            ),
             box(
                 title = "Selected Datasets",
                 width = 6,

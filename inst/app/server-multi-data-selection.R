@@ -241,17 +241,37 @@ observeEvent(input$multiLoadSelected, {
     req(input$multiDatasetsCheckbox)
     req(length(input$multiDatasetsCheckbox) > 0)
 
+    # Validate at least 2 datasets selected
+    if (length(input$multiDatasetsCheckbox) < 2) {
+        showNotification("Please select at least 2 datasets for multi-contrast analysis.", type = "warning")
+        return(NULL)
+    }
+
     # Validate selection limit
     if (length(input$multiDatasetsCheckbox) > 10) {
         showNotification("Please select 10 or fewer datasets.", type = "warning")
         return(NULL)
     }
 
-    withProgress(message = "Loading selected datasets...", value = 0, {
-        selectedPaths <- input$multiDatasetsCheckbox
+    # Show waiter on the data selection box only
+    waiter <- Waiter$new(
+        id = "multiDataSelectionBoxUI",
+        html = spin_fading_circles(),
+        color = "#527085"
+    )
+    waiter$show()
 
+    selectedPaths <- input$multiDatasetsCheckbox
+
+    tryCatch({
         for (i in seq_along(selectedPaths)) {
-            incProgress(1 / length(selectedPaths), detail = paste("Loading dataset", i, "of", length(selectedPaths)))
+            # Update waiter message
+            waiter$update(
+                html = tagList(
+                    spin_fading_circles(),
+                    h4(paste("Loading dataset", i, "of", length(selectedPaths)))
+                )
+            )
 
             fullPath <- selectedPaths[i]
             # Extract name from parent directory (contains DESeq2/EdgeR/Limma and date)
@@ -324,21 +344,27 @@ observeEvent(input$multiLoadSelected, {
                 multiDeReactive$results[[name]] <- formatted
             }
         }
-    })
 
-    showNotification("Datasets loaded successfully!", type = "message")
+        # Hide waiter on success
+        waiter$hide()
+        showNotification("Datasets loaded successfully!", type = "message")
 
-    # Store current tab before menu update
-    currentTab <- isolate(input$tabs)
+        # Store current tab before menu update
+        currentTab <- isolate(input$tabs)
 
-    # Trigger menu update to show new multi-analysis tabs
-    multiDeReactive$menuUpdateTrigger <- multiDeReactive$menuUpdateTrigger + 1
+        # Trigger menu update to show new multi-analysis tabs
+        multiDeReactive$menuUpdateTrigger <- multiDeReactive$menuUpdateTrigger + 1
 
-    # After a brief delay, restore the tab selection
-    shinyjs::delay(100, {
-        if (!is.null(currentTab)) {
-            updateTabItems(session, "tabs", selected = currentTab)
-        }
+        # After a brief delay, restore the tab selection
+        shinyjs::delay(100, {
+            if (!is.null(currentTab)) {
+                updateTabItems(session, "tabs", selected = currentTab)
+            }
+        })
+    }, error = function(e) {
+        # Hide waiter on error
+        waiter$hide()
+        showNotification(paste("Error loading datasets:", e$message), type = "error")
     })
 })
 

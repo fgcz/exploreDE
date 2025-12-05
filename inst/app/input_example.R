@@ -299,6 +299,7 @@ is_url <- function(dataDir) {
 # dataDir <- "/srv/gstore/projects/p38738/o40056_EdgeR_HDM_F2--over--HDM_FR2_2025-12-03--11-48-47/HDM_F2--over--HDM_FR2"
 dataDir <- "/srv/gstore/projects/p29284/o36981_EdgeR_HR2_B_cells--over--HR1_B_cells_2025-06-27--09-16-12/HR2_B_cells--over--HR1_B_cells"
 dataUrl <- "p29284/o36981_EdgeR_HR2_B_cells--over--HR1_B_cells_2025-06-27--09-16-12/HR2_B_cells--over--HR1_B_cells"
+dataDir <- "/srv/gstore/projects/p29779/o38737_DESeq2_AP_C_shp65_w_HP--over--AP_C_shp65_wo_HP_2025-07-29--10-21-00/AP_C_shp65_w_HP--over--AP_C_shp65_wo_HP"
 username <- Sys.getenv("SHINYPROXY_USERNAME")
 if (is_url(dataDir)) {
   se <- readRDS(url(dataDir))  # If it's a URL

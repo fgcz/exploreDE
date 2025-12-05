@@ -986,13 +986,130 @@ output$dlBoxplotTable <- downloadHandler(
 # Render data table ----
 output$boxplotTable <- renderDataTable({
     req(multiBoxplotDataReactive())
-    plotData <- multiBoxplotDataReactive()
+    req(multiDeReactive$results)
 
-    DT::datatable(
-        plotData$countsMelt,
+    plotData <- multiBoxplotDataReactive()
+    results <- multiDeReactive$results
+    genesList <- plotData$genesList
+    countsMelt <- plotData$countsMelt
+    compat <- multiBoxplotCompatibilityReactive()
+    groupingName <- compat$groupingName
+
+    # Build summary table: one row per gene, columns for each contrast
+    tableData <- lapply(genesList, function(gene) {
+        # Start with gene name
+        row <- data.frame(gene_name = gene, stringsAsFactors = FALSE)
+
+        # Add DE stats for each contrast
+        for (contrastName in names(results)) {
+            seqAnno <- results[[contrastName]]$seqAnno
+
+            # Determine which column to use for matching
+            matchCol <- if ("gene_name" %in% colnames(seqAnno)) {
+                "gene_name"
+            } else if ("gene_id" %in% colnames(seqAnno)) {
+                "gene_id"
+            } else {
+                NULL
+            }
+
+            # Find this gene in seqAnno
+            geneRow <- if (!is.null(matchCol)) {
+                seqAnno[seqAnno[[matchCol]] == gene, ]
+            } else {
+                data.frame()
+            }
+
+            if (nrow(geneRow) > 0) {
+                # Extract log2FC
+                lfcCol <- grep("^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc|log2Ratio)$",
+                              colnames(seqAnno), value = TRUE, ignore.case = TRUE)
+                row[[paste0(contrastName, "_log2FC")]] <- if (length(lfcCol) > 0) geneRow[[lfcCol[1]]] else NA
+
+                # Extract p-value
+                pvalCol <- grep("^(pvalue|p[._]?val|pval)$", colnames(seqAnno), value = TRUE, ignore.case = TRUE)
+                row[[paste0(contrastName, "_pvalue")]] <- if (length(pvalCol) > 0) geneRow[[pvalCol[1]]] else NA
+
+                # Extract padj
+                padjCol <- grep("^(padj|fdr|p[._]?adj|adj[._]?p)$", colnames(seqAnno), value = TRUE, ignore.case = TRUE)
+                row[[paste0(contrastName, "_padj")]] <- if (length(padjCol) > 0) geneRow[[padjCol[1]]] else NA
+            } else {
+                row[[paste0(contrastName, "_log2FC")]] <- NA
+                row[[paste0(contrastName, "_pvalue")]] <- NA
+                row[[paste0(contrastName, "_padj")]] <- NA
+            }
+        }
+
+        # Calculate mean counts per group for this gene
+        geneCounts <- countsMelt[countsMelt$Feature == gene, ]
+        meansByGroup <- aggregate(Counts ~ get(groupingName), data = geneCounts, FUN = mean)
+        colnames(meansByGroup) <- c("Group", "MeanCount")
+
+        # Add mean counts as columns
+        for (i in seq_len(nrow(meansByGroup))) {
+            row[[paste0("Mean_", meansByGroup$Group[i])]] <- meansByGroup$MeanCount[i]
+        }
+
+        return(row)
+    })
+
+    tableData <- bind_rows(tableData)
+
+    # Find column names for formatting
+    log2fc_cols <- grep("_log2FC$", colnames(tableData), value = TRUE)
+    pval_cols <- grep("_pvalue$", colnames(tableData), value = TRUE)
+    padj_cols <- grep("_padj$", colnames(tableData), value = TRUE)
+    mean_cols <- grep("^Mean_", colnames(tableData), value = TRUE)
+
+    # Render table
+    dt <- DT::datatable(
+        tableData,
         filter = "top",
         class = "cell-border stripe",
         rownames = FALSE,
-        options = list(scrollX = TRUE, pageLength = 10)
+        options = list(
+            scrollX = TRUE,
+            pageLength = 25,
+            autoWidth = TRUE
+        )
     )
+
+    # Format numeric columns
+    if (length(log2fc_cols) > 0) {
+        dt <- dt %>% DT::formatSignif(columns = log2fc_cols, digits = 3)
+    }
+    if (length(pval_cols) > 0) {
+        dt <- dt %>% DT::formatSignif(columns = pval_cols, digits = 4)
+    }
+    if (length(padj_cols) > 0) {
+        dt <- dt %>% DT::formatSignif(columns = padj_cols, digits = 4)
+    }
+    if (length(mean_cols) > 0) {
+        dt <- dt %>% DT::formatSignif(columns = mean_cols, digits = 2)
+    }
+
+    # Apply styling
+    if (length(pval_cols) > 0) {
+        dt <- dt %>% DT::formatStyle(
+            columns = pval_cols,
+            color = styleInterval(cuts = 0.05, values = c("green", "black")),
+            fontWeight = "bold"
+        )
+    }
+    if (length(padj_cols) > 0) {
+        dt <- dt %>% DT::formatStyle(
+            columns = padj_cols,
+            color = styleInterval(cuts = 0.05, values = c("green", "black")),
+            fontWeight = "bold"
+        )
+    }
+    if (length(log2fc_cols) > 0) {
+        dt <- dt %>% DT::formatStyle(
+            columns = log2fc_cols,
+            color = styleInterval(cuts = 0, values = c("blue", "orange")),
+            fontWeight = "bold"
+        )
+    }
+
+    dt
 })
