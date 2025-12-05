@@ -66,21 +66,6 @@ observeEvent(
             "GSEA" = c("ID", "Description", "setSize", "enrichmentScore", "NES", "pvalue", "p.adjust", "qvalue", "rank", "leading_edge", "core_enrichment", "geneName", "Label", "Contrast")
         )
 
-        message("DEBUG Bubble: dataToUseBubble = ", dataToUseBubble)
-        message("DEBUG Bubble: subdataToBubble = ", input$subdataToBubble)
-        message("DEBUG Bubble: upsetGeneList structure: ", paste(names(upsetGeneList), collapse = ", "))
-        if (!is.null(upsetGeneList[[dataToUseBubble]])) {
-            message("DEBUG Bubble: upsetGeneList[[", dataToUseBubble, "]] has ", length(upsetGeneList[[dataToUseBubble]]), " items")
-            message("DEBUG Bubble: Names: ", paste(names(upsetGeneList[[dataToUseBubble]]), collapse = ", "))
-            if (!is.null(upsetGeneList[[dataToUseBubble]][[input$subdataToBubble]])) {
-                message("DEBUG Bubble: upsetGeneList[[", dataToUseBubble, "]][[", input$subdataToBubble, "]] has ", length(upsetGeneList[[dataToUseBubble]][[input$subdataToBubble]]), " contrasts")
-            } else {
-                message("DEBUG Bubble: upsetGeneList[[", dataToUseBubble, "]][[", input$subdataToBubble, "]] is NULL")
-            }
-        } else {
-            message("DEBUG Bubble: upsetGeneList[[", dataToUseBubble, "]] is NULL")
-        }
-
         req(any(length(upsetGeneList[[dataToUseBubble]][[input$subdataToBubble]]) >= 2))
         req(!is.null(multiDeReactive$results))
         results <- multiDeReactive$results

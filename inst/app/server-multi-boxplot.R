@@ -111,21 +111,12 @@ multiBoxplotCompatibilityReactive <- reactive({
 
     allSameGroupingData <- all(sapply(seq_along(sampleInfo), function(i) {
         if (is.null(sampleInfo[[i]]$groupingData) || is.null(firstGroupingData)) {
-            message("DEBUG Compatibility: Contrast ", i, " has NULL groupingData")
             return(FALSE)
         }
 
         # Convert to character for comparison to avoid factor level differences
         thisGroupingDataChar <- as.character(sampleInfo[[i]]$groupingData)
         match <- identical(thisGroupingDataChar, firstGroupingDataChar)
-
-        if (!match) {
-            message("DEBUG Compatibility: Contrast ", i, " (", names(results)[i], ") has different group assignments")
-            message("  First contrast groupingData: ", paste(head(firstGroupingDataChar, 10), collapse = ", "))
-            message("  This contrast groupingData:  ", paste(head(thisGroupingDataChar, 10), collapse = ", "))
-            message("  First contrast class: ", class(firstGroupingData), " | as character: ", paste(head(firstGroupingDataChar, 3), collapse = ", "))
-            message("  This contrast class:  ", class(sampleInfo[[i]]$groupingData), " | as character: ", paste(head(thisGroupingDataChar, 3), collapse = ", "))
-        }
         match
     }))
 
@@ -370,13 +361,9 @@ multiBoxplotDataReactive <- reactive({
 
     req(length(genesList) >= 1)
 
-    message("DEBUG boxplotData: Selected genes: ", paste(head(genesList, 5), collapse = ", "))
-
     # Get counts from first contrast (they should all be identical)
     se <- results[[1]]$se
     param <- results[[1]]$param
-
-    message("DEBUG boxplotData: SE dimensions: ", nrow(se), " x ", ncol(se))
 
     # Check if countList is already provided (e.g. for Proteomics)
     if (!is.null(results[[1]]$countList)) {
@@ -456,44 +443,27 @@ multiBoxplotDataReactive <- reactive({
     # Match gene IDs to gene names from seqAnno
     seqAnno <- results[[1]]$seqAnno
 
-    message("DEBUG boxplotData: seqAnno has ", nrow(seqAnno), " rows")
-    message("DEBUG boxplotData: seqAnno gene_id (first 5): ", paste(head(seqAnno$gene_id, 5), collapse = ", "))
-    message("DEBUG boxplotData: seqAnno gene_name (first 5): ", paste(head(seqAnno$gene_name, 5), collapse = ", "))
-    message("DEBUG boxplotData: Count matrix rownames (first 5): ", paste(head(rownames(counts), 5), collapse = ", "))
-    message("DEBUG boxplotData: featureLevel: ", param$featureLevel)
-
     # Reorder counts to match seqAnno and use gene names as rownames
     if (param$featureLevel == "gene") {
-        message("DEBUG boxplotData: Processing gene-level data")
-
         # Check if count rownames are gene_ids or gene_names
         matchByGeneId <- sum(rownames(counts) %in% seqAnno$gene_id)
         matchByGeneName <- sum(rownames(counts) %in% seqAnno$gene_name)
-        message("DEBUG boxplotData: Matches by gene_id: ", matchByGeneId, " / Matches by gene_name: ", matchByGeneName)
 
         if (matchByGeneId > matchByGeneName) {
             # Rownames are gene IDs - convert to gene names
-            message("DEBUG boxplotData: Count rownames appear to be gene_ids, converting to gene_names")
             geneOrder <- intersect(seqAnno$gene_id, rownames(counts))
             counts <- counts[geneOrder, , drop = FALSE]
             rownames(counts) <- seqAnno$gene_name[match(geneOrder, seqAnno$gene_id)]
         } else {
             # Rownames are already gene names - just reorder to match seqAnno
-            message("DEBUG boxplotData: Count rownames appear to be gene_names, keeping as is")
             geneOrder <- intersect(seqAnno$gene_name, rownames(counts))
             counts <- counts[geneOrder, , drop = FALSE]
         }
-        message("DEBUG boxplotData: Found ", length(geneOrder), " matching genes")
     } else if (param$featureLevel == "isoform") {
-        message("DEBUG boxplotData: Processing isoform-level data")
         geneOrder <- intersect(seqAnno$transcript_id, rownames(counts))
-        message("DEBUG boxplotData: Found ", length(geneOrder), " matching transcript_ids")
         counts <- counts[geneOrder, , drop = FALSE]
         rownames(counts) <- seqAnno$gene_name[match(geneOrder, seqAnno$transcript_id)]
     }
-
-    message("DEBUG boxplotData: After ID mapping, count matrix dimensions: ", nrow(counts), " x ", ncol(counts))
-    message("DEBUG boxplotData: After ID mapping, rownames (first 5): ", paste(head(rownames(counts), 5), collapse = ", "))
 
     # Apply Z-score if requested
     if (input$multiBoxplotZScore) {
@@ -506,11 +476,7 @@ multiBoxplotDataReactive <- reactive({
     # Keep only genes that exist in count matrix, but maintain the input order
     genesListOrdered <- genesList[genesList %in% rownames(counts)]
 
-    message("DEBUG boxplotData: Genes in count matrix: ", length(genesListOrdered), " / ", length(genesList))
     if (length(genesListOrdered) == 0) {
-        message("DEBUG boxplotData: ERROR - No selected genes found in count matrix!")
-        message("DEBUG boxplotData: Looking for: ", paste(genesList, collapse = ", "))
-        message("DEBUG boxplotData: Available genes (first 10): ", paste(head(rownames(counts), 10), collapse = ", "))
         return(NULL)
     }
 
@@ -521,8 +487,6 @@ multiBoxplotDataReactive <- reactive({
 
     # Update genesList to the ordered, filtered version
     genesList <- genesListOrdered
-
-    message("DEBUG boxplotData: Final gene list for plotting: ", paste(genesList, collapse = ", "))
 
     # Transpose and merge with metadata
     countsDF <- as.data.frame(t(counts))

@@ -138,9 +138,6 @@ observeEvent(
 
 # 1. Browse Projects Logic - Simplified to use current project only
 observeEvent(input$multiRefreshProjects, {
-    # Debug: Show what we have
-    message("DEBUG: multiProjectInfo$projectDir = ", multiProjectInfo$projectDir)
-
     req(multiProjectInfo$projectDir)
 
     projectDir <- multiProjectInfo$projectDir
@@ -152,11 +149,9 @@ observeEvent(input$multiRefreshProjects, {
 
     # List all subdirectories in the project
     subdirs <- list.dirs(projectDir, full.names = TRUE, recursive = FALSE)
-    message("DEBUG: Found ", length(subdirs), " subdirectories in ", projectDir)
 
     # Filter for folders with DESeq2, EdgeR, or Limma in their name
     analysis_folders <- subdirs[grepl("DESeq2|EdgeR|Limma", basename(subdirs), ignore.case = TRUE)]
-    message("DEBUG: Found ", length(analysis_folders), " analysis folders (DESeq2/EdgeR/Limma)")
 
     # For each analysis folder, look for subfolders containing deResult.rds
     available <- lapply(analysis_folders, function(d) {
@@ -176,8 +171,6 @@ observeEvent(input$multiRefreshProjects, {
             has_qs2 <- file.exists(file.path(subfolder, "deResult.qs2"))
 
             if (has_deresult || has_qs2) {
-                message("DEBUG: Found dataset: ", name, " [", type, "] with deResult in ", basename(subfolder))
-
                 return(data.frame(
                     Name = name,
                     Path = subfolder,  # Use the subfolder path where deResult is located
@@ -189,8 +182,6 @@ observeEvent(input$multiRefreshProjects, {
 
         return(NULL)
     }) %>% bind_rows()
-
-    message("DEBUG: Total datasets found: ", if (is.null(available)) 0 else nrow(available))
 
     if (is.null(available) || nrow(available) == 0) {
         showNotification("No datasets found in current project.", type = "warning")
@@ -219,9 +210,15 @@ output$multiAvailableDatasetsCheckboxUI <- renderUI({
     # Pre-select the currently loaded dataset if it's in the list
     preselected <- NULL
     if (!is.null(multiProjectInfo$currentDataDir)) {
-        if (multiProjectInfo$currentDataDir %in% available$Path) {
-            preselected <- multiProjectInfo$currentDataDir
-            message("DEBUG: Pre-selecting current dataset: ", multiProjectInfo$currentDataDir)
+        # Normalize paths for comparison (remove trailing slashes)
+        currentPath <- gsub("/$", "", multiProjectInfo$currentDataDir)
+        availablePaths <- gsub("/$", "", available$Path)
+
+        # Check if current path matches any available path
+        matchIndex <- which(availablePaths == currentPath)
+        if (length(matchIndex) > 0) {
+            # Use the original path from available$Path (with or without trailing slash)
+            preselected <- available$Path[matchIndex[1]]
         }
     }
 
@@ -257,8 +254,9 @@ observeEvent(input$multiLoadSelected, {
             incProgress(1 / length(selectedPaths), detail = paste("Loading dataset", i, "of", length(selectedPaths)))
 
             fullPath <- selectedPaths[i]
-            # Extract name from path (last directory before deResult.rds)
-            name <- basename(fullPath)
+            # Extract name from parent directory (contains DESeq2/EdgeR/Limma and date)
+            # This ensures different methods of same contrast get unique names
+            name <- basename(dirname(fullPath))
 
             # Load the dataset
             if (file.exists(file.path(fullPath, "deResult.rds"))) {

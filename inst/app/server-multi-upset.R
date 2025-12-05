@@ -132,31 +132,18 @@ observeEvent(
         }
 
         # Populate
-        message("DEBUG upset: Processing ", length(results), " contrasts for pathway data")
         for (d in names(results)) {
-            message("DEBUG upset: Checking contrast '", d, "'")
-            message("DEBUG upset:   runGO = ", results[[d]]$param$runGO)
-
             if (!is.null(results[[d]]$param$runGO) && results[[d]]$param$runGO) {
-                message("DEBUG upset:   Processing pathway data for '", d, "'")
-
                 # GSEA
                 for (ont in c("BP", "MF", "CC")) {
                     if (!is.null(results[[d]]$gsea[[ont]])) {
-                        # Filter by p-value
-                        # multiDEG uses pTypeUpset2 (p.adjust or pvalue)
-                        # exploreDE gsea result has 'p.adjust', 'pvalue', 'qvalue'
-
                         res <- results[[d]]$gsea[[ont]]@result
                         col <- if (pTypeUpset == "fdr") "p.adjust" else "pvalue"
 
                         if (col %in% colnames(res)) {
                             filtered <- res$Label[which(as.numeric(res[[col]]) <= as.numeric(input$pThresholdUpset))]
                             gseaList[[ont]][[d]] <- filtered
-                            message("DEBUG upset:     GSEA ", ont, ": ", length(filtered), " pathways")
                         }
-                    } else {
-                        message("DEBUG upset:     GSEA ", ont, " is NULL")
                     }
                 }
 
@@ -167,34 +154,14 @@ observeEvent(
                             res <- results[[d]]$ora[[ont]][[sig]]@result
                             col <- if (pTypeUpset == "fdr") "p.adjust" else "pvalue"
 
-                            message("DEBUG upset:     ORA ", ont, "/", sig, " has ", nrow(res), " total pathways")
-                            message("DEBUG upset:     Column names: ", paste(colnames(res), collapse = ", "))
-                            message("DEBUG upset:     Looking for column: ", col)
-                            message("DEBUG upset:     P-value threshold: ", input$pThresholdUpset)
-
                             if (col %in% colnames(res)) {
-                                if (nrow(res) > 0) {
-                                    message("DEBUG upset:     First few p-values: ", paste(head(res[[col]], 3), collapse = ", "))
-                                }
                                 filtered <- res$Label[which(as.numeric(res[[col]]) <= as.numeric(input$pThresholdUpset))]
                                 oraList[[paste0(ont, sig)]][[d]] <- filtered
-                                message("DEBUG upset:     ORA ", ont, sig, ": ", length(filtered), " pathways pass threshold")
-                            } else {
-                                message("DEBUG upset:     Column '", col, "' NOT FOUND in ORA result!")
                             }
-                        } else {
-                            message("DEBUG upset:     ORA ", ont, "/", sig, " is NULL")
                         }
                     }
                 }
-            } else {
-                message("DEBUG upset:   Skipping (runGO is FALSE or NULL)")
             }
-        }
-
-        message("DEBUG upset: Final oraList BPupGenes has ", length(oraList$BPupGenes), " contrasts")
-        if (length(oraList$BPupGenes) > 0) {
-            message("DEBUG upset: Contrast names: ", paste(names(oraList$BPupGenes), collapse = ", "))
         }
 
         upsetGeneList$genesList <- geneLists
