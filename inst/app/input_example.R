@@ -295,7 +295,11 @@ is_url <- function(dataDir) {
 # dataDir <- "/srv/gstore/projects/p23793/o32655_CountQC_2023-10-05--18-33-15/Count_QC/counts-sswoowrqapiv-EzResult.RData" # CountQC
 # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39763/bfabric/Proteomics/exploreDE/2025/2025-11/2025-11-03/workunit_335997/3012890.rds" # Proteomics
 # dataDir <- "/srv/gstore/projects/p39374/o39634_DESeq2_IVD_Disc_Matrix--over--IVD_unstimulated_2025-11-13--09-20-35/IVD_Disc_Matrix--over--IVD_unstimulated" # twoFactor
-dataDir <- "/srv/gstore/projects/p38738/o40056_EdgeR_HDM_F2_STI--over--HDM_F2_2025-11-30--08-06-19/HDM_F2_STI--over--HDM_F2"
+# dataDir <- "/srv/gstore/projects/p38738/o40056_EdgeR_HDM_F2_STI--over--HDM_F2_2025-11-30--08-06-19/HDM_F2_STI--over--HDM_F2"
+# dataDir <- "/srv/gstore/projects/p38738/o40056_EdgeR_HDM_F2--over--HDM_FR2_2025-12-03--11-48-47/HDM_F2--over--HDM_FR2"
+dataDir <- "/srv/gstore/projects/p29284/o36981_EdgeR_HR2_B_cells--over--HR1_B_cells_2025-06-27--09-16-12/HR2_B_cells--over--HR1_B_cells"
+dataUrl <- "p29284/o36981_EdgeR_HR2_B_cells--over--HR1_B_cells_2025-06-27--09-16-12/HR2_B_cells--over--HR1_B_cells"
+username <- Sys.getenv("SHINYPROXY_USERNAME")
 if (is_url(dataDir)) {
   se <- readRDS(url(dataDir))  # If it's a URL
 } else {

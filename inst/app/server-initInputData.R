@@ -208,7 +208,12 @@ convert_proteomics_se <- function(se) {
       sa <- sa %>% dplyr::select(-protein_Id)
       colnames(sa)[grep("site", colnames(sa))] <- "protein_Id"
     }
-    colnames(sa)[grep(paste(c("protein_Id", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
+    # Safely rename columns
+    rename_map <- c("protein_Id" = "gene_name", "diff" = "log2Ratio", "p.value" = "pValue", "FDR" = "fdr")
+    existing_cols <- intersect(names(rename_map), colnames(sa))
+    if (length(existing_cols) > 0) {
+      colnames(sa)[match(existing_cols, colnames(sa))] <- rename_map[existing_cols]
+    }
     sa
   }), contrasts)
 
@@ -319,10 +324,32 @@ if (!is.null(dataUrl)) {
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl)) {
   dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/" # RNASeq
-  projectFromUrl <- "p3009" # JLR 2025
-  dataType <- "demo"
+  projectFromUrl <- dataDir %>% gsub(".*projects\\/", "", .) %>% gsub("\\/.*", "", .)
+  dataType <- "gStore"
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = 600, closeButton = TRUE)
 }
+
+# Store project directory and current dataset path for multi-analysis browsing
+if (!is.null(projectFromUrl) && projectFromUrl != "") {
+    # Determine which root path contains this project
+    projectPath <- file.path("/srv/gstore/projects", projectFromUrl)
+    if (dir.exists(projectPath)) {
+        multiProjectInfo$projectDir <- projectPath
+        message("DEBUG: Set multiProjectInfo$projectDir to ", projectPath)
+    } else {
+        # Try course directory
+        projectPath <- file.path("/srv/GT/analysis/course_sushi/public/gstore/projects", projectFromUrl)
+        if (dir.exists(projectPath)) {
+            multiProjectInfo$projectDir <- projectPath
+            message("DEBUG: Set multiProjectInfo$projectDir to ", projectPath)
+        } else {
+            message("DEBUG: Could not find project directory for ", projectFromUrl)
+        }
+    }
+}
+
+# Store current dataset path (will be set after dataDir is determined)
+multiProjectInfo$currentDataDir <- NULL
 
 if (!exists("dataDir")) {
   showModal(modalDialog(
@@ -412,6 +439,8 @@ if (dataType %in% c("gStore", "demo")) {
       } else if (file.exists(file.path(dataDir, "deResult.qs2"))) {
         se <- qs2::qs_read(file.path(dataDir, "deResult.qs2"), nthreads = 4)
       }
+      # Store current dataset path for multi-analysis
+      multiProjectInfo$currentDataDir <- dataDir
       # If CountQC, load that (we use only the 'present' genes because it has the normalised counts in the assays)
     } else if (grepl("CountQC", dataDir)) {
       dataDir <- dirname(dataDir)

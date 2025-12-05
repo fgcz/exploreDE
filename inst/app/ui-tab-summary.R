@@ -17,7 +17,7 @@ tabItem(
           br(), 
           tableOutput("summaryTable"),
         ),
-        uiOutput(outputId = "linkToMultiDEG"),
+        # uiOutput(outputId = "linkToMultiDEG"),
         box(
           title = paste("Input dataset"),
           width = NULL,
@@ -52,6 +52,7 @@ tabItem(
           br(), br(),
           tags$p("Introducing explodeDE v 3.5.0! What's new?"),
           tags$p("- App now supports CountQC data and more proteomics data types! As such, the tabs have been rejigged."),
+          tags$p("- MultiDE has been subsumed! You can now select other DE results from your project directly in exploreDE."),
           tags$p("- PCA has been reborn as ordination, and now supports MDS, NMDS, and my favourite new feature, biplot mode!"),
           tags$p("- A new 'Replicability' tab has been added to show sample-to-sample correlations and replicate consistency."),
           tags$p("- In the heatmaps tab, you can now group the samples by a factor column, and plot the mean or median per group."),
