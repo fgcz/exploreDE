@@ -5,17 +5,30 @@ tabItem(
       column(
         width = 12,
         box(
-          title = "Results Summary",
-          width = 8,
+          title = "Results Table",
+          width = 9,
           solidHeader = TRUE,
           status = "primary",
-          collapsible = TRUE,
-          collapsed = FALSE,
-          DT::dataTableOutput("resultsTable")
+          textOutput("DEGDesign"), br(),
+          downloadButton(
+            outputId = "dlDEGTable",
+            label = "Download Full DE Results"
+          ),
+          downloadButton(
+            outputId = "dlDEGTable2",
+            label = "Download Selected DE Results"
+          ),
+          br(), br(),
+          tags$p(
+            "You can click on any feature in this table, and they will automatically be added to the selected features buckets in volcano, heatmaps, and boxplot tabs. So you can sort for features based on name, type, TPM, log2 fold change, whatever you like, and visualise those features instantly!"
+          ),
+          actionButton(inputId = "resetDEGTableSelectRows", label = "Deselect all features?"), br(), br(),
+          DT::dataTableOutput("degTable"),
+          style = "overflow-y: scroll;"
         ),
         box(
           title = "DE Calculator",
-          width = 4,
+          width = 3,
           solidHeader = TRUE,
           status = "primary",
           collapsible = TRUE,
@@ -33,28 +46,18 @@ tabItem(
           br(),
           helpText("Download an Excel file of DE results with only the features that meet these thresholds:"),
           downloadButton(outputId = "dlfeatureCalcTable", label = paste("Download DE Results")),
-        )
-      ), 
+        ),
+      ),
       column(
         width = 12,
         box(
-          title = "Results Table",
+          title = "Results Summary",
           width = 9,
           solidHeader = TRUE,
           status = "primary",
-          textOutput("DEGDesign"), br(),
-          downloadButton(
-            outputId = "dlDEGTable",
-            label = "Download Full DE Results"),
-          downloadButton(
-            outputId = "dlDEGTable2",
-            label = "Download Selected DE Results"),
-          br(), br(), 
-          tags$p(
-            "You can click on any feature in this table, and they will automatically be added to the selected features buckets in volcano, heatmaps, and boxplot tabs. So you can sort for features based on name, type, TPM, log2 fold change, whatever you like, and visualise those features instantly!"),
-          actionButton(inputId = "resetDEGTableSelectRows", label = "Deselect all features?"), br(), br(),
-          DT::dataTableOutput("degTable"),
-          style = "overflow-y: scroll;"
+          collapsible = TRUE,
+          collapsed = FALSE,
+          DT::dataTableOutput("resultsTable")
         ),
         box(
           title = "Feature Bucket",
@@ -63,7 +66,7 @@ tabItem(
           status = "primary",
           uiOutput("geneBucketDEG")
         )
-      ) 
-    ) 
-  ) 
-) 
+      )
+    )
+  )
+)

@@ -91,7 +91,11 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   }
   forVST <- as.matrix(assay(se, "counts"))
   mode(forVST) <- "integer"
-  vstCountMatrix <- DESeq2::vst(forVST, blind = FALSE)
+  if (nrow(forVST) < 1000) {
+    vstCountMatrix <- DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
+  } else {
+    vstCountMatrix <- DESeq2::vst(forVST, blind = FALSE)
+  }
   countList[["VST"]] <- vstCountMatrix
   # For all the counts, match the assays to the seqAnno order
   for (i in seq_along(countList)) {
@@ -371,7 +375,7 @@ if (dataType %in% c("gStore", "demo")) {
     message("Loading demo data, so no LDAP checks required.")
     allowed <- TRUE
     ldap_role <- "demo"
-  # Check for course data (no auth required)
+    # Check for course data (no auth required)
   } else if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
     message("Loading SUSHI course data, so no LDAP checks required.")
     allowed <- TRUE
