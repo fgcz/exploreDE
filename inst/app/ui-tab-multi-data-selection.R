@@ -32,6 +32,15 @@ tabItem(
                 solidHeader = TRUE,
                 status = "success",
                 DT::dataTableOutput("multiSelectedDatasetsTable"),
+                br(),
+                uiOutput("multiRenameInputsUI"),
+                actionButton(
+                    inputId = "multiUpdateNames",
+                    label = "Update Names",
+                    icon = icon("check"),
+                    class = "btn-success"
+                ),
+                br(), br(),
                 actionButton(
                     inputId = "multiRemoveSelected",
                     label = "Remove Selected",

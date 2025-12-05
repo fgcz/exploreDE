@@ -257,7 +257,8 @@ observeEvent(input$multiLoadSelected, {
     waiter <- Waiter$new(
         id = "multiDataSelectionBoxUI",
         html = spin_fading_circles(),
-        color = "#527085"
+        color = "#2d7a3e", 
+        fadeout = TRUE
     )
     waiter$show()
 
@@ -533,48 +534,98 @@ output$multiSelectedDatasetsTable <- DT::renderDataTable({
     ) %>%
         DT::datatable(
             selection = "multiple",
-            editable = TRUE,  # Make all cells editable by default
+            editable = FALSE,  # Disable inline editing - use text inputs below instead
             options = list(dom = "t")
         )
 })
 
-# Handle edits to the Selected Datasets table
-observeEvent(input$multiSelectedDatasetsTable_cell_edit, {
-    info <- input$multiSelectedDatasetsTable_cell_edit
-    row <- info$row
-    col <- info$col
-    newValue <- info$value
+# Render rename text inputs dynamically
+observeEvent(
+    multiDeReactive$results,
+    {
+        req(multiDeReactive$results)
+        req(length(multiDeReactive$results) > 0)
 
-    # Only allow editing the Name column (column 0)
-    if (col == 0) {
-        oldName <- names(multiDeReactive$results)[row]
-        newName <- newValue
+        output$multiRenameInputsUI <- renderUI({
+            tagList(
+                h5("Edit Dataset Names:"),
+                lapply(seq_along(names(multiDeReactive$results)), function(i) {
+                    currentName <- names(multiDeReactive$results)[[i]]
+                    textInput(
+                        inputId = paste0("multiRename_", i),
+                        label = paste0("Dataset ", i, ":"),
+                        value = currentName,
+                        placeholder = "Enter dataset name...",
+                        width = "100%"
+                    )
+                })
+            )
+        })
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = FALSE
+)
 
-        # Don't allow empty names
-        if (is.null(newName) || newName == "" || trimws(newName) == "") {
-            showNotification("Dataset name cannot be empty!", type = "warning")
-            return(NULL)
+# Handle "Update Names" button click
+observeEvent(input$multiUpdateNames, {
+    req(multiDeReactive$results)
+    req(length(multiDeReactive$results) > 0)
+
+    # Store current tab before making changes
+    currentTab <- isolate(input$tabs)
+
+    # Collect all new names from the text inputs
+    newNames <- character(length(multiDeReactive$results))
+    hasChanges <- FALSE
+
+    for (i in seq_along(names(multiDeReactive$results))) {
+        oldName <- names(multiDeReactive$results)[i]
+        inputId <- paste0("multiRename_", i)
+        newName <- trimws(input[[inputId]])
+
+        # Validate the new name
+        if (is.null(newName) || newName == "") {
+            showNotification("Dataset names cannot be empty!", type = "warning")
+            return()
         }
 
-        # Check if new name already exists
-        if (newName %in% names(multiDeReactive$results) && newName != oldName) {
-            showNotification("A dataset with this name already exists!", type = "warning")
-            return(NULL)
+        newNames[i] <- newName
+
+        if (newName != oldName) {
+            hasChanges <- TRUE
         }
-
-        # Rename by changing the name in place to preserve order
-        temp_results <- multiDeReactive$results
-        result_names <- names(temp_results)
-        result_names[row] <- newName
-        names(temp_results) <- result_names
-
-        # Reassign to trigger reactive updates
-        multiDeReactive$results <- temp_results
-        showNotification(paste("Renamed to:", newName), type = "message")
-    } else {
-        # Ignore edits to Type column
-        showNotification("Type column cannot be edited.", type = "warning")
     }
+
+    # Check for duplicate names
+    if (any(duplicated(newNames))) {
+        showNotification("Dataset names must be unique!", type = "warning")
+        return()
+    }
+
+    # If no changes, just notify and return
+    if (!hasChanges) {
+        showNotification("No changes to apply.", type = "message")
+        return()
+    }
+
+    # Apply the changes by rebuilding the list
+    temp_results <- list()
+    for (i in seq_along(multiDeReactive$results)) {
+        temp_results[[newNames[i]]] <- multiDeReactive$results[[i]]
+    }
+
+    # Update reactive values
+    multiDeReactive$results <- temp_results
+    multiDeReactive$menuUpdateTrigger <- multiDeReactive$menuUpdateTrigger + 1
+
+    showNotification("Dataset names updated successfully!", type = "message")
+
+    # Restore the current tab after a brief delay
+    shinyjs::delay(100, {
+        if (!is.null(currentTab)) {
+            updateTabItems(session, "tabs", selected = currentTab)
+        }
+    })
 })
 
 observeEvent(input$multiRemoveSelected, {

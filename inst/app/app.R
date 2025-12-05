@@ -159,8 +159,29 @@ ui <- dashboardPage(
               background-color: #2d7a3e !important;
               border-left-color: #2d7a3e !important;
             }
+            /* Green header when on multi tabs */
+            body.multi-active.skin-blue .main-header .logo {
+              background: linear-gradient(135deg, #2d7a3e 0%, #3a9950 100%) !important;
+            }
+            body.multi-active.skin-blue .main-header .navbar {
+              background: linear-gradient(135deg, #2d7a3e 0%, #3a9950 100%) !important;
+            }
             ")
-        )
+        ),
+        tags$script(HTML("
+          $(document).on('shiny:inputchanged', function(event) {
+            if (event.name === 'tabs') {
+              var multiTabs = ['multiDataSelectionTab', 'multiDETableTab', 'multiBoxplotTab',
+                               'multiUpsetPlotTab', 'multiTilePlotTab', 'multiBubbleTab',
+                               'multiHeatmapTab', 'multiKeggTab'];
+              if (multiTabs.indexOf(event.value) !== -1) {
+                $('body').addClass('multi-active');
+              } else {
+                $('body').removeClass('multi-active');
+              }
+            }
+          });
+        "))
       )
     ),
     use_waiter(),
