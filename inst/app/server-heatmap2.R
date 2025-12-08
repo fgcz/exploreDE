@@ -350,12 +350,8 @@ observeEvent(
       # Store original dataset BEFORE any aggregation for batch correction
       datasetHeatmapOriginal <- datasetHeatmap
 
-      # Apply the following in this specific order as required: Log2, batch correct, Z-scale
-      ## If the user wants to log2, then do that
-      if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
-        countsHeatmap <- log2(countsHeatmap + 1)
-      }
-      ## If the user wants to remove batch effect, then do that (use ORIGINAL dataset)
+      # Apply the following in this specific order: Batch -> Log2 -> Centre/Scale -> Aggregation
+      ## 1. If the user wants to remove batch effect, then do that FIRST (use ORIGINAL dataset)
       if (input$heatmapBatch != "None") {
         req(input$heatmapBatch %in% colnames(datasetHeatmapOriginal))
         # Check that batch factor has more than one level after filtering
@@ -370,58 +366,59 @@ observeEvent(
           )
         }
       }
-      ## If the user wants to plot gene-wise Z-scores, then do that
-      if (input$heatmapZScore == "Z-Score") {
-        countsHeatmap <- t(scale(t(countsHeatmap)))
-      }
-      ## If the user wants to centre the counts, then do that
-      if (input$heatmapZScore == "Centred") {
-        countsHeatmap <- sweep(countsHeatmap, 1, rowMeans(countsHeatmap, na.rm = T))
+      ## 2. If the user wants to log2, then do that
+      if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
+        countsHeatmap <- log2(countsHeatmap + 1)
       }
       ## Fix the proteomics rownames
       if (inputDataReactive()$dataType == "proteomics") {
         rownames(countsHeatmap) <- gsub("\\~.*", "", rownames(countsHeatmap))
       }
+      ## 3. If the user wants to plot gene-wise Z-scores or centre, then do that
+      if (input$heatmapZScore == "Z-Score") {
+        countsHeatmap <- t(scale(t(countsHeatmap)))
+      }
+      if (input$heatmapZScore == "Centred") {
+        countsHeatmap <- sweep(countsHeatmap, 1, rowMeans(countsHeatmap, na.rm = T))
+      }
 
-      ## Calculate per-condition aggregation if requested
+      ## 4. Calculate per-condition aggregation if requested (LAST step)
       if (!is.null(input$heatmapShowMeans) && input$heatmapShowMeans) {
         # Get the grouping factor (first selected factor)
         grouping_factor <- input$heatmapColumnSelect[1]
 
         # Determine aggregation method
         agg_method <- if (!is.null(input$heatmapAggMethod)) input$heatmapAggMethod else "Mean"
-        
-        # Calculate aggregation for each condition
-        condition_levels <- levels(as.factor(datasetHeatmap[[grouping_factor]]))
-        
-        # Store original rownames before aggregation
-        original_rownames <- rownames(countsHeatmap)
 
-        countsHeatmapAgg <- lapply(condition_levels, function(cond) {
-          sample_names <- datasetHeatmap$Name[datasetHeatmap[[grouping_factor]] == cond]
+        # Get unique factor levels that actually exist in the data
+        condition_levels <- lapply(unique(datasetHeatmap[[grouping_factor]]), function(x) {
+          as.character(datasetHeatmap$Name[datasetHeatmap[[grouping_factor]] == x])
+        }) %>% setNames(unique(datasetHeatmap[[grouping_factor]]))
+        
+        # Build a new aggregated matrix
+        # Get the mean/median per factor level
+        countsHeatmapAgg <- lapply(names(condition_levels), function(x) {
+          sample_names <- condition_levels[[x]]
           sample_data <- countsHeatmap[, sample_names, drop = FALSE]
           if (agg_method == "Mean") {
             rowMeans(sample_data, na.rm = TRUE)
           } else {
-            rowMedians(as.matrix(sample_data), na.rm = TRUE)
+            matrixStats::rowMedians(as.matrix(sample_data), na.rm = TRUE)
           }
-        })
-        countsHeatmap <- do.call(cbind, countsHeatmapAgg)
-        colnames(countsHeatmap) <- condition_levels
-        rownames(countsHeatmap) <- original_rownames
+        }) %>% setNames(names(condition_levels)) %>% data.frame()
 
-        # Clean up NA/NaN/Inf values that can break clustering
-        countsHeatmap[is.na(countsHeatmap) | is.nan(countsHeatmap) | is.infinite(countsHeatmap)] <- 0
+        # Convert back to matrix and ensure proper formatting
+        countsHeatmap <- as.matrix(countsHeatmapAgg)
 
         # Update datasetHeatmap to reflect the new structure (one row per condition)
         # Note: datasetHeatmapOriginal already stored above for batch correction
         datasetHeatmap <- data.frame(
-          Name = condition_levels,
+          Name = names(condition_levels),
           row.names = NULL,
           stringsAsFactors = FALSE
         )
         # Add the grouping factor column
-        datasetHeatmap[[grouping_factor]] <- factor(condition_levels, levels = condition_levels)
+        datasetHeatmap[[grouping_factor]] <- factor(names(condition_levels), levels = names(condition_levels))
 
         # Check if additional factors can be annotated when showing means/medians
         # They can only be shown if they don't vary within each aggregated group
