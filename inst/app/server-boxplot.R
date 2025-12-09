@@ -42,7 +42,7 @@ updateSelectInput(
   session = session,
   inputId = "boxplotFactor1",
   choices = inputDataReactive()$factors,
-  selected = inputDataReactive()$factors[1]
+  selected = inputDataReactive()$groupingName
 )
 updateSelectInput(
   session = session,
@@ -72,18 +72,20 @@ observeEvent(
   {
     output$bucket <- renderUI({
       bucket_list(
-        header = "Drag and drop groups in order to be plotted",
+        header = "Drag and drop groups in order to be plotted (Ctrl/Cmd to select multiple)",
         group_name = "bucket_list_group",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these groups",
           labels = as.list(unique(levels(as.factor(inputDataReactive()$dataset[[input$boxplotFactor1]])))),
-          input_id = "boxKeepBucket"
+          input_id = "boxKeepBucket",
+          options = sortable::sortable_options(multiDrag = TRUE)
         ),
         add_rank_list(
           text = "Exclude these groups",
           labels = NULL,
-          input_id = "boxExcludeBucket"
+          input_id = "boxExcludeBucket",
+          options = sortable::sortable_options(multiDrag = TRUE)
         )
       )
     })
@@ -190,18 +192,20 @@ observeEvent(
   {
     output$geneBucket1 <- renderUI({
       bucket_list(
-        header = "Drag and drop features in order to be plotted",
+        header = "Drag and drop features in order to be plotted (Ctrl/Cmd to select multiple)",
         group_name = "bucket_list_group",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these features in this order",
           labels = genesReactive$genes,
-          input_id = "keepBucketBoxplot"
+          input_id = "keepBucketBoxplot",
+          options = sortable::sortable_options(multiDrag = TRUE)
         ),
         add_rank_list(
           text = "Exclude these features",
           labels = NULL,
-          input_id = "excludeBucketBoxplot"
+          input_id = "excludeBucketBoxplot",
+          options = sortable::sortable_options(multiDrag = TRUE)
         )
       )
     })

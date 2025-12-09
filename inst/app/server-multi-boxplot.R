@@ -272,18 +272,20 @@ observe({
         tagList(
             h5(paste0("Grouping factor: ", groupingName)),
             bucket_list(
-                header = "Drag groups to include/exclude from plot",
+                header = "Drag groups to include/exclude from plot (Ctrl/Cmd to select multiple)",
                 group_name = "multi_boxplot_bucket_group",
                 orientation = "horizontal",
                 add_rank_list(
                     text = "Include these groups",
                     labels = as.list(groupLevels),
-                    input_id = "multiBoxKeepBucket"
+                    input_id = "multiBoxKeepBucket",
+                    options = sortable::sortable_options(multiDrag = TRUE)
                 ),
                 add_rank_list(
                     text = "Exclude these groups",
                     labels = NULL,
-                    input_id = "multiBoxExcludeBucket"
+                    input_id = "multiBoxExcludeBucket",
+                    options = sortable::sortable_options(multiDrag = TRUE)
                 )
             )
         )
@@ -1023,7 +1025,9 @@ output$boxplotTable <- renderDataTable({
             if (nrow(geneRow) > 0) {
                 # Extract log2FC
                 lfcCol <- grep("^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc|log2Ratio)$",
-                              colnames(seqAnno), value = TRUE, ignore.case = TRUE)
+                    colnames(seqAnno),
+                    value = TRUE, ignore.case = TRUE
+                )
                 row[[paste0(contrastName, "_log2FC")]] <- if (length(lfcCol) > 0) geneRow[[lfcCol[1]]] else NA
 
                 # Extract p-value

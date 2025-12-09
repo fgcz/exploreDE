@@ -324,24 +324,26 @@ if (!is.null(dataUrl)) {
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl)) {
   dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/" # RNASeq
-  projectFromUrl <- dataDir %>% gsub(".*projects\\/", "", .) %>% gsub("\\/.*", "", .)
+  projectFromUrl <- dataDir %>%
+    gsub(".*projects\\/", "", .) %>%
+    gsub("\\/.*", "", .)
   dataType <- "gStore"
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = 600, closeButton = TRUE)
 }
 
 # Store project directory and current dataset path for multi-analysis browsing
 if (!is.null(projectFromUrl) && projectFromUrl != "") {
-    # Determine which root path contains this project
-    projectPath <- file.path("/srv/gstore/projects", projectFromUrl)
+  # Determine which root path contains this project
+  projectPath <- file.path("/srv/gstore/projects", projectFromUrl)
+  if (dir.exists(projectPath)) {
+    multiProjectInfo$projectDir <- projectPath
+  } else {
+    # Try course directory
+    projectPath <- file.path("/srv/GT/analysis/course_sushi/public/gstore/projects", projectFromUrl)
     if (dir.exists(projectPath)) {
-        multiProjectInfo$projectDir <- projectPath
-    } else {
-        # Try course directory
-        projectPath <- file.path("/srv/GT/analysis/course_sushi/public/gstore/projects", projectFromUrl)
-        if (dir.exists(projectPath)) {
-            multiProjectInfo$projectDir <- projectPath
-        }
+      multiProjectInfo$projectDir <- projectPath
     }
+  }
 }
 
 # Store current dataset path (will be set after dataDir is determined)

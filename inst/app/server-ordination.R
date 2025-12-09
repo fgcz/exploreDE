@@ -662,7 +662,7 @@ observeEvent(inputDataReactive(), {
   )
   lapply(c(1:2), function(i) {
     selected <- switch(i,
-      "1" = inputDataReactive()$factors[1],
+      "1" = inputDataReactive()$groupingName,
       "2" = "None"
     )
     updateSelectInput(

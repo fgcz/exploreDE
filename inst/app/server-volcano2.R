@@ -64,18 +64,20 @@ observeEvent(
       includeBucket <- unique(c(currentInclude, newGenes))
 
       bucket_list(
-        header = "Drag and drop features in order to be plotted",
+        header = "Drag and drop features in order to be plotted (Ctrl/Cmd to select multiple)",
         group_name = "bucket_list_group",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these features in this order",
           labels = includeBucket,
-          input_id = "volcanoKeepBucketGenes"
+          input_id = "volcanoKeepBucketGenes",
+          options = sortable::sortable_options(multiDrag = TRUE)
         ),
         add_rank_list(
           text = "Exclude these features",
           labels = currentExclude,
-          input_id = "boxExcludeBucketGenes"
+          input_id = "boxExcludeBucketGenes",
+          options = sortable::sortable_options(multiDrag = TRUE)
         )
       )
     })
@@ -92,18 +94,20 @@ observeEvent(input$resetGeneBucketVolcano,
     # Force re-render the bucket UI with empty values
     output$geneBucket2 <- renderUI({
       bucket_list(
-        header = "Drag and drop features in order to be plotted",
+        header = "Drag and drop features in order to be plotted (Ctrl/Cmd to select multiple)",
         group_name = "bucket_list_group",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these features in this order",
           labels = NULL,
-          input_id = "volcanoKeepBucketGenes"
+          input_id = "volcanoKeepBucketGenes",
+          options = sortable::sortable_options(multiDrag = TRUE)
         ),
         add_rank_list(
           text = "Exclude these features",
           labels = NULL,
-          input_id = "boxExcludeBucketGenes"
+          input_id = "boxExcludeBucketGenes",
+          options = sortable::sortable_options(multiDrag = TRUE)
         )
       )
     })

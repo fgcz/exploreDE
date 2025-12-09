@@ -1,29 +1,6 @@
 observeEvent(inputDataReactive(), {
   req(inputDataReactive()$dataType)
 
-  defaultColumn <- switch(inputDataReactive()$dataType,
-    "RNASeq" = "groupingName",
-    "proteomics" = "factors",
-    "CountQC" = "factors"
-  )
-
-  # Safely get the default selected value
-  defaultSelected <- NULL
-  if (!is.null(inputDataReactive()[[defaultColumn]]) && length(inputDataReactive()[[defaultColumn]]) > 0) {
-    defaultSelected <- inputDataReactive()[[defaultColumn]][1]
-  }
-
-  output$heatmapColumnSelectUI <- renderUI({
-    selectizeInput(
-      inputId = "heatmapColumnSelect",
-      label = "Select factors to plot by",
-      choices = inputDataReactive()$factors,
-      selected = defaultSelected,
-      multiple = T,
-      options = list(placeholder = "Select features", plugins = list("remove_button", "drag_drop", "restore_on_backspace", "clear_button"))
-    )
-  })
-  outputOptions(output, "heatmapColumnSelectUI", suspendWhenHidden = FALSE)
 
   if (inputDataReactive()$dataType == "proteomics") {
     output$clusterWarningProteomics <- renderUI({
@@ -117,6 +94,60 @@ observeEvent(inputDataReactive(), {
   }
 })
 
+output$heatmapColumnSelectUI <- renderUI({
+  req(inputDataReactive())
+  data <- inputDataReactive()
+  req(data$dataType)
+
+  # Calculate default selection
+  defaultColumn <- switch(data$dataType,
+    "RNASeq" = "groupingName",
+    "proteomics" = "factors",
+    "CountQC" = "factors"
+  )
+
+  defaultSelected <- NULL
+  if (!is.null(data[[defaultColumn]]) && length(data[[defaultColumn]]) > 0) {
+    defaultSelected <- data[[defaultColumn]][1]
+  }
+
+  # Get current selection and available choices
+  choices <- data$factors
+  currentSelection <- isolate(input$heatmapColumnSelect)
+
+  # Validate current selection against new choices
+  validSelection <- intersect(currentSelection, choices)
+
+  # Determine selection to use (Sticky vs Default)
+  # If we have a valid current selection, use it. Otherwise default.
+  selected <- if (length(validSelection) > 0) validSelection else defaultSelected
+
+  # Apply Mean/Median restriction
+  maxItems <- NULL
+  if (isTRUE(input$heatmapShowMeans)) {
+    maxItems <- 1
+    # Note: check length of 'selected' specifically
+    if (length(selected) > 1) {
+      selected <- selected[1]
+      showNotification("Plotting mean/median supports only one factor. Excess factors removed.", type = "warning")
+    }
+  }
+
+  selectizeInput(
+    inputId = "heatmapColumnSelect",
+    label = "Select factors to plot by",
+    choices = choices,
+    selected = selected,
+    multiple = TRUE,
+    options = list(
+      placeholder = "Select features",
+      plugins = list("remove_button", "drag_drop", "restore_on_backspace", "clear_button"),
+      maxItems = maxItems
+    )
+  )
+})
+outputOptions(output, "heatmapColumnSelectUI", suspendWhenHidden = FALSE)
+
 observeEvent(
   {
     genesReactive
@@ -124,18 +155,20 @@ observeEvent(
   {
     output$geneBucket3 <- renderUI({
       bucket_list(
-        header = "Drag and drop features in order to be plotted",
+        header = "Drag and drop features in order to be plotted (Ctrl/Cmd to select multiple)",
         group_name = "bucket_list_group",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these features in this order",
           labels = genesReactive$genes,
-          input_id = "keepBucketHeatmap"
+          input_id = "keepBucketHeatmap",
+          options = sortable::sortable_options(multiDrag = TRUE)
         ),
         add_rank_list(
           text = "Exclude these features",
           labels = NULL,
-          input_id = "excludeBucketHeatmap"
+          input_id = "excludeBucketHeatmap",
+          options = sortable::sortable_options(multiDrag = TRUE)
         )
       )
     })
@@ -161,27 +194,31 @@ observeEvent(
   {
     # Clear all buckets first (up to 10)
     for (i in 1:10) {
-      output[[paste0("heatmapBucket", i)]] <- renderUI({ NULL })
+      output[[paste0("heatmapBucket", i)]] <- renderUI({
+        NULL
+      })
     }
 
     # Only render buckets if there are factors selected
     if (!is.null(input$heatmapColumnSelect) && length(input$heatmapColumnSelect) > 0 &&
-        !all(input$heatmapColumnSelect == "")) {
+      !all(input$heatmapColumnSelect == "")) {
       lapply(seq_along(input$heatmapColumnSelect), function(i) {
         output[[paste0("heatmapBucket", i)]] <- renderUI({
           bucket_list(
-            header = input$heatmapColumnSelect[[i]],
+            header = paste(input$heatmapColumnSelect[[i]], "(Drag/Drop levels - Ctrl/Cmd to select multiple)"),
             group_name = paste0("hmBucket", i),
             orientation = "horizontal",
             add_rank_list(
               text = "Include these groups",
               labels = as.list(unique(levels(as.factor(inputDataReactive()$dataset[[input$heatmapColumnSelect[[i]]]])))),
-              input_id = paste0("hmKeepBucket", i)
+              input_id = paste0("hmKeepBucket", i),
+              options = sortable::sortable_options(multiDrag = TRUE)
             ),
             add_rank_list(
               text = "Exclude these groups",
               labels = NULL,
-              input_id = paste0("hmExcludeBucket", i)
+              input_id = paste0("hmExcludeBucket", i),
+              options = sortable::sortable_options(multiDrag = TRUE)
             )
           )
         })
@@ -239,69 +276,79 @@ select_genes_by_sd <- function(counts, top_n = 2000) {
 ht_opt$message <- FALSE
 
 # figure making ----
-observeEvent(
-  {
-    input$textSizeHeatmap
-    input$heatmapBatch
-    input$lfcHeatmap
-    input$pTypeHeatmap
-    input$pThresholdHeatmap
-    input$heatmapLimitD
-    input$heatmapLimitCHigh
-    input$heatmapLimitCMid
-    input$heatmapLimitCLow
-    input$heatmapLimitCPalette
-    input$heatmapLimitCPaletteRev
-    input$heatmapGeneNumber
-    input$heatmapGeneNumberCountQC
-    input$heatmapCounts
-    input$clusterRowsHeatmap
-    input$clusterColsHeatmap
-    input$colnamesHeatmap
-    input$geneNamesHeatmap
-    input$heatmapColourRed
-    input$heatmapColourWhite
-    input$heatmapColourBlue
-    input$showClusterColDend
-    input$showClusterRowDend
-    input$heatmapDPI
-    input$heatmapDownloadFormat
-    input$heatmapFilename
-    input$nrPeptideHeatmap
-    input$heatmapFeatureDirection
-    input$heatmapLog2
-    input$heatmapZScore
-    input$heatmapShowMeans
-    input$heatmapAggMethod
-    input$heatmapAtLow
-    input$heatmapAtMid
-    input$heatmapAtHigh
-    input$contrastSelected
-    input$keepBucketHeatmap
-    input$heatmapCustomTitle
-    input$heatmapGoInput
-    input$heatmapGoExpr
-    input$heatmapColumnSelect
-    input$cellBorderSizeHeatmap1
-    input$cellBorderColourHeatmap1
-    input$cellBorderSizeHeatmap2
-    input$cellBorderColourHeatmap2
+# figure making ----
+heatmapInputs <- reactive({
+  list(
+    input$textSizeHeatmap,
+    input$heatmapBatch,
+    input$lfcHeatmap,
+    input$pTypeHeatmap,
+    input$pThresholdHeatmap,
+    input$heatmapLimitD,
+    input$heatmapLimitCHigh,
+    input$heatmapLimitCMid,
+    input$heatmapLimitCLow,
+    input$heatmapLimitCPalette,
+    input$heatmapLimitCPaletteRev,
+    input$heatmapGeneNumber,
+    input$heatmapGeneNumberCountQC,
+    input$heatmapCounts,
+    input$clusterRowsHeatmap,
+    input$clusterColsHeatmap,
+    input$colnamesHeatmap,
+    input$geneNamesHeatmap,
+    input$heatmapColourRed,
+    input$heatmapColourWhite,
+    input$heatmapColourBlue,
+    input$showClusterColDend,
+    input$showClusterRowDend,
+    input$heatmapDPI,
+    input$heatmapDownloadFormat,
+    input$heatmapFilename,
+    input$nrPeptideHeatmap,
+    input$heatmapFeatureDirection,
+    input$heatmapLog2,
+    input$heatmapZScore,
+    input$heatmapShowMeans,
+    input$heatmapAggMethod,
+    input$heatmapAtLow,
+    input$heatmapAtMid,
+    input$heatmapAtHigh,
+    input$contrastSelected,
+    input$keepBucketHeatmap,
+    input$heatmapCustomTitle,
+    input$heatmapGoInput,
+    input$heatmapGoExpr,
+    input$heatmapColumnSelect,
+    input$cellBorderSizeHeatmap1,
+    input$cellBorderColourHeatmap1,
+    input$cellBorderSizeHeatmap2,
+    input$cellBorderColourHeatmap2,
     # Add all color picker inputs as dependencies so plot updates when colors change
     lapply(seq_along(inputDataReactive()$factorLevels), function(i) {
       lapply(seq_along(inputDataReactive()$factorLevels[[i]]), function(j) {
         input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]], inputDataReactive()$factorLevels[[i]][[j]])]]
       })
-    })
+    }),
     lapply(1:10, function(i) {
       input[[paste0("hmKeepBucket", i)]]
     })
+  )
+})
+
+# Debounce the inputs
+heatmapInputsDebounced <- debounce(heatmapInputs, 1000)
+
+observeEvent(
+  {
+    heatmapInputsDebounced()
   },
   ignoreNULL = FALSE,
   ignoreInit = TRUE,
   {
     # Check if user has removed all factors - if so, clear the plot
     if (is.null(input$heatmapColumnSelect) || length(input$heatmapColumnSelect) == 0 ||
-        all(input$heatmapColumnSelect == "")) {
+      all(input$heatmapColumnSelect == "")) {
       figuresDataReactive[["heatmapDEFeatures"]] <- NULL
       figuresDataReactive[["heatmapCustom"]] <- NULL
       figuresDataReactive[["heatmapGO"]] <- NULL
@@ -342,7 +389,11 @@ observeEvent(
       }
       # Get the sample order
       datasetHeatmap <- datasetHeatmap %>% dplyr::arrange(across(all_of(input$heatmapColumnSelect)))
-      
+
+      if (nrow(datasetHeatmap) == 0) {
+        return(NULL)
+      }
+
       # Prepare the selected count matrix ----
       countsHeatmap <- inputDataReactive()$countList[[input$heatmapCounts]]
       countsHeatmap <- countsHeatmap[, datasetHeatmap$Name]
@@ -394,7 +445,7 @@ observeEvent(
         condition_levels <- lapply(unique(datasetHeatmap[[grouping_factor]]), function(x) {
           as.character(datasetHeatmap$Name[datasetHeatmap[[grouping_factor]] == x])
         }) %>% setNames(unique(datasetHeatmap[[grouping_factor]]))
-        
+
         # Build a new aggregated matrix
         # Get the mean/median per factor level
         countsHeatmapAgg <- lapply(names(condition_levels), function(x) {
@@ -405,7 +456,9 @@ observeEvent(
           } else {
             matrixStats::rowMedians(as.matrix(sample_data), na.rm = TRUE)
           }
-        }) %>% setNames(names(condition_levels)) %>% data.frame()
+        }) %>%
+          setNames(names(condition_levels)) %>%
+          data.frame()
 
         # Convert back to matrix and ensure proper formatting
         countsHeatmap <- as.matrix(countsHeatmapAgg)

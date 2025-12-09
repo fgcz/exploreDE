@@ -7,18 +7,20 @@ observeEvent(
   {
     output$geneBucketDEG <- renderUI({
       bucket_list(
-        header = "",
+        header = "Drag and drop features (Ctrl/Cmd to select multiple)",
         group_name = "bucket_list_group",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these features in this order",
           labels = genesReactive$genes,
-          input_id = "degKeepBucketGenes"
+          input_id = "degKeepBucketGenes",
+          options = sortable::sortable_options(multiDrag = TRUE)
         ),
         add_rank_list(
           text = "Exclude these features",
           labels = NULL,
-          input_id = "boxExcludeBucketGenes"
+          input_id = "boxExcludeBucketGenes",
+          options = sortable::sortable_options(multiDrag = TRUE)
         )
       )
     })
