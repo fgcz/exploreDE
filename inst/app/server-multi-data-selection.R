@@ -78,23 +78,28 @@ output$multiDataSelectionBoxUI <- renderUI({
 })
 
 # 0. Colour Picker Logic (Ported from multiDEG)
-catalystCols <- c(
-    "#DC050C", "#FB8072", "#1965B0", "#7BAFDE", "#882E72", "#B17BA6",
-    "#FF7B00", "#FDC362", "#E7298A", "#E78AC3", "#33A02C", "#B2DF8A",
-    "#55A1B1", "#8DD3C7", "#A6761D", "#E6AB02", "#7570B3", "#BEAED4",
-    "#666666", "#999999", "#aa8282", "#d4b7b7", "#8600bf", "#ba5ce3",
-    "#808000", "#aeae5c", "#1e90ff", "#00bfff", "#56ff0d", "#ffff00"
+# User requested nice + colourblind friendly with >10 colours.
+# Mixing Okabe-Ito (8) with Paul Tol's Muted/Bright (4) to get 12 distinct, accessible colours.
+houseCols <- c(
+    "#E69F00", # Orange (OI)
+    "#56B4E9", # Sky Blue (OI)
+    "#009E73", # Bluish Green (OI)
+    "#F0E442", # Yellow (OI)
+    "#0072B2", # Blue (OI)
+    "#D55E00", # Vermilion (OI)
+    "#CC79A7", # Reddish Purple (OI)
+    "#332288", # Indigo (Tol)
+    "#88CCEE", # Cyan (Tol)
+    "#44AA99", # Teal (Tol)
+    "#117733", # Green (Tol)
+    "#999933"  # Olive (Tol)
 )
-catalystCols <- c(catalystCols[c(seq(1, 30, by = 2), seq(2, 30, by = 2))])
-cc2 <- catalystCols
-cc2 <- colorspace::darken(cc2, 0.4)
-catalystCols <- c(catalystCols, cc2)
-catalystCols <- paste0(catalystCols, "FF")
+houseCols <- paste0(houseCols, "FF")
 n <- 60
 qual_col_pals <- brewer.pal.info[brewer.pal.info$category == "qual", ]
 col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
-colourPaletteList <- list(
-    "Catalyst colours" = catalystCols,
+colourPaletteList2 <- list(
+    "House colours" = houseCols,
     "Paired" = brewer.pal(12, "Paired"),
     "Set1" = brewer.pal(9, "Set1"),
     "Set2" = brewer.pal(8, "Set2"),
@@ -107,8 +112,8 @@ output$multiColourPaletteUI <- renderUI({
     selectizeInput(
         inputId = "multiColourPalette",
         label = "Colour Palette",
-        choices = names(colourPaletteList),
-        selected = names(colourPaletteList)[1],
+        choices = names(colourPaletteList2),
+        selected = names(colourPaletteList2)[1],
         multiple = TRUE,
         options = list(plugins = list("remove_button", "drag_drop"))
     )

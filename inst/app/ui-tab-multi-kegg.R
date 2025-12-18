@@ -66,7 +66,7 @@ tabItem(
                 h5("Gene box contrast order"),
                 helpText("Each gene box is divided to represent the different contrats loaded. From left to right, the order is:"),
                 tableOutput(outputId = "KEGGOrder"),
-                withSpinner(plotOutput(outputId = "KEGGout", inline = TRUE), color = "#b5d17b")
+                withSpinner(plotOutput(outputId = "KEGGout", inline = TRUE), color = "#00a65a")
             )
         )
     )

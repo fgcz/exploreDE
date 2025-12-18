@@ -144,7 +144,7 @@ tabItem(
                     label = "Download Data (Excel)"
                 ),
                 br(), br(),
-                withSpinner(plotOutput(outputId = "pathwayHeatmapPlot", inline = TRUE), color = "#b5d17b")
+                withSpinner(plotOutput(outputId = "pathwayHeatmapPlot", inline = TRUE), color = "#00a65a")
             ),
             box(
                 title = "Pathway Data Table",

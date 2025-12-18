@@ -24,7 +24,7 @@ tabItem(
             shinycssloaders::withSpinner(
                 uiOutput("multiDataSelectionBoxUI"),
                 type = 4,
-                color = "#527085"
+                color = "#00a65a"
             ),
             box(
                 title = "Selected Datasets",
@@ -61,6 +61,11 @@ tabItem(
               collapsible = TRUE,
               status = "success",
               uiOutput("multiColourPaletteUI"),
+              helpText("Upload an Excel file with 'Contrast' and 'Colour' columns to set custom colours."),
+              splitLayout(
+                  downloadButton(outputId = "multiDlColourTemplate", label = "Template"),
+                  fileInput(inputId = "multiImportColourFile", accept = ".xlsx", label = NULL, placeholder = "Upload Colours")
+              ),
               uiOutput(outputId = "multiColourPickerUI", inline = T)
             )
         )
