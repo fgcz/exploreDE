@@ -611,10 +611,55 @@ output$dlBoxplotButtonCounts <- downloadHandler(
   },
   content = function(file) {
     req(!is.null(boxplotCountsReactive()$countsBoxplotMelt))
-    writexl::write_xlsx(
-      boxplotCountsReactive()$countsBoxplotMelt,
-      path = file
+    counts_data <- boxplotCountsReactive()$countsBoxplotMelt
+
+    # Determine which columns to include
+    # Basic columns: Name, factor columns, Feature, Counts
+    basic_cols <- c("Name", inputDataReactive()$factors, "Feature", "Counts")
+
+    if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+        !is.null(input$includeDEStatsBoxplot) &&
+        input$includeDEStatsBoxplot) {
+      # Add DE statistics: log2Ratio, pValue, fdr
+      # First add pValue if it doesn't exist (it's not in countsBoxplotMelt by default)
+      if (inputDataReactive()$dataType == "RNASeq") {
+        if ("pValue" %in% colnames(inputDataReactive()$seqAnno)) {
+          counts_data$pValue <- inputDataReactive()$seqAnno$pValue[match(counts_data$Feature, inputDataReactive()$seqAnno$gene_name)]
+        }
+      } else if (!is.null(input$contrastSelected)) {
+        if ("pValue" %in% colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]])) {
+          counts_data$pValue <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]$pValue[match(counts_data$Feature, inputDataReactive()$seqAnnoList[[input$contrastSelected]]$gene_name)]
+        }
+      }
+
+      # Select columns: basic + DE stats (log2Ratio and fdr already exist, pValue just added)
+      de_cols <- c("log2Ratio", "pValue", "fdr")
+      available_de_cols <- intersect(de_cols, colnames(counts_data))
+      cols_to_export <- c(basic_cols, available_de_cols)
+    } else {
+      # Export only basic columns
+      cols_to_export <- basic_cols
+    }
+
+    # Filter to selected columns
+    counts_data <- counts_data[, intersect(cols_to_export, colnames(counts_data)), drop = FALSE]
+
+    # Write as formatted Excel table
+    wb <- createWorkbook()
+    addWorksheet(wb, "Boxplot Data")
+    writeDataTable(
+      wb,
+      sheet = "Boxplot Data",
+      x = counts_data,
+      startCol = 1,
+      startRow = 1,
+      tableStyle = "TableStyleMedium9",
+      tableName = "BoxplotData",
+      withFilter = TRUE,
+      bandedRows = TRUE
     )
+    freezePane(wb, sheet = "Boxplot Data", firstRow = TRUE)
+    saveWorkbook(wb, file, overwrite = TRUE)
   }
 )
 

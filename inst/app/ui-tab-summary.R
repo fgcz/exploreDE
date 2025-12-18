@@ -40,6 +40,7 @@ tabItem(
           hr(style = "border-top: 1px solid #000000;"), h4("Download App Settings"),
           helpText("Download all the app settings as either an Excel sheet, or as a qs file of the settings as a list."),
           downloadButton("downloadInputsE", "Download settings (Excel)"), downloadButton("downloadInputsR", "Download settings (qs)"),
+          uiOutput("methodsDownloadUI"),
           uiOutput("countsDownloadUI")
         ),
         uiOutput(outputId = "referencesText"),
@@ -59,6 +60,7 @@ tabItem(
           helpText("It's hidden right at the bottom of the settings box..."),
           tags$p("- In the volcano tab, if you select a feature to highlight, but then drop it into the exclude bucket, it'll remove the feature from the plot entirely."),
           tags$p("- In the ORA and GSEA tabs, you can now filter which genes are highlighted/displayed in the figures. The box is hidden at the bottom of the page."),
+          tags$p("- Now, in places where you can download the feature counts (summary, boxplot, heatmap), you can choose to append the DE results (RNA seq only for now.)"),
           tags$p("Most of these new features are here because of user requests, so please keep the feedback coming!")
         )
       )

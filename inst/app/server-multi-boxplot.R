@@ -327,34 +327,84 @@ output$multiBoxplotGroupColours <- renderUI({
     do.call(tagList, colourPickers)
 })
 
+# Feature Bucket List Logic (Genes) ----
+
+multiGenesReactive <- reactiveValues(genes = NULL)
+
+observeEvent(
+    {
+        input$multiBoxplotGenes
+        input$multiBoxplotGenesText
+    },
+    ignoreNULL = FALSE,
+    ignoreInit = TRUE,
+    {
+        # Combine inputs from dropdown and text area
+        genesList1 <- if (!is.null(input$multiBoxplotGenes)) input$multiBoxplotGenes else character(0)
+        
+        genesList2 <- if (!is.null(input$multiBoxplotGenesText)) {
+            strsplit(input$multiBoxplotGenesText, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
+        } else {
+            character(0)
+        }
+        
+        # Merge and clean
+        genesUnlist <- unique(c(genesList1, genesList2))
+        genesUnlist <- genesUnlist[genesUnlist != ""]
+        
+        # Validate against available genes (from first contrast)
+        if (!is.null(multiDeReactive$results) && length(multiDeReactive$results) > 0) {
+             availableGenes <- multiDeReactive$results[[1]]$seqAnno$gene_name
+             genesUnlist <- genesUnlist[genesUnlist %in% availableGenes]
+        }
+        
+        multiGenesReactive$genes <- genesUnlist
+    }
+)
+
+output$multiGeneBucket <- renderUI({
+    req(multiGenesReactive$genes)
+    bucket_list(
+        header = "Drag and drop features in order to be plotted",
+        group_name = "multi_feature_bucket_group",
+        orientation = "horizontal",
+        add_rank_list(
+            text = "Include these features",
+            labels = multiGenesReactive$genes,
+            input_id = "multiFeatureKeepBucket",
+            options = sortable::sortable_options(multiDrag = TRUE)
+        ),
+        add_rank_list(
+            text = "Exclude these features",
+            labels = NULL,
+            input_id = "multiFeatureExcludeBucket",
+            options = sortable::sortable_options(multiDrag = TRUE)
+        )
+    )
+})
+outputOptions(output, "multiGeneBucket", suspendWhenHidden = FALSE)
+
 # Main reactive: prepare boxplot data ----
+
+debouncedMultiFeatureKeepBucket <- reactive({
+  input$multiFeatureKeepBucket
+}) %>% debounce(200)
+
 multiBoxplotDataReactive <- reactive({
     req(multiBoxplotCompatibilityReactive()$compatible)
     req(multiDeReactive$results)
     req(input$multiBoxKeepBucket)
 
-    # Check if any genes are selected (either via dropdown or text input)
-    hasGenesDropdown <- !is.null(input$multiBoxplotGenes) && length(input$multiBoxplotGenes) > 0
-    hasGenesText <- !is.null(input$multiBoxplotGenesText) && nzchar(trimws(input$multiBoxplotGenesText))
-
-    if (!hasGenesDropdown && !hasGenesText) {
-        return(NULL)
-    }
+    # Use genes from the bucket list (which allows reordering)
+    req(debouncedMultiFeatureKeepBucket())
+    genesList <- debouncedMultiFeatureKeepBucket()
+    genesList <- unique(genesList[genesList != ""])
 
     results <- multiDeReactive$results
     compat <- multiBoxplotCompatibilityReactive()
     groupingName <- compat$groupingName
-
+    
     req(!is.null(groupingName))
-
-    # Get gene list
-    genesList <- c(
-        input$multiBoxplotGenes,
-        if (!is.null(input$multiBoxplotGenesText)) {
-            strsplit(input$multiBoxplotGenesText, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
-        }
-    )
-    genesList <- unique(genesList[genesList != ""])
 
     # Limit to max genes
     if (length(genesList) > input$multiBoxplotMaxGenes) {
@@ -494,6 +544,9 @@ multiBoxplotDataReactive <- reactive({
     countsDF <- as.data.frame(t(counts))
     countsDF$Name <- rownames(countsDF)
 
+    # Reorder columns to match gene order from bucket list
+    countsDF <- countsDF %>% dplyr::select(all_of(c("Name", genesListOrdered)))
+
     countsDF <- left_join(countsDF, dataset, by = "Name")
 
     # Filter by selected groups
@@ -515,7 +568,12 @@ multiBoxplotDataReactive <- reactive({
         value.name = "Counts",
         variable.name = "Feature"
     )
-    countsMelt$Feature <- factor(countsMelt$Feature, levels = genesList)
+    countsMelt$Feature <- as.factor(x = countsMelt$Feature)
+
+    # Force the order of the genes as factor so the order the genes are
+    # selected by the user is respected by the facet wrap
+    # MUST use ordered factor for facet_wrap to respect the order
+    countsMelt$Feature <- factor(countsMelt$Feature, levels = genesListOrdered, ordered = TRUE)
 
     # Add DE results from all contrasts
     pvalueData <- list()
@@ -642,8 +700,45 @@ multiBoxplotDataReactive <- reactive({
     ))
 })
 
-# Render the boxplot ----
-output$boxplotPlot <- renderPlot(
+# Create reactive values to store the plot object ----
+multiBoxplotFiguresReactive <- reactiveValues(boxplot = NULL)
+
+# Build the plot when data changes ----
+observeEvent(
+    {
+        multiBoxplotDataReactive()
+        input$multiBoxKeepBucket  # Explicitly watch bucket order for colours
+        input$multiBoxplotShowBox
+        input$multiBoxplotShowViolin
+        input$multiBoxplotBoxAlpha
+        input$multiBoxplotShowMeanBar
+        input$multiBoxplotMeanBarFront
+        input$multiBoxplotMeanLine
+        input$multiBoxplotShowPoint
+        input$multiBoxplotPointSize
+        input$multiBoxplotPointAlpha
+        input$multiBoxplotShowP
+        input$multiBoxplotPType
+        input$multiBoxplotPStack
+        input$multiBoxplotPOffset
+        input$multiBoxplotPYOffset
+        input$multiBoxplotPWidth
+        input$multiBoxplotPBlack
+        input$multiBoxplotPLabelSize
+        input$multiBoxplotPBracketSize
+        input$multiBoxplotPTipSize
+        input$multiBoxplotNCol
+        input$multiBoxplotCountsLog
+        input$multiBoxplotZScore
+        input$multiTextSizeBoxplot
+        input$multiBoxplotConditionAngle
+        # Add colour picker dependencies
+        lapply(input$multiBoxKeepBucket, function(k) {
+            input[[paste0("multiBoxplotGroupColour_", gsub(" |/|\\.", "_", k))]]
+        })
+    },
+    ignoreNULL = FALSE,
+    ignoreInit = FALSE,
     {
         req(multiBoxplotDataReactive())
         req(multiDeReactive$results)
@@ -657,22 +752,35 @@ output$boxplotPlot <- renderPlot(
 
         req(!is.null(groupingName))
 
-        # Get colours for groups from colour pickers
-        groupLevels <- levels(countsMelt[[groupingName]])
+        # Debug factor status - DO NOT MODIFY countsMelt after this!
+        message("Feature class: ", paste(class(countsMelt$Feature), collapse = ", "))
+        message("Feature levels: ", paste(levels(countsMelt$Feature), collapse = ", "))
+        message("is.ordered: ", is.ordered(countsMelt$Feature))
+
+        # Get colours for groups - USE FACTOR LEVELS FROM DATA
+        groupLevelsFromData <- levels(countsMelt[[groupingName]])
+
+        # Get ALL possible group levels from dataset (in original order) for fallback colours
+        allGroupLevels <- unique(compat$dataset[[groupingName]])
+
         colours <- setNames(
-            sapply(groupLevels, function(k) {
+            sapply(groupLevelsFromData, function(k) {
                 inputId <- paste0("multiBoxplotGroupColour_", gsub(" |/|\\.", "_", k))
                 col <- input[[inputId]]
-                if (!is.null(col)) {
+                if (!is.null(col) && col != "") {
                     paste0(gplots::col2hex(col), "FF")
                 } else {
-                    # Fallback to catalyst colours if colour picker not ready
-                    idx <- match(k, groupLevels)
-                    catalystCols[(idx - 1) %% length(catalystCols) + 1]
+                    # Fallback: use the ORIGINAL index (where group first appeared in dataset)
+                    # NOT the current position in bucket
+                    originalIdx <- match(k, allGroupLevels)
+                    catalystCols[(originalIdx - 1) %% length(catalystCols) + 1]
                 }
             }),
-            groupLevels
+            groupLevelsFromData
         )
+        message("Group levels from data: ", paste(groupLevelsFromData, collapse = ", "))
+        message("All group levels (original): ", paste(allGroupLevels, collapse = ", "))
+        message("Colours built: ", paste(names(colours), "=", colours, collapse = "; "))
 
         # Get contrast colours for p-value brackets
         contrastColours <- setNames(
@@ -752,7 +860,7 @@ output$boxplotPlot <- renderPlot(
         }
 
         # Apply colours
-        p <- p + scale_fill_manual(values = colours)
+        p <- p + scale_fill_manual(breaks = names(colours), values = as.character(colours))
 
         # Add p-value brackets if requested
         if (input$multiBoxplotShowP && !is.null(pvalueDF) && nrow(pvalueDF) > 0) {
@@ -785,7 +893,8 @@ output$boxplotPlot <- renderPlot(
             p <- p + coord_cartesian(clip = "off")
         }
 
-        # Facet by gene
+        # Facet by gene - use simple formula syntax like main boxplot
+        message("PLOT TIME Factor levels: ", paste(levels(countsMelt$Feature), collapse = ", "))
         p <- p + facet_wrap(~Feature, scales = "free_y", ncol = input$multiBoxplotNCol)
 
         # Labels
@@ -801,7 +910,16 @@ output$boxplotPlot <- renderPlot(
         # Theme - match exploreDE style
         p <- p + theme_prism(base_size = input$multiTextSizeBoxplot, axis_text_angle = input$multiBoxplotConditionAngle)
 
-        print(p)
+        # Store the plot object
+        multiBoxplotFiguresReactive$boxplot <- p
+    }
+)
+
+# Render the stored plot ----
+output$boxplotPlot <- renderPlot(
+    {
+        req(!is.null(multiBoxplotFiguresReactive$boxplot))
+        multiBoxplotFiguresReactive$boxplot
     },
     width = function() input$multiFigWidthBoxplot,
     height = function() input$multiFigHeightBoxplot
@@ -823,22 +941,30 @@ output$dlBoxplot <- downloadHandler(
         compat <- multiBoxplotCompatibilityReactive()
         groupingName <- compat$groupingName
 
-        # Get colours for groups from colour pickers
-        groupLevels <- levels(countsMelt[[groupingName]])
+        # Get colours for groups - USE FACTOR LEVELS FROM DATA
+        groupLevelsFromData <- levels(countsMelt[[groupingName]])
+
+        # Get ALL possible group levels from dataset (in original order) for fallback colours
+        allGroupLevels <- unique(compat$dataset[[groupingName]])
+
         colours <- setNames(
-            sapply(groupLevels, function(k) {
+            sapply(groupLevelsFromData, function(k) {
                 inputId <- paste0("multiBoxplotGroupColour_", gsub(" |/|\\.", "_", k))
                 col <- input[[inputId]]
-                if (!is.null(col)) {
+                if (!is.null(col) && col != "") {
                     paste0(gplots::col2hex(col), "FF")
                 } else {
-                    # Fallback to catalyst colours if colour picker not ready
-                    idx <- match(k, groupLevels)
-                    catalystCols[(idx - 1) %% length(catalystCols) + 1]
+                    # Fallback: use the ORIGINAL index (where group first appeared in dataset)
+                    # NOT the current position in bucket
+                    originalIdx <- match(k, allGroupLevels)
+                    catalystCols[(originalIdx - 1) %% length(catalystCols) + 1]
                 }
             }),
-            groupLevels
+            groupLevelsFromData
         )
+        message("Group levels from data: ", paste(groupLevelsFromData, collapse = ", "))
+        message("All group levels (original): ", paste(allGroupLevels, collapse = ", "))
+        message("Colours built: ", paste(names(colours), "=", colours, collapse = "; "))
 
         # Get contrast colours for p-value brackets
         contrastColours <- setNames(
@@ -918,7 +1044,7 @@ output$dlBoxplot <- downloadHandler(
         }
 
         # Apply colours
-        p <- p + scale_fill_manual(values = colours)
+        p <- p + scale_fill_manual(breaks = names(colours), values = as.character(colours))
 
         # Add p-value brackets if requested
         if (input$multiBoxplotShowP && !is.null(pvalueDF) && nrow(pvalueDF) > 0) {
@@ -951,7 +1077,8 @@ output$dlBoxplot <- downloadHandler(
             p <- p + coord_cartesian(clip = "off")
         }
 
-        # Facet by gene
+        # Facet by gene - use simple formula syntax like main boxplot
+        message("PLOT TIME Factor levels: ", paste(levels(countsMelt$Feature), collapse = ", "))
         p <- p + facet_wrap(~Feature, scales = "free_y", ncol = input$multiBoxplotNCol)
 
         # Labels

@@ -45,7 +45,8 @@ Imports:
   qs2,
   vegan,
   glmpca,
-  limma
+  limma,
+  officer
 Remotes:
   fgcz/exploreDE
 RoxygenNote: 7.3.2

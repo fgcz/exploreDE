@@ -669,7 +669,53 @@ observeEvent(
             paste0(design, "_DE_", "_heatmap_counts.xlsx")
           },
           content = function(file) {
-            openxlsx::write.xlsx(countsHeatmapSigDL, file = file)
+            counts_export <- countsHeatmapSigDL
+
+            # Determine which columns to include
+            # Basic columns: gene_name + all sample columns
+            basic_cols <- colnames(counts_export)
+
+            # Add DE statistics if requested
+            if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+                !is.null(input$includeDEStatsHeatmap) &&
+                input$includeDEStatsHeatmap) {
+
+              if (inputDataReactive()$dataType == "RNASeq") {
+                de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+                valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
+                if (length(valid_de_cols) > 1) {
+                  de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
+                  counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                }
+              } else if (!is.null(input$contrastSelected)) {
+                de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+                valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
+                if (length(valid_de_cols) > 1) {
+                  de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
+                  counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                }
+              }
+            } else {
+              # Export only basic columns (gene_name + sample columns)
+              counts_export <- counts_export[, basic_cols, drop = FALSE]
+            }
+
+            # Write as formatted Excel table
+            wb <- createWorkbook()
+            addWorksheet(wb, "Heatmap Data")
+            writeDataTable(
+              wb,
+              sheet = "Heatmap Data",
+              x = counts_export,
+              startCol = 1,
+              startRow = 1,
+              tableStyle = "TableStyleMedium9",
+              tableName = "HeatmapData",
+              withFilter = TRUE,
+              bandedRows = TRUE
+            )
+            freezePane(wb, sheet = "Heatmap Data", firstRow = TRUE)
+            saveWorkbook(wb, file, overwrite = TRUE)
           }
         )
         # Show number of genes on plot (changes depending on settings applied)
@@ -745,7 +791,53 @@ observeEvent(
           paste0(design, "_Custom_heatmap.xlsx")
         },
         content = function(file) {
-          openxlsx::write.xlsx((as.data.frame(countsHeatmapCustom) %>% rownames_to_column("gene_name")), file = file)
+          counts_export <- as.data.frame(countsHeatmapCustom) %>% rownames_to_column("gene_name")
+
+          # Determine which columns to include
+          # Basic columns: gene_name + all sample columns
+          basic_cols <- colnames(counts_export)
+
+          # Add DE statistics if requested
+          if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+              !is.null(input$includeDEStatsHeatmap) &&
+              input$includeDEStatsHeatmap) {
+
+            if (inputDataReactive()$dataType == "RNASeq") {
+              de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+              valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
+              if (length(valid_de_cols) > 1) {
+                de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
+                counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+              }
+            } else if (!is.null(input$contrastSelected)) {
+              de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+              valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
+              if (length(valid_de_cols) > 1) {
+                de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
+                counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+              }
+            }
+          } else {
+            # Export only basic columns (gene_name + sample columns)
+            counts_export <- counts_export[, basic_cols, drop = FALSE]
+          }
+
+          # Write as formatted Excel table
+          wb <- createWorkbook()
+          addWorksheet(wb, "Custom Heatmap")
+          writeDataTable(
+            wb,
+            sheet = "Custom Heatmap",
+            x = counts_export,
+            startCol = 1,
+            startRow = 1,
+            tableStyle = "TableStyleMedium9",
+            tableName = "CustomHeatmap",
+            withFilter = TRUE,
+            bandedRows = TRUE
+          )
+          freezePane(wb, sheet = "Custom Heatmap", firstRow = TRUE)
+          saveWorkbook(wb, file, overwrite = TRUE)
         }
       )
 
@@ -795,7 +887,53 @@ observeEvent(
             paste0(design, "_GO_heatmap.xlsx")
           },
           content = function(file) {
-            openxlsx::write.xlsx((as.data.frame(countsHeatmapGO) %>% rownames_to_column("gene_name")), file = file)
+            counts_export <- as.data.frame(countsHeatmapGO) %>% rownames_to_column("gene_name")
+
+            # Determine which columns to include
+            # Basic columns: gene_name + all sample columns
+            basic_cols <- colnames(counts_export)
+
+            # Add DE statistics if requested
+            if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+                !is.null(input$includeDEStatsHeatmap) &&
+                input$includeDEStatsHeatmap) {
+
+              if (inputDataReactive()$dataType == "RNASeq") {
+                de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+                valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
+                if (length(valid_de_cols) > 1) {
+                  de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
+                  counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                }
+              } else if (!is.null(input$contrastSelected)) {
+                de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+                valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
+                if (length(valid_de_cols) > 1) {
+                  de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
+                  counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                }
+              }
+            } else {
+              # Export only basic columns (gene_name + sample columns)
+              counts_export <- counts_export[, basic_cols, drop = FALSE]
+            }
+
+            # Write as formatted Excel table
+            wb <- createWorkbook()
+            addWorksheet(wb, "GO Heatmap")
+            writeDataTable(
+              wb,
+              sheet = "GO Heatmap",
+              x = counts_export,
+              startCol = 1,
+              startRow = 1,
+              tableStyle = "TableStyleMedium9",
+              tableName = "GOHeatmap",
+              withFilter = TRUE,
+              bandedRows = TRUE
+            )
+            freezePane(wb, sheet = "GO Heatmap", firstRow = TRUE)
+            saveWorkbook(wb, file, overwrite = TRUE)
           }
         )
       }

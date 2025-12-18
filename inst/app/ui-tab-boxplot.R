@@ -145,6 +145,8 @@ tabItem(
             title = "Download",
             downloadButton(outputId = "dlBoxplotButtonCounts", label = paste("Download Boxplot Counts")),
             help("You can download a small Excel file of the counts of the features you have selected. You can use these counts to quickly make figures in, e.g., Graphpad."),
+            checkboxInput(inputId = "includeDEStatsBoxplot", label = "Include DE statistics?", value = FALSE),
+            helpText("Adds log2FC, p-value, and FDR columns from the current contrast."),
             downloadButton(outputId = "boxplotDL", label = paste("Download Boxplot (PDF)")),
             downloadButton(outputId = "barplotDL", label = paste("Download Barplot (PDF)")),
             selectInput(inputId = "boxplotFont", label = "Font", choices = c("serif", "sans", "mono"), selected = "sans")

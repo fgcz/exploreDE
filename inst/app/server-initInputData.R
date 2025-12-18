@@ -9,7 +9,8 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
 
   # Generic for RNA seq AND CountQC ----
   # Prepare the seqAnno results table
-  seqAnno <- data.frame(rowData(se), row.names = rownames(se), check.names = FALSE)
+  # Suppress S4Vectors deprecation warnings when accessing genomic ranges
+  seqAnno <- suppressWarnings(data.frame(rowData(se), row.names = rownames(se), check.names = FALSE))
   # Tidy the description column to remove extraneous accessors
   if ("description" %in% colnames(seqAnno)) {
     seqAnno$description <- gsub(" \\[..*", "", seqAnno$description)
@@ -186,6 +187,9 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
       gStoreList[[f]] <- get(f)
     }
   }
+
+  # Store dataDir as attribute for methods text generation
+  attr(gStoreList, "dataDir") <- dataDir
 
   return(
     gStoreList

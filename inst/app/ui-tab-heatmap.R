@@ -173,7 +173,9 @@ tabItem(
             helpText("Which ever heatmap you are currently viewing (e.g., both, up, or down) will be the one downloaded."),
             selectInput(inputId = "heatmapDownloadFormat", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
             selectInput(inputId = "heatmapDPI", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
-            textInput(inputId = "heatmapFilename", label = "Enter filename", value = "heatmap", placeholder = "up_regulated_heatmap")
+            textInput(inputId = "heatmapFilename", label = "Enter filename", value = "heatmap", placeholder = "up_regulated_heatmap"),
+            checkboxInput(inputId = "includeDEStatsHeatmap", label = "Include DE statistics in count downloads?", value = FALSE),
+            helpText("Adds log2FC, p-value, and FDR columns to downloaded count files.")
           )
         )
       )

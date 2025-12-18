@@ -51,6 +51,7 @@ tabItem(
                             placeholder = "feature1 feature2 feature3",
                             rows = 3
                         ),
+                        uiOutput("multiGeneBucket"),
                         hr(style = "border-top: 1px solid #000000;"),
                         h4("Count Data Options"),
                         selectInput(
