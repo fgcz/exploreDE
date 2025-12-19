@@ -84,7 +84,7 @@ tabItem(
         status = "primary",
         textOutput("gseaDesign"), br(),
         downloadButton(
-          outputId = "dlTableGSEA",
+          outputId = "dlTable_GSEA",
           label = "Download GSEA Results File"
         ),
         br(), br(),
@@ -112,33 +112,33 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Network plot",
-            downloadButton(outputId = "dlCnetPlot_GSEA", label = paste("Download Network Plot: PDF")),
+            downloadButton(outputId = "dlPlot_cnetGSEA", label = paste("Download Network Plot")),
             br(), br(),
             withSpinner(plotOutput(outputId = "cnetPlot_GSEA", inline = TRUE), color = "#6E8D9E"),
             checkboxInput(inputId = "showGeneLabelsGSEA", label = "Show gene names?", value = TRUE)
           ),
           tabPanel(
             title = "Heatmap",
-            downloadButton(outputId = "dlHeatmap_GSEA", label = paste("Download Heatmap: PDF")),
+            downloadButton(outputId = "dlPlot_heatmapGSEA", label = paste("Download Heatmap")),
             br(), br(),
             withSpinner(plotOutput(outputId = "heatmap_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Running Score",
-            downloadButton(outputId = "dlRunningScore_GSEA", label = paste("Download Running Score Plot: PDF")),
+            downloadButton(outputId = "dlPlot_runningScoreGSEA", label = paste("Download Running Score Plot")),
             br(), br(),
             withSpinner(plotOutput(outputId = "runningScore_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Ridge Plot",
             selectInput(inputId = "ridgePlotColourByGSEA", label = "Colour plot by", choices = c("p.adjust", "enrichmentScore", "NES"), selected = "NES"),
-            downloadButton(outputId = "dlRidgePlot_GSEA", label = paste("Download Ridge Plot: PDF")),
+            downloadButton(outputId = "dlPlot_ridgeGSEA", label = paste("Download Ridge Plot")),
             br(), br(),
             withSpinner(plotOutput(outputId = "ridgePlot_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Upset plot",
-            downloadButton(outputId = "dlUpset_GSEA", label = paste("Download Upset Plot: PDF")),
+            downloadButton(outputId = "dlPlot_upsetGSEA", label = paste("Download Upset Plot")),
             br(), br(),
             withSpinner(plotOutput(outputId = "upsetPlot_GSEA", inline = TRUE), color = "#6E8D9E")
           )
@@ -168,10 +168,13 @@ tabItem(
         ),
         column(
           width = 4,
-          h4("Size Settings"),
+          h4("Size & Download Settings"),
           sliderInput(inputId = "textSizeGSEA", label = "Figure Font Size", min = 4, max = 30, value = 10, step = 0.5, width = "85%"),
           sliderInput(inputId = "figHeightGSEA", label = "Figure Height", min = 100, max = 2000, value = 400, step = 10, width = "85%"),
-          sliderInput(inputId = "figWidthGSEA", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%")
+          sliderInput(inputId = "figWidthGSEA", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
+          selectInput(inputId = "downloadFormatGSEA", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF", width = "85%"),
+          selectInput(inputId = "dpiGSEA", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600, width = "85%"),
+          textInput(inputId = "filename_GSEA", label = "Enter filename", value = "GSEA", width = "85%")
         )
       ),
       box(

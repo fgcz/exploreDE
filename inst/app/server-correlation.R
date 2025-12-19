@@ -178,32 +178,44 @@ output$correlationStatic <- renderPlot(
   }
 )
 # download the plot
-output$dlCorrelationButton <- downloadHandler(
+# download the plot
+output$dlPlot_correlation <- downloadHandler(
   filename = function() {
-    paste(input$correlationGene1, input$correlationGene2, "correlation.pdf", sep = "_")
+    generate_filename(
+      base_name = input$filename_correlation,
+      design_name = inputDataReactive()$design,
+      extension = tolower(input$downloadFormatCorrelation)
+    )
   },
   content = function(file) {
     req(!is.null(correlationPlot$plot))
-    pdf(
-      file = file,
-      width = (input$figWidthCorrelation / 85),
-      height = (input$figHeightCorrelation / 90),
-      onefile = FALSE
+    export_plot_standard(
+      plot_object = correlationPlot$plot,
+      filename = file,
+      format = tolower(input$downloadFormatCorrelation),
+      width = as.numeric(input$figWidthCorrelation) / 75,
+      height = as.numeric(input$figHeightCorrelation) / 75,
+      dpi = as.numeric(input$dpiCorrelation)
     )
-    print(correlationPlot$plot)
-    dev.off()
   }
 )
 # download the counts
-output$dlCorrelationCounts <- downloadHandler(
+# download the counts
+output$dlTable_correlation <- downloadHandler(
   filename = function() {
-    paste0(inputDataReactive()$design, "CorrelationCounts", ".xlsx")
+    generate_filename(
+      base_name = paste0(input$filename_correlation, "_Counts"),
+      design_name = inputDataReactive()$design,
+      extension = "xlsx"
+    )
   },
   content = function(file) {
     req(!is.null(correlationPlot$counts))
-    writexl::write_xlsx(
-      correlationPlot$counts,
-      path = file
+    export_excel_standard(
+      df = correlationPlot$counts,
+      filename = file,
+      sheet_name = "Correlation Data",
+      table_name = "CorrelationData"
     )
   }
 )

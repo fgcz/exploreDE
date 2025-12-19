@@ -466,28 +466,47 @@ output$TopNTileMap <- renderPlot(
 )
 
 # download button for the heatmaps
-output$dlTileTopButton <- downloadHandler(
+# download button for the heatmaps
+output$dlPlot_tileTop <- downloadHandler(
     filename = function() {
-        paste0("Top_", input$tileDEGNumber, "_DEGs_tile.pdf")
+        generate_filename(
+            base_name = input$filename_tileTop,
+            design_name = "Multi",
+            extension = tolower(input$downloadFormatMultiTile)
+        )
     },
     content = function(file) {
         req(tilePlots$top)
-        pdf(file = file, width = as.numeric(input$figWidthHeatmap / 65), height = as.numeric(input$figHeightHeatmap / 65))
-        draw(tilePlots$top, merge_legend = TRUE)
-        dev.off()
+        export_plot_standard(
+            plot_object = tilePlots$top,
+            filename = file,
+            format = tolower(input$downloadFormatMultiTile),
+            width = as.numeric(input$figWidthTile) / 75,
+            height = as.numeric(input$figHeightTile) / 75,
+            dpi = as.numeric(input$dpiMultiTile)
+        )
     }
 )
 
-output$dlTileResButton <- downloadHandler(
+output$dlTable_tileTopRes <- downloadHandler(
     filename = function() {
-        paste0("Top_", input$tileDEGNumber, "_DEGs_Log2FCs.xlsx")
+        generate_filename(
+            base_name = paste0(input$filename_tileTop, "_Log2FCs"),
+            design_name = "Multi",
+            extension = "xlsx"
+        )
     },
     content = function(file) {
         req(tilePlots$mat1)
         mat1s <- tilePlots$mat1 %>%
             data.frame(check.names = F) %>%
             rownames_to_column("Feature")
-        openxlsx::write.xlsx(mat1s, file = file)
+        export_excel_standard(
+            df = mat1s,
+            filename = file,
+            sheet_name = "Log2FC Matrix",
+            table_name = "Log2FCMatrix"
+        )
     }
 )
 
@@ -522,13 +541,23 @@ output$TopNTileTopTable <- renderDataTable({
 })
 
 # Download the results table
-output$dlTileTopTableButton <- downloadHandler(
+# Download the results table
+output$dlTable_tileTop <- downloadHandler(
     filename = function() {
-        paste0("Top_", input$tileDEGNumber, "_DEGs_tile.xlsx")
+        generate_filename(
+            base_name = paste0(input$filename_tileTop, "_Results"),
+            design_name = "Multi",
+            extension = "xlsx"
+        )
     },
     content = function(file) {
         req(tilePlots$df3)
-        openxlsx::write.xlsx(tilePlots$df3, file = file)
+        export_excel_standard(
+            df = tilePlots$df3,
+            filename = file,
+            sheet_name = "Top DEGs Results",
+            table_name = "TopDEGsResults"
+        )
     }
 )
 
@@ -753,16 +782,25 @@ lapply(c("Custom", "GO"), function(plotty) {
         height = function() as.numeric(input$figHeightTile)
     )
 
-    output[[paste0("dlTile", plotty, "Button")]] <- downloadHandler(
+    output[[paste0("dlPlot_tile", plotty)]] <- downloadHandler(
         filename = function() {
-            paste0(plotty, "_tile.pdf")
+            generate_filename(
+                base_name = input[[paste0("filename_tile", plotty)]],
+                design_name = "Multi",
+                extension = tolower(input$downloadFormatMultiTile)
+            )
         },
         content = function(file) {
             if (plotty == "Custom") req(tilePlots$custom) else req(tilePlots$go)
             hm <- if (plotty == "Custom") tilePlots$custom else tilePlots$go
-            pdf(file = file, width = as.numeric(input$figWidthHeatmap / 75), height = as.numeric(input$figHeightHeatmap / 75))
-            draw(hm, merge_legend = TRUE)
-            dev.off()
+            export_plot_standard(
+                plot_object = hm,
+                filename = file,
+                format = tolower(input$downloadFormatMultiTile),
+                width = as.numeric(input$figWidthTile) / 75,
+                height = as.numeric(input$figHeightTile) / 75,
+                dpi = as.numeric(input$dpiMultiTile)
+            )
         }
     )
 
@@ -796,14 +834,23 @@ lapply(c("Custom", "GO"), function(plotty) {
             )
     })
 
-    output[[paste0("dlTile", plotty, "TableButton")]] <- downloadHandler(
+    output[[paste0("dlTable_tile", plotty)]] <- downloadHandler(
         filename = function() {
-            paste0(plotty, "_DEGs_tile.xlsx")
+                generate_filename(
+                base_name = paste0(input[[paste0("filename_tile", plotty)]], "_Results"),
+                design_name = "Multi",
+                extension = "xlsx"
+            )
         },
         content = function(file) {
             if (plotty == "Custom") req(tilePlots$custom_df3) else req(tilePlots$go_df3)
             df3 <- if (plotty == "Custom") tilePlots$custom_df3 else tilePlots$go_df3
-            openxlsx::write.xlsx(df3, file = file)
+            export_excel_standard(
+                df = df3,
+                filename = file,
+                sheet_name = paste0(plotty, " Results"),
+                table_name = paste0(plotty, "Results")
+            )
         }
     )
 })

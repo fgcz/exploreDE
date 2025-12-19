@@ -10,12 +10,13 @@ tabItem(
           solidHeader = TRUE,
           status = "primary",
           textOutput("DEGDesign"), br(),
+          textInput(inputId = "filename_deg", label = NULL, value = "DE_Results", placeholder = "Filename"),
           downloadButton(
-            outputId = "dlDEGTable",
+            outputId = "dlTable_deg",
             label = "Download Full DE Results"
           ),
           downloadButton(
-            outputId = "dlDEGTable2",
+            outputId = "dlTableSelected_deg",
             label = "Download Selected DE Results"
           ),
           br(), br(),
@@ -45,7 +46,8 @@ tabItem(
           tableOutput(outputId = "featureCalcTable"),
           br(),
           helpText("Download an Excel file of DE results with only the features that meet these thresholds:"),
-          downloadButton(outputId = "dlfeatureCalcTable", label = paste("Download DE Results")),
+          textInput(inputId = "filename_deg_filtered", label = NULL, value = "DE_Filtered", placeholder = "Filename"),
+          downloadButton(outputId = "dlTableFiltered_deg", label = paste("Download DE Results")),
         ),
       ),
       column(

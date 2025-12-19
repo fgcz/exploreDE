@@ -135,12 +135,18 @@ tabItem(
                 width = NULL,
                 solidHeader = TRUE,
                 status = "success",
+                h4("Download Settings"),
+                splitLayout(
+                  selectInput(inputId = "downloadFormatMultiHeatmap", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+                  selectInput(inputId = "dpiMultiHeatmap", label = "DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+                ),
+                textInput(inputId = "filename_multiHeatmap", label = "Filename", value = "MultiHeatmap"),
                 downloadButton(
-                    outputId = "dlPathwayHeatmap",
-                    label = "Download Heatmap (PDF)"
+                    outputId = "dlPlot_multiHeatmap",
+                    label = "Download Heatmap"
                 ),
                 downloadButton(
-                    outputId = "dlPathwayHeatmapTable",
+                    outputId = "dlTable_multiHeatmap",
                     label = "Download Data (Excel)"
                 ),
                 br(), br(),

@@ -105,7 +105,13 @@ tabItem(
         solidHeader = TRUE,
         status = "primary",
         textOutput("goTilePlotDesign"), br(),
-        downloadButton(outputId = "dlGoTilePlot", label = "Download GO Tile Plot (PDF)"),
+        h4("Download Settings"),
+        splitLayout(
+            selectInput(inputId = "downloadFormatGoTile", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+            selectInput(inputId = "dpiGoTile", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+        ),
+        textInput(inputId = "filename_goTile", label = "Enter filename", value = "GO_Tile"),
+        downloadButton(outputId = "dlGoTilePlot", label = "Download GO Tile Plot"),
         br(),
         plotOutput("goTileOutput", inline = TRUE)
       ) # end of box

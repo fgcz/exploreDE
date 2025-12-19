@@ -60,7 +60,7 @@ tabItem(
         status = "primary",
         textOutput("oraDesign"), br(),
         downloadButton(
-          outputId = "dlTableORA",
+          outputId = "dlTable_ORA",
           label = "Download ORA Results File"
         ),
         br(), br(),
@@ -92,7 +92,7 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Network plot",
-            downloadButton(outputId = "dlCnetPlot_ORA", label = paste("Download Network Plot: PDF")),
+            downloadButton(outputId = "dlPlot_cnetORA", label = paste("Download Network Plot")),
             br(), br(),
             withSpinner(plotOutput(outputId = "cnetPlot_ORA", inline = TRUE), color = "#6E8D9E"),
             br(), 
@@ -100,25 +100,25 @@ tabItem(
           ),
           tabPanel(
             title = "Bar plot",
-            downloadButton(outputId = "dlBarPlot_ORA", label = paste("Download Bar Plot: PDF")),
+            downloadButton(outputId = "dlPlot_barORA", label = paste("Download Bar Plot")),
             br(), br(),
             withSpinner(plotOutput(outputId = "barPlot_ORA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Dot plot",
-            downloadButton(outputId = "dlDotPlot_ORA", label = paste("Download Dot Plot: PDF")),
+            downloadButton(outputId = "dlPlot_dotORA", label = paste("Download Dot Plot")),
             br(), br(),
             withSpinner(plotOutput(outputId = "dotPlot_ORA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Heatmap",
-            downloadButton(outputId = "dlHeatmap_ORA", label = paste("Download Heatmap: PDF")),
+            downloadButton(outputId = "dlPlot_heatmapORA", label = paste("Download Heatmap")),
             br(), br(),
             withSpinner(plotOutput(outputId = "heatmap_ORA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Upset plot",
-            downloadButton(outputId = "dlUpset_ORA", label = paste("Download Upset Plot: PDF")),
+            downloadButton(outputId = "dlPlot_upsetORA", label = paste("Download Upset Plot")),
             br(), br(),
             withSpinner(plotOutput(outputId = "upset_ORA", inline = TRUE), color = "#6E8D9E")
           )
@@ -148,10 +148,13 @@ tabItem(
         ),
         column(
           width = 4,
-          h4("Size Settings"),
+          h4("Size & Download Settings"),
           sliderInput(inputId = "textSizeORA", label = "Figure Font Size", min = 4, max = 30, value = 10, step = 0.5, width = "85%"),
           sliderInput(inputId = "figHeightORA", label = "Figure Height", min = 100, max = 2000, value = 400, step = 10, width = "85%"),
-          sliderInput(inputId = "figWidthORA", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%")
+          sliderInput(inputId = "figWidthORA", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
+          selectInput(inputId = "downloadFormatORA", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF", width = "85%"),
+          selectInput(inputId = "dpiORA", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600, width = "85%"),
+          textInput(inputId = "filename_ORA", label = "Enter filename", value = "ORA", width = "85%")
         )
       ),
       box(

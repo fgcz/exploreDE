@@ -220,6 +220,12 @@ server <- function(input, output, session) {
   multiProjectInfo <- reactiveValues(projectDir = NULL)
 
   source("server-initInputData.R", local = TRUE)
+  # Source download helpers (adjust path as needed for deployment structure)
+  if (file.exists("../../R/downloadHelpers.R")) {
+    source("../../R/downloadHelpers.R")
+  } else if (file.exists("R/downloadHelpers.R")) {
+     source("R/downloadHelpers.R")
+  }
   source("server-summary.R", local = TRUE)
   source("server-DEGTable.R", local = TRUE)
   source("server-volcano2.R", local = TRUE)

@@ -230,6 +230,13 @@ multiBoxplotCountsReactive <- eventReactive(
   {
     req(length(debouncedMultiBoxplotFactor1()) >= 1)
     req(!is.null(input$multiBoxplotFactor1))
+    
+    # DATA HYGIENE CHECKING
+    validate(
+        need(length(debouncedMultiBoxplotFactor1()) >= 1, "No genes selected. Please select genes to plot."),
+        need(input$multiBoxplotFactor1 %in% colnames(multiBoxplotDataReactive()$dataset), "Selected grouping factor is not present in the dataset.")
+    )
+    
     d <- multiBoxplotDataReactive() # Proxy
     req(input$multiBoxKeepBucket[[1]] %in% d$dataset[[input$multiBoxplotFactor1]])
 
@@ -640,6 +647,10 @@ lapply(c("boxplot", "barplot"), function(b) {
   output[[paste0("multi", toupper(substr(b, 1, 1)), substr(b, 2, nchar(b)), "Static")]] <- renderPlot(
     {
       req(!is.null(multiBoxplotFiguresReactive[[b]]))
+      # Additional hygiene check at render time
+      validate(
+        need(length(multiGenesReactive$genes) > 0, "Please select at least one gene to plot.")
+      )
       multiBoxplotFiguresReactive[[b]]
     },
     width = function() {
@@ -650,3 +661,82 @@ lapply(c("boxplot", "barplot"), function(b) {
     }
   )
 })
+
+# Download Handlers
+# Download Handlers
+output$dlTable_multiBoxplotCounts <- downloadHandler(
+  filename = function() {
+    generate_filename(
+      base_name = paste0(input$filename_multiBoxplot, "_Counts"),
+      design_name = "Multi",
+      extension = "xlsx"
+    )
+  },
+  content = function(file) {
+    req(multiBoxplotCountsReactive()$countsBoxplot)
+    d <- multiBoxplotCountsReactive()
+    
+    data_to_export <- d$countsBoxplot
+    
+    # If stats are requested
+    if (input$includeDEStatsMultiBoxplot && !is.null(d$pvalueDF)) {
+       wb <- openxlsx::createWorkbook()
+       addWorksheet(wb, "Counts")
+       writeDataTable(wb, "Counts", data_to_export, tableStyle = "TableStyleMedium9", withFilter = TRUE)
+       
+       addWorksheet(wb, "Statistics")
+       writeDataTable(wb, "Statistics", d$pvalueDF, tableStyle = "TableStyleMedium9", withFilter = TRUE)
+       
+       saveWorkbook(wb, file, overwrite = TRUE)
+    } else {
+      export_excel_standard(
+        df = data_to_export,
+        filename = file,
+        sheet_name = "Counts",
+        table_name = "Counts"
+      )
+    }
+  }
+)
+
+output$dlPlot_multiBoxplot <- downloadHandler(
+  filename = function() {
+    generate_filename(
+      base_name = paste0(input$filename_multiBoxplot, "_Boxplot"),
+      design_name = "Multi",
+      extension = tolower(input$downloadFormatMultiBoxplot)
+    )
+  },
+  content = function(file) {
+    req(multiBoxplotFiguresReactive$boxplot)
+    export_plot_standard(
+      plot_object = multiBoxplotFiguresReactive$boxplot,
+      filename = file,
+      format = tolower(input$downloadFormatMultiBoxplot),
+      width = as.numeric(input$figWidthMultiBoxplot) / 75,
+      height = as.numeric(input$figHeightMultiBoxplot) / 75,
+      dpi = as.numeric(input$dpiMultiBoxplot)
+    )
+  }
+)
+
+output$dlPlot_multiBarplot <- downloadHandler(
+  filename = function() {
+    generate_filename(
+      base_name = paste0(input$filename_multiBoxplot, "_Barplot"),
+      design_name = "Multi",
+      extension = tolower(input$downloadFormatMultiBoxplot)
+    )
+  },
+  content = function(file) {
+    req(multiBoxplotFiguresReactive$barplot)
+    export_plot_standard(
+      plot_object = multiBoxplotFiguresReactive$barplot,
+      filename = file,
+      format = tolower(input$downloadFormatMultiBoxplot),
+      width = as.numeric(input$figWidthMultiBoxplot) / 75,
+      height = as.numeric(input$figHeightMultiBoxplot) / 75,
+      dpi = as.numeric(input$dpiMultiBoxplot)
+    )
+  }
+)

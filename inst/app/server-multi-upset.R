@@ -23,6 +23,7 @@ observe({
 })
 
 # 1. Generate Gene Lists (Ported from multiDEG/server-import2.R)
+multiUpsetReactive <- reactiveValues(plot = NULL)
 upsetGeneList <- reactiveValues(results = NULL)
 upsetGeneListToCopy <- reactiveVal(NULL)
 
@@ -300,22 +301,13 @@ observeEvent(
 
         # Makin' venns like its 2012 ----
         if (input$upsetOrVenn == "Venn" & length(results) <= 3) {
+            multiUpsetReactive$plot <- ggvenn::ggvenn(gl1, fill_color = as.character(colours), set_name_size = input$textSizeUpset * 0.5, text_size = input$textSizeUpset * 0.4)
             output$UpsetPlot <- renderPlot(
                 {
-                    ggvenn::ggvenn(gl1, fill_color = as.character(colours), set_name_size = input$textSizeUpset * 0.5, text_size = input$textSizeUpset * 0.4)
+                    multiUpsetReactive$plot
                 },
                 width = as.numeric(input$figWidthUpset),
                 height = as.numeric(input$figHeightUpset) * 2
-            )
-            output$dlUpsetPlot <- downloadHandler(
-                filename = function() {
-                    paste0("venn.pdf")
-                },
-                content = function(file) {
-                    pdf(file = file, width = (as.numeric(input$figWidthUpset) / 60), height = (as.numeric(input$figHeightUpset) / 30))
-                    print(ggvenn::ggvenn(gl1, fill_color = as.character(colours), set_name_size = input$textSizeUpset * 0.6, text_size = input$textSizeUpset * 0.5))
-                    dev.off()
-                }
             )
 
             if (length(input$UpsetTableGroupsGenes) >= 1) {
@@ -447,6 +439,7 @@ observeEvent(
                     }
                 )
 
+                multiUpsetReactive$plot <- ht
                 output$UpsetPlot <- renderPlot(
                     {
                         validate(
@@ -457,20 +450,6 @@ observeEvent(
                     width = as.numeric(input$figWidthUpset),
                     height = as.numeric(input$figHeightUpset)
                 ) # end of figure
-                output$dlUpsetPlot <- downloadHandler(
-                    filename = function() {
-                        paste0("upset.pdf")
-                    },
-                    content = function(file) {
-                        pdf(
-                            file = file,
-                            width = (as.numeric(input$figWidthUpset) / 100),
-                            height = (as.numeric(input$figHeightUpset) / 100),
-                        )
-                        draw(ht)
-                        dev.off()
-                    }
-                )
 
                 if (length(input$UpsetTableGroupsGenes) >= 1) {
                     combViewList <- list()
@@ -514,5 +493,35 @@ observeEvent(
                 }
             }
         }
+    }
+)
+
+
+output$dlPlot_multiUpset <- downloadHandler(
+    filename = function() {
+        generate_filename(
+            base_name = paste0(input$filename_multiUpset, "_Plot"),
+            design_name = "Multi",
+            extension = tolower(input$downloadFormatMultiUpset)
+        )
+    },
+    content = function(file) {
+        req(multiUpsetReactive$plot)
+        plot_obj <- multiUpsetReactive$plot
+        
+        # Determine if it's Upset or Venn to handle drawing method?
+        # export_plot_standard uses print() by default, or special handling for ComplexHeatmap if specified?
+        # R logic in export_plot_standard checks inherits(plot_object, "Heatmap") or "HeatmapList".
+        # ComplexHeatmap::UpSet returns a HeatmapList object usually.
+        # ggvenn returns a ggplot object.
+        
+        export_plot_standard(
+            plot_object = plot_obj,
+            filename = file,
+            format = tolower(input$downloadFormatMultiUpset),
+            width = as.numeric(input$figWidthUpset) / 75,
+            height = as.numeric(input$figHeightUpset) / 75,
+            dpi = as.numeric(input$dpiMultiUpset)
+        )
     }
 )

@@ -108,3 +108,55 @@ output$keggOutput <- renderImage({
     setwd(old_wd)
   })
 }, deleteFile = TRUE)
+
+output$dlPlot_kegg <- downloadHandler(
+  filename = function() {
+    generate_filename(
+      base_name = input$filename_kegg,
+      suffix = keggPlotReactive$keggInput,
+      design_name = design,
+      extension = "png"
+    )
+  },
+  content = function(file) {
+    req(!is.null(keggPlotReactive$keggInput))
+    
+    # Use temporary directory
+    temp_dir <- tempdir()
+    old_wd <- getwd()
+    
+    tryCatch({
+      setwd(temp_dir)
+      
+      # Run pathview to generate the file
+      # Note: pathview writes the file to the current working directory
+      pv.out <- pathview(
+        gene.data = keggPlotReactive$gD,
+        gene.idtype = "ENSEMBL",
+        pathway.id = keggPlotReactive$keggInput,
+        key.pos = "bottomright",
+        species = keggPlotReactive$spp, 
+        low = list("gene" = "dodgerblue3"),
+        mid = list("gene" = "lightgrey"),
+        high = list("gene" = "indianred3"),
+        kegg.native = TRUE,
+        limit = list(gene = input$keggLimitColour)
+      )
+      
+      # Determine the generated filename
+      # pathview defaults to [pathway.id].pathview.png
+      generated_file <- paste0(keggPlotReactive$keggInput, ".pathview.png")
+      
+      if (file.exists(generated_file)) {
+        file.copy(generated_file, file)
+      } else {
+        stop("Pathview failed to generate the output file.")
+      }
+      
+    }, error = function(e) {
+      cat("KEGG download error:", conditionMessage(e), "\n")
+    }, finally = {
+      setwd(old_wd)
+    })
+  }
+)

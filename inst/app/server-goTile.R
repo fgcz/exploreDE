@@ -146,21 +146,28 @@ output$goTileOutput <- renderPlot({
 
 output$dlGoTilePlot <- downloadHandler(
   filename = function() {
-    paste0(gsub(" .*", "", input$goTileInput), "_tile.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_goTile, "_", gsub(" .*", "", input$goTileInput)),
+      design_name = design,
+      extension = tolower(input$downloadFormatGoTile)
+    )
   },
   content = function(file) {
     req(!is.null(figuresDataReactive$goTilePlot))
     req(length(figuresDataReactive$goTilePlot) > 0)
     
-    pdf(file = file,
-        width = as.numeric(input$figWidthGoTile / 80),
-        height = as.numeric(input$figHeightGoTile / 60))
-    
-    grobList <- lapply(figuresDataReactive$goTilePlot, function(hm) {
-      grid.grabExpr(draw(hm))
-    })
-    
-    grid.arrange(grobs = grobList, ncol = length(grobList))
-    dev.off()
+    export_plot_standard(
+      plot_object = function() {
+        grobList <- lapply(figuresDataReactive$goTilePlot, function(hm) {
+          grid.grabExpr(draw(hm))
+        })
+        grid.arrange(grobs = grobList, ncol = length(grobList))
+      },
+      filename = file,
+      format = tolower(input$downloadFormatGoTile),
+      width = as.numeric(input$figWidthGoTile / 80),
+      height = as.numeric(input$figHeightGoTile / 60),
+      dpi = as.numeric(input$dpiGoTile)
+    )
   }
 )

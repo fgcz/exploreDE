@@ -102,6 +102,11 @@ tabItem(
                             sliderInput(inputId = "textSizeTile", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = FALSE),
                             sliderInput(inputId = "figWidthTile", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10, width = "85%", ticks = FALSE),
                             sliderInput(inputId = "figHeightTile", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10, width = "85%", ticks = FALSE)
+                        ),
+                        hr(style = "border-top: 1px solid #000000;"), h4("Download Settings"),
+                        splitLayout(
+                             selectInput(inputId = "downloadFormatMultiTile", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF", width = "85%"),
+                             selectInput(inputId = "dpiMultiTile", label = "DPI", choices = c(72, 150, 300, 600, 1000), selected = 600, width = "85%")
                         )
                     )
                 )
@@ -119,13 +124,14 @@ tabItem(
                     tabPanel(
                         title = "Top DEGs",
                         h3("Tile Plot"),
-                        downloadButton(outputId = "dlTileTopButton", label = "Download This Plot (PDF)"),
-                        downloadButton(outputId = "dlTileResButton", label = "Download Results Matrix (Excel)"),
+                        textInput(inputId = "filename_tileTop", label = NULL, value = "Top_DEGs_Tile", placeholder = "Filename"),
+                        downloadButton(outputId = "dlPlot_tileTop", label = "Download This Plot"),
+                        downloadButton(outputId = "dlTable_tileTopRes", label = "Download Results Matrix (Excel)"),
                         br(), br(),
                         plotOutput(outputId = "TopNTileMap", inline = TRUE),
                         br(), br(),
                         h3("Table"),
-                        downloadButton(outputId = "dlTileTopTableButton", label = "Download This Table (Excel)"),
+                        downloadButton(outputId = "dlTable_tileTop", label = "Download This Table (Excel)"),
                         br(), br(),
                         DT::dataTableOutput(outputId = "TopNTileTopTable")
                     ),
@@ -147,12 +153,13 @@ tabItem(
                         column(
                             width = 9,
                             h3("Tile Plot"),
-                            downloadButton(outputId = "dlTileCustomButton", label = "Download This Plot (PDF)"),
+                            textInput(inputId = "filename_tileCustom", label = NULL, value = "Custom_Tile", placeholder = "Filename"),
+                            downloadButton(outputId = "dlPlot_tileCustom", label = "Download This Plot"),
                             br(), br(),
                             plotOutput(outputId = "CustomTileMap", inline = TRUE),
                             br(), br(),
                             h3("Table"),
-                            downloadButton(outputId = "dlTileCustomTableButton", label = "Download This Table (Excel)"),
+                            downloadButton(outputId = "dlTable_tileCustom", label = "Download This Table (Excel)"),
                             br(), br(),
                             DT::dataTableOutput(outputId = "TopNTileCustomTable")
                         )
@@ -177,12 +184,13 @@ tabItem(
                         column(
                             width = 9,
                             h3("Tile Plot"),
-                            downloadButton(outputId = "dlTileGOButton", label = "Download This Plot (PDF)"),
+                            textInput(inputId = "filename_tileGO", label = NULL, value = "GO_Tile", placeholder = "Filename"),
+                            downloadButton(outputId = "dlPlot_tileGO", label = "Download This Plot"),
                             br(), br(),
                             plotOutput(outputId = "GOTileMap", inline = TRUE),
                             br(), br(),
                             h3("Table"),
-                            downloadButton(outputId = "dlTileGOTableButton", label = "Download This Table (Excel)"),
+                            downloadButton(outputId = "dlTable_tileGO", label = "Download This Table (Excel)"),
                             br(), br(),
                             DT::dataTableOutput(outputId = "TopNTileGOTable")
                         )

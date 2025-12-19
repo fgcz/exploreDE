@@ -302,9 +302,6 @@ heatmapInputs <- reactive({
     input$heatmapColourBlue,
     input$showClusterColDend,
     input$showClusterRowDend,
-    input$heatmapDPI,
-    input$heatmapDownloadFormat,
-    input$heatmapFilename,
     input$nrPeptideHeatmap,
     input$heatmapFeatureDirection,
     input$heatmapLog2,
@@ -664,9 +661,13 @@ observeEvent(
 
         # Download the count file
         countsHeatmapSigDL <- as.data.frame(countsHeatmapSig) %>% rownames_to_column("gene_name")
-        output[["dlHeatmapDFButtonDEFeatures"]] <- downloadHandler(
+        output[["dlTable_heatmapDE"]] <- downloadHandler(
           filename = function() {
-            paste0(design, "_DE_", "_heatmap_counts.xlsx")
+            generate_filename(
+              base_name = "DE_heatmap_counts",
+              design_name = design,
+              extension = "xlsx"
+            )
           },
           content = function(file) {
             counts_export <- countsHeatmapSigDL
@@ -700,22 +701,12 @@ observeEvent(
               counts_export <- counts_export[, basic_cols, drop = FALSE]
             }
 
-            # Write as formatted Excel table
-            wb <- createWorkbook()
-            addWorksheet(wb, "Heatmap Data")
-            writeDataTable(
-              wb,
-              sheet = "Heatmap Data",
-              x = counts_export,
-              startCol = 1,
-              startRow = 1,
-              tableStyle = "TableStyleMedium9",
-              tableName = "HeatmapData",
-              withFilter = TRUE,
-              bandedRows = TRUE
+            export_excel_standard(
+              df = counts_export,
+              filename = file,
+              sheet_name = "Heatmap Data",
+              table_name = "HeatmapData"
             )
-            freezePane(wb, sheet = "Heatmap Data", firstRow = TRUE)
-            saveWorkbook(wb, file, overwrite = TRUE)
           }
         )
         # Show number of genes on plot (changes depending on settings applied)
@@ -786,9 +777,13 @@ observeEvent(
       )
       figuresDataReactive$heatmapCustom <- ch
 
-      output[[paste0("dlHeatmapDFButtonCustom")]] <- downloadHandler(
+      output[["dlTable_heatmapCustom"]] <- downloadHandler(
         filename = function() {
-          paste0(design, "_Custom_heatmap.xlsx")
+          generate_filename(
+            base_name = "Custom_heatmap",
+            design_name = design,
+            extension = "xlsx"
+          )
         },
         content = function(file) {
           counts_export <- as.data.frame(countsHeatmapCustom) %>% rownames_to_column("gene_name")
@@ -822,22 +817,12 @@ observeEvent(
             counts_export <- counts_export[, basic_cols, drop = FALSE]
           }
 
-          # Write as formatted Excel table
-          wb <- createWorkbook()
-          addWorksheet(wb, "Custom Heatmap")
-          writeDataTable(
-            wb,
-            sheet = "Custom Heatmap",
-            x = counts_export,
-            startCol = 1,
-            startRow = 1,
-            tableStyle = "TableStyleMedium9",
-            tableName = "CustomHeatmap",
-            withFilter = TRUE,
-            bandedRows = TRUE
+          export_excel_standard(
+            df = counts_export,
+            filename = file,
+            sheet_name = "Custom Heatmap",
+            table_name = "CustomHeatmap"
           )
-          freezePane(wb, sheet = "Custom Heatmap", firstRow = TRUE)
-          saveWorkbook(wb, file, overwrite = TRUE)
         }
       )
 
@@ -882,9 +867,13 @@ observeEvent(
           heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
         )
         figuresDataReactive$heatmapGO <- gh
-        output[[paste0("dlHeatmapDFButtonGO")]] <- downloadHandler(
+        output[["dlTable_heatmapGO"]] <- downloadHandler(
           filename = function() {
-            paste0(design, "_GO_heatmap.xlsx")
+            generate_filename(
+              base_name = "GO_heatmap",
+              design_name = design,
+              extension = "xlsx"
+            )
           },
           content = function(file) {
             counts_export <- as.data.frame(countsHeatmapGO) %>% rownames_to_column("gene_name")
@@ -918,22 +907,12 @@ observeEvent(
               counts_export <- counts_export[, basic_cols, drop = FALSE]
             }
 
-            # Write as formatted Excel table
-            wb <- createWorkbook()
-            addWorksheet(wb, "GO Heatmap")
-            writeDataTable(
-              wb,
-              sheet = "GO Heatmap",
-              x = counts_export,
-              startCol = 1,
-              startRow = 1,
-              tableStyle = "TableStyleMedium9",
-              tableName = "GOHeatmap",
-              withFilter = TRUE,
-              bandedRows = TRUE
+            export_excel_standard(
+              df = counts_export,
+              filename = file,
+              sheet_name = "GO Heatmap",
+              table_name = "GOHeatmap"
             )
-            freezePane(wb, sheet = "GO Heatmap", firstRow = TRUE)
-            saveWorkbook(wb, file, overwrite = TRUE)
           }
         )
       }
@@ -956,9 +935,23 @@ lapply(c("DEFeatures", "Custom", "GO"), function(sig) {
       as.numeric(input$figHeightHeatmap)
     }
   )
-  output[[paste0("dlHeatmapButton", sig)]] <- downloadHandler(
+  
+  # Map 'sig' to button ID suffix
+  # sig: "DEFeatures" -> ID: "dlPlot_heatmapDE"
+  # sig: "Custom"     -> ID: "dlPlot_heatmapCustom"
+  # sig: "GO"         -> ID: "dlPlot_heatmapGO"
+  button_suffix <- switch(sig,
+                          "DEFeatures" = "DE",
+                          "Custom" = "Custom",
+                          "GO" = "GO")
+  
+  output[[paste0("dlPlot_heatmap", button_suffix)]] <- downloadHandler(
     filename = function() {
-      paste(input$heatmapFilename, sig, tolower(input$heatmapDownloadFormat), sep = ".")
+      generate_filename(
+        base_name = paste0("heatmap_", sig),
+        design_name = input$heatmapFilename,
+        extension = tolower(input$heatmapDownloadFormat)
+      )
     },
     content = function(file) {
       # Safety check: ensure heatmap object exists before drawing
@@ -977,15 +970,18 @@ lapply(c("DEFeatures", "Custom", "GO"), function(sig) {
       }
 
       # Heatmap exists, proceed with normal download
-      if (input$heatmapDownloadFormat == "PDF") {
-        pdf(file = file, width = as.numeric(input$figWidthHeatmap / 60), height = as.numeric(input$figHeightHeatmap / 60))
-      } else if (input$heatmapDownloadFormat == "SVG") {
-        svg(file = file, width = as.numeric(input$figWidthHeatmap / 60), height = as.numeric(input$figHeightHeatmap / 60))
-      } else if (input$heatmapDownloadFormat == "PNG") {
-        png(filename = file, width = as.numeric(input$figWidthHeatmap / 60), height = as.numeric(input$figHeightHeatmap / 60), units = "in", res = as.numeric(input$heatmapDPI))
-      }
-      draw(heatmap_obj, merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
-      dev.off()
+      # Using a custom draw wrapper because export_plot_standard expects a print/plot call, 
+      # and ComplexHeatmap needs draw() with specific params.
+      export_plot_standard(
+        plot_object = function() {
+          draw(heatmap_obj, merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
+        },
+        filename = file,
+        format = input$heatmapDownloadFormat,
+        dpi = input$heatmapDPI,
+        width = as.numeric(input$figWidthHeatmap / 60),
+        height = as.numeric(input$figHeightHeatmap / 60)
+      )
     }
   )
 })

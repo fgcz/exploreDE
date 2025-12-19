@@ -593,21 +593,39 @@ lapply(c("boxplot", "barplot"), function(b) {
       as.numeric(input$figHeightBoxplot)
     }
   )
-  output[[paste0(b, "DL")]] <- downloadHandler(
+  
+  # Map internal name 'b' to new button ID suffix
+  button_id <- paste0("dlPlot_", b)
+  
+  output[[button_id]] <- downloadHandler(
     filename = function() {
-      paste0(inputDataReactive()$design, b, ".pdf")
+      plot_type_suffix <- if (b == "boxplot") "_Boxplot" else "_Barplot"
+      generate_filename(
+        base_name = paste0(input$filename_boxplot, plot_type_suffix),
+        design_name = inputDataReactive()$design,
+        extension = tolower(input$downloadFormatBoxplot)
+      )
     },
     content = function(file) {
       req(!is.null(figuresDataReactive[[b]]))
-      pdf(file = file, width = (input$figWidthBoxplot / 85), height = (input$figHeightBoxplot / 90))
-      print(figuresDataReactive[[b]])
-      dev.off()
+      export_plot_standard(
+        plot_object = figuresDataReactive[[b]],
+        filename = file,
+        format = tolower(input$downloadFormatBoxplot),
+        width = as.numeric(input$figWidthBoxplot) / 75,
+        height = as.numeric(input$figHeightBoxplot) / 75,
+        dpi = as.numeric(input$dpiBoxplot)
+      )
     }
   )
 })
-output$dlBoxplotButtonCounts <- downloadHandler(
+output$dlTable_boxplot <- downloadHandler(
   filename = function() {
-    paste0(inputDataReactive()$design, "BoxplotTable", ".xlsx")
+    generate_filename(
+      base_name = paste0(input$filename_boxplot, "_Counts"),
+      design_name = inputDataReactive()$design,
+      extension = "xlsx"
+    )
   },
   content = function(file) {
     req(!is.null(boxplotCountsReactive()$countsBoxplotMelt))
@@ -644,22 +662,12 @@ output$dlBoxplotButtonCounts <- downloadHandler(
     # Filter to selected columns
     counts_data <- counts_data[, intersect(cols_to_export, colnames(counts_data)), drop = FALSE]
 
-    # Write as formatted Excel table
-    wb <- createWorkbook()
-    addWorksheet(wb, "Boxplot Data")
-    writeDataTable(
-      wb,
-      sheet = "Boxplot Data",
-      x = counts_data,
-      startCol = 1,
-      startRow = 1,
-      tableStyle = "TableStyleMedium9",
-      tableName = "BoxplotData",
-      withFilter = TRUE,
-      bandedRows = TRUE
+    export_excel_standard(
+      df = counts_data,
+      filename = file,
+      sheet_name = "Boxplot Data",
+      table_name = "BoxplotData"
     )
-    freezePane(wb, sheet = "Boxplot Data", firstRow = TRUE)
-    saveWorkbook(wb, file, overwrite = TRUE)
   }
 )
 

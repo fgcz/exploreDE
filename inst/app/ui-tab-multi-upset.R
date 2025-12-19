@@ -97,9 +97,15 @@ tabItem(
                 width = NULL,
                 solidHeader = TRUE,
                 status = "success",
+                h4("Download Settings"),
+                splitLayout(
+                  selectInput(inputId = "downloadFormatMultiUpset", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+                  selectInput(inputId = "dpiMultiUpset", label = "DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+                ),
+                textInput(inputId = "filename_multiUpset", label = "Filename", value = "MultiUpset"),
                 downloadButton(
-                    outputId = "dlUpsetPlot",
-                    label = "Download Upset/Venn Plot (PDF)"
+                    outputId = "dlPlot_multiUpset",
+                    label = "Download Upset/Venn Plot"
                 ),
                 br(),
                 uiOutput(outputId = "upsetError", inline = TRUE),

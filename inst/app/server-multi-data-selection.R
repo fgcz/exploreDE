@@ -131,7 +131,7 @@ observeEvent(
                 colourpicker::colourInput(
                     inputId = (paste0("multiGroupColour", names(multiDeReactive$results)[[i]]) %>% gsub(" ", "_", .)),
                     label = names(multiDeReactive$results)[[i]],
-                    value = rep(as.character(unlist(colourPaletteList[input$multiColourPalette])), times = 5)[i],
+                    value = rep(as.character(unlist(colourPaletteList2[input$multiColourPalette])), times = 5)[i],
                     palette = "square",
                     closeOnClick = TRUE,
                     returnName = TRUE

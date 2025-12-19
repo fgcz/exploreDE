@@ -143,12 +143,18 @@ tabItem(
           ),
           tabPanel(
             title = "Download",
-            downloadButton(outputId = "dlBoxplotButtonCounts", label = paste("Download Boxplot Counts")),
-            help("You can download a small Excel file of the counts of the features you have selected. You can use these counts to quickly make figures in, e.g., Graphpad."),
+            downloadButton(outputId = "dlTable_boxplot", label = paste("Download Boxplot Counts")),
+            helpText("You can download a small Excel file of the counts of the features you have selected. You can use these counts to quickly make figures in, e.g., Graphpad."),
             checkboxInput(inputId = "includeDEStatsBoxplot", label = "Include DE statistics?", value = FALSE),
             helpText("Adds log2FC, p-value, and FDR columns from the current contrast."),
-            downloadButton(outputId = "boxplotDL", label = paste("Download Boxplot (PDF)")),
-            downloadButton(outputId = "barplotDL", label = paste("Download Barplot (PDF)")),
+            hr(style = "border-top: 1px solid #000000;"), h4("Download Settings"),
+            splitLayout(
+                selectInput(inputId = "downloadFormatBoxplot", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+                selectInput(inputId = "dpiBoxplot", label = "DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+            ),
+            textInput(inputId = "filename_boxplot", label = "Enter filename", value = "Boxplot"),
+            downloadButton(outputId = "dlPlot_boxplot", label = paste("Download Boxplot")),
+            downloadButton(outputId = "dlPlot_barplot", label = paste("Download Barplot")),
             selectInput(inputId = "boxplotFont", label = "Font", choices = c("serif", "sans", "mono"), selected = "sans")
           )
         )

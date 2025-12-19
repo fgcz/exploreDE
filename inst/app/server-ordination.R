@@ -404,6 +404,29 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
   )
   p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
 
+  # Conditionally hide grid lines
+  if (!input$showLinesPCA) {
+    p <- p + theme(
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank()
+    )
+  }
+
+  # Conditionally hide axes
+  if (!input$showAxesPCA) {
+    p <- p + theme(
+      axis.line = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      panel.border = element_blank()
+    )
+  }
+
   return(p)
 }
 
@@ -458,6 +481,34 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
   p <- p + labs(x = x_lab, y = y_lab, fill = input$pcaFactor1)
   p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
   p <- p + theme_bw(base_size = input$textSizePCA)
+  face <- switch(input$boldPCA,
+    "TRUE" = "bold",
+    "FALSE" = "plain"
+  )
+  p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
+
+  # Conditionally hide grid lines
+  if (!input$showLinesPCA) {
+    p <- p + theme(
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank()
+    )
+  }
+
+  # Conditionally hide axes
+  if (!input$showAxesPCA) {
+    p <- p + theme(
+      axis.line = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      panel.border = element_blank()
+    )
+  }
 
   return(p)
 }
@@ -772,9 +823,6 @@ observeEvent(
     input$geneLabelNudgePCAX
     input$geneLabelNudgePCAY
     input$geneLabelSizePCA
-    input$downloadFormatPCA
-    input$dpiPCA
-    input$filnamePCA
     input$nrPeptidePCA
     input$pcaAddEllipses
     input$pcaEllipsesAlpha
@@ -987,14 +1035,22 @@ observeEvent(
       })
     }
 
-    output$dlPCALoadDFButton <- downloadHandler(
+    output$dlTable_ordinationLoadings <- downloadHandler(
       filename = function() {
-        paste0(designReactive(), "_", ord_res$method, "_loadings.xlsx")
+        generate_filename(
+          base_name = paste0(ord_res$method, "_loadings"),
+          design_name = designReactive(),
+          extension = "xlsx"
+        )
       },
       content = function(file) {
-        if (!is.null(figuresDataReactive$pc_loadings)) {
-          openxlsx::write.xlsx(as.data.frame(figuresDataReactive$pc_loadings), file = file)
-        }
+        req(figuresDataReactive$pc_loadings)
+        export_excel_standard(
+          df = as.data.frame(figuresDataReactive$pc_loadings),
+          filename = file,
+          sheet_name = "Loadings",
+          table_name = "Loadings"
+        )
       }
     )
 
@@ -1092,12 +1148,21 @@ observeEvent(
 
     figuresDataReactive$pcaPaired <- pairedPlot
 
-    output$dlPCAPlotDFButton <- downloadHandler(
+    output$dlTable_ordinationCoords <- downloadHandler(
       filename = function() {
-        paste0(designReactive(), "_", ord_res$method, "_coords.xlsx")
+        generate_filename(
+          base_name = paste0(ord_res$method, "_coords"),
+          design_name = designReactive(),
+          extension = "xlsx"
+        )
       },
       content = function(file) {
-        openxlsx::write.xlsx(figuresDataReactive$pc_scores, file = file)
+        export_excel_standard(
+          df = figuresDataReactive$pc_scores,
+          filename = file,
+          sheet_name = "Coordinates",
+          table_name = "Coordinates"
+        )
       }
     )
 
@@ -1118,34 +1183,25 @@ output$pcaStatic <- renderPlot(
   }
 )
 
-output$dlPCAPlotButton <- downloadHandler(
+output$dlPlot_ordination <- downloadHandler(
   filename = function() {
     method_name <- if (!is.null(figuresDataReactive$ord_method)) figuresDataReactive$ord_method else "ordination"
-    paste(input$filnamePCA, designReactive(), method_name, tolower(input$downloadFormatPCA), sep = ".")
+    generate_filename(
+      base_name = paste0(input$filename_ordination, "_", method_name),
+      design_name = designReactive(),
+      extension = tolower(input$downloadFormatPCA)
+    )
   },
   content = function(file) {
-    # Safety check: ensure ordination plot exists
-    if (is.null(figuresDataReactive$pcaStatic)) {
-      if (tolower(input$downloadFormatPCA) == "pdf") {
-        pdf(file = file, width = 8, height = 6)
-        plot.new()
-        text(0.5, 0.5, "Ordination plot not available\n\nPlease check filter settings and ensure ordination calculation succeeded.", cex = 1.2)
-        dev.off()
-      } else {
-        writeLines("Ordination plot not available. Please check filter settings and ensure ordination calculation succeeded.", file)
-      }
-      return()
-    }
-
-    if (input$downloadFormatPCA == "PDF") {
-      pdf(file = file, width = as.numeric(input$figWidthPCA / 80), height = as.numeric(input$figHeightPCA / 80))
-    } else if (input$downloadFormatPCA == "SVG") {
-      svg(file = file, width = as.numeric(input$figWidthPCA / 80), height = as.numeric(input$figHeightPCA / 80))
-    } else if (input$downloadFormatPCA == "PNG") {
-      png(filename = file, width = as.numeric(input$figWidthPCA / 80), height = as.numeric(input$figHeightPCA / 80), units = "in", res = as.numeric(input$dpiPCA))
-    }
-    print(figuresDataReactive$pcaStatic)
-    dev.off()
+    req(figuresDataReactive$pcaStatic)
+    export_plot_standard(
+      plot_object = figuresDataReactive$pcaStatic,
+      filename = file,
+      format = tolower(input$downloadFormatPCA),
+      width = (input$figWidthPCA / 80),
+      height = (input$figHeightPCA / 80),
+      dpi = as.numeric(input$dpiPCA)
+    )
   }
 )
 
@@ -1161,34 +1217,25 @@ output$pcaPaired <- renderPlot(
     as.numeric(input$figHeightPCA)
   }
 )
-output$dlPCAPairButton <- downloadHandler(
+output$dlPlot_ordinationPairs <- downloadHandler(
   filename = function() {
     method_name <- if (!is.null(figuresDataReactive$ord_method)) figuresDataReactive$ord_method else "ordination"
-    paste(input$filnamePCA, method_name, "paired", designReactive(), tolower(input$downloadFormatPCA), sep = ".")
+    generate_filename(
+      base_name = paste0(input$filename_ordination, "_", method_name, "_paired"),
+      design_name = designReactive(),
+      extension = tolower(input$downloadFormatPCA)
+    )
   },
   content = function(file) {
-    # Safety check: ensure paired plot exists
-    if (is.null(figuresDataReactive$pcaPaired)) {
-      if (tolower(input$downloadFormatPCA) == "pdf") {
-        pdf(file = file, width = 8, height = 6)
-        plot.new()
-        text(0.5, 0.5, "Paired ordination plot not available\n\nPlease check filter settings and ensure ordination calculation succeeded.", cex = 1.2)
-        dev.off()
-      } else {
-        writeLines("Paired ordination plot not available. Please check filter settings and ensure ordination calculation succeeded.", file)
-      }
-      return()
-    }
-
-    if (input$downloadFormatPCA == "PDF") {
-      pdf(file = file, width = as.numeric(input$figWidthPCA / 80), height = as.numeric(input$figHeightPCA / 80))
-    } else if (input$downloadFormatPCA == "SVG") {
-      svg(file = file, width = as.numeric(input$figWidthPCA / 80), height = as.numeric(input$figHeightPCA / 80))
-    } else if (input$downloadFormatPCA == "PNG") {
-      png(filename = file, width = as.numeric(input$figWidthPCA / 80), height = as.numeric(input$figHeightPCA / 80), units = "in", res = as.numeric(input$dpiPCA))
-    }
-    print(figuresDataReactive$pcaPaired)
-    dev.off()
+    req(figuresDataReactive$pcaPaired)
+    export_plot_standard(
+      plot_object = figuresDataReactive$pcaPaired,
+      filename = file,
+      format = tolower(input$downloadFormatPCA),
+      width = (input$figWidthPCA / 80),
+      height = (input$figHeightPCA / 80),
+      dpi = as.numeric(input$dpiPCA)
+    )
   }
 )
 

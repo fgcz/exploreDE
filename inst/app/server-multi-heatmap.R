@@ -170,115 +170,109 @@ multiPathwayHeatmapDataReactive <- reactive({
     ))
 })
 
+multiPathwayHeatmapObjectReactive <- reactive({
+    req(multiPathwayHeatmapDataReactive())
+    req(multiDeReactive$results)
+
+    plotData <- multiPathwayHeatmapDataReactive()
+    heatmapMat <- plotData$heatmapMat
+    useNES <- plotData$useNES
+    results <- multiDeReactive$results
+
+    if (nrow(heatmapMat) == 0 || ncol(heatmapMat) == 0) return(NULL)
+
+    # Get contrast colours for top annotation
+    contrastColours <- setNames(
+        lapply(names(results), function(k) {
+            col <- input[[paste0("multiGroupColour", gsub(" ", "_", k))]]
+            if (!is.null(col)) {
+                col2hex(col)
+            } else {
+                RColorBrewer::brewer.pal(max(3, length(results)), "Dark2")[match(k, names(results))]
+            }
+        }),
+        names(results)
+    )
+
+    contrastColours <- contrastColours[colnames(heatmapMat)]
+
+    topAnnotation <- HeatmapAnnotation(
+        Contrast = colnames(heatmapMat),
+        col = list(Contrast = unlist(contrastColours)),
+        annotation_name_gp = gpar(fontsize = input$textSizeHeatmap),
+        annotation_legend_param = list(
+            Contrast = list(
+                title = "Contrast",
+                title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
+                labels_gp = gpar(fontsize = input$textSizeHeatmap)
+            )
+        ),
+        show_legend = TRUE,
+        border = TRUE,
+        gp = gpar(col = "black", lwd = 1)
+    )
+
+    if (useNES) {
+        maxVal <- max(abs(range(heatmapMat, na.rm = TRUE)))
+        colFun <- colorRamp2(
+            c(-maxVal, 0, maxVal),
+            c("#1965B0", "#FFFFFF", "#DC050C")
+        )
+        legendTitle <- "NES"
+    } else {
+        colFun <- colorRamp2(
+            c(min(heatmapMat, na.rm = TRUE), max(heatmapMat, na.rm = TRUE)),
+            c(input$heatmapColourLow, input$heatmapColourHigh)
+        )
+        if (plotData$valueCol == "pvalue") {
+            legendTitle <- "-log10(p-value)"
+        } else {
+            legendTitle <- "-log10(FDR)"
+        }
+    }
+
+    ht <- Heatmap(
+        heatmapMat,
+        name = legendTitle,
+        col = colFun,
+        top_annotation = topAnnotation,
+        cluster_rows = input$clusterRowsHeatmap,
+        cluster_columns = input$clusterColsHeatmap,
+        show_row_names = input$rownamesHeatmap,
+        show_column_names = input$colnamesHeatmap,
+        row_names_gp = gpar(fontsize = input$textSizeHeatmap),
+        column_names_gp = gpar(fontsize = input$textSizeHeatmap),
+        column_names_rot = 45,
+        row_names_side = "right",
+        row_names_max_width = max_text_width(rownames(heatmapMat), gp = gpar(fontsize = input$textSizeHeatmap)),
+        column_names_max_height = unit(8, "cm"),
+        heatmap_legend_param = list(
+            title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
+            labels_gp = gpar(fontsize = input$textSizeHeatmap),
+            legend_height = unit(6, "cm")
+        ),
+        rect_gp = gpar(col = "white", lwd = 1),
+        cell_fun = function(j, i, x, y, width, height, fill) {
+            val <- heatmapMat[i, j]
+            if (useNES) {
+                if (!is.na(val) && abs(val) > 0.01) {
+                    grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeHeatmap * 0.8))
+                }
+            } else {
+                if (!is.na(val) && val > 0) {
+                    grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeHeatmap * 0.8))
+                }
+            }
+        }
+    )
+    ht
+})
+
 # Render heatmap ----
 output$pathwayHeatmapPlot <- renderPlot(
     {
-        req(multiPathwayHeatmapDataReactive())
-        req(multiDeReactive$results)
-
-        plotData <- multiPathwayHeatmapDataReactive()
-        heatmapMat <- plotData$heatmapMat
-        useNES <- plotData$useNES
-        results <- multiDeReactive$results
-
-        req(nrow(heatmapMat) > 0)
-        req(ncol(heatmapMat) > 0)
-
-        # Get contrast colours for top annotation
-        contrastColours <- setNames(
-            lapply(names(results), function(k) {
-                col <- input[[paste0("multiGroupColour", gsub(" ", "_", k))]]
-                if (!is.null(col)) {
-                    col2hex(col)
-                } else {
-                    RColorBrewer::brewer.pal(max(3, length(results)), "Dark2")[match(k, names(results))]
-                }
-            }),
-            names(results)
-        )
-
-        # Filter contrastColours to only include those in the heatmap
-        contrastColours <- contrastColours[colnames(heatmapMat)]
-
-        # Create top annotation with contrast colours
-        topAnnotation <- HeatmapAnnotation(
-            Contrast = colnames(heatmapMat),
-            col = list(Contrast = unlist(contrastColours)),
-            annotation_name_gp = gpar(fontsize = input$textSizeHeatmap),
-            annotation_legend_param = list(
-                Contrast = list(
-                    title = "Contrast",
-                    title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-                    labels_gp = gpar(fontsize = input$textSizeHeatmap)
-                )
-            ),
-            show_legend = TRUE,
-            border = TRUE,
-            gp = gpar(col = "black", lwd = 1)
-        )
-
-        # Set up colour function
-        if (useNES) {
-            # For NES, use diverging colour scheme centred at 0
-            maxVal <- max(abs(range(heatmapMat, na.rm = TRUE)))
-            colFun <- colorRamp2(
-                c(-maxVal, 0, maxVal),
-                c("#1965B0", "#FFFFFF", "#DC050C")
-            )
-            legendTitle <- "NES"
-        } else {
-            # For p-values, use sequential colour scheme
-            colFun <- colorRamp2(
-                c(min(heatmapMat, na.rm = TRUE), max(heatmapMat, na.rm = TRUE)),
-                c(input$heatmapColourLow, input$heatmapColourHigh)
-            )
-            if (plotData$valueCol == "pvalue") {
-                legendTitle <- "-log10(p-value)"
-            } else {
-                legendTitle <- "-log10(FDR)"
-            }
-        }
-
-        # Create heatmap with more padding and larger cells
-        ht <- Heatmap(
-            heatmapMat,
-            name = legendTitle,
-            col = colFun,
-            top_annotation = topAnnotation,
-            cluster_rows = input$clusterRowsHeatmap,
-            cluster_columns = input$clusterColsHeatmap,
-            show_row_names = input$rownamesHeatmap,
-            show_column_names = input$colnamesHeatmap,
-            row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-            column_names_gp = gpar(fontsize = input$textSizeHeatmap),
-            column_names_rot = 45,
-            row_names_side = "right",
-            row_names_max_width = max_text_width(rownames(heatmapMat), gp = gpar(fontsize = input$textSizeHeatmap)),
-            column_names_max_height = unit(8, "cm"),
-            heatmap_legend_param = list(
-                title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-                labels_gp = gpar(fontsize = input$textSizeHeatmap),
-                legend_height = unit(6, "cm")
-            ),
-            rect_gp = gpar(col = "white", lwd = 1),
-            cell_fun = function(j, i, x, y, width, height, fill) {
-                # Add text showing value if cells are large enough
-                val <- heatmapMat[i, j]
-                # Show numbers for NES (any value) or p-values (only positive values)
-                if (useNES) {
-                    # For NES, show all non-zero values (including negative)
-                    if (!is.na(val) && abs(val) > 0.01) {
-                        grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeHeatmap * 0.8))
-                    }
-                } else {
-                    # For p-values, only show positive values
-                    if (!is.na(val) && val > 0) {
-                        grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeHeatmap * 0.8))
-                    }
-                }
-            }
-        )
-
+        req(multiPathwayHeatmapObjectReactive())
+        ht <- multiPathwayHeatmapObjectReactive()
         draw(ht, merge_legend = TRUE, heatmap_legend_side = "bottom", annotation_legend_side = "bottom", padding = unit(c(2, 2, 2, 2), "cm"))
     },
     width = function() input$figWidthHeatmap,
@@ -334,126 +328,46 @@ output$pathwayHeatmapTable <- renderDataTable({
 })
 
 # Download PDF ----
-output$dlPathwayHeatmap <- downloadHandler(
+# Download PDF ----
+output$dlPlot_multiHeatmap <- downloadHandler(
     filename = function() {
-        paste0("pathway_heatmap_", input$dataToHeatmap, "_", Sys.Date(), ".pdf")
+        generate_filename(
+            base_name = paste0(input$filename_multiHeatmap, "_Heatmap"),
+            design_name = "Multi",
+            extension = tolower(input$downloadFormatMultiHeatmap)
+        )
     },
     content = function(file) {
-        req(multiPathwayHeatmapDataReactive())
-        req(multiDeReactive$results)
-
-        plotData <- multiPathwayHeatmapDataReactive()
-        heatmapMat <- plotData$heatmapMat
-        useNES <- plotData$useNES
-        results <- multiDeReactive$results
-
-        # Get contrast colours for top annotation
-        contrastColours <- setNames(
-            lapply(names(results), function(k) {
-                col <- input[[paste0("multiGroupColour", gsub(" ", "_", k))]]
-                if (!is.null(col)) {
-                    col2hex(col)
-                } else {
-                    RColorBrewer::brewer.pal(max(3, length(results)), "Dark2")[match(k, names(results))]
-                }
-            }),
-            names(results)
+        req(multiPathwayHeatmapObjectReactive())
+        ht <- multiPathwayHeatmapObjectReactive()
+        export_plot_standard(
+            plot_object = ht,
+            filename = file,
+            format = tolower(input$downloadFormatMultiHeatmap),
+            width = as.numeric(input$figWidthHeatmap) / 72,
+            height = as.numeric(input$figHeightHeatmap) / 72,
+            dpi = as.numeric(input$dpiMultiHeatmap)
         )
-
-        contrastColours <- contrastColours[colnames(heatmapMat)]
-
-        # Create top annotation with contrast colours
-        topAnnotation <- HeatmapAnnotation(
-            Contrast = colnames(heatmapMat),
-            col = list(Contrast = unlist(contrastColours)),
-            annotation_name_gp = gpar(fontsize = input$textSizeHeatmap),
-            annotation_legend_param = list(
-                Contrast = list(
-                    title = "Contrast",
-                    title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-                    labels_gp = gpar(fontsize = input$textSizeHeatmap)
-                )
-            ),
-            show_legend = TRUE,
-            border = TRUE,
-            gp = gpar(col = "black", lwd = 1)
-        )
-
-        # Set up colour function
-        if (useNES) {
-            maxVal <- max(abs(range(heatmapMat, na.rm = TRUE)))
-            colFun <- colorRamp2(
-                c(-maxVal, 0, maxVal),
-                c("#1965B0", "#FFFFFF", "#DC050C")
-            )
-            legendTitle <- "NES"
-        } else {
-            colFun <- colorRamp2(
-                c(min(heatmapMat, na.rm = TRUE), max(heatmapMat, na.rm = TRUE)),
-                c(input$heatmapColourLow, input$heatmapColourHigh)
-            )
-            if (plotData$valueCol == "pvalue") {
-                legendTitle <- "-log10(p-value)"
-            } else {
-                legendTitle <- "-log10(FDR)"
-            }
-        }
-
-        # Create heatmap with more padding and larger cells
-        ht <- Heatmap(
-            heatmapMat,
-            name = legendTitle,
-            col = colFun,
-            top_annotation = topAnnotation,
-            cluster_rows = input$clusterRowsHeatmap,
-            cluster_columns = input$clusterColsHeatmap,
-            show_row_names = input$rownamesHeatmap,
-            show_column_names = input$colnamesHeatmap,
-            row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-            column_names_gp = gpar(fontsize = input$textSizeHeatmap),
-            column_names_rot = 45,
-            row_names_side = "right",
-            row_names_max_width = max_text_width(rownames(heatmapMat), gp = gpar(fontsize = input$textSizeHeatmap)),
-            column_names_max_height = unit(8, "cm"),
-            heatmap_legend_param = list(
-                title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-                labels_gp = gpar(fontsize = input$textSizeHeatmap),
-                legend_height = unit(6, "cm")
-            ),
-            rect_gp = gpar(col = "white", lwd = 1),
-            cell_fun = function(j, i, x, y, width, height, fill) {
-                # Add text showing value if cells are large enough
-                val <- heatmapMat[i, j]
-                # Show numbers for NES (any value) or p-values (only positive values)
-                if (useNES) {
-                    # For NES, show all non-zero values (including negative)
-                    if (!is.na(val) && abs(val) > 0.01) {
-                        grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeHeatmap * 0.8))
-                    }
-                } else {
-                    # For p-values, only show positive values
-                    if (!is.na(val) && val > 0) {
-                        grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeHeatmap * 0.8))
-                    }
-                }
-            }
-        )
-
-        pdf(file, width = input$figWidthHeatmap / 72, height = input$figHeightHeatmap / 72)
-        draw(ht, merge_legend = TRUE, heatmap_legend_side = "bottom", annotation_legend_side = "bottom", padding = unit(c(2, 2, 2, 2), "cm"))
-        dev.off()
     }
 )
 
 # Download Excel table ----
-output$dlPathwayHeatmapTable <- downloadHandler(
+output$dlTable_multiHeatmap <- downloadHandler(
     filename = function() {
-        paste0("pathway_heatmap_data_", input$dataToHeatmap, "_", Sys.Date(), ".xlsx")
+        generate_filename(
+            base_name = paste0(input$filename_multiHeatmap, "_Data"),
+            design_name = "Multi",
+            extension = "xlsx"
+        )
     },
     content = function(file) {
         req(multiPathwayHeatmapDataReactive())
-
         fullTable <- multiPathwayHeatmapDataReactive()$fullTable
-        writexl::write_xlsx(fullTable, file)
+        export_excel_standard(
+            df = fullTable,
+            filename = file,
+            sheet_name = "Pathway Data",
+            table_name = "PathwayData"
+        )
     }
 )

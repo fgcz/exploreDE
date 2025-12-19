@@ -62,9 +62,15 @@ tabItem(
                 width = NULL,
                 solidHeader = TRUE,
                 status = "success",
+                h4("Download Settings"),
+                splitLayout(
+                  selectInput(inputId = "downloadFormatMultiBubble", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+                  selectInput(inputId = "dpiMultiBubble", label = "DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+                ),
+                textInput(inputId = "filename_multiBubble", label = "Filename", value = "MultiBubble"),
                 downloadButton(
-                    outputId = "dlBubblePlot",
-                    label = "Download Bubble Plot (PDF)"
+                    outputId = "dlPlot_multiBubble",
+                    label = "Download Bubble Plot"
                 ),
                 br(),
                 plotOutput(outputId = "BubblePlot", inline = TRUE)
@@ -75,7 +81,7 @@ tabItem(
                 solidHeader = TRUE,
                 status = "success",
                 downloadButton(
-                    outputId = "dlBubbleTable",
+                    outputId = "dlTable_multiBubble",
                     label = "Download Bubble Table (Excel)"
                 ),
                 br(),

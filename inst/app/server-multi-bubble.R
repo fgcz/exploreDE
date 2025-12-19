@@ -1,5 +1,9 @@
 # Server logic for Multi Bubble Plot
 
+# Server logic for Multi Bubble Plot
+
+multiBubbleReactive <- reactiveValues(plot = NULL, table = NULL)
+
 dataToPlotBubble <- list(
     "ORA" = c(
         "BP: Up-Regulated" = "BPupGenes",
@@ -171,14 +175,17 @@ observeEvent(
             bubblePlot <- bubblePlot + theme(axis.text.x = element_blank())
         }
 
-        # Output the results table
-        columnsToTableBubble <- switch(input$dataToBubble,
-            "ORA" = c("ID", "Description", "Contrast", "Count", "GeneRatio", "BgRatio", "pvalue", "p.adjust", "geneName"),
-            "GSEA" = c("ID", "Description", "Contrast", "setSize", "enrichmentScore", "NES", "pvalue", "p.adjust", "geneName")
-        )
-        output$BubbleTable <- renderDataTable({
-            renderTable <- 'DT::datatable(
-        data = (plotDFBubble %>% dplyr::select(all_of(columnsToTableBubble))),
+        multiBubbleReactive$plot <- bubblePlot
+        multiBubbleReactive$table <- (plotDFBubble %>% dplyr::select(all_of(columnsToUse)))
+        multiBubbleReactive$dataToBubble <- input$dataToBubble # Store this for table rendering logic
+    }
+)
+
+output$BubbleTable <- renderDataTable({
+    req(multiBubbleReactive$table)
+    # Re-using the rendering logic from before, but adapted
+    renderTable <- 'DT::datatable(
+        data = multiBubbleReactive$table,
         filter = "top",
         class = "cell-border stripe",
         rownames = FALSE,
@@ -186,47 +193,63 @@ observeEvent(
         ) %>%
         DT::formatSignif(columns = c("pvalue", "p.adjust"), digits = 4) %>%
         DT::formatStyle(columns = c("pvalue", "p.adjust"), color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")'
-            if (input$dataToBubble == "ORA") {
-                eval(parse(text = renderTable))
-            } else {
-                eval(parse(text = paste0(
-                    renderTable,
-                    '%>% DT::formatStyle(columns = c("enrichmentScore", "NES"), color = styleInterval(cuts = 0, values = c("blue", "orange")), fontWeight = "bold") %>%
-          DT::formatSignif(columns = c("enrichmentScore", "NES"), digits = 4)'
-                )))
-            }
-        })
-        # Download the results table
-        output$dlBubbleTable <- downloadHandler(
-            filename = function() {
-                paste0("Top_", input$bubblePathwayNumber, "_", input$dataToBubble, "_Bubble.xlsx")
-            },
-            content = function(file) {
-                openxlsx::write.xlsx((plotDFBubble %>% dplyr::select(all_of(columnsToTableBubble))), file = file)
-            }
-        )
+    
+    if (is.null(multiBubbleReactive$dataToBubble) || multiBubbleReactive$dataToBubble == "ORA") {
+        eval(parse(text = renderTable))
+    } else {
+        eval(parse(text = paste0(
+            renderTable,
+            '%>% DT::formatStyle(columns = c("enrichmentScore", "NES"), color = styleInterval(cuts = 0, values = c("blue", "orange")), fontWeight = "bold") %>%
+            DT::formatSignif(columns = c("enrichmentScore", "NES"), digits = 4)'
+        )))
+    }
+})
 
-        output$BubblePlot <- renderPlot(
-            {
-                print(bubblePlot)
-            },
-            width = as.numeric(input$figWidthBubble),
-            height = as.numeric(input$figHeightBubble)
+output$dlTable_multiBubble <- downloadHandler(
+    filename = function() {
+        generate_filename(
+            base_name = paste0(input$filename_multiBubble, "_Table"),
+            design_name = "Multi",
+            extension = "xlsx"
         )
+    },
+    content = function(file) {
+        req(multiBubbleReactive$table)
+        export_excel_standard(
+            df = multiBubbleReactive$table,
+            filename = file,
+            sheet_name = "Bubble Data",
+            table_name = "BubbleData"
+        )
+    }
+)
 
-        output$dlBubblePlot <- downloadHandler(
-            filename = function() {
-                paste0("bubble.pdf")
-            },
-            content = function(file) {
-                pdf(
-                    file = file,
-                    width = (as.numeric(input$figWidthBubble) / 70),
-                    height = (as.numeric(input$figHeightBubble) / 80),
-                )
-                print(bubblePlot)
-                dev.off()
-            }
+output$BubblePlot <- renderPlot(
+    {
+        req(multiBubbleReactive$plot)
+        multiBubbleReactive$plot
+    },
+    width = function() as.numeric(input$figWidthBubble),
+    height = function() as.numeric(input$figHeightBubble)
+)
+
+output$dlPlot_multiBubble <- downloadHandler(
+    filename = function() {
+        generate_filename(
+            base_name = paste0(input$filename_multiBubble, "_Plot"),
+            design_name = "Multi",
+            extension = tolower(input$downloadFormatMultiBubble)
+        )
+    },
+    content = function(file) {
+        req(multiBubbleReactive$plot)
+        export_plot_standard(
+            plot_object = multiBubbleReactive$plot,
+            filename = file,
+            format = tolower(input$downloadFormatMultiBubble),
+            width = as.numeric(input$figWidthBubble) / 70, # Adjusting scaling based on legacy code
+            height = as.numeric(input$figHeightBubble) / 80,
+            dpi = as.numeric(input$dpiMultiBubble)
         )
     }
 )

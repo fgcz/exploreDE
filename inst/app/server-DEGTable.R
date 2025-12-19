@@ -29,29 +29,22 @@ observeEvent(
 
 if (inputDataReactive()$dataType == "RNASeq") {
   # Create the download link in XLSX format:
-  output$dlDEGTable <- downloadHandler(
+  # Create the download link in XLSX format:
+  output$dlTable_deg <- downloadHandler(
     filename = function() {
-      paste0("DE_results_", inputDataReactive()$param$comparison, ".xlsx")
+      generate_filename(
+        base_name = paste0(input$filename_deg, "_Full"),
+        design_name = inputDataReactive()$param$comparison,
+        extension = "xlsx"
+      )
     },
     content = function(file) {
-      wb <- createWorkbook()
-      addWorksheet(wb, "DE Results")
-
-      # Write as formatted table
-      writeDataTable(
-        wb,
-        sheet = "DE Results",
-        x = inputDataReactive()$seqAnno,
-        startCol = 1,
-        startRow = 1,
-        tableStyle = "TableStyleMedium9",
-        tableName = "DEResults",
-        withFilter = TRUE,
-        bandedRows = TRUE
+      export_excel_standard(
+        df = inputDataReactive()$seqAnno,
+        filename = file,
+        sheet_name = "DE Results",
+        table_name = "DEResults"
       )
-      # Freeze header row
-      freezePane(wb, sheet = "DE Results", firstRow = TRUE)
-      saveWorkbook(wb, file, overwrite = TRUE)
     }
   )
 
@@ -93,12 +86,21 @@ if (inputDataReactive()$dataType == "RNASeq") {
 
   observeEvent(input$degTable_rows_selected, {
     seqAnnoSelected <- inputDataReactive()$seqAnno[input$degTable_rows_selected, ]
-    output$dlDEGTable2 <- downloadHandler(
+    output$dlTableSelected_deg <- downloadHandler(
       filename = function() {
-        paste0("selected_result_", inputDataReactive()$param$comparison, ".xlsx")
+        generate_filename(
+          base_name = paste0(input$filename_deg, "_Selected"),
+          design_name = inputDataReactive()$param$comparison,
+          extension = "xlsx"
+        )
       },
       content = function(file) {
-        openxlsx::write.xlsx(seqAnnoSelected, file = file)
+        export_excel_standard(
+          df = seqAnnoSelected,
+          filename = file,
+          sheet_name = "Selected Results",
+          table_name = "SelectedResults"
+        )
       }
     )
   })
@@ -136,29 +138,21 @@ if (inputDataReactive()$dataType == "RNASeq") {
       }
 
       # Download the results
-      output$dlfeatureCalcTable <- downloadHandler(
+      # Download the results
+      output$dlTableFiltered_deg <- downloadHandler(
         filename = function() {
-          "DE_features_threshold_matched.xlsx"
+          generate_filename(
+            base_name = input$filename_deg_filtered,
+            extension = "xlsx"
+          )
         },
         content = function(file) {
-          wb <- createWorkbook()
-          addWorksheet(wb, "DE Features")
-          # Write as formatted table
-          writeDataTable(
-            wb,
-            sheet = "DE Features",
-            x = seqAnnoCalc,
-            startCol = 1,
-            startRow = 1,
-            tableStyle = "TableStyleMedium9", # Choose your preferred style
-            tableName = "DEFeatures",
-            withFilter = TRUE,
-            bandedRows = TRUE,
-            bandedCols = FALSE
+          export_excel_standard(
+            df = seqAnnoCalc,
+            filename = file,
+            sheet_name = "DE Features",
+            table_name = "DEFeatures"
           )
-          # Optional: Freeze the header row
-          freezePane(wb, sheet = "DE Features", firstRow = TRUE)
-          saveWorkbook(wb, file, overwrite = TRUE)
         }
       )
     }
@@ -181,29 +175,23 @@ if (inputDataReactive()$dataType == "proteomics") {
       })
 
       # Create the download link in XLSX format:
-      output$dlDEGTable <- downloadHandler(
+      # Create the download link in XLSX format:
+      output$dlTable_deg <- downloadHandler(
         filename = function() {
-          paste0(design, "full_results_file.xlsx")
+          generate_filename(
+            base_name = paste0(input$filename_deg, "_Full"),
+            design_name = design,
+            extension = "xlsx"
+          )
         },
         content = function(file) {
           tableToWrite <- as.data.frame(rowData(se)[[grep(input$contrastSelected, names(rowData(se)))]])
-          wb <- createWorkbook()
-          addWorksheet(wb, "Full Results")
-          # Write as formatted table
-          writeDataTable(
-            wb,
-            sheet = "Full Results",
-            x = tableToWrite,
-            startCol = 1,
-            startRow = 1,
-            tableStyle = "TableStyleMedium9",
-            tableName = "FullResults",
-            withFilter = TRUE,
-            bandedRows = TRUE
+          export_excel_standard(
+            df = tableToWrite,
+            filename = file,
+            sheet_name = "Full Results",
+            table_name = "FullResults"
           )
-          # Freeze header row
-          freezePane(wb, sheet = "Full Results", firstRow = TRUE)
-          saveWorkbook(wb, file, overwrite = TRUE)
         }
       )
 
@@ -294,12 +282,21 @@ if (inputDataReactive()$dataType == "proteomics") {
 
       observeEvent(input$degTable_rows_selected, {
         seqAnnoDEGSelected <- seqAnnoDEG[input$degTable_rows_selected, ]
-        output$dlDEGTable2 <- downloadHandler(
+        output$dlTableSelected_deg <- downloadHandler(
           filename = function() {
-            paste0("selected_result_", design, ".xlsx")
+            generate_filename(
+              base_name = paste0(input$filename_deg, "_Selected"),
+              design_name = design,
+              extension = "xlsx"
+            )
           },
           content = function(file) {
-            openxlsx::write.xlsx(seqAnnoDEGSelected, file = file)
+            export_excel_standard(
+              df = seqAnnoDEGSelected,
+              filename = file,
+              sheet_name = "Selected Results",
+              table_name = "SelectedResults"
+            )
           }
         )
       })
@@ -335,29 +332,21 @@ if (inputDataReactive()$dataType == "proteomics") {
               )
           }
           # Download the results
-          output$dlfeatureCalcTable <- downloadHandler(
+          # Download the results
+          output$dlTableFiltered_deg <- downloadHandler(
             filename = function() {
-              "DE_features_threshold_matched.xlsx"
+              generate_filename(
+                base_name = input$filename_deg_filtered,
+                extension = "xlsx"
+              )
             },
             content = function(file) {
-              wb <- createWorkbook()
-              addWorksheet(wb, "DE Features")
-              # Write as formatted table
-              writeDataTable(
-                wb,
-                sheet = "DE Features",
-                x = seqAnnoCalc,
-                startCol = 1,
-                startRow = 1,
-                tableStyle = "TableStyleMedium9", # Choose your preferred style
-                tableName = "DEFeatures",
-                withFilter = TRUE,
-                bandedRows = TRUE,
-                bandedCols = FALSE
+              export_excel_standard(
+                df = seqAnnoCalc,
+                filename = file,
+                sheet_name = "DE Features",
+                table_name = "DEFeatures"
               )
-              # Optional: Freeze the header row
-              freezePane(wb, sheet = "DE Features", firstRow = TRUE)
-              saveWorkbook(wb, file, overwrite = TRUE)
             }
           )
         }

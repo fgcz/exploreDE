@@ -20,8 +20,7 @@ tabItem(
           negative log2 fold change."
         ),
         tags$p(
-          "The best way to view/save these images is to right click and save-as or
-          open in a new tab. It's not possible to save them as PDFs, sorry about that!"
+          "You can download the generated pathway image using the button below."
         ),
         tags$b("Please note:"),
         tags$p(
@@ -83,6 +82,15 @@ tabItem(
         status = "primary",
         textOutput("keggPlotDesign"),
         br(),
+        div(
+          style = "display: inline-block; vertical-align: top;",
+          textInput(inputId = "filename_kegg", label = NULL, value = "KEGG_Pathway", placeholder = "Filename")
+        ),
+        div(
+          style = "display: inline-block; vertical-align: top; margin-top: 0px;",
+          downloadButton(outputId = "dlPlot_kegg", label = "Download Pathway (PNG)")
+        ),
+        br(), br(),
         withSpinner(plotOutput("keggOutput", inline = TRUE))
       )
     )

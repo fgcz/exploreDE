@@ -149,12 +149,19 @@ tabItem(
           ),
           tabPanel(
             title = "Download",
-            downloadButton(outputId = "dlMultiBoxplotButtonCounts", label = paste("Download Boxplot Counts")),
-            help("You can download a small Excel file of the counts of the features you have selected. You can use these counts to quickly make figures in, e.g., Graphpad."),
+            downloadButton(outputId = "dlTable_multiBoxplotCounts", label = paste("Download Boxplot Counts")),
+            helpText("You can download a small Excel file of the counts of the features you have selected."),
             checkboxInput(inputId = "includeDEStatsMultiBoxplot", label = "Include DE statistics?", value = FALSE),
             helpText("Adds log2FC, p-value, and FDR columns from all available contrasts."),
-            downloadButton(outputId = "multiBoxplotDL", label = paste("Download Boxplot (PDF)")),
-            downloadButton(outputId = "multiBarplotDL", label = paste("Download Barplot (PDF)")),
+            hr(),
+            h4("Plot Download Settings"),
+            selectInput(inputId = "downloadFormatMultiBoxplot", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+            selectInput(inputId = "dpiMultiBoxplot", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
+            textInput(inputId = "filename_multiBoxplot", label = "Enter filename", value = "MultiBoxplot"),
+            br(),
+            downloadButton(outputId = "dlPlot_multiBoxplot", label = paste("Download Boxplot")),
+            downloadButton(outputId = "dlPlot_multiBarplot", label = paste("Download Barplot")),
+            br(), br(),
             selectInput(inputId = "multiBoxplotFont", label = "Font", choices = c("serif", "sans", "mono"), selected = "sans")
           )
         )

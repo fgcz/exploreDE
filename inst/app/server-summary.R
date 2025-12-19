@@ -75,13 +75,16 @@ observe({
 })
 output$dlColourTemplate <- downloadHandler(
   filename = function() {
-    paste0(design, "_colour_template.xlsx")
+    generate_filename(
+      base_name = "colour_template",
+      design_name = design,
+      extension = "xlsx"
+    )
   },
   content = function(file) {
     colourTemplate <- saved_inputs()
     colnames(colourTemplate) <- c("Level", "Colour")
     colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
-    cat(colourTemplate$Level)
     writexl::write_xlsx(x = colourTemplate, path = file)
   }
 )
@@ -144,7 +147,7 @@ observeEvent(inputDataReactive()$dataType, {
           )
         ),
         helpText("Download a formatted methods section as a Word document (.docx). Only available for DESeq2 and edgeR RNA-seq analyses."),
-        downloadButton("downloadMethods", "Download methods (Word)")
+        downloadButton("dlMethods_summary", "Download methods (Word)")
       )
     })
 
@@ -154,7 +157,9 @@ observeEvent(inputDataReactive()$dataType, {
         h4("Download Count Files"),
         helpText("Select the type of count data you wish to download for all samples in the dataset."),
         selectizeInput(inputId = "downloadCount", "Select Count Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
-        downloadButton("downloadTable", "Download selected count file"),
+
+        textInput(inputId = "filename_summary", label = NULL, value = "Counts", placeholder = "Filename"),
+        downloadButton("dlTable_summary", "Download selected count file"),
         checkboxInput(inputId = "log2DownloadedCounts", label = "Log2 Counts?", value = FALSE),
         helpText("Log2 adds a psuedocount of 1, and only works on counts not already in log2 scale."),
         checkboxInput(inputId = "includeDEStats", label = "Include DE statistics (log2FC, p-value, FDR)?", value = FALSE),
@@ -187,7 +192,9 @@ observeEvent(inputDataReactive()$dataType, {
         h4("Download Feature Value Files"),
         helpText("Select the type of value data you wish to download for all samples in the dataset. For proteomics, this would be intensity values."),
         selectizeInput(inputId = "downloadCount", "Select Value Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
-        downloadButton("downloadTable", "Download selected file"),
+
+        textInput(inputId = "filename_summary", label = NULL, value = "Counts", placeholder = "Filename"),
+        downloadButton("dlTable_summary", "Download selected file"),
         checkboxInput(inputId = "includeDEStats", label = "Include DE statistics (log2FC, p-value, FDR)?", value = FALSE),
         helpText("Adds DE statistics from the current contrast as extra columns.")
       )
@@ -202,7 +209,9 @@ observeEvent(inputDataReactive()$dataType, {
         h4("Download Count Files"),
         helpText("Select the type of count data you wish to download for all samples in the dataset."),
         selectizeInput(inputId = "downloadCount", "Select Count Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
-        downloadButton("downloadTable", "Download selected count file"),
+
+        textInput(inputId = "filename_summary", label = NULL, value = "Counts", placeholder = "Filename"),
+        downloadButton("dlTable_summary", "Download selected count file"),
         checkboxInput(inputId = "log2DownloadedCounts", label = "Log2 Counts?", value = FALSE),
         helpText("Log2 adds a psuedocount of 1, and only works on counts not already in log2 scale.")
       )
@@ -402,27 +411,26 @@ buildCitationsList <- function(aligner, de_method, run_go = FALSE, ref_build = N
 }
 
 # Generate methods text sections
-generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_versions, se) {
+generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_versions, se, raw_reads_text = "") {
   sections <- list()
 
-  # Calculate library size information if available
-  library_info <- ""
+  # Final Mapped/Counted Reads (from SE)
+  final_reads_info <- ""
   if (!is.null(se)) {
     tryCatch({
       lib_sizes <- colSums(assay(se, "counts"))
       min_size <- round(min(lib_sizes) / 1e6, 1)
       max_size <- round(max(lib_sizes) / 1e6, 1)
-      library_info <- paste0("Individual library size ranged from ", min_size, " million to ", max_size, " million reads. ")
+      final_reads_info <- paste0("Final library sizes ranged from ", min_size, " million to ", max_size, " million reads. ")
     }, error = function(e) {
-      library_info <- ""
+      final_reads_info <- ""
     })
   }
 
   # Read trimming section
   fastp_ver_text <- if (!is.null(fastp_version)) paste0(" (version ", fastp_version, ")") else ""
   sections$trimming <- paste0(
-    library_info,
-    library_info,
+    raw_reads_text,
     "Read quality was inspected using FastQC (Andrews, 2010) and MultiQC (Ewels et al., 2016), and sequencing adaptors removed using fastp",
     fastp_ver_text,
     " (Chen et al., 2018). ",
@@ -467,6 +475,9 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
       "with only ", transcript_types, " genes retained for downstream analysis."
     )
   }
+  
+  # Append final library size info
+  sections$mapping <- paste0(sections$mapping, " ", final_reads_info)
 
   # Filter, Normalisation and Differential Expression section
   
@@ -553,9 +564,14 @@ observe({
   }
 
   # Create a link to download the counts as an Excel file
-  output$downloadTable <- downloadHandler(
+  # Create a link to download the counts as an Excel file
+  output$dlTable_summary <- downloadHandler(
     filename = function() {
-      paste0(input$downloadCount, "_values", ".xlsx")
+      generate_filename(
+        base_name = input$filename_summary,
+        design_name = inputDataReactive()$design,
+        extension = "xlsx"
+      )
     },
     content = function(file) {
       if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC")) {
@@ -584,22 +600,12 @@ observe({
           }
         }
 
-        # Write as formatted Excel table
-        wb <- createWorkbook()
-        addWorksheet(wb, "Count Data")
-        writeDataTable(
-          wb,
-          sheet = "Count Data",
-          x = ctdl,
-          startCol = 1,
-          startRow = 1,
-          tableStyle = "TableStyleMedium9",
-          tableName = "CountData",
-          withFilter = TRUE,
-          bandedRows = TRUE
+        export_excel_standard(
+          df = ctdl,
+          filename = file,
+          sheet_name = "Count Data",
+          table_name = "CountData"
         )
-        freezePane(wb, sheet = "Count Data", firstRow = TRUE)
-        saveWorkbook(wb, file, overwrite = TRUE)
       } else if (inputDataReactive()$dataType == "proteomics") {
         ctdl <- as.data.frame(countList[[input$downloadCount]]) %>% rownames_to_column("gene_name")
 
@@ -615,30 +621,24 @@ observe({
           }
         }
 
-        # Write as formatted Excel table
-        wb <- createWorkbook()
-        addWorksheet(wb, "Feature Data")
-        writeDataTable(
-          wb,
-          sheet = "Feature Data",
-          x = ctdl,
-          startCol = 1,
-          startRow = 1,
-          tableStyle = "TableStyleMedium9",
-          tableName = "FeatureData",
-          withFilter = TRUE,
-          bandedRows = TRUE
+        export_excel_standard(
+          df = ctdl,
+          filename = file,
+          sheet_name = "Feature Data",
+          table_name = "FeatureData"
         )
-        freezePane(wb, sheet = "Feature Data", firstRow = TRUE)
-        saveWorkbook(wb, file, overwrite = TRUE)
       }
     }
   )
 
   # Download all currently selected inputs
-  output$downloadInputsE <- downloadHandler(
+  output$dlInputsExcel_summary <- downloadHandler(
     filename = function() {
-      "Input_Options.xlsx"
+      generate_filename(
+        base_name = "Input_Options",
+        design_name = inputDataReactive()$design,
+        extension = "xlsx"
+      )
     },
     content = function(file) {
       x <- saved_inputs()
@@ -646,9 +646,13 @@ observe({
       writexl::write_xlsx(x, path = file)
     }
   )
-  output$downloadInputsR <- downloadHandler(
+  output$dlInputsQS_summary <- downloadHandler(
     filename = function() {
-      "Input_Options.qs"
+      generate_filename(
+        base_name = "Input_Options",
+        design_name = inputDataReactive()$design,
+        extension = "qs"
+      )
     },
     content = function(file) {
       qs::qsave(x = saved_inputs(), file = file, nthreads = 8)
@@ -656,9 +660,13 @@ observe({
   )
 
   # Download current reactive data
-  output$downloadData <- downloadHandler(
+  output$dlData_summary <- downloadHandler(
     filename = function() {
-      paste0("exploreDE_Data_", format(Sys.time(), "%Y-%m-%d_%H.%M.%S"), ".qs")
+      generate_filename(
+        base_name = "exploreDE_Data",
+        design_name = inputDataReactive()$design,
+        extension = "qs"
+      )
     },
     content = function(file) {
       qs::qsave(x = inputDataReactive(), file = file, nthreads = 8)
@@ -666,10 +674,13 @@ observe({
   )
 
   # Download methods section as Word document
-  output$downloadMethods <- downloadHandler(
+  output$dlMethods_summary <- downloadHandler(
     filename = function() {
-      design <- gsub("[^A-Za-z0-9_-]", "_", inputDataReactive()$design)
-      paste0("methods_", design, "_", format(Sys.Date(), "%Y-%m-%d"), ".docx")
+      generate_filename(
+        base_name = "methods",
+        design_name = inputDataReactive()$design,
+        extension = "docx"
+      )
     },
     content = function(file) {
       tryCatch({
@@ -717,9 +728,47 @@ observe({
       # Build citations
       citations <- buildCitationsList(aligner, de_method, run_go, ref_build)
 
+      # Prepare raw reads text
+      raw_reads_text <- ""
+      dataset <- inputDataReactive()$dataset
+      if (!is.null(dataset)) {
+        # Look for common read count column names (Reads, Total Reads, Read Count, etc)
+        # Look for common read count column names (Reads, Total Reads, Read Count, etc)
+        cols <- colnames(dataset)
+        # Priority 1: Exact matches (with or without underscores/spaces)
+        read_cols <- grep("^Read_?Count$|^Reads$|^Raw_?Reads$|^Total_?Reads$", cols, value = TRUE, ignore.case = TRUE)
+        
+        # Priority 2: Contains "Read" and "Count" (e.g., "PF Read Count") if no exact match
+        if (length(read_cols) == 0) {
+           read_cols <- grep("Read", cols, value = TRUE, ignore.case = TRUE)
+           read_cols <- grep("Count", read_cols, value = TRUE, ignore.case = TRUE)
+           # Exclude filenames
+           read_cols <- grep("File|Path|Name", read_cols, value = TRUE, invert = TRUE, ignore.case = TRUE)
+        }
+        
+        # Priority 3: Just "Reads" but cautious
+        if (length(read_cols) == 0) {
+           read_cols <- grep("Read", cols, value = TRUE, ignore.case = TRUE)
+           read_cols <- grep("File|Path|Name|Mapped|Gene|Feature|Aligned", read_cols, value = TRUE, invert = TRUE, ignore.case = TRUE)
+        }
+        if (length(read_cols) > 0) {
+          tryCatch({
+            raw_val <- dataset[[read_cols[1]]]
+            raw_reads <- suppressWarnings(as.numeric(as.character(raw_val)))
+            if (!all(is.na(raw_reads))) {
+               min_raw <- round(min(raw_reads, na.rm=TRUE) / 1e6, 1)
+               max_raw <- round(max(raw_reads, na.rm=TRUE) / 1e6, 1)
+               # User requested format: "Individual library size ranged from X to Y million reads."
+               raw_reads_text <- paste0("Individual library size ranged from ", min_raw, " million to ", max_raw, " million reads. ")
+            }
+          }, error = function(e) {})
+        }
+      }
+
       # Generate methods text
       methods_sections <- generateMethodsText(
-        param, aligner, de_method, fastp_version, pkg_versions, se
+        param, aligner, de_method, fastp_version, pkg_versions, se,
+        raw_reads_text = raw_reads_text
       )
 
       # Create Word document using officer package

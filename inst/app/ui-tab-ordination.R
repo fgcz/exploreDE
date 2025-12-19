@@ -279,10 +279,26 @@ tabItem(
             )
           ),
           tabPanel(
-            title = "Download settings",
-            selectInput(inputId = "downloadFormatPCA", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
-            selectInput(inputId = "dpiPCA", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
-            textInput(inputId = "filnamePCA", label = "Enter filename", value = "PCA")
+            title = "Download",
+            h4("Download Data Tables"),
+            downloadButton(outputId = "dlTable_ordinationCoords", label = "Download Ordination Coordinates"),
+            helpText("Downloads the sample coordinates for the selected ordination axes as an Excel file."),
+            br(),
+            downloadButton(outputId = "dlTable_ordinationLoadings", label = "Download Feature Loadings"),
+            helpText("Downloads the feature loadings (gene contributions) for all axes as an Excel file."),
+            hr(style = "border-top: 1px solid #000000;"),
+            h4("Download Plots"),
+            downloadButton(outputId = "dlPlot_ordination", label = "Download Ordination Plot"),
+            br(), br(),
+            downloadButton(outputId = "dlPlot_ordinationPairs", label = "Download Paired Plot"),
+            hr(style = "border-top: 1px solid #000000;"),
+            h4("Download Settings"),
+            splitLayout(
+              selectInput(inputId = "downloadFormatPCA", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+              selectInput(inputId = "dpiPCA", label = "DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+            ),
+            textInput(inputId = "filename_ordination", label = "Enter filename", value = "Ordination"),
+            selectInput(inputId = "ordinationFont", label = "Font", choices = c("serif", "sans", "mono"), selected = "sans")
           )
         ),
       ) # end of box
@@ -298,9 +314,7 @@ tabItem(
           tabPanel(
             title = "Ordination Plot",
             textOutput("pcaDesign"),
-            downloadButton(outputId = "dlPCAPlotButton", label = "Download Plot"),
-            downloadButton(outputId = "dlPCAPlotDFButton", HTML("Download Coords Table (Excel)")),
-            br(), br(),
+            br(),
             shinycssloaders::withSpinner(
               plotOutput(outputId = "pcaStatic", brush = "pcaBrush", width = "100%", height = "600px"),
               type = 4,
@@ -312,9 +326,7 @@ tabItem(
           ),
           tabPanel(
             title = "Paired Plot",
-            downloadButton(outputId = "dlPCAPairButton", label = "Download Paired Plot"),
-            br(), br(),
-            plotOutput(outputId = "pcaPaired", inline = TRUE),
+            plotOutput(outputId = "pcaPaired", inline = TRUE)
           )
         )
       ),
@@ -331,9 +343,7 @@ tabItem(
         width = 6,
         solidHeader = TRUE,
         status = "primary",
-        DT::dataTableOutput("pcaLoadings"),
-        br(), br(),
-        downloadButton(outputId = "dlPCALoadDFButton", HTML("Download Loadings Table (Excel)")),
+        DT::dataTableOutput("pcaLoadings")
       )
     )
   )

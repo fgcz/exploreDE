@@ -161,3 +161,93 @@ observeEvent(
         }
     }
 )
+
+output$dlPlot_multiKegg <- downloadHandler(
+    filename = function() {
+        generate_filename(
+            base_name = input$filename_multiKegg,
+            design_name = "Multi",
+            extension = "png"
+        )
+    },
+    content = function(file) {
+        req(multiDeReactive$results)
+        req(input$KEGGID)
+        
+        # Determine species
+        results <- multiDeReactive$results
+        refBuild <- results[[1]]$param$refBuild
+        if (is.null(refBuild) && !is.null(results[[1]]$param$ezRef)) {
+            refBuild <- results[[1]]$param$ezRef@refBuild
+        }
+        
+        sp <- "other"
+        if (!is.null(refBuild)) {
+            if (grepl("Homo_sapiens|GRCh|hg", refBuild, ignore.case = TRUE)) sp <- "hsa"
+            else if (grepl("Mus_musculus|GRCm|mm", refBuild, ignore.case = TRUE)) sp <- "mmu"
+        }
+        
+        req(sp != "other")
+        
+        # Prepare data matrix (this logic is duplicated from renderImage, but safer to re-run for download)
+        if (input$pTypeKEGG == "Raw") pTypeKEGG <- "pValue" else pTypeKEGG <- "fdr"
+        
+        pathviewList <- list()
+        for (i in seq_along(results)) {
+            df1 <- results[[i]]$seqAnno
+            if (!"entrez_id" %in% colnames(df1)) next
+            
+            df1 <- df1[which(df1[[pTypeKEGG]] <= as.numeric(input$pThresholdKEGG) & abs(df1$log2Ratio) >= as.numeric(input$lfcKEGG)), ]
+            
+            gL1 <- data.frame("Gene" = as.character(df1$entrez_id), "log2Ratio" = df1$log2Ratio)
+            colnames(gL1)[2] <- names(results)[i]
+            gL1 <- gL1[which(!is.na(gL1$Gene) & gL1$Gene != ""), ]
+            pathviewList[[names(results)[i]]] <- gL1
+        }
+        
+        req(length(pathviewList) > 0)
+        
+        pvDF <- merge(pathviewList[[1]], pathviewList[[2]], all = TRUE)
+        if (length(results) >= 3) {
+            for (i in 3:length(results)) {
+                if (names(results)[i] %in% names(pathviewList)) {
+                    pvDF <- merge(pvDF, pathviewList[[names(results)[i]]], all = TRUE)
+                }
+            }
+        }
+        pvDF <- pvDF[!duplicated(pvDF$Gene), ]
+        rownames(pvDF) <- NULL
+        pvDF <- tibble::column_to_rownames(pvDF, "Gene")
+        pvDF <- as.matrix(pvDF)
+        
+        # Generate plot in temp dir
+        temp_dir <- tempdir()
+        old_wd <- getwd()
+        setwd(temp_dir)
+        
+        tryCatch({
+            pathview::pathview(
+                gene.data = pvDF,
+                gene.idtype = "ENTREZ",
+                pathway.id = input$KEGGID,
+                key.pos = "bottomright",
+                species = sp,
+                low = list("gene" = "dodgerblue3"),
+                mid = list("gene" = "lightgrey"),
+                high = list("gene" = "indianred3"),
+                kegg.native = TRUE,
+                limit = list(gene = input$KEGGLimitColour),
+                map.null = FALSE,
+                bins = 12
+            )
+            
+            generated_file <- paste0(input$KEGGID, ".pathview.multi.png")
+            
+            if (file.exists(generated_file)) {
+                file.copy(generated_file, file)
+            }
+        }, finally = {
+            setwd(old_wd)
+        })
+    }
+)

@@ -98,8 +98,15 @@ tabItem(
                 width = NULL,
                 solidHeader = TRUE,
                 status = "primary",
-                downloadButton("replicabilityDownloadHeatmap", "Download Heatmap (PDF)"),
-                downloadButton("replicabilityDownloadDendrogram", "Download Dendrogram (PDF)"),
+                h4("Download Settings"),
+                splitLayout(
+                    selectInput(inputId = "downloadFormatReplicability", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+                    selectInput(inputId = "dpiReplicability", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+                ),
+                textInput(inputId = "filename_replicability", label = "Enter filename", value = "Replicability"),
+                selectInput(inputId = "replicabilityDownloadSet", label = "Select dataset", choices = c("All Genes", "Top 100 Abundant"), selected = "All Genes"),
+                downloadButton("replicabilityDownloadHeatmap", "Download Heatmap"),
+                downloadButton("replicabilityDownloadDendrogram", "Download Dendrogram"),
                 downloadButton("replicabilityDownloadCorr", "Download Correlation Matrix (Excel)")
             )
         )

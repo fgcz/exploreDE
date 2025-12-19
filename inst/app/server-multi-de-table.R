@@ -1,9 +1,10 @@
 # Server logic for Multi DE Table
 
-output$multiDETable <- DT::renderDataTable({
+# Reactive expression for the combined table
+multiDETableReactive <- reactive({
     req(multiDeReactive$results)
     req(length(multiDeReactive$results) > 0)
-
+    
     results <- multiDeReactive$results
 
     # Get all unique genes across all contrasts
@@ -82,7 +83,12 @@ output$multiDETable <- DT::renderDataTable({
         }
     }
 
-    combinedData <- baseTable
+    baseTable
+})
+
+output$multiDETable <- DT::renderDataTable({
+    req(multiDETableReactive())
+    combinedData <- multiDETableReactive()
 
     # Find column names for formatting
     log2fc_cols <- grep("_log2FC$", colnames(combinedData), value = TRUE)
@@ -145,72 +151,21 @@ output$multiDETable <- DT::renderDataTable({
 })
 
 # Download handler
-output$dlMultiDETable <- downloadHandler(
+output$dlTable_multiDE <- downloadHandler(
     filename = function() {
-        paste0("multi_DE_table_", Sys.Date(), ".xlsx")
+        generate_filename(
+            base_name = input$filename_multiTable,
+            design_name = "Multi",
+            extension = "xlsx"
+        )
     },
     content = function(file) {
-        req(multiDeReactive$results)
-        results <- multiDeReactive$results
-
-        # Use same logic as table rendering
-        firstSeqAnno <- results[[1]]$seqAnno
-        baseTable <- data.frame(
-            gene_name = if ("gene_name" %in% colnames(firstSeqAnno)) {
-                firstSeqAnno$gene_name
-            } else if ("gene_id" %in% colnames(firstSeqAnno)) {
-                firstSeqAnno$gene_id
-            } else {
-                character(0)
-            },
-            stringsAsFactors = FALSE
+        req(multiDETableReactive())
+        export_excel_standard(
+            df = multiDETableReactive(),
+            filename = file,
+            sheet_name = "DE Results",
+            table_name = "DEResults"
         )
-
-        if ("gene_id" %in% colnames(firstSeqAnno)) {
-            baseTable$gene_id <- firstSeqAnno$gene_id
-        }
-
-        if ("description" %in% colnames(firstSeqAnno)) {
-            baseTable$description <- firstSeqAnno$description
-        }
-
-        # Add columns for each contrast
-        for (contrastName in names(results)) {
-            seqAnno <- results[[contrastName]]$seqAnno
-
-            seqAnno$match_key <- if ("gene_name" %in% colnames(seqAnno)) {
-                seqAnno$gene_name
-            } else if ("gene_id" %in% colnames(seqAnno)) {
-                seqAnno$gene_id
-            } else {
-                NA
-            }
-
-            matchIdx <- match(baseTable$gene_name, seqAnno$match_key)
-
-            lfcCol <- grep("^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc|log2Ratio)$",
-                          colnames(seqAnno), value = TRUE, ignore.case = TRUE)
-            if (length(lfcCol) > 0) {
-                baseTable[[paste0(contrastName, "_log2FC")]] <- seqAnno[[lfcCol[1]]][matchIdx]
-            }
-
-            if ("pvalue" %in% colnames(seqAnno)) {
-                baseTable[[paste0(contrastName, "_pvalue")]] <- seqAnno$pvalue[matchIdx]
-            }
-
-            if ("padj" %in% colnames(seqAnno)) {
-                baseTable[[paste0(contrastName, "_padj")]] <- seqAnno$padj[matchIdx]
-            } else if ("fdr" %in% colnames(seqAnno)) {
-                baseTable[[paste0(contrastName, "_padj")]] <- seqAnno$fdr[matchIdx]
-            }
-
-            if ("baseMean" %in% colnames(seqAnno)) {
-                baseTable[[paste0(contrastName, "_baseMean")]] <- seqAnno$baseMean[matchIdx]
-            } else if ("AveExpr" %in% colnames(seqAnno)) {
-                baseTable[[paste0(contrastName, "_baseMean")]] <- seqAnno$AveExpr[matchIdx]
-            }
-        }
-
-        openxlsx::write.xlsx(baseTable, file = file)
     }
 )

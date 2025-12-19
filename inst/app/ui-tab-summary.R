@@ -36,10 +36,10 @@ tabItem(
           status = "primary",
           h4("Download App Data"),
           helpText("App data will download as a qs file, which can be imported into R with `qs::qread()`"),
-          downloadButton("downloadData", "Download app data"),
+          downloadButton("dlData_summary", "Download app data"),
           hr(style = "border-top: 1px solid #000000;"), h4("Download App Settings"),
           helpText("Download all the app settings as either an Excel sheet, or as a qs file of the settings as a list."),
-          downloadButton("downloadInputsE", "Download settings (Excel)"), downloadButton("downloadInputsR", "Download settings (qs)"),
+          downloadButton("dlInputsExcel_summary", "Download settings (Excel)"), downloadButton("dlInputsQS_summary", "Download settings (qs)"),
           uiOutput("methodsDownloadUI"),
           uiOutput("countsDownloadUI")
         ),

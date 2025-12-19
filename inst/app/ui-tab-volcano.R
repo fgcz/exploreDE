@@ -101,12 +101,15 @@ tabItem(
           ),
           tabPanel(
             title = "Download",
-            selectInput(inputId = "downloadFormatVolcano", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
-            selectInput(inputId = "dpiVolcano", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
-            textInput(inputId = "filnameVolcano", label = "Enter filename", value = "Volcano"),
-            downloadButton(outputId = "dlVolcanoPlotButton", HTML("Download Volcano Plot")),
-            downloadButton(outputId = "dlVolcanoDFButton", HTML("Download Volcano Results Table (Excel)")),
-            downloadButton(outputId = "dlMAPlotButton", HTML("Download MA Plot (PDF)"))
+            h4("Download Settings"),
+            splitLayout(
+                selectInput(inputId = "downloadFormatVolcano", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+                selectInput(inputId = "dpiVolcano", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+            ),
+            textInput(inputId = "filename_volcano", label = "Enter filename", value = "Volcano"),
+            downloadButton(outputId = "dlPlot_volcano", HTML("Download Volcano Plot")),
+            downloadButton(outputId = "dlPlot_MA", HTML("Download MA Plot")),
+            downloadButton(outputId = "dlTable_volcano", HTML("Download Volcano Results Table (Excel)"))
           )
         )
       )

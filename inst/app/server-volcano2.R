@@ -136,7 +136,7 @@ observeEvent(
         design
       })
       seqAnnoFilt <- seqAnno[which(seqAnno$usedInTest), ]
-      updateTextInput(session = session, inputId = "filnameVolcano", value = design)
+      updateTextInput(session = session, inputId = "filename_volcano", value = design)
     }
 
     if (inputDataReactive()$dataType == "proteomics") {
@@ -149,7 +149,7 @@ observeEvent(
       output$volcanoDesign <- renderText({
         input$contrastSelected
       })
-      updateTextInput(session = session, inputId = "filnameVolcano", value = input$contrastSelected)
+      updateTextInput(session = session, inputId = "filename_volcano", value = input$contrastSelected)
     }
 
     if (input$pTypeVolcano == "Raw") {
@@ -411,9 +411,6 @@ observeEvent(
     input$geneLabelNudgeVolcanoX
     input$geneLabelNudgeVolcanoY
     input$volcanoPointBorder
-    input$downloadFormatVolcano
-    input$dpiVolcano
-    input$filnameVolcano
     volcanoResultsList()
   },
   ignoreInit = TRUE,
@@ -550,12 +547,21 @@ observeEvent(
     )
     figuresDataReactive$volcanoPlotly <- volcanoPlotly
 
-    output$dlVolcanoDFButton <- downloadHandler(
+    output$dlTable_volcano <- downloadHandler(
       filename = function() {
-        paste0(input$filnameVolcano, "_volcano.xlsx")
+        generate_filename(
+          base_name = paste0(input$filename_volcano, "_Results"),
+          design_name = NULL,
+          extension = "xlsx"
+        )
       },
       content = function(file) {
-        openxlsx::write.xlsx(volcanoTable, file = file)
+        export_excel_standard(
+          df = volcanoTable,
+          filename = file,
+          sheet_name = "Volcano Results",
+          table_name = "VolcanoResults"
+        )
       }
     )
   }
@@ -623,20 +629,24 @@ output$volcanoPlotly <- renderPlotly({
     layout(height = input$figHeightVolcano, width = input$figWidthVolcano)
 })
 # Download button for the plot
-output$dlVolcanoPlotButton <- downloadHandler(
+# Download button for the plot
+output$dlPlot_volcano <- downloadHandler(
   filename = function() {
-    paste0(input$filnameVolcano, "_volcano.", tolower(input$downloadFormatVolcano))
+    generate_filename(
+      base_name = "volcano",
+      design_name = input$filename_volcano,
+      extension = tolower(input$downloadFormatVolcano)
+    )
   },
   content = function(file) {
-    if (input$downloadFormatVolcano == "PDF") {
-      pdf(file = file, width = as.numeric(input$figWidthVolcano / 80), height = as.numeric(input$figHeightVolcano / 80))
-    } else if (input$downloadFormatVolcano == "SVG") {
-      svg(file = file, width = as.numeric(input$figWidthVolcano / 80), height = as.numeric(input$figHeightVolcano / 80))
-    } else if (input$downloadFormatVolcano == "PNG") {
-      png(filename = file, width = as.numeric(input$figWidthVolcano / 80), height = as.numeric(input$figHeightVolcano / 80), units = "in", res = as.numeric(input$dpiVolcano))
-    }
-    print(figuresDataReactive$volcanoStatic)
-    dev.off()
+    export_plot_standard(
+      plot_object = figuresDataReactive$volcanoStatic,
+      filename = file,
+      format = input$downloadFormatVolcano,
+      dpi = input$dpiVolcano,
+      width = as.numeric(input$figWidthVolcano / 80),
+      height = as.numeric(input$figHeightVolcano / 80)
+    )
   }
 )
 
@@ -648,17 +658,22 @@ output$MAPlot <- renderPlot(
   height = as.numeric(input$figHeightVolcano) / 1.5,
   width = as.numeric(input$figWidthVolcano) * 1.2
 )
-output$dlMAPlotButton <- downloadHandler(
+output$dlPlot_MA <- downloadHandler(
   filename = function() {
-    paste0(input$filnameVolcano, "_MA.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_volcano, "_MA"),
+      design_name = NULL,
+      extension = tolower(input$downloadFormatVolcano)
+    )
   },
   content = function(file) {
-    ggsave(
+    export_plot_standard(
+      plot_object = figuresDataReactive$volcanoMA,
       filename = file,
-      plot = figuresDataReactive$volcanoMA,
-      width = (as.numeric(input$figWidthVolcano) / 102),
-      height = (as.numeric(input$figHeightVolcano) / 115),
-      limitsize = FALSE, units = "in"
+      format = tolower(input$downloadFormatVolcano),
+      width = as.numeric(input$figWidthVolcano / 80),
+      height = as.numeric(input$figHeightVolcano / 80),
+      dpi = as.numeric(input$dpiVolcano)
     )
   }
 )

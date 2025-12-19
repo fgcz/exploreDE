@@ -169,13 +169,34 @@ tabItem(
           ),
           
           tabPanel(
-            title = "Download Settings",
-            helpText("Which ever heatmap you are currently viewing (e.g., both, up, or down) will be the one downloaded."),
-            selectInput(inputId = "heatmapDownloadFormat", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
-            selectInput(inputId = "heatmapDPI", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600),
-            textInput(inputId = "heatmapFilename", label = "Enter filename", value = "heatmap", placeholder = "up_regulated_heatmap"),
+            title = "Download",
+            h4("Download Count Tables"),
+            downloadButton(outputId = "dlTable_heatmapDE", label = "Download DE Features Counts"),
+            helpText("Downloads counts from the DE Features heatmap (whichever view you have selected: Both, Up, or Down)."),
             checkboxInput(inputId = "includeDEStatsHeatmap", label = "Include DE statistics in count downloads?", value = FALSE),
-            helpText("Adds log2FC, p-value, and FDR columns to downloaded count files.")
+            helpText("Adds log2FC, p-value, and FDR columns to downloaded count files."),
+            br(),
+            downloadButton(outputId = "dlTable_heatmapCustom", label = "Download Custom Heatmap Counts"),
+            helpText("Downloads counts from the Custom heatmap."),
+            br(),
+            downloadButton(outputId = "dlTable_heatmapGO", label = "Download GO Heatmap Counts"),
+            helpText("Downloads counts from the GO term heatmap."),
+            hr(style = "border-top: 1px solid #000000;"),
+            h4("Download Heatmap Plots"),
+            helpText("Whichever heatmap you are currently viewing will be the one downloaded."),
+            downloadButton(outputId = "dlPlot_heatmapDE", label = "Download DE Features Heatmap"),
+            br(), br(),
+            downloadButton(outputId = "dlPlot_heatmapCustom", label = "Download Custom Heatmap"),
+            br(), br(),
+            downloadButton(outputId = "dlPlot_heatmapGO", label = "Download GO Heatmap"),
+            hr(style = "border-top: 1px solid #000000;"),
+            h4("Download Settings"),
+            splitLayout(
+              selectInput(inputId = "heatmapDownloadFormat", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+              selectInput(inputId = "heatmapDPI", label = "DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+            ),
+            textInput(inputId = "heatmapFilename", label = "Enter filename", value = "heatmap", placeholder = "up_regulated_heatmap"),
+            selectInput(inputId = "heatmapFont", label = "Font", choices = c("serif", "sans", "mono"), selected = "sans")
           )
         )
       )
@@ -191,9 +212,8 @@ tabItem(
           id = "sig",
           tabPanel(
             title = uiOutput("heatmapTabTitle", inline = TRUE),
-            textOutput("heatmapDesignBoth Directions"), br(),
-            downloadButton(outputId = "dlHeatmapButtonDEFeatures", label = "Download Heatmap"),
-            downloadButton(outputId = "dlHeatmapDFButtonDEFeatures", label = "Download Counts"), br(),
+            textOutput("heatmapDesignBoth Directions"),
+            br(),
             withSpinner(
               plotOutput("heatmapDEFeatures", inline = TRUE),
               color = "#6E8D9E"
@@ -218,8 +238,6 @@ tabItem(
             ),
             column(
               width = 9,
-              downloadButton(outputId = paste0("dlHeatmapButtonCustom"), label = "Download Heatmap"),
-              downloadButton(outputId = paste0("dlHeatmapDFButtonCustom"), label = "Download Counts (Excel)"), br(),
               withSpinner(
                 plotOutput(paste0("heatmapCustom"), inline = TRUE),
                 color = "#6E8D9E"
@@ -241,8 +259,6 @@ tabItem(
             ),
             column(
               width = 9,
-              downloadButton(outputId = paste0("dlHeatmapButtonGO"), label = "Download Heatmap"),
-              downloadButton(outputId = paste0("dlHeatmapDFButtonGO"), label = "Download Counts (Excel)"), br(),
               withSpinner(
                 plotOutput(paste0("heatmapGO"), inline = TRUE),
                 color = "#6E8D9E"

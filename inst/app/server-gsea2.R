@@ -211,20 +211,40 @@ output$selectedTable_GSEA <- DT::renderDataTable({
 })
 
 # Download handler for GSEA results
-output$dlTableGSEA <- downloadHandler(
+# Download handler for GSEA results
+output$dlTable_GSEA <- downloadHandler(
   filename = function() {
-    paste0(design, "_GSEA.xlsx")
+    generate_filename(
+      base_name = "GSEA_Results",
+      design_name = design,
+      extension = "xlsx"
+    )
   },
   content = function(file) {
     sheets_list <- list()
     categories <- c("BP", "CC", "MF")
     for (category in categories) {
-      enrich_obj <- gsea[[category]]
-      results_df <- as.data.frame(enrich_obj@result)
-      sheet_name <- paste(category, sep = "_")
-      sheets_list[[sheet_name]] <- results_df
+      if (!is.null(gsea[[category]])) {
+        enrich_obj <- gsea[[category]]
+        results_df <- as.data.frame(enrich_obj@result)
+        sheet_name <- paste(category, sep = "_")
+        sheets_list[[sheet_name]] <- results_df
+      }
     }
-    write_xlsx(sheets_list, file)
+    # Handle custom GSEA types if present (e.g., C2)
+    other_types <- setdiff(names(gsea), categories)
+    for (type in other_types) {
+      enrich_obj <- gsea[[type]]
+      results_df <- as.data.frame(enrich_obj@result)
+      sheets_list[[type]] <- results_df
+    }
+
+    if (length(sheets_list) > 0) {
+      write_xlsx(sheets_list, file)
+    } else {
+      # Fallback if no sheets were added
+      write.csv(data.frame(Message = "No GSEA results available"), file)
+    }
   }
 )
 
@@ -535,18 +555,24 @@ output$cnetPlot_GSEA <- renderPlot(
   height = function() as.numeric(input$figHeightGSEA)
 )
 
-output$dlCnetPlot_GSEA <- downloadHandler(
+output$dlPlot_cnetGSEA <- downloadHandler(
   filename = function() {
-    paste0(design, "_GSEA_", input$gseaType, "_network.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_network"),
+      design_name = design,
+      extension = tolower(input$downloadFormatGSEA)
+    )
   },
   content = function(file) {
-    pdf(
-      file = file,
+    req(gseaPlotReactive[["cnetplot"]])
+    export_plot_standard(
+      plot_object = gseaPlotReactive[["cnetplot"]],
+      filename = file,
+      format = tolower(input$downloadFormatGSEA),
       width = as.numeric(input$figWidthGSEA) / 50,
-      height = as.numeric(input$figHeightGSEA) / 50
+      height = as.numeric(input$figHeightGSEA) / 50,
+      dpi = as.numeric(input$dpiGSEA)
     )
-    print(gseaPlotReactive[["cnetplot"]])
-    dev.off()
   }
 )
 
@@ -560,18 +586,24 @@ output$heatmap_GSEA <- renderPlot(
   height = function() as.numeric(input$figHeightGSEA * 1.5)
 )
 
-output$dlHeatmap_GSEA <- downloadHandler(
+output$dlPlot_heatmapGSEA <- downloadHandler(
   filename = function() {
-    paste0(design, "_GSEA_", input$gseaType, "_heatmap.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_heatmap"),
+      design_name = design,
+      extension = tolower(input$downloadFormatGSEA)
+    )
   },
   content = function(file) {
-    pdf(
-      file = file,
+    req(gseaPlotReactive[["heatmap"]])
+    export_plot_standard(
+      plot_object = gseaPlotReactive[["heatmap"]],
+      filename = file,
+      format = tolower(input$downloadFormatGSEA),
       width = as.numeric(input$figWidthGSEA) / 25,
-      height = as.numeric(input$figHeightGSEA) / 50
+      height = as.numeric(input$figHeightGSEA) / 50,
+      dpi = as.numeric(input$dpiGSEA)
     )
-    ComplexHeatmap::draw(gseaPlotReactive[["heatmap"]])
-    dev.off()
   }
 )
 
@@ -585,18 +617,24 @@ output$runningScore_GSEA <- renderPlot(
   height = function() as.numeric(input$figHeightGSEA)
 )
 
-output$dlRunningScore_GSEA <- downloadHandler(
+output$dlPlot_runningScoreGSEA <- downloadHandler(
   filename = function() {
-    paste0(design, "_GSEA_", input$gseaType, "_runningscore.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_runningscore"),
+      design_name = design,
+      extension = tolower(input$downloadFormatGSEA)
+    )
   },
   content = function(file) {
-    pdf(
-      file = file,
+    req(gseaPlotReactive[["runningscore"]])
+    export_plot_standard(
+      plot_object = gseaPlotReactive[["runningscore"]],
+      filename = file,
+      format = tolower(input$downloadFormatGSEA),
       width = as.numeric(input$figWidthGSEA) / 50,
-      height = as.numeric(input$figHeightGSEA) / 50
+      height = as.numeric(input$figHeightGSEA) / 50,
+      dpi = as.numeric(input$dpiGSEA)
     )
-    print(gseaPlotReactive[["runningscore"]])
-    dev.off()
   }
 )
 
@@ -610,18 +648,24 @@ output$ridgePlot_GSEA <- renderPlot(
   height = function() as.numeric(input$figHeightGSEA)
 )
 
-output$dlRidgePlot_GSEA <- downloadHandler(
+output$dlPlot_ridgeGSEA <- downloadHandler(
   filename = function() {
-    paste0(design, "_GSEA_", input$gseaType, "_ridgeplot.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_ridgeplot"),
+      design_name = design,
+      extension = tolower(input$downloadFormatGSEA)
+    )
   },
   content = function(file) {
-    pdf(
-      file = file,
+    req(gseaPlotReactive[["ridgeplot"]])
+    export_plot_standard(
+      plot_object = gseaPlotReactive[["ridgeplot"]],
+      filename = file,
+      format = tolower(input$downloadFormatGSEA),
       width = as.numeric(input$figWidthGSEA) / 50,
-      height = as.numeric(input$figHeightGSEA) / 50
+      height = as.numeric(input$figHeightGSEA) / 50,
+      dpi = as.numeric(input$dpiGSEA)
     )
-    print(gseaPlotReactive[["ridgeplot"]])
-    dev.off()
   }
 )
 
@@ -635,17 +679,23 @@ output$upsetPlot_GSEA <- renderPlot(
   height = function() as.numeric(input$figHeightGSEA)
 )
 
-output$dlUpset_GSEA <- downloadHandler(
+output$dlPlot_upsetGSEA <- downloadHandler(
   filename = function() {
-    paste0(design, "_GSEA_", input$gseaType, "_upset.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_upset"),
+      design_name = design,
+      extension = tolower(input$downloadFormatGSEA)
+    )
   },
   content = function(file) {
-    pdf(
-      file = file,
+    req(gseaPlotReactive[["upset"]])
+    export_plot_standard(
+      plot_object = gseaPlotReactive[["upset"]],
+      filename = file,
+      format = tolower(input$downloadFormatGSEA),
       width = as.numeric(input$figWidthGSEA) / 70,
-      height = as.numeric(input$figHeightGSEA) / 90
+      height = as.numeric(input$figHeightGSEA) / 90,
+      dpi = as.numeric(input$dpiGSEA)
     )
-    print(gseaPlotReactive[["upset"]])
-    dev.off()
   }
 )

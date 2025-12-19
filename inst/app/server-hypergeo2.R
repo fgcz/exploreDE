@@ -32,9 +32,14 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
   }
 
   # Download full ORA results file
-  output$dlTableORA <- downloadHandler(
+  # Download full ORA results file
+  output$dlTable_ORA <- downloadHandler(
     filename = function() {
-      paste0(design, "_ORA.xlsx")
+      generate_filename(
+        base_name = paste0("ORA_Results"),
+        design_name = design,
+        extension = "xlsx"
+      )
     },
     content = function(file) {
       sheets_list <- list()
@@ -427,14 +432,24 @@ output$cnetPlot_ORA <- renderPlot(
   width = function() as.numeric(input$figWidthORA),
   height = function() as.numeric(input$figHeightORA)
 )
-output$dlCnetPlot_ORA <- downloadHandler(
+output$dlPlot_cnetORA <- downloadHandler(
   filename = function() {
-    paste0(design, "ORA_", input$oraType, "_network.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_ORA, "_", input$oraType, "_network"),
+      design_name = design,
+      extension = tolower(input$downloadFormatORA)
+    )
   },
   content = function(file) {
-    pdf(file = file, width = (as.numeric(input$figWidthORA) / 80), height = (as.numeric(input$figHeightORA) / 80))
-    print(oraPlotReactive[["cnetplot"]])
-    dev.off()
+    req(oraPlotReactive[["cnetplot"]])
+    export_plot_standard(
+      plot_object = oraPlotReactive[["cnetplot"]],
+      filename = file,
+      format = tolower(input$downloadFormatORA),
+      width = (as.numeric(input$figWidthORA) / 80),
+      height = (as.numeric(input$figHeightORA) / 80),
+      dpi = as.numeric(input$dpiORA)
+    )
   }
 )
 
@@ -447,14 +462,24 @@ output$barPlot_ORA <- renderPlot(
   width = function() as.numeric(input$figWidthORA),
   height = function() as.numeric(input$figHeightORA)
 )
-output$dlBarPlot_ORA <- downloadHandler(
+output$dlPlot_barORA <- downloadHandler(
   filename = function() {
-    paste0(design, "ORA_", input$oraType, "_bar.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_ORA, "_", input$oraType, "_bar"),
+      design_name = design,
+      extension = tolower(input$downloadFormatORA)
+    )
   },
   content = function(file) {
-    pdf(file = file, width = (as.numeric(input$figWidthORA) / 50), height = (as.numeric(input$figHeightORA) / 50), )
-    print(oraPlotReactive[["barplot"]])
-    dev.off()
+    req(oraPlotReactive[["barplot"]])
+    export_plot_standard(
+      plot_object = oraPlotReactive[["barplot"]],
+      filename = file,
+      format = tolower(input$downloadFormatORA),
+      width = (as.numeric(input$figWidthORA) / 50),
+      height = (as.numeric(input$figHeightORA) / 50),
+      dpi = as.numeric(input$dpiORA)
+    )
   }
 )
 
@@ -467,14 +492,24 @@ output$dotPlot_ORA <- renderPlot(
   width = function() as.numeric(input$figWidthORA),
   height = function() as.numeric(input$figHeightORA)
 )
-output$dlDotPlot_ORA <- downloadHandler(
+output$dlPlot_dotORA <- downloadHandler(
   filename = function() {
-    paste0(design, "ORA_", input$oraType, "_dot.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_ORA, "_", input$oraType, "_dot"),
+      design_name = design,
+      extension = tolower(input$downloadFormatORA)
+    )
   },
   content = function(file) {
-    pdf(file = file, width = (as.numeric(input$figWidthORA) / 50), height = (as.numeric(input$figHeightORA) / 50), )
-    print(oraPlotReactive[["dotplot"]])
-    dev.off()
+    req(oraPlotReactive[["dotplot"]])
+    export_plot_standard(
+      plot_object = oraPlotReactive[["dotplot"]],
+      filename = file,
+      format = tolower(input$downloadFormatORA),
+      width = (as.numeric(input$figWidthORA) / 50),
+      height = (as.numeric(input$figHeightORA) / 50),
+      dpi = as.numeric(input$dpiORA)
+    )
   }
 )
 
@@ -487,14 +522,24 @@ output$heatmap_ORA <- renderPlot(
   width = function() as.numeric(input$figWidthORA / 2),
   height = function() as.numeric(input$figHeightORA * 1.5)
 )
-output$dlHeatmap_ORA <- downloadHandler(
+output$dlPlot_heatmapORA <- downloadHandler(
   filename = function() {
-    paste0(design, "ORA_", input$oraType, "_heatmap.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_ORA, "_", input$oraType, "_heatmap"),
+      design_name = design,
+      extension = tolower(input$downloadFormatORA)
+    )
   },
   content = function(file) {
-    pdf(file = file, width = (as.numeric(input$figWidthORA) / 25), height = (as.numeric(input$figHeightORA) / 50), )
-    ComplexHeatmap::draw(oraPlotReactive[["heatmap"]])
-    dev.off()
+    req(oraPlotReactive[["heatmap"]])
+    export_plot_standard(
+      plot_object = oraPlotReactive[["heatmap"]],
+      filename = file,
+      format = tolower(input$downloadFormatORA),
+      width = (as.numeric(input$figWidthORA) / 25),
+      height = (as.numeric(input$figHeightORA) / 50),
+      dpi = as.numeric(input$dpiORA)
+    )
   }
 )
 
@@ -507,13 +552,23 @@ output$upset_ORA <- renderPlot(
   width = function() as.numeric(input$figWidthORA) * 1.3,
   height = function() as.numeric(input$figHeightORA)
 )
-output$dlUpset_ORA <- downloadHandler(
+output$dlPlot_upsetORA <- downloadHandler(
   filename = function() {
-    paste0(design, "ORA_", input$oraType, "_upset.pdf")
+    generate_filename(
+      base_name = paste0(input$filename_ORA, "_", input$oraType, "_upset"),
+      design_name = design,
+      extension = tolower(input$downloadFormatORA)
+    )
   },
   content = function(file) {
-    pdf(file = file, width = (as.numeric(input$figWidthORA) / 70), height = (as.numeric(input$figHeightORA) / 90))
-    print(oraPlotReactive[["upset"]])
-    dev.off()
+    req(oraPlotReactive[["upset"]])
+    export_plot_standard(
+      plot_object = oraPlotReactive[["upset"]],
+      filename = file,
+      format = tolower(input$downloadFormatORA),
+      width = (as.numeric(input$figWidthORA) / 70),
+      height = (as.numeric(input$figHeightORA) / 90),
+      dpi = as.numeric(input$dpiORA)
+    )
   }
 )

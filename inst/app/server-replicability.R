@@ -279,155 +279,80 @@ output$replicabilityDendrogramTop100 <- renderPlot(
 # Download Handlers
 output$replicabilityDownloadHeatmap <- downloadHandler(
     filename = function() {
-        paste0("Replicability_Heatmap.pdf")
+        generate_filename(
+            base_name = paste0(input$filename_replicability, "_Heatmap"),
+            design_name = inputDataReactive()$design,
+            suffix = gsub(" ", "", input$replicabilityDownloadSet),
+            extension = tolower(input$downloadFormatReplicability)
+        )
     },
     content = function(file) {
         req(replicabilityData())
-        data <- replicabilityData()
-
-        # Re-create heatmap logic for download
-        # (Ideally this would be a reactive, but for now we duplicate logic for simplicity)
-        # Prepare annotations
-        ha_top <- NULL
-        ha_left <- NULL
-        row_names_gp <- gpar(fontsize = input$replicabilityTextSize)
-        column_names_gp <- gpar(fontsize = input$replicabilityTextSize)
-
-        if (!is.null(input$replicabilityFactors)) {
-            dataset <- data$dataset
-            sample_names <- rownames(data$corr)
-            dataset <- dataset[match(sample_names, dataset$Name), ]
-
-            colourList <- lapply(input$replicabilityFactors, function(f) {
-                levs <- levels(as.factor(dataset[[f]]))
-                colors <- vapply(levs, function(l) {
-                    col_input <- input[[paste0("GroupColour", f, l)]]
-                    if (is.null(col_input)) {
-                        return("#808080FF")
-                    }
-                    tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
-                }, character(1))
-                names(colors) <- levs
-                return(colors)
-            }) %>% setNames(input$replicabilityFactors)
-
-            # Color labels
-            factor_col <- input$replicabilityFactors[1]
-            factor_levels <- levels(dataset[[factor_col]])
-            colors <- sapply(factor_levels, function(l) {
-                paste0(col2hex(input[[paste0("GroupColour", factor_col, l)]]), "FF")
-            })
-            sample_colors <- colors[as.character(dataset[[factor_col]])]
-            names(sample_colors) <- dataset$Name
-            row_names_gp <- gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
-            column_names_gp <- gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
-
-            anno_df <- dataset[, input$replicabilityFactors, drop = FALSE]
-
-            ha_top <- HeatmapAnnotation(
-                df = anno_df,
-                col = colourList,
-                show_legend = TRUE,
-                annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-                gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
-            )
-            ha_left <- rowAnnotation(
-                df = anno_df,
-                col = colourList,
-                show_legend = FALSE,
-                annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-                gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
-            )
-        }
-
-        # Get color breaks
-        at <- c(input$replicabilityAtLow, input$replicabilityAtMid, input$replicabilityAtHigh)
-
-        # Determine color scheme - use palette if selected, otherwise use manual colors
-        if (!is.null(input$replicabilityPalette) && input$replicabilityPalette != "None") {
-            palette_colours <- brewer.pal(9, input$replicabilityPalette)
-            selected_colours <- palette_colours[c(1, 5, 9)]
-            if (input$replicabilityPaletteRev) {
-                heatmap_colours <- colorRamp2(at, selected_colours)
-            } else {
-                heatmap_colours <- colorRamp2(at, rev(selected_colours))
-            }
-        } else {
-            heatmap_colours <- colorRamp2(at, c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh))
-        }
-
-        hm <- ComplexHeatmap::Heatmap(
-            data$corr,
-            name = "Correlation",
-            col = heatmap_colours,
-            top_annotation = ha_top,
-            left_annotation = ha_left,
-            show_row_names = input$replicabilityShowNames,
-            show_column_names = input$replicabilityShowNames,
-            row_names_gp = row_names_gp,
-            column_names_gp = column_names_gp,
-            heatmap_legend_param = list(title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold")),
-            rect_gp = gpar(col = input$replicabilityBorderColor2, lwd = input$replicabilityBorderSize2 / 10)
+        
+        # Select dataset
+        data_set <- if (input$replicabilityDownloadSet == "All Genes") replicabilityData()$all else replicabilityData()$top100
+        
+        export_plot_standard(
+            plot_object = function() {
+                make_rep_heatmap(data_set, title_suffix = input$replicabilityDownloadSet)
+            },
+            filename = file,
+            format = tolower(input$downloadFormatReplicability),
+            width = as.numeric(input$figWidthReplicability / 72),
+            height = as.numeric(input$figHeightReplicability / 72),
+            dpi = as.numeric(input$dpiReplicability)
         )
-
-        pdf(file, width = input$figWidthReplicability / 72, height = input$figHeightReplicability / 72)
-        draw(hm, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
-        dev.off()
     }
 )
 
 output$replicabilityDownloadDendrogram <- downloadHandler(
     filename = function() {
-        paste0("Replicability_Dendrogram.pdf")
+        generate_filename(
+            base_name = paste0(input$filename_replicability, "_Dendrogram"),
+            design_name = inputDataReactive()$design,
+            suffix = gsub(" ", "", input$replicabilityDownloadSet),
+            extension = tolower(input$downloadFormatReplicability)
+        )
     },
     content = function(file) {
         req(replicabilityData())
-        data <- replicabilityData()
-
-        pdf(file, width = input$figWidthReplicability / 72, height = input$figHeightReplicability / 72)
-
-        dend <- as.dendrogram(data$hclust)
-        if (!is.null(input$replicabilityFactors)) {
-            dataset <- data$dataset
-            factor_col <- input$replicabilityFactors[1]
-            factor_levels <- levels(dataset[[factor_col]])
-            colors <- sapply(factor_levels, function(l) {
-                paste0(col2hex(input[[paste0("GroupColour", factor_col, l)]]), "FF")
-            })
-            sample_colors <- colors[as.character(dataset[[factor_col]])]
-            names(sample_colors) <- dataset$Name
-            labels_colors(dend) <- sample_colors[labels(dend)]
-
-            colors_mat <- as.data.frame(dataset[, input$replicabilityFactors, drop = FALSE])
-            for (f in input$replicabilityFactors) {
-                colors_mat[[f]] <- sapply(colors_mat[[f]], function(l) {
-                    paste0(col2hex(input[[paste0("GroupColour", f, l)]]), "FF")
-                })
-            }
-            colors_mat <- colors_mat[match(labels(dend), dataset$Name), , drop = FALSE]
-        }
-
-        par(mar = c(20, 8, 6, 4))
-        plot(dend,
-            main = paste("Cluster Dendrogram (", input$replicabilityDistMethod, "/", input$replicabilityClustMethod, ")"),
-            xlab = "", sub = "", cex = input$replicabilityTextSize / 10
+        
+        # Select dataset
+        data_set <- if (input$replicabilityDownloadSet == "All Genes") replicabilityData()$all else replicabilityData()$top100
+        
+        export_plot_standard(
+            plot_object = function() {
+                make_rep_dendrogram(data_set, title_suffix = input$replicabilityDownloadSet)
+            },
+            filename = file,
+            format = tolower(input$downloadFormatReplicability),
+            width = as.numeric(input$figWidthReplicability / 72),
+            height = as.numeric(input$figHeightReplicability / 72),
+            dpi = as.numeric(input$dpiReplicability)
         )
-
-        if (!is.null(input$replicabilityFactors)) {
-            colored_bars(colors = colors_mat, dend = dend, sort_by_labels_order = FALSE)
-        }
-
-        dev.off()
     }
 )
 
 output$replicabilityDownloadCorr <- downloadHandler(
     filename = function() {
-        paste0("Replicability_Correlation_Matrix.xlsx")
+        generate_filename(
+            base_name = paste0(input$filename_replicability, "_Correlation"),
+            design_name = inputDataReactive()$design,
+            suffix = gsub(" ", "", input$replicabilityDownloadSet),
+            extension = "xlsx"
+        )
     },
     content = function(file) {
         req(replicabilityData())
-        data <- replicabilityData()
-        write.xlsx(as.data.frame(data$corr), file, rowNames = TRUE)
+        
+        # Select dataset
+        data_set <- if (input$replicabilityDownloadSet == "All Genes") replicabilityData()$all else replicabilityData()$top100
+        
+        export_excel_standard(
+            df = as.data.frame(data_set$corr) %>% rownames_to_column("Sample"),
+            filename = file,
+            sheet_name = "Correlation Matrix",
+            table_name = "CorrelationMatrix"
+        )
     }
 )

@@ -62,9 +62,15 @@ tabItem(
           tabPanel(
             title = "Download", 
             helpText("Download the displayed counts in Excel:"),
-            downloadButton(outputId = "dlCorrelationCounts", label = paste("Download Counts")),
-            br(), helpText("Download the figure in PDF:"),
-            downloadButton(outputId = "dlCorrelationButton", label = paste("Download Correlation (PDF)")),
+            downloadButton(outputId = "dlTable_correlation", label = paste("Download Counts")),
+            hr(),
+            h4("Download Settings"),
+            splitLayout(
+                selectInput(inputId = "downloadFormatCorrelation", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+                selectInput(inputId = "dpiCorrelation", label = "DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+            ),
+            textInput(inputId = "filename_correlation", label = "Filename", value = "Correlation_Plot"),
+            downloadButton(outputId = "dlPlot_correlation", label = paste("Download Correlation Plot")),
           )
         )
       )

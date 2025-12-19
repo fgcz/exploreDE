@@ -66,6 +66,10 @@ tabItem(
                 h5("Gene box contrast order"),
                 helpText("Each gene box is divided to represent the different contrats loaded. From left to right, the order is:"),
                 tableOutput(outputId = "KEGGOrder"),
+                hr(),
+                textInput(inputId = "filename_multiKegg", label = NULL, value = "Multi_KEGG_Plot", placeholder = "Filename"),
+                downloadButton("dlPlot_multiKegg", "Download KEGG Plot"),
+                br(), br(),
                 withSpinner(plotOutput(outputId = "KEGGout", inline = TRUE), color = "#00a65a")
             )
         )
