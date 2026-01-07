@@ -1,3 +1,20 @@
+# Create reactive for design to use across all outputs and download handlers
+designReactive <- reactive({
+  req(inputDataReactive())
+  if (inputDataReactive()$dataType == "RNASeq") {
+    return(inputDataReactive()$design)
+  } else if (inputDataReactive()$dataType == "proteomics") {
+    if (isTruthy(input$contrastSelected)) {
+      return(input$contrastSelected)
+    } else {
+      return("No contrast selected")
+    }
+  } else if (inputDataReactive()$dataType == "CountQC") {
+    return(inputDataReactive()$design)
+  }
+  return("Unknown")
+})
+
 # Update inputs
 observeEvent(inputDataReactive(), {
     count_choices <- names(inputDataReactive()$countList)
@@ -281,7 +298,7 @@ output$replicabilityDownloadHeatmap <- downloadHandler(
     filename = function() {
         generate_filename(
             base_name = paste0(input$filename_replicability, "_Heatmap"),
-            design_name = inputDataReactive()$design,
+            design_name = designReactive(),
             suffix = gsub(" ", "", input$replicabilityDownloadSet),
             extension = tolower(input$downloadFormatReplicability)
         )
@@ -309,7 +326,7 @@ output$replicabilityDownloadDendrogram <- downloadHandler(
     filename = function() {
         generate_filename(
             base_name = paste0(input$filename_replicability, "_Dendrogram"),
-            design_name = inputDataReactive()$design,
+            design_name = designReactive(),
             suffix = gsub(" ", "", input$replicabilityDownloadSet),
             extension = tolower(input$downloadFormatReplicability)
         )
@@ -337,7 +354,7 @@ output$replicabilityDownloadCorr <- downloadHandler(
     filename = function() {
         generate_filename(
             base_name = paste0(input$filename_replicability, "_Correlation"),
-            design_name = inputDataReactive()$design,
+            design_name = designReactive(),
             suffix = gsub(" ", "", input$replicabilityDownloadSet),
             extension = "xlsx"
         )

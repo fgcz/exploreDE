@@ -1,3 +1,20 @@
+# Create reactive for design to use across all outputs and download handlers
+designReactive <- reactive({
+  req(inputDataReactive())
+  if (inputDataReactive()$dataType == "RNASeq") {
+    return(inputDataReactive()$design)
+  } else if (inputDataReactive()$dataType == "proteomics") {
+    if (isTruthy(input$contrastSelected)) {
+      return(input$contrastSelected)
+    } else {
+      return("No contrast selected")
+    }
+  } else if (inputDataReactive()$dataType == "CountQC") {
+    return(inputDataReactive()$design)
+  }
+  return("Unknown")
+})
+
 req(!is.null(inputDataReactive()$se))
 
 se <- inputDataReactive()$se
@@ -569,7 +586,7 @@ observe({
     filename = function() {
       generate_filename(
         base_name = input$filename_summary,
-        design_name = inputDataReactive()$design,
+        design_name = designReactive(),
         extension = "xlsx"
       )
     },
@@ -636,7 +653,7 @@ observe({
     filename = function() {
       generate_filename(
         base_name = "Input_Options",
-        design_name = inputDataReactive()$design,
+        design_name = designReactive(),
         extension = "xlsx"
       )
     },
@@ -650,7 +667,7 @@ observe({
     filename = function() {
       generate_filename(
         base_name = "Input_Options",
-        design_name = inputDataReactive()$design,
+        design_name = designReactive(),
         extension = "qs"
       )
     },
@@ -664,7 +681,7 @@ observe({
     filename = function() {
       generate_filename(
         base_name = "exploreDE_Data",
-        design_name = inputDataReactive()$design,
+        design_name = designReactive(),
         extension = "qs"
       )
     },
@@ -678,7 +695,7 @@ observe({
     filename = function() {
       generate_filename(
         base_name = "methods",
-        design_name = inputDataReactive()$design,
+        design_name = designReactive(),
         extension = "docx"
       )
     },

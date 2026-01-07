@@ -14,6 +14,23 @@ dataSummary <- function(data, varname, groupnames) {
   return(data_sum)
 }
 
+# Create reactive for design to use across all outputs and download handlers
+designReactive <- reactive({
+  req(inputDataReactive())
+  if (inputDataReactive()$dataType == "RNASeq") {
+    return(inputDataReactive()$design)
+  } else if (inputDataReactive()$dataType == "proteomics") {
+    if (isTruthy(input$contrastSelected)) {
+      return(input$contrastSelected)
+    } else {
+      return("No contrast selected")
+    }
+  } else if (inputDataReactive()$dataType == "CountQC") {
+    return(inputDataReactive()$design)
+  }
+  return("Unknown")
+})
+
 # Update a bunch of input options ----
 output$boxplotStatic <- renderPlot({
   NULL
@@ -602,7 +619,7 @@ lapply(c("boxplot", "barplot"), function(b) {
       plot_type_suffix <- if (b == "boxplot") "_Boxplot" else "_Barplot"
       generate_filename(
         base_name = paste0(input$filename_boxplot, plot_type_suffix),
-        design_name = inputDataReactive()$design,
+        design_name = designReactive(),
         extension = tolower(input$downloadFormatBoxplot)
       )
     },
@@ -623,7 +640,7 @@ output$dlTable_boxplot <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_boxplot, "_Counts"),
-      design_name = inputDataReactive()$design,
+      design_name = designReactive(),
       extension = "xlsx"
     )
   },
