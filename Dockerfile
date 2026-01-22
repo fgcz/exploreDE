@@ -6,8 +6,8 @@ RUN Rscript -e 'pak::pkg_install("ggplot2@3.5.2", ask = FALSE, dependencies = NA
 # Install glmpca for GLM-PCA ordination analysis
 RUN Rscript -e 'pak::pkg_install("glmpca", ask = FALSE, dependencies = NA)'
 
-# Update enrichplot for cex.params support in cnetplot
-RUN Rscript -e 'pak::pkg_install("enrichplot", ask = FALSE, dependencies = NA)'
+# Pin enrichplot to 1.28.4 for cex.params compatibility in cnetplot
+RUN Rscript -e 'pak::pkg_install("bioc::enrichplot@1.28.4", ask = FALSE, dependencies = NA)'
 
 # exploreDE is a special case where it is developed on gitlab but the app is hosted on github
 # RUN Rscript -e "devtools::install_github('fgcz/exploreDE', dependencies = FALSE, upgrade = 'never', force = TRUE, quiet = TRUE)"
