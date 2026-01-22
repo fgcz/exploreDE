@@ -7,7 +7,7 @@ RUN Rscript -e 'pak::pkg_install("ggplot2@3.5.2", ask = FALSE, dependencies = NA
 RUN Rscript -e 'pak::pkg_install("glmpca", ask = FALSE, dependencies = NA)'
 
 # Pin enrichplot to 1.28.4 for cex.params compatibility in cnetplot
-RUN Rscript -e 'remotes::install_version("enrichplot", version = "1.28.4", repos = BiocManager::repositories(), upgrade = "never")'
+RUN Rscript -e 'remotes::install_version("enrichplot", version = "1.28.2", repos = BiocManager::repositories(), upgrade = "never")'
 
 # exploreDE is a special case where it is developed on gitlab but the app is hosted on github
 # RUN Rscript -e "devtools::install_github('fgcz/exploreDE', dependencies = FALSE, upgrade = 'never', force = TRUE, quiet = TRUE)"
