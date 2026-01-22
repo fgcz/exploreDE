@@ -265,8 +265,7 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
         x = er,
         foldChange = log2RatioORA,
         showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
-        node_label = "none",
-        cex.params = list(category_label = (input$textSizeORA / 15), gene_label = (input$textSizeORA / 18), gene_node = input$nodeSizeORA / 10, category_node = input$nodeSizeORA / 8)
+        node_label = "none"
       )
       # Set the colour limits to the user-specified values
       cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange > input$scaleLimORA] <- input$scaleLimORA

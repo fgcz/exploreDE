@@ -352,13 +352,7 @@ observeEvent(
       x = current_er_symbol,
       node_label = "none",
       foldChange = log2RatioGSEA,
-      showCategory = current_er_symbol@result$Description[input$selectedTable_GSEA_rows_selected],
-      cex.params = list(
-        category_label = input$textSizeGSEA / 15,
-        gene_label = input$textSizeGSEA / 18,
-        gene_node = input$nodeSizeGSEA / 10,
-        category_node = input$nodeSizeGSEA / 8
-      )
+      showCategory = current_er_symbol@result$Description[input$selectedTable_GSEA_rows_selected]
     )
 
     # Apply colour scale limits
