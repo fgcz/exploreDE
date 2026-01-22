@@ -118,7 +118,7 @@ tabItem(
                         sliderInput(
                             inputId = "figHeightHeatmap",
                             label = "Figure height (px)",
-                            min = 1000,
+                            min = 100,
                             max = 4000,
                             value = 800,
                             step = 100,

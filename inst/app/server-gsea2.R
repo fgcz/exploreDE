@@ -508,7 +508,7 @@ observeEvent(
     rs <- enrichplot::gseaplot2(
       x = current_er,
       geneSetID = input$selectedTable_GSEA_rows_selected,
-      color = RColorBrewer::brewer.pal(length(input$selectedTable_GSEA_rows_selected), "Set2")
+      color = RColorBrewer::brewer.pal(max(3, length(input$selectedTable_GSEA_rows_selected)), "Set2")[seq_along(input$selectedTable_GSEA_rows_selected)]
     )
 
     gseaPlotReactive$runningscore <- rs
