@@ -16,7 +16,7 @@ invisible(lapply(packagesToLoad, function(pkg) {
 }))
 cat("... packages loaded!")
 reactiveConsole(TRUE)
-source("telemetry_module.R")
+if (file.exists("telemetry_module.R")) source("telemetry_module.R")
 
 my_theme <- create_theme(
   adminlte_color(
@@ -68,7 +68,7 @@ ui <- dashboardPage(
     sidebarMenuOutput("sidebarMenu")
   ),
   dashboardBody(
-    use_telemetry_js(),
+    if (exists("use_telemetry_js")) use_telemetry_js(),
     use_theme(my_theme),
     tags$head(
       tags$link(rel = "shortcut icon", href = "sushi.png"),
@@ -223,13 +223,18 @@ server <- function(input, output, session) {
 
   source("server-initInputData.R", local = TRUE)
 
-  # Telemetry
+  # Telemetry (skipped when DB directory is unavailable, e.g. local dev)
   telemetry_app_name <- "exploreDE_genomics"
   if (exists("dataType") && dataType == "proteomics") {
     telemetry_app_name <- "exploreDE_proteomics"
   }
-  telemetry <- setup_telemetry_global(telemetry_app_name)
-  start_telemetry_server(input, session, telemetry)
+  telemetry_db_dir <- "/srv/shiny-server/data"
+  telemetry_ready <- dir.exists(telemetry_db_dir) ||
+    dir.create(telemetry_db_dir, recursive = TRUE, showWarnings = FALSE)
+  if (exists("setup_telemetry_global") && telemetry_ready) {
+    telemetry <- setup_telemetry_global(telemetry_app_name)
+    start_telemetry_server(input, session, telemetry)
+  }
   # Source download helpers (adjust path as needed for deployment structure)
   if (file.exists("../../R/downloadHelpers.R")) {
     source("../../R/downloadHelpers.R")
