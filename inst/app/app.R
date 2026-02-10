@@ -228,11 +228,11 @@ server <- function(input, output, session) {
   if (exists("dataType") && dataType == "proteomics") {
     telemetry_app_name <- "exploreDE_proteomics"
   }
-  telemetry_db_dir <- "/srv/shiny-server/data"
+  telemetry_db_dir <- "/srv/shiny-server/fgcz_apps/telemetry_reader/apps_data"
   telemetry_ready <- dir.exists(telemetry_db_dir) ||
     dir.create(telemetry_db_dir, recursive = TRUE, showWarnings = FALSE)
   if (exists("setup_telemetry_global") && telemetry_ready) {
-    telemetry <- setup_telemetry_global(telemetry_app_name)
+    telemetry <- setup_telemetry_global(telemetry_app_name, data_dir = "/srv/shiny-server/fgcz_apps/telemetry_reader/apps_data")
     start_telemetry_server(input, session, telemetry)
   }
   # Source download helpers (adjust path as needed for deployment structure)
