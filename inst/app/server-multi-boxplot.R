@@ -666,7 +666,16 @@ lapply(c("boxplot", "barplot"), function(b) {
       validate(
         need(length(multiGenesReactive$genes) > 0, "Please select at least one gene to plot.")
       )
-      multiBoxplotFiguresReactive[[b]]
+      tryCatch(
+        multiBoxplotFiguresReactive[[b]],
+        error = function(e) {
+          showNotification(
+            paste("Multi-Contrast", b, "render error:", e$message),
+            type = "error", duration = 15
+          )
+          NULL
+        }
+      )
     },
     width = function() {
       as.numeric(input$figWidthMultiBoxplot)

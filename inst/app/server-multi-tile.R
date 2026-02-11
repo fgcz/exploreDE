@@ -249,6 +249,7 @@ observeEvent(
     ignoreInit = FALSE,
     {
         req(multiDeReactive$results)
+        tryCatch({
         results <- multiDeReactive$results
         matList <- multiMatReactive()$matList
         dfList <- multiMatReactive()$dfList
@@ -365,7 +366,9 @@ observeEvent(
         # Ensure valid colors
         fontcolors[is.na(fontcolors)] <- "#000000"
 
-        rowAnno <- ComplexHeatmap::rowAnnotation(rows = anno_text(as.character(highlightCols), gp = gpar(fontsize = fontsizes, fontface = fontfaces, col = fontcolors)))
+        # Explicit character conversion for anno_text (ComplexHeatmap requires character input)
+        txt_labels <- as.character(highlightCols)
+        rowAnno <- ComplexHeatmap::rowAnnotation(rows = anno_text(txt_labels, gp = gpar(fontsize = fontsizes, fontface = fontfaces, col = fontcolors)))
 
         # Get some colours for the tiles
         at <- c(input$tileAtLow, input$tileAtMid, input$tileAtHigh)
@@ -446,6 +449,14 @@ observeEvent(
         tilePlots$top <- hm
         tilePlots$mat1 <- mat1
         tilePlots$df3 <- df3
+        }, error = function(e) {
+            msg <- paste0("Tile plot build error: ", e$message,
+                          "\nCall: ", deparse(conditionCall(e)))
+            showNotification(msg, type = "error", duration = 30)
+            tilePlots$top <- NULL
+            tilePlots$mat1 <- NULL
+            tilePlots$df3 <- NULL
+        })
     },
 )
 
@@ -459,7 +470,15 @@ output$TopNTileMap <- renderPlot(
             return()
         }
         validate(need(nrow(tilePlots$mat1) > 0, "No genes meet the selected criteria (LFC/P-value thresholds)."))
-        draw(tilePlots$top, merge_legend = TRUE)
+        tryCatch(
+            draw(tilePlots$top, merge_legend = TRUE),
+            error = function(e) {
+                msg <- paste0("Top tile render error: ", e$message,
+                              "\nCall: ", deparse(conditionCall(e)))
+                showNotification(msg, type = "error", duration = 30)
+                plot.new(); text(0.5, 0.5, msg, cex = 0.8)
+            }
+        )
     },
     width = function() as.numeric(input$figWidthTile),
     height = function() as.numeric(input$figHeightTile)
@@ -776,7 +795,13 @@ lapply(c("Custom", "GO"), function(plotty) {
         {
             hm <- if (plotty == "Custom") tilePlots$custom else tilePlots$go
             validate(need(!is.null(hm), "No genes selected or meeting criteria for this plot."))
-            draw(hm, merge_legend = TRUE)
+            tryCatch(
+                draw(hm, merge_legend = TRUE),
+                error = function(e) {
+                    showNotification(paste(plotty, "tile plot render error:", e$message), type = "error", duration = 15)
+                    plot.new(); text(0.5, 0.5, paste("Render error:", e$message), cex = 1.2)
+                }
+            )
         },
         width = function() as.numeric(input$figWidthTile),
         height = function() as.numeric(input$figHeightTile)
