@@ -308,6 +308,7 @@ observeEvent(
                     tryCatch(
                         multiUpsetReactive$plot,
                         error = function(e) {
+                            if (inherits(e, "shiny.silent.error")) stop(e)
                             msg <- paste0("Venn render error: ", e$message,
                                           "\nCall: ", deparse(conditionCall(e)))
                             showNotification(msg, type = "error", duration = 30)
@@ -457,6 +458,7 @@ observeEvent(
                         tryCatch(
                             draw(ht),
                             error = function(e) {
+                                if (inherits(e, "shiny.silent.error")) stop(e)
                                 msg <- paste0("Upset render error: ", e$message,
                                               "\nCall: ", deparse(conditionCall(e)))
                                 showNotification(msg, type = "error", duration = 30)
@@ -511,6 +513,7 @@ observeEvent(
             }
         }
         }, error = function(e) {
+            if (inherits(e, "shiny.silent.error")) stop(e)
             msg <- paste0("Upset/Venn build error: ", e$message,
                           "\nCall: ", deparse(conditionCall(e)))
             showNotification(msg, type = "error", duration = 30)

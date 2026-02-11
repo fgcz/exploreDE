@@ -395,6 +395,7 @@ multiBoxplotCountsReactive <- eventReactive(
       "pvalueDF" = pvalueDF
     ))
     }, error = function(e) {
+      if (inherits(e, "shiny.silent.error")) stop(e)
       showNotification(
         paste("Multi-Contrast Boxplot data error:", e$message),
         type = "error", duration = 15
@@ -648,6 +649,7 @@ observeEvent(
 
     multiBoxplotFiguresReactive$barplot <- barplot
     }, error = function(e) {
+      if (inherits(e, "shiny.silent.error")) stop(e)
       showNotification(
         paste("Multi-Contrast Boxplot render error:", e$message),
         type = "error", duration = 15
@@ -669,6 +671,7 @@ lapply(c("boxplot", "barplot"), function(b) {
       tryCatch(
         multiBoxplotFiguresReactive[[b]],
         error = function(e) {
+          if (inherits(e, "shiny.silent.error")) stop(e)
           showNotification(
             paste("Multi-Contrast", b, "render error:", e$message),
             type = "error", duration = 15

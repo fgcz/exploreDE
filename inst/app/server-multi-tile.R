@@ -450,6 +450,7 @@ observeEvent(
         tilePlots$mat1 <- mat1
         tilePlots$df3 <- df3
         }, error = function(e) {
+            if (inherits(e, "shiny.silent.error")) stop(e)
             msg <- paste0("Tile plot build error: ", e$message,
                           "\nCall: ", deparse(conditionCall(e)))
             showNotification(msg, type = "error", duration = 30)
@@ -473,6 +474,7 @@ output$TopNTileMap <- renderPlot(
         tryCatch(
             draw(tilePlots$top, merge_legend = TRUE),
             error = function(e) {
+                if (inherits(e, "shiny.silent.error")) stop(e)
                 msg <- paste0("Top tile render error: ", e$message,
                               "\nCall: ", deparse(conditionCall(e)))
                 showNotification(msg, type = "error", duration = 30)
@@ -798,6 +800,7 @@ lapply(c("Custom", "GO"), function(plotty) {
             tryCatch(
                 draw(hm, merge_legend = TRUE),
                 error = function(e) {
+                    if (inherits(e, "shiny.silent.error")) stop(e)
                     showNotification(paste(plotty, "tile plot render error:", e$message), type = "error", duration = 15)
                     plot.new(); text(0.5, 0.5, paste("Render error:", e$message), cex = 1.2)
                 }
