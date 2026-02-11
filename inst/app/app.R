@@ -15,6 +15,8 @@ invisible(lapply(packagesToLoad, function(pkg) {
   suppressPackageStartupMessages(suppressWarnings(library(pkg, character.only = TRUE, quietly = TRUE)))
 }))
 cat("... packages loaded!")
+# Ensure shiny::validate is not masked by jsonlite::validate
+validate <- shiny::validate
 reactiveConsole(TRUE)
 if (file.exists("telemetry_module.R")) source("telemetry_module.R")
 

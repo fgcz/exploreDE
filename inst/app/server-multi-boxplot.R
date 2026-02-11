@@ -240,7 +240,6 @@ multiBoxplotCountsReactive <- eventReactive(
     d <- multiBoxplotDataReactive() # Proxy
     req(input$multiBoxKeepBucket[[1]] %in% d$dataset[[input$multiBoxplotFactor1]])
 
-    tryCatch({
     genesToPlot <- debouncedMultiBoxplotFactor1()
     if (length(genesToPlot) > 50) {
       genesToPlot <- genesToPlot[1:50]
@@ -394,14 +393,6 @@ multiBoxplotCountsReactive <- eventReactive(
       "countsBarplot" = countsBarplot,
       "pvalueDF" = pvalueDF
     ))
-    }, error = function(e) {
-      if (inherits(e, "shiny.silent.error")) stop(e)
-      showNotification(
-        paste("Multi-Contrast Boxplot data error:", e$message),
-        type = "error", duration = 15
-      )
-      return(NULL)
-    })
   }
 )
 
@@ -463,7 +454,6 @@ observeEvent(
   ignoreInit = FALSE,
   {
     req(!is.null(multiBoxplotCountsReactive()$countsBoxplotMelt))
-    tryCatch({
     d <- multiBoxplotCountsReactive()
     datasetBoxplot <- d$datasetBoxplot
     countsBoxplot <- d$countsBoxplot
@@ -648,13 +638,6 @@ observeEvent(
     barplot <- barplot + theme_prism(base_size = input$textSizeMultiBoxplot)
 
     multiBoxplotFiguresReactive$barplot <- barplot
-    }, error = function(e) {
-      if (inherits(e, "shiny.silent.error")) stop(e)
-      showNotification(
-        paste("Multi-Contrast Boxplot render error:", e$message),
-        type = "error", duration = 15
-      )
-    })
   }
 )
 
@@ -668,17 +651,7 @@ lapply(c("boxplot", "barplot"), function(b) {
       validate(
         need(length(multiGenesReactive$genes) > 0, "Please select at least one gene to plot.")
       )
-      tryCatch(
-        multiBoxplotFiguresReactive[[b]],
-        error = function(e) {
-          if (inherits(e, "shiny.silent.error")) stop(e)
-          showNotification(
-            paste("Multi-Contrast", b, "render error:", e$message),
-            type = "error", duration = 15
-          )
-          NULL
-        }
-      )
+      multiBoxplotFiguresReactive[[b]]
     },
     width = function() {
       as.numeric(input$figWidthMultiBoxplot)

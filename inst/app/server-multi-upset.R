@@ -282,7 +282,6 @@ observeEvent(
     ignoreInit = TRUE,
     {
         req(input$dataToUpset)
-        tryCatch({
         dataToUse <- switch(input$dataToUpset,
             "Genes" = "genesList",
             "ORA" = "oraList",
@@ -305,16 +304,7 @@ observeEvent(
             multiUpsetReactive$plot <- ggvenn::ggvenn(gl1, fill_color = as.character(colours), set_name_size = input$textSizeUpset * 0.5, text_size = input$textSizeUpset * 0.4)
             output$UpsetPlot <- renderPlot(
                 {
-                    tryCatch(
-                        multiUpsetReactive$plot,
-                        error = function(e) {
-                            if (inherits(e, "shiny.silent.error")) stop(e)
-                            msg <- paste0("Venn render error: ", e$message,
-                                          "\nCall: ", deparse(conditionCall(e)))
-                            showNotification(msg, type = "error", duration = 30)
-                            plot.new(); text(0.5, 0.5, msg, cex = 0.8)
-                        }
-                    )
+                    multiUpsetReactive$plot
                 },
                 width = as.numeric(input$figWidthUpset),
                 height = as.numeric(input$figHeightUpset) * 2
@@ -455,16 +445,7 @@ observeEvent(
                         validate(
                             need(length(g()) > 0, "There are no overlapping DEGs/pathways based on current settings/input data.")
                         )
-                        tryCatch(
-                            draw(ht),
-                            error = function(e) {
-                                if (inherits(e, "shiny.silent.error")) stop(e)
-                                msg <- paste0("Upset render error: ", e$message,
-                                              "\nCall: ", deparse(conditionCall(e)))
-                                showNotification(msg, type = "error", duration = 30)
-                                plot.new(); text(0.5, 0.5, msg, cex = 0.8)
-                            }
-                        )
+                        draw(ht)
                     },
                     width = as.numeric(input$figWidthUpset),
                     height = as.numeric(input$figHeightUpset)
@@ -512,15 +493,6 @@ observeEvent(
                 }
             }
         }
-        }, error = function(e) {
-            if (inherits(e, "shiny.silent.error")) stop(e)
-            msg <- paste0("Upset/Venn build error: ", e$message,
-                          "\nCall: ", deparse(conditionCall(e)))
-            showNotification(msg, type = "error", duration = 30)
-            output$UpsetPlot <- renderPlot({
-                plot.new(); text(0.5, 0.5, msg, cex = 0.8)
-            })
-        })
     }
 )
 
