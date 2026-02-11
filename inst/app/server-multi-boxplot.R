@@ -240,11 +240,12 @@ multiBoxplotCountsReactive <- eventReactive(
     d <- multiBoxplotDataReactive() # Proxy
     req(input$multiBoxKeepBucket[[1]] %in% d$dataset[[input$multiBoxplotFactor1]])
 
+    tryCatch({
     genesToPlot <- debouncedMultiBoxplotFactor1()
     if (length(genesToPlot) > 50) {
       genesToPlot <- genesToPlot[1:50]
     }
-    
+
     datasetBoxplot <- d$dataset
     # STRICT Order
     datasetBoxplot$Name <- factor(datasetBoxplot$Name, levels = datasetBoxplot$Name)
@@ -269,7 +270,7 @@ multiBoxplotCountsReactive <- eventReactive(
     if (d$dataType == "proteomics") {
       rownames(countsBoxplot) <- gsub("\\~.*", "", rownames(countsBoxplot))
     }
-    
+
     countsBoxplot <- as.data.frame(t(countsBoxplot))
     countsBoxplot$Name <- rownames(countsBoxplot)
     countsBoxplot <- countsBoxplot %>% dplyr::select(all_of(c("Name", genesToPlot))) # strictly select only needed
@@ -295,7 +296,7 @@ multiBoxplotCountsReactive <- eventReactive(
       names(shapes) <- levels(as.factor(countsBoxplot[[input$multiBoxplotFactor2]]))
       countsBoxplotMelt$shapes <- shapes[match(as.character(countsBoxplotMelt[[input$multiBoxplotFactor2]]), names(shapes))]
     }
-    
+
     # NEW MULTI-CONTRAST P-VALUE LOGIC
     # Replaces single-contrast logic from boxplot.R
     pvalueDF <- list()
@@ -305,10 +306,10 @@ multiBoxplotCountsReactive <- eventReactive(
             # Find comparison groups
             group1 <- NULL
             group2 <- NULL
-            
+
             # Helper to parse param$comparison or design string
             designStr <- if (!is.null(res$param$comparison)) res$param$comparison else if (!is.null(res$design)) res$design else ""
-            
+
             if (grepl("--over--", designStr)) {
                 parts <- strsplit(designStr, "--over--")[[1]]
                 group1 <- parts[1]
@@ -322,10 +323,10 @@ multiBoxplotCountsReactive <- eventReactive(
                  group1 <- parts[1]
                  group2 <- parts[2]
             }
-            
+
             # If we successfully parsed groups, and genes match
             if (!is.null(group1) && !is.null(group2)) {
-                 
+
                  # Filtering Step: Only show P-values if the contrast groups exist in the currently plotted factor
                  currentFactorLevels <- unique(datasetBoxplot[[input$multiBoxplotFactor1]])
                  if (!all(c(group1, group2) %in% currentFactorLevels)) {
@@ -336,7 +337,7 @@ multiBoxplotCountsReactive <- eventReactive(
                  # Ensure unique Gene ID matching if possible, or use gene_name
                  # Assuming feature level gene_name
                  matched <- sa[sa$gene_name %in% genesToPlot, ]
-                 
+
                  if (nrow(matched) > 0) {
                      df <- data.frame(
                          Feature = matched$gene_name,
@@ -353,7 +354,7 @@ multiBoxplotCountsReactive <- eventReactive(
         }
     }
     pvalueDF <- do.call(rbind, pvalueDF)
-    
+
     if (!is.null(pvalueDF)) {
          pvalueDF$Feature <- factor(pvalueDF$Feature, levels = genesToPlot)
          pvalueDF <- rstatix::add_significance(
@@ -363,11 +364,11 @@ multiBoxplotCountsReactive <- eventReactive(
             cutpoints = c(0, 1e-04, 0.001, 0.01, 0.05, 1),
             symbols = c("****", "***", "**", "*", "ns")
          )
-         
+
          # Calculate y.positions based on max counts
          # We need max count per feature
          maxC <- tapply(countsBoxplotMelt$Counts, countsBoxplotMelt$Feature, max, na.rm=TRUE)
-         
+
          pvalueDF$y.position <- 0
          for (i in 1:nrow(pvalueDF)) {
              ft <- as.character(pvalueDF$Feature[i])
@@ -393,6 +394,13 @@ multiBoxplotCountsReactive <- eventReactive(
       "countsBarplot" = countsBarplot,
       "pvalueDF" = pvalueDF
     ))
+    }, error = function(e) {
+      showNotification(
+        paste("Multi-Contrast Boxplot data error:", e$message),
+        type = "error", duration = 15
+      )
+      return(NULL)
+    })
   }
 )
 
@@ -454,26 +462,27 @@ observeEvent(
   ignoreInit = FALSE,
   {
     req(!is.null(multiBoxplotCountsReactive()$countsBoxplotMelt))
+    tryCatch({
     d <- multiBoxplotCountsReactive()
     datasetBoxplot <- d$datasetBoxplot
     countsBoxplot <- d$countsBoxplot
     countsBoxplotMelt <- d$countsBoxplotMelt
     countsBarplot <- d$countsBarplot
     pvalueDF <- d$pvalueDF
-    
+
     genesToPlot <- levels(as.factor(countsBoxplotMelt$Feature))
-    
+
     # Fetch Group Colours
     groupLevels <- levels(as.factor(countsBoxplotMelt[[input$multiBoxplotFactor1]]))
     cols <- setNames(lapply(groupLevels, function(lvl) {
-        
+
         # Check Main App Group Colours (from Colours Tab)
         # ID format from server-summary.R: paste0("GroupColour", FactorName, LevelName)
         # We need to construct this ID using the selected factor and the current level.
         # Note: server-summary.R iterates factorLevels. We assume input$multiBoxplotFactor1 is the FactorName.
         inputId <- paste0("GroupColour", input$multiBoxplotFactor1, lvl)
         col <- input[[inputId]]
-        
+
         if (is.null(col)) {
              # Fallback if input not ready
              "grey50"
@@ -512,40 +521,40 @@ observeEvent(
     if (input$multiBoxplotShowMeanBar & input$multiBoxplotMeanBarFront) {
       boxplot <- boxplot + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$multiBoxplotMeanLine, show.legend = FALSE)
     }
-    
+
     if (input$multiBoxplotGrey) {
       boxplot <- boxplot + scale_colour_grey() + scale_fill_grey()
     } else {
       boxplot <- boxplot + scale_fill_manual(values = cols)
     }
-    
+
     if (input$multiBoxplotConditionFormat) {
       xlabs <- levels(countsBoxplotMelt[[input$multiBoxplotFactor1]])
       xlabs <- gsub("\\_|\\.|\\ |\\/", "\n", xlabs)
       boxplot <- boxplot + scale_x_discrete(labels = xlabs)
     }
-    
+
     ylabToPlot <- paste(input$multiBoxplotCounts, "Counts")
     if (input$multiBoxplotCountsLog) ylabToPlot <- paste(ylabToPlot, "(Log2)")
     if (input$multiBoxplotZScore) ylabToPlot <- paste(ylabToPlot, "[Z-score]")
     boxplot <- boxplot + labs(y = ylabToPlot)
-    
+
     boxplot <- boxplot + facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol)
-    
+
     if (input$multiBoxplotVertLines) {
       boxplot <- boxplot + geom_vline(xintercept = seq_along(input$multiBoxKeepBucket)[-length(seq_along(input$multiBoxKeepBucket))] + 0.5, linetype = "dashed", alpha = 0.7)
     }
-    
+
     # MULTI-CONTRAST P-VALUE PLOTTING
     if (input$multiBoxplotShowP && !is.null(pvalueDF) && nrow(pvalueDF) > 0) {
-        
+
         # Get unique contrasts
         contrasts <- unique(pvalueDF$Contrast)
-        
+
         for (i in seq_along(contrasts)) {
             con <- contrasts[i]
             dat <- pvalueDF[pvalueDF$Contrast == con, ]
-            
+
             # Stacking offset
             # If stack is ON, add offset * i.
             # Base Y is already set to max(count).
@@ -553,30 +562,30 @@ observeEvent(
             if (input$multiBoxplotPStack) {
                 offset <- (i - 1) * (max(countsBoxplotMelt$Counts, na.rm=TRUE) * (input$multiBoxplotPStackOffset / 10))
             }
-            
+
             # Check if y.position exists and add offset
             if (!is.null(dat$y.position)) {
                 # P Height (Dodge) controls the buffer above the boxplot default y
                 buffer <- if (input$multiBoxplotShowPDodge > 0) (input$multiBoxplotShowPDodge / 20) else 0
                 dat$y.position <- dat$y.position + (dat$y.position * buffer) + offset
             }
-            
+
             # Fetch colour from Data Selection inputs
             colInput <- input[[paste0("multiGroupColour", gsub(" ", "_", con))]]
             if (is.null(colInput)) colInput <- "black"
-            
+
             # User option to force black P-values
             if (!input$multiBoxplotColourP) {
                 colInput <- "black"
             }
-            
+
             # Manual Bracket Shortening
             # Map group1/group2 to x-coordinates
             # We must use the exact levels used in the plot
             x_levels <- levels(as.factor(countsBoxplotMelt[[input$multiBoxplotFactor1]]))
             dat$x1 <- match(dat$group1, x_levels)
             dat$x2 <- match(dat$group2, x_levels)
-            
+
             # Apply shortening symmetrically
             # Logic: Center = (x1 + x2) / 2. Original Width = abs(x1 - x2).
             # New Width = Original Width * (1 - shorten_fraction)
@@ -588,7 +597,7 @@ observeEvent(
                 new_width <- width * (1 - input$multiBoxplotShowPBracketShorten)
                 dat$xmin <- center - (new_width / 2)
                 dat$xmax <- center + (new_width / 2)
-                
+
                 # Use xmin/xmax mapping
                 boxplot <- boxplot + stat_pvalue_manual(
                     data = dat,
@@ -621,11 +630,11 @@ observeEvent(
     }
 
     boxplot <- boxplot + theme_prism(base_size = input$textSizeMultiBoxplot, axis_text_angle = input$multiBoxplotConditionAngle, base_family = input$multiBoxplotFont, border = input$multiBoxplotPlotBorder)
-    
+
     if (!input$multiBoxplotShowConditions) {
       boxplot <- boxplot + theme(axis.text.x = element_blank())
     }
-    
+
     multiBoxplotFiguresReactive$boxplot <- boxplot
 
 
@@ -636,8 +645,14 @@ observeEvent(
     barplot <- barplot + facet_wrap(~Feature, scales = "free", ncol = input$multiBoxplotNCol)
     barplot <- barplot + geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = input$multiBoxplotBoxAlpha, show.legend = FALSE)
     barplot <- barplot + theme_prism(base_size = input$textSizeMultiBoxplot)
-    
+
     multiBoxplotFiguresReactive$barplot <- barplot
+    }, error = function(e) {
+      showNotification(
+        paste("Multi-Contrast Boxplot render error:", e$message),
+        type = "error", duration = 15
+      )
+    })
   }
 )
 
