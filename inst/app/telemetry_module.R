@@ -29,6 +29,29 @@ use_telemetry_js <- function() {
   )
 }
 
+# --- RETRY HELPER (Handles SQLite "database is locked" errors) ---
+with_retry <- function(expr, max_retries = 3, base_delay = 1) {
+  for (attempt in seq_len(max_retries + 1)) {
+    result <- tryCatch(
+      { expr; return(invisible(NULL)) },
+      error = function(e) e
+    )
+    if (!inherits(result, "error")) return(invisible(NULL))
+    if (!grepl("locked", result$message, ignore.case = TRUE)) {
+      warning("Telemetry non-retryable error: ", result$message)
+      return(invisible(NULL))
+    }
+    if (attempt <= max_retries) {
+      delay <- base_delay * (2 ^ (attempt - 1))
+      message(sprintf("Telemetry: DB locked, retry %d/%d in %.1fs", attempt, max_retries, delay))
+      Sys.sleep(delay)
+    } else {
+      warning("Telemetry: DB still locked after ", max_retries, " retries. Event dropped.")
+    }
+  }
+  invisible(NULL)
+}
+
 # --- 3. GLOBAL SETUP (With Concurrency Fix) ---
 setup_telemetry_global <- function(app_name, data_dir = "/srv/shiny-server/data") {
   if (!dir.exists(data_dir)) dir.create(data_dir, recursive = TRUE)
@@ -92,18 +115,18 @@ start_telemetry_server <- function(input, session, telemetry_obj) {
     user <- get_user_id()
     full_loc <- paste0("IP: ", input$public_ip_js, " -> ", get_location_info())
     
-    telemetry_obj$start_session(track_inputs = TRUE, track_values = TRUE, username = user)
+    with_retry(telemetry_obj$start_session(track_inputs = TRUE, track_values = TRUE, username = user))
     
-    telemetry_obj$log_custom_event("session_details", list(
+    with_retry(telemetry_obj$log_custom_event("session_details", list(
       project_info = get_project_info(),
       user_location = full_loc,
       user_agent   = session$request$HTTP_USER_AGENT
-    ))
+    )))
   }) |> bindEvent(input$public_ip_js, once = TRUE)
   
   observeEvent(input$page_click, {
-    telemetry_obj$log_custom_event("click_coordinates", list(
+    with_retry(telemetry_obj$log_custom_event("click_coordinates", list(
       x = input$page_click$x, y = input$page_click$y, element = input$page_click$elem
-    ))
+    )))
   })
 }
