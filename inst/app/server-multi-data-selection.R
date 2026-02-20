@@ -527,6 +527,17 @@ observeEvent(input$multiImportButton, {
             }
         }
     })
+
+    # Trigger menu update to show new multi-analysis tabs
+    currentTab <- isolate(input$tabs)
+    multiDeReactive$menuUpdateTrigger <- multiDeReactive$menuUpdateTrigger + 1
+
+    # After a brief delay, restore the tab selection
+    shinyjs::delay(100, {
+        if (!is.null(currentTab)) {
+            updateTabItems(session, "tabs", selected = currentTab)
+        }
+    })
 })
 
 # 3. Selected Datasets Management
