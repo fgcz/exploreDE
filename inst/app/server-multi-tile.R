@@ -163,9 +163,16 @@ multiMatReactive <- eventReactive(multiDeReactive$results, {
 
     rownames(df3) <- NULL
 
+    # Remove rows with missing or empty gene names (common in proteomics data)
+    df3 <- df3[!is.na(df3$Gene) & df3$Gene != "", ]
+
     # Handle duplicates before column_to_rownames
     if (any(duplicated(df3$Gene))) {
         df3 <- df3[!duplicated(df3$Gene), ]
+    }
+
+    if (nrow(df3) == 0) {
+        return(NULL)
     }
 
     df3 <- column_to_rownames(df3, "Gene")

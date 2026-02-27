@@ -35,6 +35,8 @@ Imports:
   shinylogs,
   parallel,
   plyr,
+  reshape2,
+  shinyjs,
   shinycssloaders,
   GGally,
   patchwork,
