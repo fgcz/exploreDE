@@ -10,8 +10,8 @@ multiDETableReactive <- reactive({
     # Get all unique genes across all contrasts
     allGenes <- unique(unlist(lapply(results, function(r) {
         seqAnno <- r$seqAnno
-        if ("gene_name" %in% colnames(seqAnno)) {
-            seqAnno$gene_name
+        if ("feature_id" %in% colnames(seqAnno)) {
+            seqAnno$feature_id
         } else if ("gene_id" %in% colnames(seqAnno)) {
             seqAnno$gene_id
         } else {
@@ -22,8 +22,8 @@ multiDETableReactive <- reactive({
     # Start with gene names and IDs from first contrast
     firstSeqAnno <- results[[1]]$seqAnno
     baseTable <- data.frame(
-        gene_name = if ("gene_name" %in% colnames(firstSeqAnno)) {
-            firstSeqAnno$gene_name
+        feature_id = if ("feature_id" %in% colnames(firstSeqAnno)) {
+            firstSeqAnno$feature_id
         } else if ("gene_id" %in% colnames(firstSeqAnno)) {
             firstSeqAnno$gene_id
         } else {
@@ -44,9 +44,9 @@ multiDETableReactive <- reactive({
     for (contrastName in names(results)) {
         seqAnno <- results[[contrastName]]$seqAnno
 
-        # Create a key for matching (gene_name)
-        seqAnno$match_key <- if ("gene_name" %in% colnames(seqAnno)) {
-            seqAnno$gene_name
+        # Create a key for matching (feature_id)
+        seqAnno$match_key <- if ("feature_id" %in% colnames(seqAnno)) {
+            seqAnno$feature_id
         } else if ("gene_id" %in% colnames(seqAnno)) {
             seqAnno$gene_id
         } else {
@@ -54,7 +54,7 @@ multiDETableReactive <- reactive({
         }
 
         # Match genes
-        matchIdx <- match(baseTable$gene_name, seqAnno$match_key)
+        matchIdx <- match(baseTable$feature_id, seqAnno$match_key)
 
         # Log2 fold change
         lfcCol <- grep("^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc|log2Ratio)$",

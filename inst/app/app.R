@@ -243,6 +243,7 @@ server <- function(input, output, session) {
   } else if (file.exists("R/downloadHelpers.R")) {
      source("R/downloadHelpers.R")
   }
+  source("server-featureBucket.R", local = TRUE)
   source("server-summary.R", local = TRUE)
   source("server-DEGTable.R", local = TRUE)
   source("server-volcano2.R", local = TRUE)

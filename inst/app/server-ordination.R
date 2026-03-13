@@ -559,7 +559,7 @@ ordinationResults <- reactive({
   # If proteomics and minimum number of peptides selected, subset the counts
   if (inputDataReactive()$dataType == "proteomics") {
     if (!is.null(input$nrPeptidePCA) && !is.null(inputDataReactive()$seqAnnoList)) {
-      countsOrd <- countsOrd[which(rownames(countsOrd) %in% inputDataReactive()$seqAnnoList[[1]]$gene_name[which(inputDataReactive()$seqAnnoList[[1]]$nrPeptides >= input$nrPeptidePCA)]), ]
+      countsOrd <- countsOrd[which(rownames(countsOrd) %in% inputDataReactive()$seqAnnoList[[1]]$feature_id[which(inputDataReactive()$seqAnnoList[[1]]$nrPeptides >= input$nrPeptidePCA)]), ]
     }
   }
 

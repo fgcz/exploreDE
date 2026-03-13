@@ -56,17 +56,19 @@ tabItem(
             checkboxInput(inputId = "volcanoLabelAllDown", label = "Label all Down", value = FALSE),
             helpText("You can both label all up/down features and select specific features."),
             tags$b("Annotate volcano plot with specific features?"),
+            uiOutput("fb_search_mode_volcano"),
             selectizeInput(
-              inputId = "volcanoGenes", label = "Select features to annotate", choices = NULL, selected = NULL, multiple = TRUE,
+              inputId = "fb_select_volcano", label = "Select features to annotate", choices = NULL, selected = NULL, multiple = TRUE,
               options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
               ),
-            textAreaInput(inputId = "volcanoGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4", cols = 1),
+            textAreaInput(inputId = "fb_text_volcano", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4", cols = 1),
             hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
             h5(
               "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly 
               include/exclude these features from highlighting as you need to by dragging and dropping them in order or into the exclude bucket."),
-            uiOutput("geneBucket2"),
-            actionButton(inputId = "resetGeneBucketVolcano", label = "Empty the bucket?", icon = icon("bucket")),
+            uiOutput("fb_bucket_volcano"),
+            actionButton(inputId = "fb_add_brushed", label = "Add brushed genes to bucket", icon = icon("arrow-right")),
+            actionButton(inputId = "fb_reset_volcano", label = "Empty the bucket?", icon = icon("bucket")),
             hr(style = "border-top: 1px solid #000000;"), h4("Volcano colours"),
             checkboxInput(inputId = "volcanoAnnotationHighlightColour", label = "Use special highlight colour?", value = F),
             uiOutput("volcanoColourPicker")
@@ -133,7 +135,7 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Static",
-            helpText("If you click and drag on the volcano plot to select features, they will automatically be added to your feature bucket in other tabs too, e.g., boxplots, heatmaps."),
+            helpText("Click and drag on the volcano plot to select features. Brushed genes are annotated on the plot immediately. Use the 'Add brushed genes to bucket' button to push them to the shared feature bucket for boxplots, heatmaps, etc."),
             textOutput("volcanoDesign"),
             plotOutput("volcanoStatic", inline = TRUE, brush = "volcanoBrush"),
             br(), br(),

@@ -66,7 +66,8 @@ tabItem(
           width = 3,
           solidHeader = TRUE,
           status = "primary",
-          uiOutput("geneBucketDEG")
+          uiOutput("fb_bucket_deg"),
+          actionButton(inputId = "fb_reset_deg", label = "Empty the bucket?", icon = icon("bucket"))
         )
       )
     )

@@ -226,15 +226,16 @@ tabItem(
             column(
               width = 3,
               helpText("Plot the expression of any feature detected, irrespective of the DE test. Requires at least three features."),
+              uiOutput("fb_search_mode_heatmap"),
               selectizeInput(
-                inputId = "heatmapGenes", label = "Features to heatmap:", multiple = TRUE, choices = NULL, selected = NULL, 
+                inputId = "fb_select_heatmap", label = "Features to heatmap:", multiple = TRUE, choices = NULL, selected = NULL,
                 options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
               ),
-              textAreaInput(inputId = "heatmapGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1),
+              textAreaInput(inputId = "fb_text_heatmap", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1),
               textAreaInput(inputId = "heatmapCustomTitle", label = "Enter a title for the heatmap", value = "Custom Heatmap"),
               hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
-              uiOutput("geneBucket3"),
-              actionButton(inputId = "resetGeneBucketHeatmap", label = "Empty the bucket?", icon = icon("bucket")),
+              uiOutput("fb_bucket_heatmap"),
+              actionButton(inputId = "fb_reset_heatmap", label = "Empty the bucket?", icon = icon("bucket")),
             ),
             column(
               width = 9,

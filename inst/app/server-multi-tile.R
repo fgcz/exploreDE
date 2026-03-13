@@ -20,7 +20,7 @@ multiMatReactive <- eventReactive(multiDeReactive$results, {
         }
 
         df1 <- data.frame(
-            "Gene" = seqAnno$gene_name,
+            "Gene" = seqAnno$feature_id,
             "LFC" = seqAnno$log2Ratio,
             "pValue" = seqAnno$pValue,
             "FDR" = seqAnno$fdr
@@ -75,23 +75,23 @@ multiMatReactive <- eventReactive(multiDeReactive$results, {
             }
         }
 
-        # Ensure gene_name exists
-        if (is.null(degTable$gene_name)) {
+        # Ensure feature_id exists
+        if (is.null(degTable$feature_id)) {
             if ("Gene" %in% colnames(degTable)) {
-                degTable$gene_name <- degTable$Gene
+                degTable$feature_id <- degTable$Gene
             } else {
-                degTable$gene_name <- rownames(degTable)
+                degTable$feature_id <- rownames(degTable)
             }
         }
 
         # Ensure vectors are not NULL to prevent data.frame from dropping columns
-        if (is.null(degTable$gene_name)) degTable$gene_name <- character(0)
+        if (is.null(degTable$feature_id)) degTable$feature_id <- character(0)
         if (is.null(degTable$log2Ratio)) degTable$log2Ratio <- numeric(0)
         if (is.null(degTable$pValue)) degTable$pValue <- numeric(0)
         if (is.null(degTable$fdr)) degTable$fdr <- numeric(0)
 
         df1 <- data.frame(
-            "Gene" = degTable$gene_name,
+            "Gene" = degTable$feature_id,
             "LFC" = degTable$log2Ratio,
             "pValue" = degTable$pValue,
             "FDR" = degTable$fdr
@@ -602,7 +602,7 @@ observeEvent(
             }
 
             if (!is.null(firstTable) && !is.null(firstTable$`GO BP`)) {
-                customList[["GO"]][["highlightersC"]] <- firstTable$gene_name[grep(
+                customList[["GO"]][["highlightersC"]] <- firstTable$feature_id[grep(
                     (input$tileGenesPathway %>% strsplit(" ") %>% .[[1]] %>% .[1]),
                     paste(
                         firstTable$`GO BP`,

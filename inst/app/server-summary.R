@@ -596,24 +596,24 @@ observe({
         if (input$log2DownloadedCounts & !input$downloadCount %in% c("Normalised + Log2", "VST")) {
           ctdl <- log2(ctdl + 1)
         }
-        ctdl <- as.data.frame(ctdl) %>% rownames_to_column("gene_name")
+        ctdl <- as.data.frame(ctdl) %>% rownames_to_column("feature_id")
 
         # Try to add annotation columns if they exist
-        anno_cols <- c("gene_id", "transcript_id", "gene_name")
+        anno_cols <- c("gene_id", "transcript_id", "feature_id")
         valid_cols <- intersect(anno_cols, colnames(inputDataReactive()$seqAnno))
         if (length(valid_cols) > 0) {
-          ctdl <- ctdl %>% left_join(inputDataReactive()$seqAnno[, valid_cols, drop = FALSE], by = "gene_name")
+          ctdl <- ctdl %>% left_join(inputDataReactive()$seqAnno[, valid_cols, drop = FALSE], by = "feature_id")
         }
 
         # Add DE statistics if requested (RNASeq only, not CountQC)
         if (inputDataReactive()$dataType == "RNASeq" &&
             !is.null(input$includeDEStats) &&
             input$includeDEStats) {
-          de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+          de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
           valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
-          if (length(valid_de_cols) > 1) {  # More than just gene_name
+          if (length(valid_de_cols) > 1) {  # More than just feature_id
             de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
-            ctdl <- ctdl %>% left_join(de_data, by = "gene_name")
+            ctdl <- ctdl %>% left_join(de_data, by = "feature_id")
           }
         }
 
@@ -624,17 +624,17 @@ observe({
           table_name = "CountData"
         )
       } else if (inputDataReactive()$dataType == "proteomics") {
-        ctdl <- as.data.frame(countList[[input$downloadCount]]) %>% rownames_to_column("gene_name")
+        ctdl <- as.data.frame(countList[[input$downloadCount]]) %>% rownames_to_column("feature_id")
 
         # Add DE statistics if requested
         if (!is.null(input$includeDEStats) &&
             input$includeDEStats &&
             !is.null(input$contrastSelected)) {
-          de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+          de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
           valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
           if (length(valid_de_cols) > 1) {
             de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
-            ctdl <- ctdl %>% left_join(de_data, by = "gene_name")
+            ctdl <- ctdl %>% left_join(de_data, by = "feature_id")
           }
         }
 

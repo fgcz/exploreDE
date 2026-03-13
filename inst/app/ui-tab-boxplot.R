@@ -47,12 +47,13 @@ tabItem(
           id = "boxplotSettingsTabs",
           tabPanel(
             title = "Main settings",
+            uiOutput("fb_search_mode_boxplot"),
             selectizeInput(
-              inputId = "boxplotGenes", label = "Features for Boxplots:", multiple = TRUE, choices = NULL, selected = NULL,
+              inputId = "fb_select_boxplot", label = "Features for Boxplots:", multiple = TRUE, choices = NULL, selected = NULL,
               options = list(placeholder = "Select features", plugins = list("remove_button", "drag_drop", "restore_on_backspace", "clear_button"))
             ),
             helpText("Drag and drop to rearragne feature orders. You can also search for features by typing in the box above."),
-            textAreaInput(inputId = "boxplotGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1, rows = 2, resize = "vertical"),
+            textAreaInput(inputId = "fb_text_boxplot", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1, rows = 2, resize = "vertical"),
             uiOutput("boxplotGTError"),
             selectInput(inputId = "boxplotFactor1", label = "Select the main factor to plot by", choices = NULL, selected = NULL, multiple = FALSE),
             selectInput(inputId = "boxplotFactor2", label = "Select a second factor to plot by", choices = NULL, selected = NULL, multiple = FALSE),
@@ -68,8 +69,8 @@ tabItem(
               "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly
               include/exclude these features from the plots as you need to by dragging and dropping them in order or into the exclude bucket."
             ),
-            uiOutput("geneBucket1"),
-            actionButton(inputId = "resetGeneBucketBoxplot", label = "Empty the bucket?", icon = icon("bucket")),
+            uiOutput("fb_bucket_boxplot"),
+            actionButton(inputId = "fb_reset_boxplot", label = "Empty the bucket?", icon = icon("bucket")),
             hr(style = "border-top: 1px solid #000000;"),
             uiOutput("bucket")
           ),

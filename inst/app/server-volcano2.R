@@ -37,84 +37,13 @@ outputOptions(output, "volcanoColourPicker", suspendWhenHidden = FALSE)
 
 updateSelectizeInput(
   session = session,
-  inputId = "volcanoGenes",
+  inputId = "fb_select_volcano",
   choices = inputDataReactive()$genes,
   selected = "",
   server = TRUE
 )
 
-observeEvent(
-  {
-    genesReactive
-  },
-  {
-    output$geneBucket2 <- renderUI({
-      # Preserve current bucket state
-      currentInclude <- if (!is.null(input$volcanoKeepBucketGenes)) input$volcanoKeepBucketGenes else c()
-      currentExclude <- if (!is.null(input$boxExcludeBucketGenes)) input$boxExcludeBucketGenes else c()
-
-      # Get new genes that aren't already in either bucket
-      newGenes <- genesReactive$genes
-      if (!is.null(newGenes)) {
-        alreadyInBuckets <- c(currentInclude, currentExclude)
-        newGenes <- newGenes[!newGenes %in% alreadyInBuckets]
-      }
-
-      # Combine: keep existing include genes + add new ones
-      includeBucket <- unique(c(currentInclude, newGenes))
-
-      bucket_list(
-        header = "Drag and drop features in order to be plotted (Ctrl/Cmd to select multiple)",
-        group_name = "bucket_list_group",
-        orientation = "horizontal",
-        add_rank_list(
-          text = "Include these features in this order",
-          labels = includeBucket,
-          input_id = "volcanoKeepBucketGenes",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        ),
-        add_rank_list(
-          text = "Exclude these features",
-          labels = currentExclude,
-          input_id = "boxExcludeBucketGenes",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        )
-      )
-    })
-    outputOptions(output, "geneBucket2", suspendWhenHidden = FALSE)
-  }
-)
-
-observeEvent(input$resetGeneBucketVolcano,
-  {
-    genesReactive$genes <- NULL
-    updateSelectizeInput(session, inputId = "volcanoGenes", choices = inputDataReactive()$genes, selected = NULL, server = T)
-    updateTextAreaInput(session, inputId = "volcanoGenesText", value = NULL)
-
-    # Force re-render the bucket UI with empty values
-    output$geneBucket2 <- renderUI({
-      bucket_list(
-        header = "Drag and drop features in order to be plotted (Ctrl/Cmd to select multiple)",
-        group_name = "bucket_list_group",
-        orientation = "horizontal",
-        add_rank_list(
-          text = "Include these features in this order",
-          labels = NULL,
-          input_id = "volcanoKeepBucketGenes",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        ),
-        add_rank_list(
-          text = "Exclude these features",
-          labels = NULL,
-          input_id = "boxExcludeBucketGenes",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        )
-      )
-    })
-  },
-  ignoreNULL = T,
-  ignoreInit = T
-)
+# Bucket render, reset handler removed — now in server-featureBucket.R
 
 observeEvent(
   {
@@ -144,7 +73,7 @@ observeEvent(
       req(!is.null(inputDataReactive()$seqAnnoList))
       req(input$contrastSelected %in% names(inputDataReactive()$seqAnnoList))
       seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
-      seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, log2Ratio, pValue, fdr)
+      seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, log2Ratio, pValue, fdr)
 
       output$volcanoDesign <- renderText({
         input$contrastSelected
@@ -204,7 +133,7 @@ if (inputDataReactive()$dataType == "proteomics") {
   }
 }
 
-volcanoGenesReactive <- reactiveValues(Results = NULL)
+volcanoStagedGenes <- reactiveValues(brushGenes = character(0))
 
 observeEvent(
   {
@@ -215,10 +144,10 @@ observeEvent(
   ignoreInit = TRUE,
   {
     volcanoBrushGenes <- brushedPoints(volcanoResultsList()$volcanoTable, input$volcanoBrush, xvar = "log2Ratio", yvar = "log10p")
-    volcanoBrushGenes <- volcanoBrushGenes$gene_name
+    volcanoBrushGenes <- volcanoBrushGenes$feature_id
     maBrushGenes <- brushedPoints(volcanoResultsList()$volcanoTable, input$MABrush, xvar = "Log2_Mean", yvar = "log2Ratio_full")
-    maBrushGenes <- maBrushGenes$gene_name
-    volcanoGenesReactive$volcanoBrushGenes <- unique(c(volcanoBrushGenes, maBrushGenes))
+    maBrushGenes <- maBrushGenes$feature_id
+    volcanoStagedGenes$brushGenes <- unique(c(volcanoBrushGenes, maBrushGenes))
   }
 )
 
@@ -235,8 +164,8 @@ volcanoResultsList <- eventReactive(
     input$pTypeVolcano
     input$pThresholdVolcano
     input$volcanoShowGenes
-    input$volcanoKeepBucketGenes
-    input$boxExcludeBucketGenes
+    featureBucket$features
+    input$fb_exclude_volcano
     input$contrastSelected
     input$nrPeptideVolcano
     input$showImputedVolcano
@@ -279,10 +208,10 @@ volcanoResultsList <- eventReactive(
       }
       if (!is.null(input$highlightImputedVolcano)) {
         if (input$highlightImputedVolcano) {
-          seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, description, log2Ratio, pValue, fdr, modelName)
+          seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, description, log2Ratio, pValue, fdr, modelName)
         }
       } else {
-        seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(gene_name, description, log2Ratio, pValue, fdr)
+        seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, description, log2Ratio, pValue, fdr)
       }
 
       output$volcanoDesign <- renderText({
@@ -290,8 +219,8 @@ volcanoResultsList <- eventReactive(
       })
     }
 
-    if (!is.null(input$boxExcludeBucketGenes)) {
-      seqAnnoFilt <- seqAnnoFilt[!seqAnnoFilt$gene_name %in% input$boxExcludeBucketGenes, ]
+    if (length(input$fb_exclude_volcano) > 0) {
+      seqAnnoFilt <- seqAnnoFilt[!seqAnnoFilt$feature_id %in% input$fb_exclude_volcano, ]
     }
 
     if (input$pTypeVolcano == "Raw") {
@@ -306,7 +235,7 @@ volcanoResultsList <- eventReactive(
     }), names(volcanoColoursDefault)))
 
     # Create table of gene names, LFC, and p-value selected by user:
-    volcanoTable <- seqAnnoFilt[, c("gene_name", "description", "log2Ratio", pTypeVolcano)]
+    volcanoTable <- seqAnnoFilt[, c("feature_id", "description", "log2Ratio", pTypeVolcano)]
 
     # Get the -log10 of the p-value:
     volcanoTable["log10p"] <- -log10(as.numeric(volcanoTable[[pTypeVolcano]]))
@@ -321,7 +250,7 @@ volcanoResultsList <- eventReactive(
       rMs <- rowMeans(inputDataReactive()$countList[[2]])
       names(rMs) <- names(rMs) %>% gsub("\\~.*", "", .)
     }
-    volcanoTable$Log2_Mean <- rMs[match(volcanoTable$gene_name, names(rMs))]
+    volcanoTable$Log2_Mean <- rMs[match(volcanoTable$feature_id, names(rMs))]
 
     # Determine what significance Status each gene is and label accordingly
     ## Not significant:
@@ -341,7 +270,7 @@ volcanoResultsList <- eventReactive(
 
     if (!is.null(input$highlightImputedVolcano)) {
       if (input$highlightImputedVolcano) {
-        volcanoTable[which(volcanoTable$gene_name %in% seqAnnoFilt$gene_name[grep("^Imputed", seqAnnoFilt$modelName)]), "Status"] <- "Imputed"
+        volcanoTable[which(volcanoTable$feature_id %in% seqAnnoFilt$feature_id[grep("^Imputed", seqAnnoFilt$modelName)]), "Status"] <- "Imputed"
       }
     }
 
@@ -370,7 +299,7 @@ volcanoResultsList <- eventReactive(
     # Results table
     output$volcanoOverviewTable <- DT::renderDataTable({
       DT::datatable(
-        data = volcanoTable[, c("gene_name", "description", "log2Ratio", pTypeVolcano, "log10p", "Status")],
+        data = volcanoTable[, c("feature_id", "description", "log2Ratio", pTypeVolcano, "log10p", "Status")],
         filter = "top",
         class = "cell-border stripe",
         rownames = FALSE,
@@ -401,7 +330,8 @@ observeEvent(
     input$alphaVolcano
     input$dotSizeVolcano
     input$volcanoShowGenes
-    input$volcanoKeepBucketGenes
+    featureBucket$features
+    volcanoStagedGenes$brushGenes
     input$volcanoLabelAllUp
     input$volcanoLabelAllDown
     input$volcanoAnnotationHighlightColour
@@ -424,15 +354,17 @@ observeEvent(
     volcanoTableFull <- volcanoTable
     volcanoTableFull$Label <- NA
     if (input$volcanoShowGenes & input$volcanoLabelAllUp) {
-      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantUp")] <- volcanoTableFull$gene_name[which(volcanoTableFull$Status == "FoldChangeSignificantUp")]
+      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantUp")] <- volcanoTableFull$feature_id[which(volcanoTableFull$Status == "FoldChangeSignificantUp")]
     }
     if (input$volcanoShowGenes & input$volcanoLabelAllDown) {
-      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantDown")] <- volcanoTableFull$gene_name[which(volcanoTableFull$Status == "FoldChangeSignificantDown")]
+      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantDown")] <- volcanoTableFull$feature_id[which(volcanoTableFull$Status == "FoldChangeSignificantDown")]
     }
-    if (input$volcanoShowGenes & length(input$volcanoKeepBucketGenes) >= 1) {
-      volcanoTableFull$Label[which(volcanoTableFull$gene_name %in% input$volcanoKeepBucketGenes)] <- volcanoTableFull$gene_name[which(volcanoTableFull$gene_name %in% input$volcanoKeepBucketGenes)]
+    # Annotate bucket genes AND staged (brushed but not yet added) genes
+    allAnnotated <- unique(c(featureBucket$features, volcanoStagedGenes$brushGenes))
+    if (input$volcanoShowGenes & length(allAnnotated) >= 1) {
+      volcanoTableFull$Label[which(volcanoTableFull$feature_id %in% allAnnotated)] <- volcanoTableFull$feature_id[which(volcanoTableFull$feature_id %in% allAnnotated)]
       if (input$volcanoAnnotationHighlightColour) {
-        volcanoTableFull$Status[which(volcanoTableFull$gene_name %in% input$volcanoKeepBucketGenes)] <- "Highlight"
+        volcanoTableFull$Status[which(volcanoTableFull$feature_id %in% featureBucket$features)] <- "Highlight"
       }
     }
 
@@ -464,7 +396,7 @@ observeEvent(
 
     # Create the volcano plot
     volcanoStatic <- ggplot(
-      data = volcanoTableFull, aes(x = log2Ratio, y = log10p, text = gene_name)
+      data = volcanoTableFull, aes(x = log2Ratio, y = log10p, text = feature_id)
     )
     volcanoStatic <- volcanoStatic + ylim(0, input$yLimVolcano) + xlim(-input$xLimVolcano, input$xLimVolcano)
     volcanoStatic <- volcanoStatic + theme_prism(base_size = input$textSizeVolcano, border = input$borderVolcano)
@@ -529,7 +461,7 @@ observeEvent(
       mode = "markers",
       color = ~Status,
       colors = volcanoColours,
-      text = ~gene_name,
+      text = ~feature_id,
       hovertemplate = paste(
         "Gene: %{text}<br>",
         "log2FC: %{x:.2f}<br>",
@@ -570,7 +502,7 @@ observeEvent(
 output$volcanoBrushTable <- renderDataTable({
   req(figuresDataReactive$volcanoTableFull)
   volcanoTableFull <- figuresDataReactive$volcanoTableFull
-  volcanoTableFull2 <- volcanoTableFull %>% dplyr::select(gene_name, description, log2Ratio, log2Ratio_full, log10p, log10p_full, Status)
+  volcanoTableFull2 <- volcanoTableFull %>% dplyr::select(feature_id, description, log2Ratio, log2Ratio_full, log10p, log10p_full, Status)
 
   DT::datatable(
     data = brushedPoints(volcanoTableFull2, input$volcanoBrush),
@@ -589,7 +521,7 @@ output$volcanoBrushTable <- renderDataTable({
 output$MABrushTable <- renderDataTable({
   req(figuresDataReactive$volcanoTableFull)
   volcanoTableFull <- figuresDataReactive$volcanoTableFull
-  volcanoTableFullMA <- volcanoTableFull %>% dplyr::select(gene_name, description, log2Ratio_full, Log2_Mean, log10p_full, Status)
+  volcanoTableFullMA <- volcanoTableFull %>% dplyr::select(feature_id, description, log2Ratio_full, Log2_Mean, log10p_full, Status)
 
   DT::datatable(
     data = brushedPoints(volcanoTableFullMA, input$MABrush),

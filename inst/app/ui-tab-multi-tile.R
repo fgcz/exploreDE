@@ -146,9 +146,7 @@ tabItem(
                             ),
                             textAreaInput(inputId = "tileGenesText", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1),
                             textAreaInput(inputId = "tileCustomTitle", label = "Enter a title for the heatmap", value = "Custom Heatmap"),
-                            hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
-                            uiOutput("geneBucket"),
-                            actionButton(inputId = "resetGeneBucket", label = "Empty the bucket?", icon = icon("bucket")),
+                            hr(style = "border-top: 1px solid #000000;")
                         ),
                         column(
                             width = 9,

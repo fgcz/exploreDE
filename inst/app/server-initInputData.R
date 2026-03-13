@@ -1,4 +1,60 @@
 # Helper functions
+
+#' standardise_columns
+#' Fuzzy-match incoming column names to canonical names.
+#' Upstream data may call columns anything; this maps them to a known schema
+#' so downstream code can rely on consistent names.
+#' @param df A data.frame (typically from rowData contrast)
+#' @return The same data.frame with standardised column names
+standardise_columns <- function(df) {
+  # Canonical name → regex patterns (case-insensitive) that map to it
+  patterns <- c(
+    "protein_Id"  = "^protein[._]?id$",
+    "peptide_Id"  = "^peptide[._]?id$|^peptide$",
+    "site"        = "^site$",
+    "gene_name"   = "^gene[._]?name$|^gene[._]?symbol$",
+    "description" = "^description$|^desc$",
+    "fasta.id"    = "^fasta[._]?id$",
+    "modelName"   = "^model[._]?name$",
+    "nrPeptides"  = "^nr[._]?peptides$|^n[._]?peptides$|^num[._]?peptides$",
+    "log2Ratio"   = "^diff$|^log2[._]?(fold)?[._]?(change|ratio|fc)?$|^logfc$",
+    "pValue"      = "^p[._]?value$",
+    "fdr"         = "^fdr$|^adj[._]?p[._]?value$|^padj$|^q[._]?value$"
+  )
+
+  current <- colnames(df)
+  for (canonical in names(patterns)) {
+    idx <- grep(patterns[[canonical]], current, ignore.case = TRUE)
+    if (length(idx) == 1) {
+      current[idx] <- canonical
+    }
+  }
+  colnames(df) <- current
+  df
+}
+
+#' build_feature_id
+#' Build a unique, human-readable feature identifier for proteomics data.
+#' Uses canonical column names (after standardisation).
+#' @param df A standardised data.frame with canonical column names
+#' @return Character vector of unique feature IDs
+build_feature_id <- function(df) {
+  pid <- df$protein_Id
+
+  # If protein_Id is already unique, use it directly
+  if (!anyDuplicated(pid)) return(pid)
+
+  # Try known sub-feature columns (canonical names) in priority order
+  # Always prepend protein_Id so users see which protein a sub-feature belongs to
+  for (col in intersect(c("site", "peptide_Id"), colnames(df))) {
+    combined <- paste(pid, gsub("~", "_", df[[col]]), sep = "_")
+    if (!anyDuplicated(combined)) return(combined)
+  }
+
+  # Fallback: cleaned raw rownames
+  gsub("~[^~]+~", "_", rownames(df))
+}
+
 #' convert_genomics_se
 #' @export
 convert_genomics_se <- function(se, dataDir, param = NULL) {
@@ -17,21 +73,21 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   } else {
     seqAnno$description <- seqAnno$gene_name
   }
-  # Uniquify the gene symbols
+  # Uniquify the gene symbols to create feature_id
   if (param$featureLevel == "gene") {
-    seqAnno$gene_name <- scuttle::uniquifyFeatureNames(
+    seqAnno$feature_id <- scuttle::uniquifyFeatureNames(
       ID = seqAnno$gene_id,
       names = seqAnno$gene_name
     )
   } else if (param$featureLevel == "isoform") {
-    seqAnno$gene_name <- scuttle::uniquifyFeatureNames(
+    seqAnno$feature_id <- scuttle::uniquifyFeatureNames(
       ID = seqAnno$transcript_id,
       names = seqAnno$gene_name
     )
   }
   # If uniquifying broke some names, fix them
-  seqAnno$gene_name[grep("^_", seqAnno$gene_name)] <- gsub("_", "", seqAnno$gene_name[grep("^_", seqAnno$gene_name)])
-  genes <- seqAnno$gene_name
+  seqAnno$feature_id[grep("^_", seqAnno$feature_id)] <- gsub("_", "", seqAnno$feature_id[grep("^_", seqAnno$feature_id)])
+  genes <- seqAnno$feature_id
 
   # Prepare the metadata table ----
   if (file.exists(file.path(dataDir, "../input_dataset.tsv"))) {
@@ -103,11 +159,11 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
     if (param$featureLevel == "gene") {
       geneOrder <- intersect(seqAnno$gene_id, rownames(countList[[i]]))
       countList[[i]] <- countList[[i]][geneOrder, ]
-      rownames(countList[[i]]) <- seqAnno$gene_name
+      rownames(countList[[i]]) <- seqAnno$feature_id
     } else if (param$featureLevel == "isoform") {
       geneOrder <- intersect(seqAnno$transcript_id, rownames(countList[[i]]))
       countList[[i]] <- countList[[i]][geneOrder, ]
-      rownames(countList[[i]]) <- seqAnno$gene_name %>%
+      rownames(countList[[i]]) <- seqAnno$feature_id %>%
         gsub("[:/()-]", ".", .) %>%
         gsub(" ", ".", .)
     }
@@ -151,7 +207,7 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
     # Sort the dataframe by raw pvalue
     seqAnno <- seqAnno[order(seqAnno[[pValueColumn]]), ]
     # get the list of genes to go in as input options:
-    genes <- seqAnno$gene_name[order(seqAnno$pValue)]
+    genes <- seqAnno$feature_id[order(seqAnno$pValue)]
     # Set the comparison column levels to be in order of test, e.g., diff, undiff
     dataset[[param$groupingName]] <- factor(
       dataset[[param$groupingName]],
@@ -164,12 +220,12 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
     # Add global and per group means to the seqAnno table
     for (count in names(countList)) {
       cts <- countList[[count]]
-      seqAnno[[paste0(count, "_mean")]] <- rowMeans(cts)[seqAnno$gene_name]
-      seqAnno[[paste0(count, "_SD")]] <- matrixStats::rowSds(cts)[seqAnno$gene_name]
+      seqAnno[[paste0(count, "_mean")]] <- rowMeans(cts)[seqAnno$feature_id]
+      seqAnno[[paste0(count, "_SD")]] <- matrixStats::rowSds(cts)[seqAnno$feature_id]
       isSample <- dataset[[param$groupingName]] == param$sampleGroup
-      seqAnno[[paste0(count, "_", param$sampleGroup, "_Mean")]] <- rowMeans(cts[, isSample, drop = FALSE])[seqAnno$gene_name]
+      seqAnno[[paste0(count, "_", param$sampleGroup, "_Mean")]] <- rowMeans(cts[, isSample, drop = FALSE])[seqAnno$feature_id]
       isRef <- dataset[[param$groupingName]] == param$refGroup
-      seqAnno[[paste0(count, "_", param$refGroup, "_Mean")]] <- rowMeans(cts[, isRef, drop = FALSE])[seqAnno$gene_name]
+      seqAnno[[paste0(count, "_", param$refGroup, "_Mean")]] <- rowMeans(cts[, isRef, drop = FALSE])[seqAnno$feature_id]
     }
     # Prepare the contrast info ----
     design <- param$comparison
@@ -202,22 +258,29 @@ convert_proteomics_se <- function(se) {
   # Get the contrasts available
   contrasts <- names(rowData(se))[grep("^constrast_", names(rowData(se)))] %>% gsub("constrast_", "", .)
 
+  # Convert contrast DataFrames once, reuse for seqAnnoList and countList lookup
+  contrast_dfs <- setNames(lapply(contrasts, function(con) {
+    as.data.frame(rowData(se)[[paste0("constrast_", con)]])
+  }), contrasts)
+
   # Make a list of seqAnno tables for each contrast
   seqAnnoList <- setNames(lapply(contrasts, function(con) {
-    sa <- rowData(se)[[paste0("constrast_", con)]]
-    sa <- sa[order(sa$p.value), ]
-    sa <- sa %>% dplyr::select(any_of(c("protein_Id", "site", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides", "modelName")))
-    if (any(grepl("site", colnames(sa)))) {
-      sa$site <- gsub("\\~", ".", sa$site)
-      sa <- sa %>% dplyr::select(-protein_Id)
-      colnames(sa)[grep("site", colnames(sa))] <- "protein_Id"
+    sa <- standardise_columns(contrast_dfs[[con]])
+    sa <- sa[order(sa$pValue), ]
+
+    # Build feature_id from canonical column names
+    sa$feature_id <- build_feature_id(sa)
+
+    # If feature_id == protein_Id (protein-level data), drop redundant protein_Id
+    if ("protein_Id" %in% colnames(sa) && identical(sa$feature_id, sa$protein_Id)) {
+      sa$protein_Id <- NULL
     }
-    # Safely rename columns
-    rename_map <- c("protein_Id" = "gene_name", "diff" = "log2Ratio", "p.value" = "pValue", "FDR" = "fdr")
-    existing_cols <- intersect(names(rename_map), colnames(sa))
-    if (length(existing_cols) > 0) {
-      colnames(sa)[match(existing_cols, colnames(sa))] <- rename_map[existing_cols]
-    }
+
+    # Keep feature_id, all non-numeric columns (domain/annotation), and selected stats
+    stats_to_keep <- c("log2Ratio", "pValue", "fdr", "nrPeptides")
+    non_numeric <- colnames(sa)[!vapply(sa, is.numeric, logical(1))]
+    keep <- unique(c("feature_id", non_numeric, intersect(stats_to_keep, colnames(sa))))
+    sa <- sa[, keep, drop = FALSE]
     sa
   }), contrasts)
 
@@ -238,23 +301,21 @@ convert_proteomics_se <- function(se) {
     dataset[[x]] <- factor(dataset[[x]], levels = unique(gtools::mixedsort(dataset[[x]])))
   }
 
-  # Currently only transformed counts available
+  # Map raw SE rownames → clean feature_ids via lookup (no quant-type regex)
+  raw_rn <- rownames(contrast_dfs[[contrasts[1]]])
+  fid_lookup <- setNames(seqAnnoList[[1]]$feature_id, raw_rn)
+
   countList <- setNames(lapply(names(assays(se)), function(ass) {
     x <- assay(se, ass)
-    if (any(grepl("site", colnames(rowData(se)[[1]])))) {
-      rownames(x) <- gsub("\\~", ".", rownames(x))
-      rownames(x) <- gsub("\\.lfq\\.light", "", rownames(x))
-      rownames(x) <- gsub(".*lfq\\.", "", rownames(x))
-    } else {
-      rownames(x) <- gsub("\\~.*", "", rownames(x))
-    }
+    mapped <- fid_lookup[rownames(x)]
+    valid <- !is.na(mapped)
+    x <- x[valid, , drop = FALSE]
+    rownames(x) <- unname(mapped[valid])
     x
   }), names(assays(se)))
 
-  # Get the protein IDs
-  genes <- unique(unlist(lapply(seq_along(seqAnnoList), function(x) {
-    seqAnnoList[[x]][["gene_name"]]
-  })))
+  # Get the feature IDs
+  genes <- unique(unlist(lapply(seqAnnoList, `[[`, "feature_id")))
 
   # Return the final list
   return(list(
@@ -327,11 +388,16 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl)) {
-  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/" # RNASeq
+  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p23078/bfabric/Proteomics/exploreDE/2026/2026-03/2026-03-10/workunit_342063/3106962.rds" # prot
+  dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p23078/bfabric/Proteomics/exploreDE/2026/2026-03/2026-03-10/workunit_342065/3106968.rds" # phos
+  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335485/2997996.rds" # pept
+  # dataDir <- "/srv/gstore/projects/p23793/o32655_CountQC_2023-10-05--18-33-15/Count_QC/counts-sswoowrqapiv-EzResult.RData" # CountQC
+  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  # dataType <- "demo"
+  dataType <- "proteomics"
   projectFromUrl <- dataDir %>%
     gsub(".*projects\\/", "", .) %>%
     gsub("\\/.*", "", .)
-  dataType <- "gStore"
   showNotification("Since you did not specify a dataset in the URL, you are seeing a demo dataset.", type = "message", duration = 600, closeButton = TRUE)
 }
 
@@ -487,7 +553,7 @@ figuresDataReactive <- reactiveValues(
   "boxplotStatic" = NULL, "barplotStatic" = NULL,
   "goTilePlot" = NULL
 )
-genesReactive <- reactiveValues(genes = NULL)
+# genesReactive removed — replaced by featureBucket in server-featureBucket.R
 
 output$test <- renderText({
   inputDataReactive()$dataType

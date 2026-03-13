@@ -1,31 +1,6 @@
 req(inputDataReactive()$dataType)
 
-observeEvent(
-  {
-    genesReactive
-  },
-  {
-    output$geneBucketDEG <- renderUI({
-      bucket_list(
-        header = "Drag and drop features (Ctrl/Cmd to select multiple)",
-        group_name = "bucket_list_group",
-        orientation = "horizontal",
-        add_rank_list(
-          text = "Include these features in this order",
-          labels = genesReactive$genes,
-          input_id = "degKeepBucketGenes",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        ),
-        add_rank_list(
-          text = "Exclude these features",
-          labels = NULL,
-          input_id = "boxExcludeBucketGenes",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        )
-      )
-    })
-  }
-)
+# Bucket render removed — now in server-featureBucket.R
 
 if (inputDataReactive()$dataType == "RNASeq") {
   # Create the download link in XLSX format:
@@ -60,10 +35,10 @@ if (inputDataReactive()$dataType == "RNASeq") {
   })
 
   colsToPlotR <- c(
-    "gene_id", "gene_name", "description", "type", "log2Ratio", "pValue", "fdr", "TPM_mean", paste0("TPM_", inputDataReactive()$param$sampleGroup, "_Mean"), paste0("TPM_", inputDataReactive()$param$refGroup, "_Mean")
+    "gene_id", "feature_id", "description", "type", "log2Ratio", "pValue", "fdr", "TPM_mean", paste0("TPM_", inputDataReactive()$param$sampleGroup, "_Mean"), paste0("TPM_", inputDataReactive()$param$refGroup, "_Mean")
   )
   colNamesToPlotR <- c(
-    "Ensembl ID", "Gene Symbol", "Description", "Type", "Log2 Ratio", "Raw p-value", "FDR", "Mean TPM", paste0(inputDataReactive()$param$sampleGroup, " Mean TPM"), paste0(inputDataReactive()$param$refGroup, " Mean TPM")
+    "Ensembl ID", "Feature", "Description", "Type", "Log2 Ratio", "Raw p-value", "FDR", "Mean TPM", paste0(inputDataReactive()$param$sampleGroup, " Mean TPM"), paste0(inputDataReactive()$param$refGroup, " Mean TPM")
   )
   # Output the interactive data table
   dt1 <- DT::datatable(
@@ -203,11 +178,11 @@ if (inputDataReactive()$dataType == "proteomics") {
         row.names = c("p < 0.1", "p < 0.05", "p < 0.01", "p < 0.001", "p < 1e-04", "p < 1e-05")
       )
       significants <- unlist(setNames(lapply(c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), function(f) {
-        isSig <- seqAnnoDEG$gene_name[seqAnnoDEG$pValue < f]
+        isSig <- seqAnnoDEG$feature_id[seqAnnoDEG$pValue < f]
         length(isSig)
       }), paste0("p < ", c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))))
       FDR <- unlist(lapply(c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), function(f) {
-        isSig <- seqAnnoDEG$gene_name[seqAnnoDEG$pValue < f]
+        isSig <- seqAnnoDEG$feature_id[seqAnnoDEG$pValue < f]
         if (length(isSig) >= 1) {
           max(seqAnnoDEG$fdr[seqAnnoDEG$pValue < f])
         } else {
@@ -216,7 +191,7 @@ if (inputDataReactive()$dataType == "proteomics") {
       }))
       log2s <- setNames(lapply(c(0.5, 1, 1.5, 2, 3, 4, 8, 10), function(f) {
         unlist(lapply(c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), function(g) {
-          isSig <- seqAnnoDEG$gene_name[which(seqAnnoDEG$pValue < g & abs(seqAnnoDEG$log2Ratio) >= f)]
+          isSig <- seqAnnoDEG$feature_id[which(seqAnnoDEG$pValue < g & abs(seqAnnoDEG$log2Ratio) >= f)]
           length(isSig)
         }))
       }), paste0("Log2 FC >= ", c(0.5, 1, 1.5, 2, 3, 4, 8, 10)))
@@ -229,34 +204,19 @@ if (inputDataReactive()$dataType == "proteomics") {
         )
       })
 
-      colsToPlot1 <- colnames(seqAnnoDEG %>% dplyr::select(any_of(c("gene_name", "description", "nrPeptides", "modelName", "log2Ratio", "pValue", "fdr"))))
-      colNamesToPlot1 <- unlist(lapply(colsToPlot1, function(col) {
-        if (col == "gene_name") {
-          "Protein ID"
-        } else if (col == "description") {
-          "Description"
-        } else if (col == "nrPeptides") {
-          "Number of peptides"
-        } else if (col == "modelName") {
-          "Imputed Model"
-        } else if (col == "log2Ratio") {
-          "Log2 Ratio"
-        } else if (col == "pValue") {
-          "Raw p-value"
-        } else if (col == "fdr") {
-          "FDR"
-        }
-      }))
-
-      # sa <- sa %>% dplyr::select(any_of(c("protein_Id", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides")))
-      # colnames(sa)[grep(paste(c("protein_Id", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
-      #
-      # colsToPlot1 <- c(
-      #   "gene_name", "description", "nrPeptides", "log2Ratio", "pValue", "fdr"
-      # )
-      # colNamesToPlot1 <- c(
-      #   "Protein ID", "Description", "Number of peptides", "Log2 Ratio", "Raw p-value", "FDR"
-      # )
+      # Predefined columns and labels (canonical names from standardise_columns)
+      colsToPlot1 <- colnames(seqAnnoDEG %>% dplyr::select(any_of(c(
+        "feature_id", "protein_Id", "peptide_Id", "site", "gene_name",
+        "description", "nrPeptides", "modelName", "log2Ratio", "pValue", "fdr"
+      ))))
+      col_labels <- c(
+        "feature_id" = "Feature ID", "protein_Id" = "Protein ID",
+        "peptide_Id" = "Peptide", "site" = "Site",
+        "gene_name" = "Gene Symbol", "description" = "Description",
+        "nrPeptides" = "Nr Peptides", "modelName" = "Imputed Model",
+        "log2Ratio" = "Log2 Ratio", "pValue" = "Raw p-value", "fdr" = "FDR"
+      )
+      colNamesToPlot1 <- unname(col_labels[colsToPlot1])
 
       # Output the interactive data table
       dt1 <- DT::datatable(
@@ -264,15 +224,35 @@ if (inputDataReactive()$dataType == "proteomics") {
         filter = "top",
         class = "cell-border stripe",
         rownames = FALSE,
-        colnames = colNamesToPlot1
-      ) %>%
-        DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
-        DT::formatSignif(columns = c("pValue", "fdr"), digits = 3) %>%
-        DT::formatSignif(columns = "log2Ratio", digits = 5) %>%
-        DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
-        DT::formatStyle(columns = c("pValue", "fdr"), color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")
-      if ("modelName" %in% colnames(seqAnnoDEG)) {
-        dt1 <- dt1 %>% DT::formatStyle(columns = "modelName", color = styleEqual(levels = c("Linear_Model_moderated", "Imputed_Mean_moderated"), values = c("black", "darkblue")))
+        colnames = colNamesToPlot1,
+        extensions = "Buttons",
+        options = list(
+          dom = "Bfrtip",
+          buttons = list(list(extend = "colvis", text = "Column Visibility"))
+        )
+      )
+      # Apply formatting using column indices (colnames= renames break string lookups)
+      dt1 <- dt1 %>% DT::formatStyle(columns = seq_along(colsToPlot1), `font-size` = "14px")
+      # Wrap long Feature IDs (e.g. protein groups with many semicolon-separated accessions)
+      fid_idx <- which(colsToPlot1 == "feature_id")
+      if (length(fid_idx) > 0) {
+        dt1 <- dt1 %>% DT::formatStyle(columns = fid_idx, `word-break` = "break-all", `max-width` = "250px")
+      }
+      pval_idx <- which(colsToPlot1 %in% c("pValue", "fdr"))
+      lfc_idx <- which(colsToPlot1 == "log2Ratio")
+      model_idx <- which(colsToPlot1 == "modelName")
+      if (length(pval_idx) > 0) {
+        dt1 <- dt1 %>%
+          DT::formatSignif(columns = pval_idx, digits = 3) %>%
+          DT::formatStyle(columns = pval_idx, color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")
+      }
+      if (length(lfc_idx) > 0) {
+        dt1 <- dt1 %>%
+          DT::formatSignif(columns = lfc_idx, digits = 5) %>%
+          DT::formatStyle(columns = lfc_idx, color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold")
+      }
+      if (length(model_idx) > 0) {
+        dt1 <- dt1 %>% DT::formatStyle(columns = model_idx, color = styleEqual(levels = c("Linear_Model_moderated", "Imputed_Mean_moderated"), values = c("black", "darkblue")))
       }
       output$degTable <- DT::renderDataTable(dt1, server = TRUE, selection = list(target = "row"))
       proxy <- dataTableProxy("degTable")

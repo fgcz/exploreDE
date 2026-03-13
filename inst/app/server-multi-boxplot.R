@@ -335,11 +335,11 @@ multiBoxplotCountsReactive <- eventReactive(
                  sa <- res$seqAnno
                  # Ensure unique Gene ID matching if possible, or use gene_name
                  # Assuming feature level gene_name
-                 matched <- sa[sa$gene_name %in% genesToPlot, ]
+                 matched <- sa[sa$feature_id %in% genesToPlot, ]
 
                  if (nrow(matched) > 0) {
                      df <- data.frame(
-                         Feature = matched$gene_name,
+                         Feature = matched$feature_id,
                          fdr = matched$fdr,
                          log2Ratio = matched$log2Ratio,
                          Contrast = nm,

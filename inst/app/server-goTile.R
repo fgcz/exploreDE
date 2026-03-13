@@ -68,13 +68,13 @@ if(inputDataReactive()$dataType == "RNASeq") {
         logRatioMatrixList <- lapply(goToPlot, function(GO) {
           m1 <- as.matrix(dfToPlotList[[GO]]$log2Ratio)
           colnames(m1) <- GO
-          rownames(m1) <- dfToPlotList[[GO]]$gene_name
+          rownames(m1) <- dfToPlotList[[GO]]$feature_id
           m1
         }) %>% setNames(goToPlot)
         pValMatrixList <- lapply(goToPlot, function(GO) {
           m2 <- as.matrix(dfToPlotList[[GO]][[pTypeGoTile]])
           colnames(m2) <- GO
-          rownames(m2) <- dfToPlotList[[GO]]$gene_name
+          rownames(m2) <- dfToPlotList[[GO]]$feature_id
           m2
         }) %>% setNames(goToPlot)
   

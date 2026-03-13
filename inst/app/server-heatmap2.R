@@ -31,7 +31,7 @@ observeEvent(inputDataReactive(), {
 
   updateSelectizeInput(
     session = session,
-    inputId = "heatmapGenes",
+    inputId = "fb_select_heatmap",
     choices = inputDataReactive()$genes,
     selected = NULL,
     server = T,
@@ -148,44 +148,7 @@ output$heatmapColumnSelectUI <- renderUI({
 })
 outputOptions(output, "heatmapColumnSelectUI", suspendWhenHidden = FALSE)
 
-observeEvent(
-  {
-    genesReactive
-  },
-  {
-    output$geneBucket3 <- renderUI({
-      bucket_list(
-        header = "Drag and drop features in order to be plotted (Ctrl/Cmd to select multiple)",
-        group_name = "bucket_list_group",
-        orientation = "horizontal",
-        add_rank_list(
-          text = "Include these features in this order",
-          labels = genesReactive$genes,
-          input_id = "keepBucketHeatmap",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        ),
-        add_rank_list(
-          text = "Exclude these features",
-          labels = NULL,
-          input_id = "excludeBucketHeatmap",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        )
-      )
-    })
-    outputOptions(output, "geneBucket3", suspendWhenHidden = FALSE)
-  }
-)
-
-observeEvent(input$resetGeneBucketHeatmap,
-  {
-    genesReactive$genes <- NULL
-    updateSelectizeInput(session, inputId = "heatmapGenes", choices = inputDataReactive()$genes, selected = NULL, server = T)
-    updateTextAreaInput(session, inputId = "heatmapGenesText", value = NULL)
-    output$heatmapCustom <- NULL
-  },
-  ignoreNULL = T,
-  ignoreInit = T
-)
+# Bucket render and reset handler removed — now in server-featureBucket.R
 
 observeEvent(
   {
@@ -312,7 +275,7 @@ heatmapInputs <- reactive({
     input$heatmapAtMid,
     input$heatmapAtHigh,
     input$contrastSelected,
-    input$keepBucketHeatmap,
+    input$fb_keep_heatmap,
     input$heatmapCustomTitle,
     input$heatmapGoInput,
     input$heatmapGoExpr,
@@ -557,19 +520,19 @@ observeEvent(
         # For RNASeq/proteomics: existing DE-based selection
         # Get the features only in the specified DE direction
         geneDirections <- list(
-          "Both" = seqAnnoHeatmap$gene_name[
+          "Both" = seqAnnoHeatmap$feature_id[
             which(
               seqAnnoHeatmap[[pTypeHeatmap]] <= as.numeric(input$pThresholdHeatmap) &
                 abs(seqAnnoHeatmap$log2Ratio) >= as.numeric(input$lfcHeatmap)
             )
           ],
-          "Up-regulated" = seqAnnoHeatmap$gene_name[
+          "Up-regulated" = seqAnnoHeatmap$feature_id[
             which(
               seqAnnoHeatmap[[pTypeHeatmap]] <= as.numeric(input$pThresholdHeatmap) &
                 seqAnnoHeatmap$log2Ratio >= as.numeric(input$lfcHeatmap)
             )
           ],
-          "Down-regulated" = seqAnnoHeatmap$gene_name[
+          "Down-regulated" = seqAnnoHeatmap$feature_id[
             which(
               seqAnnoHeatmap[[pTypeHeatmap]] <= as.numeric(input$pThresholdHeatmap) &
                 seqAnnoHeatmap$log2Ratio <= -as.numeric(input$lfcHeatmap)
@@ -660,7 +623,7 @@ observeEvent(
         figuresDataReactive[["heatmapDEFeatures"]] <- heatmap
 
         # Download the count file
-        countsHeatmapSigDL <- as.data.frame(countsHeatmapSig) %>% rownames_to_column("gene_name")
+        countsHeatmapSigDL <- as.data.frame(countsHeatmapSig) %>% rownames_to_column("feature_id")
         output[["dlTable_heatmapDE"]] <- downloadHandler(
           filename = function() {
             generate_filename(
@@ -673,7 +636,7 @@ observeEvent(
             counts_export <- countsHeatmapSigDL
 
             # Determine which columns to include
-            # Basic columns: gene_name + all sample columns
+            # Basic columns: feature_id + all sample columns
             basic_cols <- colnames(counts_export)
 
             # Add DE statistics if requested
@@ -682,22 +645,22 @@ observeEvent(
                 input$includeDEStatsHeatmap) {
 
               if (inputDataReactive()$dataType == "RNASeq") {
-                de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+                de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
                 valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
                 if (length(valid_de_cols) > 1) {
                   de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
-                  counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                  counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               } else if (!is.null(input$contrastSelected)) {
-                de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+                de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
                 valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
                 if (length(valid_de_cols) > 1) {
                   de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
-                  counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                  counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               }
             } else {
-              # Export only basic columns (gene_name + sample columns)
+              # Export only basic columns (feature_id + sample columns)
               counts_export <- counts_export[, basic_cols, drop = FALSE]
             }
 
@@ -748,11 +711,11 @@ observeEvent(
 
 
       # Custom heatmap ----
-      if (length(input$keepBucketHeatmap) == 1) {
-        countsHeatmapCustom <- t(as.matrix(countsHeatmap[input$keepBucketHeatmap, ]))
-        rownames(countsHeatmapCustom) <- input$keepBucketHeatmap
+      if (length(input$fb_keep_heatmap) == 1) {
+        countsHeatmapCustom <- t(as.matrix(countsHeatmap[input$fb_keep_heatmap, ]))
+        rownames(countsHeatmapCustom) <- input$fb_keep_heatmap
       } else {
-        countsHeatmapCustom <- countsHeatmap[input$keepBucketHeatmap, ]
+        countsHeatmapCustom <- countsHeatmap[input$fb_keep_heatmap, ]
       }
       ch <- ComplexHeatmap::Heatmap(
         matrix = countsHeatmapCustom,
@@ -786,10 +749,10 @@ observeEvent(
           )
         },
         content = function(file) {
-          counts_export <- as.data.frame(countsHeatmapCustom) %>% rownames_to_column("gene_name")
+          counts_export <- as.data.frame(countsHeatmapCustom) %>% rownames_to_column("feature_id")
 
           # Determine which columns to include
-          # Basic columns: gene_name + all sample columns
+          # Basic columns: feature_id + all sample columns
           basic_cols <- colnames(counts_export)
 
           # Add DE statistics if requested
@@ -798,22 +761,22 @@ observeEvent(
               input$includeDEStatsHeatmap) {
 
             if (inputDataReactive()$dataType == "RNASeq") {
-              de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+              de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
               valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
               if (length(valid_de_cols) > 1) {
                 de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
-                counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
               }
             } else if (!is.null(input$contrastSelected)) {
-              de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+              de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
               valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
               if (length(valid_de_cols) > 1) {
                 de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
-                counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
               }
             }
           } else {
-            # Export only basic columns (gene_name + sample columns)
+            # Export only basic columns (feature_id + sample columns)
             counts_export <- counts_export[, basic_cols, drop = FALSE]
           }
 
@@ -834,7 +797,7 @@ observeEvent(
         countsHeatmapGO <- NULL
 
         goToPlot <- gsub(" .*", "", input$heatmapGoInput)
-        goGenes <- seqAnnoHeatmap$gene_name[with(seqAnnoHeatmap, grepl(goToPlot, paste(`GO BP`, `GO MF`, `GO CC`)))]
+        goGenes <- seqAnnoHeatmap$feature_id[with(seqAnnoHeatmap, grepl(goToPlot, paste(`GO BP`, `GO MF`, `GO CC`)))]
 
         goGenes <- goGenes[which(goGenes %in% rownames(countsHeatmap))]
         if (length(goGenes) == 1) {
@@ -876,10 +839,10 @@ observeEvent(
             )
           },
           content = function(file) {
-            counts_export <- as.data.frame(countsHeatmapGO) %>% rownames_to_column("gene_name")
+            counts_export <- as.data.frame(countsHeatmapGO) %>% rownames_to_column("feature_id")
 
             # Determine which columns to include
-            # Basic columns: gene_name + all sample columns
+            # Basic columns: feature_id + all sample columns
             basic_cols <- colnames(counts_export)
 
             # Add DE statistics if requested
@@ -888,22 +851,22 @@ observeEvent(
                 input$includeDEStatsHeatmap) {
 
               if (inputDataReactive()$dataType == "RNASeq") {
-                de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+                de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
                 valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
                 if (length(valid_de_cols) > 1) {
                   de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
-                  counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                  counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               } else if (!is.null(input$contrastSelected)) {
-                de_cols <- c("gene_name", "log2Ratio", "pValue", "fdr")
+                de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
                 valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
                 if (length(valid_de_cols) > 1) {
                   de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
-                  counts_export <- counts_export %>% left_join(de_data, by = "gene_name")
+                  counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               }
             } else {
-              # Export only basic columns (gene_name + sample columns)
+              # Export only basic columns (feature_id + sample columns)
               counts_export <- counts_export[, basic_cols, drop = FALSE]
             }
 

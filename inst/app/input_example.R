@@ -1,4 +1,47 @@
 # Helper functions
+
+#' standardise_columns
+#' Fuzzy-match incoming column names to canonical names.
+standardise_columns <- function(df) {
+  patterns <- c(
+    "protein_Id"  = "^protein[._]?id$",
+    "peptide_Id"  = "^peptide[._]?id$|^peptide$",
+    "site"        = "^site$",
+    "gene_name"   = "^gene[._]?name$|^gene[._]?symbol$",
+    "description" = "^description$|^desc$",
+    "fasta.id"    = "^fasta[._]?id$",
+    "modelName"   = "^model[._]?name$",
+    "nrPeptides"  = "^nr[._]?peptides$|^n[._]?peptides$|^num[._]?peptides$",
+    "log2Ratio"   = "^diff$|^log2[._]?(fold)?[._]?(change|ratio|fc)?$|^logfc$",
+    "pValue"      = "^p[._]?value$",
+    "fdr"         = "^fdr$|^adj[._]?p[._]?value$|^padj$|^q[._]?value$"
+  )
+  current <- colnames(df)
+  for (canonical in names(patterns)) {
+    idx <- grep(patterns[[canonical]], current, ignore.case = TRUE)
+    if (length(idx) == 1) current[idx] <- canonical
+  }
+  colnames(df) <- current
+  df
+}
+
+#' build_feature_id
+#' Build a unique, human-readable feature identifier for proteomics data.
+#' Uses canonical column names (after standardisation).
+build_feature_id <- function(df) {
+  pid <- df$protein_Id
+  if (!anyDuplicated(pid)) return(pid)
+
+  # Try known sub-feature columns (canonical names) in priority order
+  for (col in intersect(c("site", "peptide_Id"), colnames(df))) {
+    combined <- paste(pid, gsub("~", "_", df[[col]]), sep = "_")
+    if (!anyDuplicated(combined)) return(combined)
+  }
+
+  # Fallback: cleaned raw rownames
+  gsub("~[^~]+~", "_", rownames(df))
+}
+
 #' convert_genomics_se
 #' @export
 convert_genomics_se <- function(se, dataDir, param = NULL) {
@@ -21,20 +64,20 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   } else {
     seqAnno$description <- seqAnno$gene_name
   }
-  # Uniquify the gene symbols 
+  # Uniquify the gene symbols to create feature_id
   if (param$featureLevel == "gene") {
-    seqAnno$gene_name <- scuttle::uniquifyFeatureNames(
+    seqAnno$feature_id <- scuttle::uniquifyFeatureNames(
       ID = seqAnno$gene_id,
       names = seqAnno$gene_name)
   } else if (param$featureLevel == "isoform") {
-    seqAnno$gene_name <- scuttle::uniquifyFeatureNames(
-      ID = seqAnno$transcript_id, 
+    seqAnno$feature_id <- scuttle::uniquifyFeatureNames(
+      ID = seqAnno$transcript_id,
       names = seqAnno$gene_name)
   }
   # If uniquifying broke some names, fix them
-  seqAnno$gene_name[grep("^_", seqAnno$gene_name)] <- gsub("_", "", seqAnno$gene_name[grep("^_", seqAnno$gene_name)])
+  seqAnno$feature_id[grep("^_", seqAnno$feature_id)] <- gsub("_", "", seqAnno$feature_id[grep("^_", seqAnno$feature_id)])
   # get the list of genes to go in as input options:
-  genes <- seqAnno$gene_name[order(seqAnno$pValue)]
+  genes <- seqAnno$feature_id[order(seqAnno$pValue)]
   
   
   
@@ -116,22 +159,22 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
     if(param$featureLevel == "gene") {
       geneOrder <- intersect(seqAnno$gene_id, rownames(countList[[i]]))
       countList[[i]] <- countList[[i]][geneOrder, ]
-      rownames(countList[[i]]) <- seqAnno$gene_name
+      rownames(countList[[i]]) <- seqAnno$feature_id
     } else if(param$featureLevel == "isoform") {
       geneOrder <- intersect(seqAnno$transcript_id, rownames(countList[[i]]))
       countList[[i]] <- countList[[i]][geneOrder, ]
-      rownames(countList[[i]]) <- seqAnno$gene_name %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
+      rownames(countList[[i]]) <- seqAnno$feature_id %>% gsub("[:/()-]", ".", .) %>% gsub(" ", ".", .)
     }
   }
   # Add global and per group means to the seqAnno table 
   for (count in names(countList)) {
     cts <- countList[[count]]
-    seqAnno[[paste0(count, "_mean")]] <- rowMeans(cts)[seqAnno$gene_name]
-    seqAnno[[paste0(count, "_SD")]] <- matrixStats::rowSds(cts)[seqAnno$gene_name]
+    seqAnno[[paste0(count, "_mean")]] <- rowMeans(cts)[seqAnno$feature_id]
+    seqAnno[[paste0(count, "_SD")]] <- matrixStats::rowSds(cts)[seqAnno$feature_id]
     isSample <- dataset[[param$groupingName]] == param$sampleGroup
-    seqAnno[[paste0(count, "_", param$sampleGroup, "_Mean")]] <- rowMeans(cts[ , isSample, drop=FALSE])[seqAnno$gene_name]
+    seqAnno[[paste0(count, "_", param$sampleGroup, "_Mean")]] <- rowMeans(cts[ , isSample, drop=FALSE])[seqAnno$feature_id]
     isRef <- dataset[[param$groupingName]] == param$refGroup
-    seqAnno[[paste0(count, "_", param$refGroup, "_Mean")]] <- rowMeans(cts[ , isRef, drop=FALSE])[seqAnno$gene_name]
+    seqAnno[[paste0(count, "_", param$refGroup, "_Mean")]] <- rowMeans(cts[ , isRef, drop=FALSE])[seqAnno$feature_id]
   }
   
   
@@ -185,15 +228,18 @@ convert_proteomics_se <- function(se) {
   
   # Make a list of seqAnno tables for each contrast
   seqAnnoList <- setNames(lapply(contrasts, function(con) {
-    sa <- rowData(se)[[paste0("constrast_", con)]]
-    sa <- sa[order(sa$p.value),]
-    sa <- sa %>% dplyr::select(any_of(c("protein_Id", "site", "fasta.id", "IDcolumn", "diff", "p.value", "FDR", "description", "nrPeptides", "modelName")))
-    if (any(grepl("site", colnames(sa)))) {
-      sa$site <- gsub("\\~", ".", sa$site)
-      sa <- sa %>% dplyr::select(-protein_Id)
-      colnames(sa)[grep("site", colnames(sa))] <- "protein_Id"
-    }
-    colnames(sa)[grep(paste(c("protein_Id", "diff", "p.value", "FDR"), collapse = "|"), colnames(sa))] <- c("gene_name", "log2Ratio", "pValue", "fdr")
+    sa <- as.data.frame(rowData(se)[[paste0("constrast_", con)]])
+    sa <- standardise_columns(sa)
+    sa <- sa[order(sa$pValue), ]
+
+    # Build feature_id from canonical column names
+    sa$feature_id <- build_feature_id(sa)
+
+    # Keep feature_id, all non-numeric columns (domain/annotation), and selected stats
+    stats_to_keep <- c("log2Ratio", "pValue", "fdr", "nrPeptides")
+    non_numeric <- colnames(sa)[!vapply(sa, is.numeric, logical(1))]
+    keep <- unique(c("feature_id", non_numeric, intersect(stats_to_keep, colnames(sa))))
+    sa <- sa[, keep, drop = FALSE]
     sa
   }), contrasts)
   
@@ -214,21 +260,21 @@ convert_proteomics_se <- function(se) {
     dataset[[x]] <- factor(dataset[[x]], levels = unique(gtools::mixedsort(dataset[[x]])))
   }
   
-  # Currently only transformed counts available
+  # Map raw SE rownames → clean feature_ids via lookup (no quant-type regex)
+  raw_rn <- rownames(as.data.frame(rowData(se)[[paste0("constrast_", contrasts[1])]]))
+  fid_lookup <- setNames(seqAnnoList[[1]]$feature_id, raw_rn)
+
   countList <- setNames(lapply(names(assays(se)), function(ass) {
     x <- assay(se, ass)
-    if (any(grepl("site", colnames(rowData(se)[[1]])))) {
-      rownames(x) <- gsub("\\~", ".", rownames(x))
-      rownames(x) <- gsub("\\.lfq\\.light", "", rownames(x))
-      rownames(x) <- gsub(".*lfq\\.", "", rownames(x))
-    } else {
-      rownames(x) <- gsub("\\~.*", "", rownames(x))
-    }
+    mapped <- fid_lookup[rownames(x)]
+    valid <- !is.na(mapped)
+    x <- x[valid, , drop = FALSE]
+    rownames(x) <- unname(mapped[valid])
     x
   }), names(assays(se)))
-  
-  # Get the protein IDs
-  genes <- unique(unlist(lapply(seq_along(seqAnnoList), function(x) {seqAnnoList[[x]][["gene_name"]]})))
+
+  # Get the feature IDs
+  genes <- unique(unlist(lapply(seqAnnoList, `[[`, "feature_id")))
   
   # Return the final list
   return(list(
@@ -400,7 +446,7 @@ input$biplotArrowColour <- "#E41A1C"
 input$nrPeptidePCA <- 2
 
 input$boxplotFactor1 <- inputDataReactive()$factors[1]
-input$keepBucketBoxplot <- inputDataReactive()$genes[1:5]
+input$fb_keep_boxplot <- inputDataReactive()$genes[1:5]
 # input$keepBucketBoxplot <- grep("Hrh1", inputDataReactive()$genes, value = T)
 input$boxplotCounts <- names(inputDataReactive()$countList)[2]
 input$boxplotBatch <- "None"
@@ -435,8 +481,8 @@ input$boxplotPointBorder <- 0.5
 input$boxplotCountsLog <- FALSE
 input$boxplotZScore <- FALSE
 
-input$boxplotGenes <- inputDataReactive()$genes[1:5]
-input$boxplotGenesText <- inputDataReactive()$genes[6:10]
+input$fb_select_boxplot <- inputDataReactive()$genes[1:5]
+input$fb_text_boxplot <- inputDataReactive()$genes[6:10]
 input$boxplotFactor1 <- inputDataReactive()$factors[1]
 input$boxplotFactor2 <- "None"
 input$boxplotCounts <- names(inputDataReactive()$countList)[2]
@@ -532,10 +578,10 @@ input$lfcVolcano <- 0.25
 input$pThresholdVolcano <- 0.05
 input$textSizeVolcano <- 12
 input$alphaVolcano <- 0.8
-input$volcanoGenes <- inputDataReactive()$genes[1:5]
-input$volcanoGenesText <- inputDataReactive()$genes[8:9]
+input$fb_select_volcano <- inputDataReactive()$genes[1:5]
+input$fb_text_volcano <- inputDataReactive()$genes[8:9]
 input$volcanoShowGenes <- TRUE
-input$boxKeepBucketGenes <- inputDataReactive()$genes[1:5]
+input$fb_keep_volcano <- inputDataReactive()$genes[1:5]
 input$dotSizeVolcano <- 3
 input$yLimVolcano <- 25
 input$xLimVolcano <- 30
@@ -633,7 +679,7 @@ input$correlationLabelPosX <- 0
 input$correlationLabelPosY <- 0
 input$correlationKeepBucket <- levels(inputDataReactive()$dataset[[inputDataReactive()$factors[1]]])
 
-input$keepBucketHeatmap <- inputDataReactive()$genes[c(1, 4, 5, 6, 9)]
+input$fb_keep_heatmap <- inputDataReactive()$genes[c(1, 4, 5, 6, 9)]
 input$boxplotBatch <- "None"
 dataSummary <- function(data, varname, groupnames){
   summary_func <- function(x, col){
@@ -653,7 +699,7 @@ if (inputDataReactive()$dataType == "RNASeq") {
 } else if (inputDataReactive()$dataType == "proteomics") {
   seqAnnoReactive <- reactiveValues("sa" = NULL, "saF" = NULL)
   seqAnnoReactive$sa = inputDataReactive()$seqAnnoList[[input$contrastSelected]]
-  seqAnnoReactive$sa <- seqAnnoReactive$sa %>% dplyr::select("gene_name", "log2Ratio", "pValue", "fdr")
+  seqAnnoReactive$sa <- seqAnnoReactive$sa %>% dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
   seqAnnoReactive$saF <- seqAnnoReactive$sa
   design <- input$contrastSelected
 }
@@ -667,7 +713,7 @@ input$geneLabelSizeVolcano <- 2
 input$showAxesVolcano <- TRUE
 input$showLinesVolcano <- TRUE
 input$pcaBatch <- "None"
-genesToPlot <- inputDataReactive()$seqAnno$gene_name[1:5]
+genesToPlot <- inputDataReactive()$seqAnno$feature_id[1:5]
 input$cellBorderSizeHeatmap1 <- 5
 input$cellBorderSizeHeatmap2 <- 5
 input$cellBorderColourHeatmap1 <- "black"
@@ -679,5 +725,5 @@ for (i in seq_along(input$heatmapColumnSelect)) {
 }
 input$pcaCounts <- names(inputDataReactive()$countList)[[2]]
 
-genesReactive <- reactiveValues(genes = NULL)
-genesReactive$genes <- inputDataReactive()$genes[c(1, 4, 5, 6, 9)]
+featureBucket$features <- inputDataReactive()$genes[c(1, 4, 5, 6, 9)]
+featureBucket$version <- 1L

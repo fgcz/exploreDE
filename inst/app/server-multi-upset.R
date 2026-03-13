@@ -82,9 +82,9 @@ observeEvent(
             }
 
             # Calculate lists
-            up <- seqAnno1$gene_name[which(as.numeric(seqAnno1[[p]]) <= as.numeric(input$pThresholdUpset) & as.numeric(seqAnno1$log2Ratio) >= as.numeric(input$lfcUpset))]
-            down <- seqAnno1$gene_name[which(as.numeric(seqAnno1[[p]]) <= as.numeric(input$pThresholdUpset) & as.numeric(seqAnno1$log2Ratio) <= -as.numeric(input$lfcUpset))]
-            both <- seqAnno1$gene_name[which(as.numeric(seqAnno1[[p]]) <= as.numeric(input$pThresholdUpset) & abs(as.numeric(seqAnno1$log2Ratio)) >= as.numeric(input$lfcUpset))]
+            up <- seqAnno1$feature_id[which(as.numeric(seqAnno1[[p]]) <= as.numeric(input$pThresholdUpset) & as.numeric(seqAnno1$log2Ratio) >= as.numeric(input$lfcUpset))]
+            down <- seqAnno1$feature_id[which(as.numeric(seqAnno1[[p]]) <= as.numeric(input$pThresholdUpset) & as.numeric(seqAnno1$log2Ratio) <= -as.numeric(input$lfcUpset))]
+            both <- seqAnno1$feature_id[which(as.numeric(seqAnno1[[p]]) <= as.numeric(input$pThresholdUpset) & abs(as.numeric(seqAnno1$log2Ratio)) >= as.numeric(input$lfcUpset))]
 
             geneLists[["upGenes"]][[names(results)[i]]] <- up
             geneLists[["downGenes"]][[names(results)[i]]] <- down
@@ -100,7 +100,7 @@ observeEvent(
         dfList <- list()
         for (n in seq_along(names(results))) {
             df1 <- data.frame(
-                "Gene" = results[[n]]$seqAnno$gene_name,
+                "Gene" = results[[n]]$seqAnno$feature_id,
                 "LFC" = results[[n]]$seqAnno$log2Ratio,
                 "pValue" = results[[n]]$seqAnno$pValue,
                 "FDR" = results[[n]]$seqAnno$fdr

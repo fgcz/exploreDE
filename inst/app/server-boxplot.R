@@ -49,7 +49,7 @@ updateSelectInput(
 
 updateSelectizeInput(
   session = session,
-  inputId = "boxplotGenes",
+  inputId = "fb_select_boxplot",
   choices = inputDataReactive()$genes,
   selected = "",
   server = TRUE
@@ -126,7 +126,7 @@ if (inputDataReactive()$dataType == "RNASeq") {
   observeEvent(input$contrastSelected,
     {
       seqAnnoReactive$sa <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
-      seqAnnoReactive$sa <- seqAnnoReactive$sa %>% dplyr::select("gene_name", "log2Ratio", "pValue", "fdr")
+      seqAnnoReactive$sa <- seqAnnoReactive$sa %>% dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
       seqAnnoReactive$saF <- seqAnnoReactive$sa
       design <- input$contrastSelected
       output$boxplotDesign <- renderText({
@@ -138,97 +138,7 @@ if (inputDataReactive()$dataType == "RNASeq") {
   )
 }
 
-# The main part of the gene bucket lives here ----
-# It listens in on DEG table, volcano, and heatmap tabs, in addition to this tab
-observeEvent(
-  {
-    input$boxplotGenes
-    input$boxplotGenesText
-    input$degTable_rows_selected
-    input$volcanoGenes
-    input$volcanoGenesText
-    input$heatmapGenes
-    input$heatmapGenesText
-    volcanoGenesReactive$volcanoBrushGenes
-  },
-  ignoreNULL = FALSE,
-  ignoreInit = TRUE,
-  {
-    # Get all the genes that have been selected from the drop-downs of a respective tab
-    genesList1 <- setNames(lapply(c("boxplotGenes", "volcanoGenes", "heatmapGenes"), function(geneList) {
-      if (!is.null(input[[geneList]])) {
-        input[[geneList]]
-      }
-    }), c("boxplotGenes", "volcanoGenes", "heatmapGenes"))
-
-    # Get all the genes that have been typed into the textbox of a respective tab
-    genesList2 <- setNames(lapply(c(
-      "boxplotGenesText", "volcanoGenesText", "heatmapGenesText"
-    ), function(geneText) {
-      if (!is.null(input[[geneText]])) {
-        strsplit(input[[geneText]], "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
-      }
-    }), c("boxplotGenesText", "volcanoGenesText", "heatmapGenesText"))
-
-    # Get the genes that were click-selected in the DE table
-    degMATable <- seqAnnoReactive$sa
-    if (inputDataReactive()$dataType != "CountQC") {
-      degMATable <- seqAnnoReactive$sa[order(seqAnnoReactive$sa$pValue), ]
-    }
-    degMATable <- degMATable$gene_name[input$degTable_rows_selected]
-
-    volcanoBrushGenes <- NULL
-    if (!is.null(volcanoGenesReactive$volcanoBrushGenes)) {
-      volcanoBrushGenes <- volcanoGenesReactive$volcanoBrushGenes
-    }
-
-    genesUnlist <- unique(unlist(c(genesList1, genesList2, degMATable, volcanoBrushGenes)))
-    genesUnlist <- genesUnlist[!genesUnlist == ""]
-
-    genesUnlist <- genesUnlist[which(genesUnlist %in% seqAnnoReactive$sa$gene_name)]
-    genesReactive$genes <- genesUnlist
-  }
-)
-
-observeEvent(input$resetGeneBucketBoxplot,
-  {
-    genesReactive$genes <- NULL
-    updateSelectizeInput(session, inputId = "boxplotGenes", choices = inputDataReactive()$genes, selected = NULL, server = T)
-    updateTextAreaInput(session, inputId = "boxplotGenesText", value = NULL)
-    output$boxplotStatic <- NULL
-  },
-  ignoreNULL = T,
-  ignoreInit = T
-)
-
-
-observeEvent(
-  {
-    genesReactive
-  },
-  {
-    output$geneBucket1 <- renderUI({
-      bucket_list(
-        header = "Drag and drop features in order to be plotted (Ctrl/Cmd to select multiple)",
-        group_name = "bucket_list_group",
-        orientation = "horizontal",
-        add_rank_list(
-          text = "Include these features in this order",
-          labels = genesReactive$genes,
-          input_id = "keepBucketBoxplot",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        ),
-        add_rank_list(
-          text = "Exclude these features",
-          labels = NULL,
-          input_id = "excludeBucketBoxplot",
-          options = sortable::sortable_options(multiDrag = TRUE)
-        )
-      )
-    })
-    outputOptions(output, "geneBucket1", suspendWhenHidden = FALSE)
-  }
-)
+# God observer, reset handler, and bucket render removed — now in server-featureBucket.R
 
 # observeEvent({
 #   figuresDataReactive
@@ -251,13 +161,11 @@ observeEvent(
 # Generate a reactive list of the count data to be plotted ----
 # We do this so we can make aesthetic changes to the plot without having to recalculate the required boxplots and results
 
-debouncedBoxplotFactor1 <- reactive({
-  input$keepBucketBoxplot
-}) %>% debounce(200)
+debouncedFeatures <- reactive({ input$fb_keep_boxplot }) %>% debounce(200)
 
 boxplotCountsReactive <- eventReactive(
   {
-    debouncedBoxplotFactor1()
+    debouncedFeatures()
     input$boxplotFactor1
     input$boxKeepBucket
     input$boxplotFactor2
@@ -271,7 +179,7 @@ boxplotCountsReactive <- eventReactive(
   ignoreNULL = FALSE,
   ignoreInit = TRUE,
   {
-    req(length(debouncedBoxplotFactor1()) >= 1)
+    req(length(debouncedFeatures()) >= 1)
     req(!is.null(input$boxplotFactor1))
     req(input$boxKeepBucket[[1]] %in% inputDataReactive()$dataset[[input$boxplotFactor1]])
 
@@ -281,7 +189,7 @@ boxplotCountsReactive <- eventReactive(
         .[[1]]
     }
 
-    genesToPlot <- debouncedBoxplotFactor1()
+    genesToPlot <- debouncedFeatures()
     if (length(genesToPlot) > 50) {
       genesToPlot <- genesToPlot[1:50]
     }
@@ -346,9 +254,9 @@ boxplotCountsReactive <- eventReactive(
 
     # add the DE results
     if (inputDataReactive()$dataType != "CountQC") {
-      countsBoxplotMelt$fdr <- seqAnnoReactive$sa$fdr[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$gene_name)]
+      countsBoxplotMelt$fdr <- seqAnnoReactive$sa$fdr[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
       countsBoxplotMelt$fdr[is.na(countsBoxplotMelt$fdr)] <- 1
-      countsBoxplotMelt$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$gene_name)]
+      countsBoxplotMelt$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
       countsBoxplotMelt$log2Ratio[is.na(countsBoxplotMelt$log2Ratio)] <- 0
       countsBoxplotMelt <- add_significance(
         countsBoxplotMelt,
@@ -659,11 +567,11 @@ output$dlTable_boxplot <- downloadHandler(
       # First add pValue if it doesn't exist (it's not in countsBoxplotMelt by default)
       if (inputDataReactive()$dataType == "RNASeq") {
         if ("pValue" %in% colnames(inputDataReactive()$seqAnno)) {
-          counts_data$pValue <- inputDataReactive()$seqAnno$pValue[match(counts_data$Feature, inputDataReactive()$seqAnno$gene_name)]
+          counts_data$pValue <- inputDataReactive()$seqAnno$pValue[match(counts_data$Feature, inputDataReactive()$seqAnno$feature_id)]
         }
       } else if (!is.null(input$contrastSelected)) {
         if ("pValue" %in% colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]])) {
-          counts_data$pValue <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]$pValue[match(counts_data$Feature, inputDataReactive()$seqAnnoList[[input$contrastSelected]]$gene_name)]
+          counts_data$pValue <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]$pValue[match(counts_data$Feature, inputDataReactive()$seqAnnoList[[input$contrastSelected]]$feature_id)]
         }
       }
 
