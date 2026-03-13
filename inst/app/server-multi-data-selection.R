@@ -744,7 +744,12 @@ observeEvent(inputDataReactive(), {
                 ),
                 dataset = data$dataset,
                 countList = data$countList, # Pass pre-computed countList
-                design = con
+                design = con,
+                genes = data$genes,
+                factors = data$factors,
+                factorLevels = data$factorLevels,
+                gene_lookup = data$gene_lookup,
+                groupingName = groupingName
             )
 
             multiDeReactive$results[[con]] <- pseudoObj
