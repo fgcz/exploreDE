@@ -33,6 +33,14 @@ tabItem(
                 status = "success",
                 DT::dataTableOutput("multiSelectedDatasetsTable"),
                 br(),
+                uiOutput("multiContrastOrderBucket"),
+                actionButton(
+                    inputId = "multiApplyOrder",
+                    label = "Apply Order",
+                    icon = icon("sort"),
+                    class = "btn-info"
+                ),
+                br(), br(),
                 uiOutput("multiRenameInputsUI"),
                 actionButton(
                     inputId = "multiUpdateNames",

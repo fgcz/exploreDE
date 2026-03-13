@@ -186,7 +186,7 @@ multiPathwayHeatmapObjectReactive <- reactive({
         lapply(names(results), function(k) {
             col <- input[[paste0("multiGroupColour", gsub(" ", "_", k))]]
             if (!is.null(col)) {
-                col2hex(col)
+                tryCatch(col2hex(col), error = function(e) "#000000")
             } else {
                 RColorBrewer::brewer.pal(max(3, length(results)), "Dark2")[match(k, names(results))]
             }

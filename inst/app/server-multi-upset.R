@@ -294,7 +294,10 @@ observeEvent(
 
         # Colours: Use multiGroupColour
         colours <- setNames(lapply((names(gl1) %>% gsub(" ", "_", .)), function(k) {
-            paste0(col2hex(input[[paste0("multiGroupColour", k)]]), "FF")
+            col <- input[[paste0("multiGroupColour", k)]]
+            if (is.null(col)) return("#000000FF")
+            col <- tryCatch(col2hex(col), error = function(e) "#000000")
+            paste0(col, "FF")
         }), names(gl1))
         colours <- unlist(colours)
         greyscale <- col2hex(c("grey87", "grey99"))

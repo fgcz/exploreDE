@@ -118,6 +118,7 @@ output$multiColourPaletteUI <- renderUI({
         options = list(plugins = list("remove_button", "drag_drop"))
     )
 })
+outputOptions(output, "multiColourPaletteUI", suspendWhenHidden = FALSE)
 
 observeEvent(
     {
@@ -127,17 +128,23 @@ observeEvent(
     {
         req(multiDeReactive$results)
         output$multiColourPickerUI <- renderUI({
+            # Fallback to first palette if multiColourPalette not yet available
+            selectedPalette <- input$multiColourPalette
+            if (is.null(selectedPalette) || length(selectedPalette) == 0) {
+                selectedPalette <- names(colourPaletteList2)[1]
+            }
             lapply(seq_along(names(multiDeReactive$results)), function(i) {
                 colourpicker::colourInput(
                     inputId = (paste0("multiGroupColour", names(multiDeReactive$results)[[i]]) %>% gsub(" ", "_", .)),
                     label = names(multiDeReactive$results)[[i]],
-                    value = rep(as.character(unlist(colourPaletteList2[input$multiColourPalette])), times = 5)[i],
+                    value = rep(as.character(unlist(colourPaletteList2[selectedPalette])), times = 5)[i],
                     palette = "square",
                     closeOnClick = TRUE,
                     returnName = TRUE
                 )
             })
         })
+        outputOptions(output, "multiColourPickerUI", suspendWhenHidden = FALSE)
     }
 )
 
@@ -624,6 +631,15 @@ observeEvent(input$multiUpdateNames, {
         return()
     }
 
+    # Clear figure reactives before updating to prevent stale observers crashing
+    multiBoxplotFiguresReactive$boxplot <- NULL
+    multiBoxplotFiguresReactive$barplot <- NULL
+    tilePlots$top <- NULL
+    tilePlots$custom <- NULL
+    tilePlots$go <- NULL
+    multiBubbleReactive$plot <- NULL
+    multiUpsetReactive$plot <- NULL
+
     # Apply the changes by rebuilding the list
     temp_results <- list()
     for (i in seq_along(multiDeReactive$results)) {
@@ -662,6 +678,47 @@ observeEvent(input$multiRemoveSelected, {
 
 observeEvent(input$multiClearAll, {
     multiDeReactive$results <- list()
+})
+
+# 3b. Contrast Order Bucket (drag-and-drop reordering)
+observeEvent(
+    multiDeReactive$results,
+    {
+        output$multiContrastOrderBucket <- renderUI({
+            req(multiDeReactive$results)
+            req(length(multiDeReactive$results) > 0)
+            sortable::rank_list(
+                text = "Drag to reorder contrasts:",
+                labels = as.list(names(multiDeReactive$results)),
+                input_id = "multiContrastOrder",
+                options = sortable::sortable_options(multiDrag = TRUE)
+            )
+        })
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = FALSE
+)
+
+observeEvent(input$multiApplyOrder, {
+    req(multiDeReactive$results)
+    req(input$multiContrastOrder)
+    newOrder <- input$multiContrastOrder
+    req(length(newOrder) == length(multiDeReactive$results))
+    req(all(newOrder %in% names(multiDeReactive$results)))
+
+    # Store current tab before making changes
+    currentTab <- isolate(input$tabs)
+
+    multiDeReactive$results <- multiDeReactive$results[newOrder]
+    multiDeReactive$menuUpdateTrigger <- multiDeReactive$menuUpdateTrigger + 1
+
+    showNotification("Contrast order updated.", type = "message")
+
+    shinyjs::delay(100, {
+        if (!is.null(currentTab)) {
+            updateTabItems(session, "tabs", selected = currentTab)
+        }
+    })
 })
 
 # 4. Proteomics Auto-Load (Triggered once)

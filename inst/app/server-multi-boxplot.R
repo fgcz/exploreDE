@@ -224,6 +224,7 @@ multiBoxplotCountsReactive <- eventReactive(
     input$multiBoxplotCounts
     input$multiBoxplotCountsLog
     input$multiBoxplotZScore
+    input$multiBoxplotYScaleFree
   },
   ignoreNULL = FALSE,
   ignoreInit = TRUE,
@@ -365,14 +366,15 @@ multiBoxplotCountsReactive <- eventReactive(
          )
 
          # Calculate y.positions based on max counts
-         # We need max count per feature
+         # When y-axis is fixed (free_x), use global max so brackets don't clip
          maxC <- tapply(countsBoxplotMelt$Counts, countsBoxplotMelt$Feature, max, na.rm=TRUE)
+         globalMaxC <- max(countsBoxplotMelt$Counts, na.rm = TRUE)
 
          pvalueDF$y.position <- 0
          for (i in 1:nrow(pvalueDF)) {
              ft <- as.character(pvalueDF$Feature[i])
              if (ft %in% names(maxC)) {
-                 pvalueDF$y.position[i] <- maxC[ft]
+                 pvalueDF$y.position[i] <- if (input$multiBoxplotYScaleFree) globalMaxC else maxC[ft]
              }
          }
     }
@@ -487,7 +489,7 @@ observeEvent(
 
     facetFree <- "free"
     if (input$multiBoxplotYScaleFree) {
-       facetFree <- if (input$multiBoxplotYScaleFree) "free" else "fixed"
+        facetFree <- "free_x"
     }
 
     # Boxplot ----
@@ -633,7 +635,7 @@ observeEvent(
     # Just copying minimal barplot
     countsBarplot <- countsBarplot %>% tidyr::complete(!!sym(input$multiBoxplotFactor1), Feature, fill = list(Counts = 0))
     barplot <- ggplot(data = countsBarplot, aes(x = .data[[input$multiBoxplotFactor1]], y = Counts, fill = .data[[input$multiBoxplotFactor1]]))
-    barplot <- barplot + facet_wrap(~Feature, scales = "free", ncol = input$multiBoxplotNCol)
+    barplot <- barplot + facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol)
     barplot <- barplot + geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = input$multiBoxplotBoxAlpha, show.legend = FALSE)
     barplot <- barplot + theme_prism(base_size = input$textSizeMultiBoxplot)
 

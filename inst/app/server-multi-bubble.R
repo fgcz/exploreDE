@@ -76,14 +76,11 @@ observeEvent(
         geneListBubble <- upsetGeneList[[dataToUseBubble]][[input$subdataToBubble]]
 
         # get the latest colours chosen
-        contrastColoursBubble <- list()
-        for (i in seq_along(results)) {
-            contrastColoursBubble[[names(results)[i]]] <- paste0(col2hex(input[[paste0("multiGroupColour", names(results)[i] %>% gsub(" ", "_", .))]]))
-        }
-        coloursToUseBubble <- unlist(contrastColoursBubble)
-
         contrastColoursBubble <- setNames(lapply((names(multiDeReactive$results) %>% gsub(" ", "_", .)), function(k) {
-            paste0(col2hex(input[[paste0("multiGroupColour", k)]]), "FF")
+            col <- input[[paste0("multiGroupColour", k)]]
+            if (is.null(col)) return("#000000FF")
+            col <- tryCatch(col2hex(col), error = function(e) "#000000")
+            paste0(col, "FF")
         }), names(multiDeReactive$results))
         coloursToUseBubble <- unlist(contrastColoursBubble)
         # req(grepl("^#", coloursToUseBubble[[1]]))

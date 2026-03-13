@@ -282,7 +282,8 @@ observeEvent(
                 defaultCol <- rep(catalystCols, times = 5)[i]
                 return(paste0(defaultCol, "FF"))
             }
-            paste0(gplots::col2hex(col), "FF")
+            col <- tryCatch(gplots::col2hex(col), error = function(e) "#000000")
+            paste0(col, "FF")
         }), names(multiDeReactive$results))
         coloursToUse <- unlist(contrastColours)
 
@@ -666,7 +667,8 @@ observeEvent(
                         if (is.null(col)) {
                             return("#000000FF")
                         }
-                        paste0(gplots::col2hex(col), "FF")
+                        col <- tryCatch(gplots::col2hex(col), error = function(e) "#000000")
+                        paste0(col, "FF")
                     }), names(multiDeReactive$results))
                     coloursToUse <- unlist(contrastColours)
 
