@@ -388,13 +388,8 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl)) {
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p23078/bfabric/Proteomics/exploreDE/2026/2026-03/2026-03-10/workunit_342063/3106962.rds" # prot
-  dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p23078/bfabric/Proteomics/exploreDE/2026/2026-03/2026-03-10/workunit_342065/3106968.rds" # phos
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335485/2997996.rds" # pept
-  # dataDir <- "/srv/gstore/projects/p23793/o32655_CountQC_2023-10-05--18-33-15/Count_QC/counts-sswoowrqapiv-EzResult.RData" # CountQC
-  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
-  # dataType <- "demo"
-  dataType <- "proteomics"
+  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  dataType <- "demo"
   projectFromUrl <- dataDir %>%
     gsub(".*projects\\/", "", .) %>%
     gsub("\\/.*", "", .)
