@@ -62,7 +62,7 @@ tabItem(
                         numericInput(inputId = "tileDEGNumber", label = "Number Top DEGs from each contrast", min = 5, max = 5000, value = 10, step = 1),
                         sliderInput(inputId = "lfcTile", label = "Log2 Fold Change Threshold:", value = 0.5, min = 0, max = 10, step = 0.25, ticks = F, width = "85%"),
                         selectInput(inputId = "pTypeTile", choices = c("FDR", "Raw"), label = "P-Value:", selected = "Raw"),
-                        selectInput(inputId = "pThresholdTile", choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
+                        selectInput(inputId = "pThresholdTile", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
                     ),
                     tabPanel(
                         title = "Figure settings",

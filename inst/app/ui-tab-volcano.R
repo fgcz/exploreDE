@@ -42,7 +42,7 @@ tabItem(
             title = "Main settings",
             numericInput(inputId = "lfcVolcano", label = "Log2 Fold Change Threshold:", value = 0.5, min = 0, max = 20, step = 0.25),
             selectInput(inputId = "pTypeVolcano", label = "P-Value", choices = c("FDR", "Raw"), selected = "FDR"),
-            selectInput(inputId = "pThresholdVolcano", label = "P-value Threshold", choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001, 1e-6), selected = 0.05),
+            selectInput(inputId = "pThresholdVolcano", label = "P-value Threshold", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001, 1e-6), selected = 0.05),
             uiOutput(outputId = "nrPeptidesVolcanoUI"),
             numericInput(inputId = "xLimVolcano", label = "x axis (log2 FC) limits (both +/-)", value = 5, min = 1, max = 20, step = 0.5),
             numericInput(inputId = "yLimVolcano", label = "y axis (-log 10 p-value) limits", value = 50, min = 10, max = 250, step = 10),

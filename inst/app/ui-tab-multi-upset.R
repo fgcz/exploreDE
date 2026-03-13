@@ -57,7 +57,7 @@ tabItem(
                         hr(style = "border-top: 1px solid #000000;"), h4("DEG Settings"),
                         numericInput(inputId = "lfcUpset", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
                         radioButtons(inputId = "pTypeUpset", choices = c("FDR", "Raw"), label = "P-Value:", selected = "FDR", inline = TRUE),
-                        selectInput(inputId = "pThresholdUpset", choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
+                        selectInput(inputId = "pThresholdUpset", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
                     ),
                     tabPanel(
                         title = "Upset Settings",

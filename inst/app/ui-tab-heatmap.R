@@ -81,7 +81,7 @@ tabItem(
               numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 2000, value = 50, step = 1),
               numericInput(inputId = "lfcHeatmap", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
               selectInput(inputId = "pTypeHeatmap", choices = c("FDR", "Raw"), label = "P-Value:", selected = "Raw"),
-              selectInput(inputId = "pThresholdHeatmap", choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05),
+              selectInput(inputId = "pThresholdHeatmap", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05),
               selectInput(inputId = "heatmapFeatureDirection", label = "Feature DE direction", choices = c("Both", "Up-regulated", "Down-regulated"), selected = "Both", multiple = FALSE),
               uiOutput(outputId = "nrPeptidesHeatmapUI")
             ),

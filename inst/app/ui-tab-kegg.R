@@ -62,7 +62,7 @@ tabItem(
         ),
         selectInput(
           inputId = "pThresholdKEGG",
-          choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001),
+          choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001),
           label = "P-Value Threshold:",
           selected = 0.05
         ),
