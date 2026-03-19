@@ -27,68 +27,70 @@ observeEvent(inputDataReactive(), {
   output$keggSpeciesSupported <- reactive({ !is.null(keggHeatmapReactive$keggCode) })
   outputOptions(output, "keggSpeciesSupported", suspendWhenHidden = FALSE)
 
-  # Render KEGG heatmap tab only for supported species
-  output$heatmapKeggTab <- renderUI({
-    if (is.null(keggHeatmapReactive$keggCode)) return(NULL)
-    tabPanel(
-      title = "KEGG",
-      column(
-        width = 3,
-        helpText(
-          "Plot the expression of all features in a KEGG pathway.",
-          "Unlike the KEGG Pathway tab, this shows individual gene expression",
-          "rather than collapsing multiple genes to a single KEGG ortholog."
-        ),
-        textInput(
-          inputId = "heatmapKeggInput",
-          label = "Enter a KEGG pathway ID",
-          placeholder = "e.g., hsa05200 or 05200",
-          value = ""
-        ),
-        actionButton(
-          inputId = "heatmapKeggGo",
-          label = "Fetch pathway genes",
-          icon = icon("search")
-        ),
-        uiOutput("heatmapKeggInfo"),
-        hr(),
-        h5("Subsetting"),
-        conditionalPanel(
-          condition = "output.test == 'RNASeq'",
-          checkboxInput(
-            inputId = "heatmapKeggDEOnly",
-            label = "Show only DE genes",
-            value = FALSE
+  # Add KEGG heatmap tab dynamically for supported species
+  if (!is.null(keggHeatmapReactive$keggCode)) {
+    appendTab(
+      inputId = "sig",
+      tabPanel(
+        title = "KEGG",
+        column(
+          width = 3,
+          helpText(
+            "Plot the expression of all features in a KEGG pathway.",
+            "Unlike the KEGG Pathway tab, this shows individual gene expression",
+            "rather than collapsing multiple genes to a single KEGG ortholog."
           ),
+          textInput(
+            inputId = "heatmapKeggInput",
+            label = "Enter a KEGG pathway ID",
+            placeholder = "e.g., hsa05200 or 05200",
+            value = ""
+          ),
+          actionButton(
+            inputId = "heatmapKeggGo",
+            label = "Fetch pathway genes",
+            icon = icon("search")
+          ),
+          uiOutput("heatmapKeggInfo"),
+          hr(),
+          h5("Subsetting"),
           conditionalPanel(
-            condition = "input.heatmapKeggDEOnly == true",
-            numericInput(inputId = "heatmapKeggLFC", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
-            selectInput(inputId = "heatmapKeggPType", choices = c("FDR", "Raw"), label = "P-Value:", selected = "FDR"),
-            selectInput(inputId = "heatmapKeggPThreshold", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
+            condition = "output.test == 'RNASeq'",
+            checkboxInput(
+              inputId = "heatmapKeggDEOnly",
+              label = "Show only DE genes",
+              value = FALSE
+            ),
+            conditionalPanel(
+              condition = "input.heatmapKeggDEOnly == true",
+              numericInput(inputId = "heatmapKeggLFC", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
+              selectInput(inputId = "heatmapKeggPType", choices = c("FDR", "Raw"), label = "P-Value:", selected = "FDR"),
+              selectInput(inputId = "heatmapKeggPThreshold", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
+            )
+          ),
+          numericInput(
+            inputId = "heatmapKeggExpr",
+            label = "Minimum median feature expression",
+            value = 0,
+            min = 0
+          ),
+          helpText(
+            "Removes lowly-expressed genes. The threshold applies to the absolute",
+            "median expression across all samples, after any normalisation, log2",
+            "transform, or scaling selected in the shared heatmap settings.",
+            "Increase to focus on more highly-expressed pathway members."
           )
         ),
-        numericInput(
-          inputId = "heatmapKeggExpr",
-          label = "Minimum median feature expression",
-          value = 0,
-          min = 0
-        ),
-        helpText(
-          "Removes lowly-expressed genes. The threshold applies to the absolute",
-          "median expression across all samples, after any normalisation, log2",
-          "transform, or scaling selected in the shared heatmap settings.",
-          "Increase to focus on more highly-expressed pathway members."
-        )
-      ),
-      column(
-        width = 9,
-        withSpinner(
-          plotOutput("heatmapKEGG", inline = TRUE),
-          color = "#6E8D9E"
+        column(
+          width = 9,
+          withSpinner(
+            plotOutput("heatmapKEGG", inline = TRUE),
+            color = "#6E8D9E"
+          )
         )
       )
     )
-  })
+  }
 
 
   if (inputDataReactive()$dataType == "proteomics") {

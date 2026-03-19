@@ -293,7 +293,6 @@ tabItem(
               )
             )
           ),
-          uiOutput("heatmapKeggTab")
         )
       )
     )

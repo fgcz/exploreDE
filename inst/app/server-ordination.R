@@ -150,44 +150,32 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", minibatch = NULL) {
 
   # Validate family parameter
   if (is.null(family) || !is.character(family) || length(family) != 1) {
-    cat("GLM-PCA error: Invalid family parameter (must be a single character string)\n")
+    warning("GLM-PCA: Invalid family parameter (must be a single character string)")
     return(NULL)
   }
 
   valid_families <- c("poi", "nb", "binom")
   if (!family %in% valid_families) {
-    cat("GLM-PCA error: family must be one of: poi, nb, binom. Got:", family, "\n")
+    warning("GLM-PCA: family must be one of: poi, nb, binom. Got: ", family)
     return(NULL)
   }
-
-  # Debug output
-  cat("GLM-PCA called with: family =", family, "L =", L, "minibatch =", minibatch, "\n")
-  cat("Family class:", class(family), "Family length:", length(family), "\n")
-  cat("Counts dimensions (before filtering):", nrow(counts), "genes x", ncol(counts), "samples\n")
 
   # Remove genes with all zeros (required by glmpca)
   row_sums <- rowSums(counts)
   non_zero_rows <- row_sums > 0
   if (sum(non_zero_rows) < 3) {
-    cat("GLM-PCA error: Too few non-zero genes remaining\n")
+    warning("GLM-PCA: Too few non-zero genes remaining")
     return(NULL)
   }
   counts <- counts[non_zero_rows, ]
-  cat("Counts dimensions (after filtering all-zero genes):", nrow(counts), "genes x", ncol(counts), "samples\n")
 
   # GLM-PCA needs raw/normalized counts (not log-transformed)
-  # genes as rows, samples as columns
-  # Note: Removing minibatch parameter temporarily - can re-enable after testing
   glmpca_result <- tryCatch(
     {
-      cat("Attempting GLM-PCA call...\n")
-      result <- glmpca::glmpca(counts, L = L, fam = family)
-      cat("GLM-PCA call succeeded!\n")
-      result
+      glmpca::glmpca(counts, L = L, fam = family)
     },
     error = function(e) {
-      cat("GLM-PCA error:", e$message, "\n")
-      cat("Error class:", class(e), "\n")
+      warning("GLM-PCA error: ", e$message)
       return(NULL)
     }
   )
@@ -195,11 +183,6 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", minibatch = NULL) {
   if (is.null(glmpca_result)) {
     return(NULL)
   }
-
-  # Note: glmpca_result$dev is a vector of deviance values at each iteration
-  # We cannot easily calculate variance explained per component like PCA
-  # Set variance to NULL (like NMDS) and only show the scree plot if available
-  cat("GLM-PCA completed successfully with", L, "dimensions\n")
 
   # Name the columns before converting to tibble
   component_names <- paste0("dim", 1:L)

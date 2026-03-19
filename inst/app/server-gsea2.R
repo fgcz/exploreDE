@@ -283,19 +283,8 @@ observeEvent(
     log2RatioGSEA_full <- log2RatioGSEA # Keep full list for reference
     genes_pass_filter <- names(log2RatioGSEA) # Default: all genes pass
 
-    cat("\n=== GSEA Filtering Debug ===\n")
-    cat("Filter mode:", input$gseaVisFilterMode, "\n")
-    cat("P-value type:", input$gseaVisPType, "| Threshold:", input$gseaVisPThreshold, "\n")
-    cat("LFC threshold:", input$gseaVisLFC, "\n")
-    cat("Total genes before filter:", length(log2RatioGSEA), "\n")
-
     if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode != "none") {
-      # Get p-values for genes
-      cat("Checking metadata paths...\n")
-      cat("metadata(se)$seqAnno exists:", !is.null(metadata(se)$seqAnno), "\n")
-      cat("metadata(se)$enrichInput$seqAnno exists:", !is.null(metadata(se)$enrichInput$seqAnno), "\n")
-
-      # Try the enrichInput path first (like ORA), then fall back to direct path
+      # Get p-values for genes — try enrichInput path first, then fall back to direct path
       seqAnno <- metadata(se)$enrichInput$seqAnno
       if (is.null(seqAnno)) {
         seqAnno <- metadata(se)$seqAnno
@@ -304,20 +293,11 @@ observeEvent(
       # Determine which p-value column to use
       pval_col <- if (!is.null(input$gseaVisPType) && input$gseaVisPType == "FDR") "fdr" else "pValue"
 
-      cat("Looking for column:", pval_col, "\n")
-      if (!is.null(seqAnno)) {
-        cat("seqAnno columns:", paste(colnames(seqAnno), collapse = ", "), "\n")
-      } else {
-        cat("seqAnno is NULL!\n")
-      }
-
       # Validate that the column exists
       if (!is.null(seqAnno) && pval_col %in% colnames(seqAnno) && "gene_name" %in% colnames(seqAnno)) {
         # Match genes by name
         gene_match_idx <- match(names(log2RatioGSEA), seqAnno$gene_name)
         gene_match_idx <- gene_match_idx[!is.na(gene_match_idx)]
-
-        cat("Matched genes:", length(gene_match_idx), "\n")
 
         if (length(gene_match_idx) > 0) {
           # Get p-values for matched genes
@@ -332,21 +312,15 @@ observeEvent(
           ]
           genes_pass_filter <- genes_pass_filter[!is.na(genes_pass_filter)]
 
-          cat("Genes passing filter:", length(genes_pass_filter), "\n")
-
           # Apply filter mode
           if (input$gseaVisFilterMode == "genes" && length(genes_pass_filter) > 0) {
             # Filter genes entirely - only keep genes meeting thresholds
             log2RatioGSEA <- log2RatioGSEA[names(log2RatioGSEA) %in% genes_pass_filter]
-            cat("After filtering log2RatioGSEA:", length(log2RatioGSEA), "genes\n")
           }
         }
-      } else {
-        cat("Validation failed - column or seqAnno not found\n")
       }
       # For "labels" mode, keep all genes in log2RatioGSEA but use genes_pass_filter for labeling
     }
-    cat("=== End Debug ===\n\n")
 
     # In "genes" mode, also remove filtered genes from the enrichment result
     # so cnetplot doesn't render them as grey nodes

@@ -199,12 +199,6 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
       log2RatioORA_full <- log2RatioORA # Keep full list for reference
       genes_pass_filter <- names(log2RatioORA) # Default: all genes pass
 
-      cat("\n=== ORA Filtering Debug ===\n")
-      cat("Filter mode:", input$oraVisFilterMode, "\n")
-      cat("P-value type:", input$oraVisPType, "| Threshold:", input$oraVisPThreshold, "\n")
-      cat("LFC threshold:", input$oraVisLFC, "\n")
-      cat("Total genes before filter:", length(log2RatioORA), "\n")
-
       if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode != "none") {
         # Get p-values for genes
         seqAnno <- metadata(se)$enrichInput$seqAnno
@@ -212,16 +206,11 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
         # Determine which p-value column to use
         pval_col <- if (!is.null(input$oraVisPType) && input$oraVisPType == "FDR") "fdr" else "pValue"
 
-        cat("Looking for column:", pval_col, "\n")
-        cat("seqAnno columns:", paste(colnames(seqAnno), collapse = ", "), "\n")
-
         # Validate that the column exists
         if (!is.null(seqAnno) && pval_col %in% colnames(seqAnno) && "gene_name" %in% colnames(seqAnno)) {
           # Match genes by name
           gene_match_idx <- match(names(log2RatioORA), seqAnno$gene_name)
           gene_match_idx <- gene_match_idx[!is.na(gene_match_idx)]
-
-          cat("Matched genes:", length(gene_match_idx), "\n")
 
           if (length(gene_match_idx) > 0) {
             # Get p-values for matched genes
@@ -236,21 +225,15 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
             ]
             genes_pass_filter <- genes_pass_filter[!is.na(genes_pass_filter)]
 
-            cat("Genes passing filter:", length(genes_pass_filter), "\n")
-
             # Apply filter mode
             if (input$oraVisFilterMode == "genes" && length(genes_pass_filter) > 0) {
               # Filter genes entirely - only keep genes meeting thresholds
               log2RatioORA <- log2RatioORA[names(log2RatioORA) %in% genes_pass_filter]
-              cat("After filtering log2RatioORA:", length(log2RatioORA), "genes\n")
             }
           }
-        } else {
-          cat("Validation failed - column or seqAnno not found\n")
         }
         # For "labels" mode, keep all genes in log2RatioORA but use genes_pass_filter for labeling
       }
-      cat("=== End Debug ===\n\n")
 
       # Clean empty gene names from geneName (caused by unmapped Ensembl IDs)
       er@result$geneName <- sapply(strsplit(er@result$geneName, "/"), function(g) paste(g[nchar(g) > 0], collapse = "/"))
