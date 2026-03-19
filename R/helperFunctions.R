@@ -274,8 +274,12 @@ convert_proteomics_se <- function(se) {
   }
 
   # Map raw SE rownames → clean feature_ids via lookup (no quant-type regex)
+  # NB: seqAnnoList is sorted by pValue, so we must build the lookup from the
+  # UNSORTED contrast_df to keep rowname→feature_id alignment correct.
+  unsorted_sa <- standardise_columns(contrast_dfs[[contrasts[1]]])
+  unsorted_sa$feature_id <- build_feature_id(unsorted_sa)
   raw_rn <- rownames(contrast_dfs[[contrasts[1]]])
-  fid_lookup <- setNames(seqAnnoList[[1]]$feature_id, raw_rn)
+  fid_lookup <- setNames(unsorted_sa$feature_id, raw_rn)
 
   countList <- setNames(lapply(names(assays(se)), function(ass) {
     x <- assay(se, ass)
