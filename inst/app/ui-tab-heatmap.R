@@ -181,6 +181,9 @@ tabItem(
             br(),
             downloadButton(outputId = "dlTable_heatmapGO", label = "Download GO Heatmap Counts"),
             helpText("Downloads counts from the GO term heatmap."),
+            br(),
+            downloadButton(outputId = "dlTable_heatmapKEGG", label = "Download KEGG Heatmap Counts"),
+            helpText("Downloads counts from the KEGG pathway heatmap."),
             hr(style = "border-top: 1px solid #000000;"),
             h4("Download Heatmap Plots"),
             helpText("Whichever heatmap you are currently viewing will be the one downloaded."),
@@ -189,6 +192,8 @@ tabItem(
             downloadButton(outputId = "dlPlot_heatmapCustom", label = "Download Custom Heatmap"),
             br(), br(),
             downloadButton(outputId = "dlPlot_heatmapGO", label = "Download GO Heatmap"),
+            br(), br(),
+            downloadButton(outputId = "dlPlot_heatmapKEGG", label = "Download KEGG Heatmap"),
             hr(style = "border-top: 1px solid #000000;"),
             h4("Download Settings"),
             splitLayout(
@@ -246,15 +251,37 @@ tabItem(
             )
           ),
           tabPanel(
-            title = "GO", 
+            title = "GO",
             column(
               width = 3,
-              helpText("You can also plot the expression of features annotated to a given GO term (again, irrespective of p-value from the DE test)."),
+              helpText("Plot the expression of features annotated to a given GO term (irrespective of p-value from the DE test)."),
               selectizeInput(
                 inputId = "heatmapGoInput",
-                label = "Or, select the GO Term you wish to plot",
+                label = "Select the GO Term you wish to plot",
                 choices = NULL,
                 selected = NULL
+              ),
+              actionButton(
+                inputId = "heatmapGoGo",
+                label = "Fetch GO term genes",
+                icon = icon("search")
+              ),
+              uiOutput("heatmapGoInfo"),
+              hr(),
+              h5("Subsetting"),
+              conditionalPanel(
+                condition = "output.test == 'RNASeq'",
+                checkboxInput(
+                  inputId = "heatmapGoDEOnly",
+                  label = "Show only DE genes",
+                  value = FALSE
+                ),
+                conditionalPanel(
+                  condition = "input.heatmapGoDEOnly == true",
+                  numericInput(inputId = "heatmapGoLFC", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
+                  selectInput(inputId = "heatmapGoPType", choices = c("FDR", "Raw"), label = "P-Value:", selected = "FDR"),
+                  selectInput(inputId = "heatmapGoPThreshold", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
+                )
               ),
               uiOutput("heatmapGOUI2")
             ),
@@ -265,7 +292,8 @@ tabItem(
                 color = "#6E8D9E"
               )
             )
-          )
+          ),
+          uiOutput("heatmapKeggTab")
         )
       )
     )

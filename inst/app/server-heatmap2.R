@@ -1,5 +1,94 @@
+# GO heatmap: committed GO term (set on button click)
+goHeatmapReactive <- reactiveValues(
+  currentGoTerm = NULL,
+  currentGoName = NULL,
+  currentGenes = NULL
+)
+
+# KEGG heatmap reactive cache
+keggHeatmapReactive <- reactiveValues(
+  keggCode = NULL,
+  cache = list(),
+  currentGenes = NULL,
+  currentPathwayName = NULL
+)
+
 observeEvent(inputDataReactive(), {
   req(inputDataReactive()$dataType)
+
+  # Detect species for KEGG heatmap
+  keggHeatmapReactive$keggCode <- tryCatch({
+    spp <- ezRun::getSpecies(inputDataReactive()$param$refBuild)
+    if (grepl("^Rattus", inputDataReactive()$param$refBuild)) spp <- "Rat"
+    switch(spp, "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
+  }, error = function(e) NULL)
+
+  # Output flag for conditionalPanel in UI
+  output$keggSpeciesSupported <- reactive({ !is.null(keggHeatmapReactive$keggCode) })
+  outputOptions(output, "keggSpeciesSupported", suspendWhenHidden = FALSE)
+
+  # Render KEGG heatmap tab only for supported species
+  output$heatmapKeggTab <- renderUI({
+    if (is.null(keggHeatmapReactive$keggCode)) return(NULL)
+    tabPanel(
+      title = "KEGG",
+      column(
+        width = 3,
+        helpText(
+          "Plot the expression of all features in a KEGG pathway.",
+          "Unlike the KEGG Pathway tab, this shows individual gene expression",
+          "rather than collapsing multiple genes to a single KEGG ortholog."
+        ),
+        textInput(
+          inputId = "heatmapKeggInput",
+          label = "Enter a KEGG pathway ID",
+          placeholder = "e.g., hsa05200 or 05200",
+          value = ""
+        ),
+        actionButton(
+          inputId = "heatmapKeggGo",
+          label = "Fetch pathway genes",
+          icon = icon("search")
+        ),
+        uiOutput("heatmapKeggInfo"),
+        hr(),
+        h5("Subsetting"),
+        conditionalPanel(
+          condition = "output.test == 'RNASeq'",
+          checkboxInput(
+            inputId = "heatmapKeggDEOnly",
+            label = "Show only DE genes",
+            value = FALSE
+          ),
+          conditionalPanel(
+            condition = "input.heatmapKeggDEOnly == true",
+            numericInput(inputId = "heatmapKeggLFC", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
+            selectInput(inputId = "heatmapKeggPType", choices = c("FDR", "Raw"), label = "P-Value:", selected = "FDR"),
+            selectInput(inputId = "heatmapKeggPThreshold", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
+          )
+        ),
+        numericInput(
+          inputId = "heatmapKeggExpr",
+          label = "Minimum median feature expression",
+          value = 0,
+          min = 0
+        ),
+        helpText(
+          "Removes lowly-expressed genes. The threshold applies to the absolute",
+          "median expression across all samples, after any normalisation, log2",
+          "transform, or scaling selected in the shared heatmap settings.",
+          "Increase to focus on more highly-expressed pathway members."
+        )
+      ),
+      column(
+        width = 9,
+        withSpinner(
+          plotOutput("heatmapKEGG", inline = TRUE),
+          color = "#6E8D9E"
+        )
+      )
+    )
+  })
 
 
   if (inputDataReactive()$dataType == "proteomics") {
@@ -207,6 +296,21 @@ observeEvent(input$heatmapZScore, {
   }
 })
 
+# Update KEGG expression threshold step based on count scale
+observeEvent({
+  input$heatmapCounts
+  input$heatmapLog2
+  input$heatmapZScore
+}, ignoreInit = TRUE, {
+  isLogSpace <- grepl("Log2", input$heatmapCounts, ignore.case = TRUE) ||
+    (input$heatmapLog2 && input$heatmapCounts %in% c("TPM", "FPKM", "Normalised"))
+  isScaled <- input$heatmapZScore %in% c("Z-Score", "Centred")
+
+  stepVal <- if (isScaled || isLogSpace) 0.1 else 1
+  updateNumericInput(session = session, inputId = "heatmapKeggExpr", step = stepVal)
+  updateNumericInput(session = session, inputId = "heatmapGoExpr", step = stepVal)
+})
+
 # Update settings for CountQC data type
 observeEvent(inputDataReactive(), {
   if (inputDataReactive()$dataType == "CountQC") {
@@ -277,8 +381,18 @@ heatmapInputs <- reactive({
     input$contrastSelected,
     input$fb_keep_heatmap,
     input$heatmapCustomTitle,
-    input$heatmapGoInput,
+    goHeatmapReactive$currentGenes,
     input$heatmapGoExpr,
+    input$heatmapGoDEOnly,
+    input$heatmapGoPType,
+    input$heatmapGoPThreshold,
+    input$heatmapGoLFC,
+    keggHeatmapReactive$currentGenes,
+    input$heatmapKeggExpr,
+    input$heatmapKeggDEOnly,
+    input$heatmapKeggPType,
+    input$heatmapKeggPThreshold,
+    input$heatmapKeggLFC,
     input$heatmapColumnSelect,
     input$cellBorderSizeHeatmap1,
     input$cellBorderColourHeatmap1,
@@ -312,6 +426,7 @@ observeEvent(
       figuresDataReactive[["heatmapDEFeatures"]] <- NULL
       figuresDataReactive[["heatmapCustom"]] <- NULL
       figuresDataReactive[["heatmapGO"]] <- NULL
+      figuresDataReactive[["heatmapKEGG"]] <- NULL
       return(NULL)
     }
 
@@ -792,21 +907,34 @@ observeEvent(
 
       # GO heatmap ----
       if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC")) {
-        goToPlot <- NULL
-        goGenes <- NULL
+        goGenes <- goHeatmapReactive$currentGenes
         countsHeatmapGO <- NULL
+        goGenesTotal <- length(goGenes)
 
-        goToPlot <- gsub(" .*", "", input$heatmapGoInput)
-        goGenes <- seqAnnoHeatmap$feature_id[with(seqAnnoHeatmap, grepl(goToPlot, paste(`GO BP`, `GO MF`, `GO CC`)))]
+        if (!is.null(goGenes) && length(goGenes) > 0) {
+          goGenes <- goGenes[which(goGenes %in% rownames(countsHeatmap))]
+          goGenesTotal <- length(goGenes)
 
-        goGenes <- goGenes[which(goGenes %in% rownames(countsHeatmap))]
-        if (length(goGenes) == 1) {
-          countsHeatmapGO <- t(as.matrix(countsHeatmap[goGenes, ]))
-          rownames(countsHeatmapGO) <- goGenes
-        } else {
-          countsHeatmapGO <- countsHeatmap[goGenes, ]
-          countsHeatmapGO <- countsHeatmapGO[abs(rowMedians(countsHeatmapGO)) >= input$heatmapGoExpr, ]
+          # Apply DE filter if enabled
+          if (!is.null(input$heatmapGoDEOnly) && input$heatmapGoDEOnly) {
+            pCol <- if (input$heatmapGoPType == "Raw") "pValue" else "fdr"
+            deFeatures <- seqAnnoHeatmap$feature_id[
+              which(seqAnnoHeatmap[[pCol]] <= as.numeric(input$heatmapGoPThreshold) &
+                    abs(seqAnnoHeatmap$log2Ratio) >= as.numeric(input$heatmapGoLFC))
+            ]
+            goGenes <- goGenes[goGenes %in% deFeatures]
+          }
+
+          if (length(goGenes) == 1) {
+            countsHeatmapGO <- t(as.matrix(countsHeatmap[goGenes, ]))
+            rownames(countsHeatmapGO) <- goGenes
+          } else if (length(goGenes) > 1) {
+            countsHeatmapGO <- countsHeatmap[goGenes, ]
+            countsHeatmapGO <- countsHeatmapGO[abs(rowMedians(countsHeatmapGO)) >= input$heatmapGoExpr, ]
+          }
         }
+
+        if (!is.null(countsHeatmapGO) && nrow(countsHeatmapGO) > 0) {
         req(nrow(datasetHeatmap) == ncol(countsHeatmapGO))
         gh <- ComplexHeatmap::Heatmap(
           matrix = countsHeatmapGO,
@@ -826,7 +954,11 @@ observeEvent(
           row_names_gp = gpar(fontsize = input$textSizeHeatmap),
           column_names_gp = gpar(fontsize = input$textSizeHeatmap),
           column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-          column_title = paste(sub("\\s+", "\n", input$heatmapGoInput), if (agg_label != "") paste0("\n", agg_label) else ""),
+          column_title = paste0(
+            goHeatmapReactive$currentGoName %||% goHeatmapReactive$currentGoTerm %||% "",
+            "\n", nrow(countsHeatmapGO), "/", goGenesTotal, " features plotted",
+            if (agg_label != "") paste0("\n", agg_label) else ""
+          ),
           heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeHeatmap), title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"))
         )
         figuresDataReactive$heatmapGO <- gh
@@ -878,14 +1010,239 @@ observeEvent(
             )
           }
         )
+        } else {
+          figuresDataReactive$heatmapGO <- NULL
+        }
+      }
+
+      # KEGG heatmap ----
+      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC") &&
+          !is.null(keggHeatmapReactive$keggCode)) {
+        keggGenes <- keggHeatmapReactive$currentGenes
+        countsHeatmapKEGG <- NULL
+
+        if (!is.null(keggGenes) && length(keggGenes) > 0) {
+          keggGenes <- keggGenes[which(keggGenes %in% rownames(countsHeatmap))]
+
+          # Apply DE filter if enabled
+          if (!is.null(input$heatmapKeggDEOnly) && input$heatmapKeggDEOnly) {
+            pCol <- if (input$heatmapKeggPType == "Raw") "pValue" else "fdr"
+            deFeatures <- seqAnnoHeatmap$feature_id[
+              which(seqAnnoHeatmap[[pCol]] <= as.numeric(input$heatmapKeggPThreshold) &
+                    abs(seqAnnoHeatmap$log2Ratio) >= as.numeric(input$heatmapKeggLFC))
+            ]
+            keggGenes <- keggGenes[keggGenes %in% deFeatures]
+          }
+
+          if (length(keggGenes) == 1) {
+            countsHeatmapKEGG <- t(as.matrix(countsHeatmap[keggGenes, ]))
+            rownames(countsHeatmapKEGG) <- keggGenes
+          } else if (length(keggGenes) > 1) {
+            countsHeatmapKEGG <- countsHeatmap[keggGenes, ]
+            if (!is.null(input$heatmapKeggExpr)) {
+              countsHeatmapKEGG <- countsHeatmapKEGG[abs(rowMedians(countsHeatmapKEGG)) >= input$heatmapKeggExpr, ]
+            }
+          }
+
+          keggGenesTotal <- length(keggHeatmapReactive$currentGenes)
+
+          if (!is.null(countsHeatmapKEGG) && nrow(countsHeatmapKEGG) > 0) {
+            req(nrow(datasetHeatmap) == ncol(countsHeatmapKEGG))
+
+            keggTitle <- paste0(
+              keggHeatmapReactive$currentPathwayName %||% "",
+              "\n", nrow(countsHeatmapKEGG), "/", keggGenesTotal, " features plotted",
+              if (agg_label != "") paste0("\n", agg_label) else ""
+            )
+
+            kh <- ComplexHeatmap::Heatmap(
+              matrix = countsHeatmapKEGG,
+              top_annotation = ha,
+              name = hmName,
+              cluster_columns = input$clusterColsHeatmap,
+              cluster_rows = input$clusterRowsHeatmap,
+              show_column_names = input$colnamesHeatmap,
+              show_row_names = input$geneNamesHeatmap,
+              show_column_dend = input$showClusterColDend,
+              show_row_dend = input$showClusterRowDend,
+              rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2 / 10),
+              use_raster = FALSE,
+              row_dend_width = unit(1, "cm"),
+              column_dend_height = unit(1, "cm"),
+              col = heatmapColours,
+              row_names_gp = gpar(fontsize = input$textSizeHeatmap),
+              column_names_gp = gpar(fontsize = input$textSizeHeatmap),
+              column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
+              column_title = keggTitle,
+              heatmap_legend_param = list(
+                labels_gp = gpar(fontsize = input$textSizeHeatmap),
+                title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold")
+              )
+            )
+            figuresDataReactive$heatmapKEGG <- kh
+
+            output[["dlTable_heatmapKEGG"]] <- downloadHandler(
+              filename = function() {
+                generate_filename(
+                  base_name = "KEGG_heatmap",
+                  design_name = design,
+                  extension = "xlsx"
+                )
+              },
+              content = function(file) {
+                counts_export <- as.data.frame(countsHeatmapKEGG) %>% rownames_to_column("feature_id")
+                basic_cols <- colnames(counts_export)
+
+                if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+                    !is.null(input$includeDEStatsHeatmap) &&
+                    input$includeDEStatsHeatmap) {
+                  if (inputDataReactive()$dataType == "RNASeq") {
+                    de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
+                    valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
+                    if (length(valid_de_cols) > 1) {
+                      de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
+                      counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
+                    }
+                  } else if (!is.null(input$contrastSelected)) {
+                    de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
+                    valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
+                    if (length(valid_de_cols) > 1) {
+                      de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
+                      counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
+                    }
+                  }
+                } else {
+                  counts_export <- counts_export[, basic_cols, drop = FALSE]
+                }
+
+                export_excel_standard(
+                  df = counts_export,
+                  filename = file,
+                  sheet_name = "KEGG Heatmap",
+                  table_name = "KEGGHeatmap"
+                )
+              }
+            )
+          } else {
+            figuresDataReactive$heatmapKEGG <- NULL
+          }
+        }
       }
     }
     # }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
   }
 )
 
+# GO heatmap: fetch GO term genes on button click
+observeEvent(input$heatmapGoGo, {
+  req(input$heatmapGoInput)
+  req(inputDataReactive()$seqAnno)
+
+  goId <- gsub(" .*", "", input$heatmapGoInput)
+  goName <- sub("^\\S+\\s+", "", input$heatmapGoInput)
+  seqAnno <- inputDataReactive()$seqAnno
+
+  goGenes <- seqAnno$feature_id[with(seqAnno, grepl(goId, paste(`GO BP`, `GO MF`, `GO CC`)))]
+
+  goHeatmapReactive$currentGoTerm <- goId
+  goHeatmapReactive$currentGoName <- goName
+  goHeatmapReactive$currentGenes <- goGenes
+})
+
+# GO heatmap: display GO term info
+output$heatmapGoInfo <- renderUI({
+  req(goHeatmapReactive$currentGoTerm)
+  tagList(
+    hr(),
+    tags$b("GO term: "), goHeatmapReactive$currentGoName,
+    br(),
+    tags$b("Genes found in dataset: "), length(goHeatmapReactive$currentGenes)
+  )
+})
+
+# KEGG heatmap: fetch pathway genes on button click
+observeEvent(input$heatmapKeggGo, {
+  req(input$heatmapKeggInput)
+  req(keggHeatmapReactive$keggCode)
+
+  keggCode <- keggHeatmapReactive$keggCode
+
+  # Normalise the pathway ID input
+  pathwayInput <- trimws(input$heatmapKeggInput)
+  if (grepl("^[0-9]", pathwayInput)) {
+    pathwayId <- paste0(keggCode, pathwayInput)
+  } else {
+    pathwayId <- pathwayInput
+  }
+
+  # Check cache
+  if (pathwayId %in% names(keggHeatmapReactive$cache)) {
+    cached <- keggHeatmapReactive$cache[[pathwayId]]
+    keggHeatmapReactive$currentGenes <- cached$genes
+    keggHeatmapReactive$currentPathwayName <- cached$name
+    return()
+  }
+
+  # Fetch from KEGG API
+  result <- withProgress(message = "Fetching KEGG pathway genes...", {
+    tryCatch({
+      # Get pathway name
+      pathInfo <- KEGGREST::keggGet(pathwayId)
+      pathwayName <- sub(" - .*$", "", pathInfo[[1]]$NAME)
+
+      # Get gene list (returns ENTREZ IDs with species prefix)
+      geneLinks <- KEGGREST::keggLink(keggCode, paste0("path:", pathwayId))
+      entrezIds <- gsub(paste0(keggCode, ":"), "", geneLinks)
+
+      # Match ENTREZ IDs to feature_ids in seqAnno
+      seqAnno <- inputDataReactive()$seqAnno
+
+      if ("entrez_id" %in% colnames(seqAnno)) {
+        # Primary strategy: direct match on entrez_id column
+        keggFeatureIds <- seqAnno$feature_id[seqAnno$entrez_id %in% entrezIds]
+      } else {
+        # Fallback: convert via pathview
+        idMapping <- pathview::eg2id(entrezIds, category = c("SYMBOL", "ENSEMBL"), org = keggCode)
+        geneSymbols <- na.omit(idMapping[, "SYMBOL"])
+        ensemblIds <- na.omit(idMapping[, "ENSEMBL"])
+        matchByName <- seqAnno$feature_id[seqAnno$gene_name %in% geneSymbols]
+        matchById <- seqAnno$feature_id[seqAnno$gene_id %in% ensemblIds]
+        keggFeatureIds <- unique(c(matchByName, matchById))
+      }
+
+      list(genes = keggFeatureIds, name = pathwayName)
+    }, error = function(e) {
+      showNotification(
+        paste("Failed to fetch KEGG pathway:", e$message),
+        type = "error", duration = 8
+      )
+      NULL
+    })
+  })
+
+  if (!is.null(result)) {
+    keggHeatmapReactive$cache[[pathwayId]] <- result
+    keggHeatmapReactive$currentGenes <- result$genes
+    keggHeatmapReactive$currentPathwayName <- result$name
+  } else {
+    keggHeatmapReactive$currentGenes <- NULL
+    keggHeatmapReactive$currentPathwayName <- NULL
+  }
+})
+
+# KEGG heatmap: display pathway info
+output$heatmapKeggInfo <- renderUI({
+  req(keggHeatmapReactive$currentPathwayName)
+  tagList(
+    hr(),
+    tags$b("Pathway: "), keggHeatmapReactive$currentPathwayName,
+    br(),
+    tags$b("Genes found in dataset: "), length(keggHeatmapReactive$currentGenes)
+  )
+})
+
 # Output heatmaps
-lapply(c("DEFeatures", "Custom", "GO"), function(sig) {
+lapply(c("DEFeatures", "Custom", "GO", "KEGG"), function(sig) {
   output[[paste0("heatmap", sig)]] <- renderPlot(
     {
       req(figuresDataReactive[[paste0("heatmap", sig)]])
@@ -906,7 +1263,8 @@ lapply(c("DEFeatures", "Custom", "GO"), function(sig) {
   button_suffix <- switch(sig,
                           "DEFeatures" = "DE",
                           "Custom" = "Custom",
-                          "GO" = "GO")
+                          "GO" = "GO",
+                          "KEGG" = "KEGG")
   
   output[[paste0("dlPlot_heatmap", button_suffix)]] <- downloadHandler(
     filename = function() {

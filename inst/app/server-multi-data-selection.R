@@ -294,6 +294,12 @@ observeEvent(input$multiLoadSelected, {
             # Load the dataset
             if (file.exists(file.path(fullPath, "deResult.rds"))) {
                 se <- readRDS(file.path(fullPath, "deResult.rds"))
+            } else if (file.exists(file.path(fullPath, "deResult.qs2"))) {
+                se <- qs2::qs_read(file.path(fullPath, "deResult.qs2"), nthreads = 4)
+            } else {
+                showNotification(paste("No deResult found in", fullPath), type = "error")
+                next
+            }
                 formatted <- convert_genomics_se(se, fullPath)
 
                 # Compatibility Fix: Ensure log2Ratio exists
@@ -355,7 +361,6 @@ observeEvent(input$multiLoadSelected, {
                 }
 
                 multiDeReactive$results[[name]] <- formatted
-            }
         }
 
         # Hide waiter on success
@@ -461,9 +466,14 @@ observeEvent(input$multiImportButton, {
             found <- FALSE
             for (root in urlDataRoot) {
                 fullPath <- file.path(root, link)
-                # Check for deResult.rds
+                # Check for deResult.rds or deResult.qs2
                 if (file.exists(file.path(fullPath, "deResult.rds"))) {
                     se <- readRDS(file.path(fullPath, "deResult.rds"))
+                } else if (file.exists(file.path(fullPath, "deResult.qs2"))) {
+                    se <- qs2::qs_read(file.path(fullPath, "deResult.qs2"), nthreads = 4)
+                } else {
+                    next
+                }
                     formatted <- convert_genomics_se(se, fullPath)
 
                     # Compatibility Fix: Ensure log2Ratio exists (for multiDEG tabs)
@@ -526,7 +536,6 @@ observeEvent(input$multiImportButton, {
                     multiDeReactive$results[[name]] <- formatted
                     found <- TRUE
                     break
-                }
             }
 
             if (!found) {

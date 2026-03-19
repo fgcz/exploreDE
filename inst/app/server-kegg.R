@@ -10,15 +10,6 @@ if(inputDataReactive()$dataType == "RNASeq") {
     spp <- "Rat"
   }
   
-  observeEvent(input$tabs, {
-    if (input$tabs == "keggTab") {
-      cat(input$tabs)
-      if (is_empty(allPathways)) {
-        showModal(modalDialog(title = "No KEGG Data", "This dataset is not human or mouse, so this tab is not-functional."))
-      }
-    }
-  })
-  
   observeEvent(
     {
       input$keggInput

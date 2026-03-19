@@ -132,6 +132,7 @@ observeEvent(input$gseaType,
           strsplit("/") %>%
           unlist() %>%
           unique()
+        all_core_genes <- all_core_genes[nchar(all_core_genes) > 0]
 
         # Create lookup table for gene ID to gene name conversion
         gene_lookup <- setNames(
@@ -143,7 +144,7 @@ observeEvent(input$gseaType,
         er_symbol@result$core_enrichment <- vapply(er_symbol@result$core_enrichment, function(genes_string) {
           gene_ids <- strsplit(genes_string, "/")[[1]]
           gene_names <- gene_lookup[gene_ids]
-          gene_names <- gene_names[!is.na(gene_names)]
+          gene_names <- gene_names[!is.na(gene_names) & nchar(gene_names) > 0]
           paste(gene_names, collapse = "/")
         }, character(1), USE.NAMES = FALSE)
       } else {
@@ -347,6 +348,15 @@ observeEvent(
     }
     cat("=== End Debug ===\n\n")
 
+    # In "genes" mode, also remove filtered genes from the enrichment result
+    # so cnetplot doesn't render them as grey nodes
+    if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode == "genes" && length(genes_pass_filter) > 0) {
+      current_er_symbol@result$core_enrichment <- sapply(strsplit(current_er_symbol@result$core_enrichment, "/"), function(g) {
+        g <- g[g %in% genes_pass_filter]
+        paste(g, collapse = "/")
+      })
+    }
+
     # Network plot
     cn <- enrichplot::cnetplot(
       x = current_er_symbol,
@@ -441,7 +451,7 @@ observeEvent(
     sel_er <- current_er_symbol@result[sel_idx, ]
 
     # Extract genes for each pathway
-    pathway_genes <- strsplit(sel_er$core_enrichment, "/")
+    pathway_genes <- lapply(strsplit(sel_er$core_enrichment, "/"), function(g) g[nchar(g) > 0])
     names(pathway_genes) <- sel_er$Description
 
     # Identify all unique genes across these pathways that also pass the filter

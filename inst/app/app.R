@@ -310,13 +310,25 @@ server <- function(input, output, session) {
 
     # 3. Pathway tabs (Shown ONLY if RNASeq)
     if (dataType == "RNASeq") {
-      menuItems <- c(menuItems, list(
+      # Check if species is supported for KEGG (human, mouse, rat)
+      keggSpeciesSupported <- tryCatch({
+        spp <- ezRun::getSpecies(inputDataReactive()$param$refBuild)
+        if (grepl("^Rattus", inputDataReactive()$param$refBuild)) spp <- "Rat"
+        spp %in% c("Human", "Mouse", "Rat")
+      }, error = function(e) FALSE)
+
+      pathwayItems <- list(
         tags$li(class = "header", "Pathway Analyses"),
         menuItem(text = "Over-Representation Analysis", tabName = "oraTab", icon = icon("hubspot")),
         menuItem(text = "Gene Set Enrichment Analysis", tabName = "gseaTab", icon = icon("hubspot")),
-        menuItem(text = "GO Tile Plots", tabName = "goTileTab", icon = icon("table")),
-        menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))
-      ))
+        menuItem(text = "GO Tile Plots", tabName = "goTileTab", icon = icon("table"))
+      )
+      if (keggSpeciesSupported) {
+        pathwayItems <- c(pathwayItems, list(
+          menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))
+        ))
+      }
+      menuItems <- c(menuItems, pathwayItems)
     }
 
     # 4. Multi DE Analysis (NOT shown for CountQC)
@@ -354,10 +366,15 @@ server <- function(input, output, session) {
           multiHeatmapItem <- menuItem(text = "Pathway Heatmaps", tabName = "multiHeatmapTab", icon = icon("fire"))
           multiHeatmapItem$attribs$class <- paste(multiHeatmapItem$attribs$class, "multi-menu-item")
 
-          multiKeggItem <- menuItem(text = "KEGG Pathway Plots", tabName = "multiKeggTab", icon = icon("egg"))
-          multiKeggItem$attribs$class <- paste(multiKeggItem$attribs$class, "multi-menu-item")
+          multiPathwayItems <- list(multiBubbleItem, multiHeatmapItem)
 
-          menuItems <- c(menuItems, list(multiBubbleItem, multiHeatmapItem, multiKeggItem))
+          if (keggSpeciesSupported) {
+            multiKeggItem <- menuItem(text = "KEGG Pathway Plots", tabName = "multiKeggTab", icon = icon("egg"))
+            multiKeggItem$attribs$class <- paste(multiKeggItem$attribs$class, "multi-menu-item")
+            multiPathwayItems <- c(multiPathwayItems, list(multiKeggItem))
+          }
+
+          menuItems <- c(menuItems, multiPathwayItems)
         }
       }
     }

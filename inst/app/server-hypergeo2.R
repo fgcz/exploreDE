@@ -252,6 +252,18 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
       }
       cat("=== End Debug ===\n\n")
 
+      # Clean empty gene names from geneName (caused by unmapped Ensembl IDs)
+      er@result$geneName <- sapply(strsplit(er@result$geneName, "/"), function(g) paste(g[nchar(g) > 0], collapse = "/"))
+
+      # In "genes" mode, also remove filtered genes from the enrichment result
+      # so cnetplot doesn't render them as grey nodes
+      if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode == "genes" && length(genes_pass_filter) > 0) {
+        er@result$geneName <- sapply(strsplit(er@result$geneName, "/"), function(g) {
+          g <- g[g %in% genes_pass_filter]
+          paste(g, collapse = "/")
+        })
+      }
+
       er@result$geneID <- er@result$geneName
       nl <- "category"
       if (input$showGeneLabelsORA) {
@@ -308,7 +320,7 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
       sel_idx <- input$selectedTable_ORA_rows_selected
       sel_er <- er@result[sel_idx, ]
 
-      pathway_genes <- strsplit(sel_er$geneName, "/")
+      pathway_genes <- lapply(strsplit(sel_er$geneName, "/"), function(g) g[nchar(g) > 0])
       names(pathway_genes) <- sel_er$Description
 
       all_genes_in_pathways <- unique(unlist(pathway_genes))
