@@ -204,15 +204,6 @@ tabItem(
                 width = "75%"
               ),
               helpText("Poisson: simple counts. Negative Binomial: overdispersed counts. Binomial: proportion data."),
-              numericInput(
-                inputId = "glmpcaMinibatch",
-                label = "Minibatch size (for large datasets)",
-                value = 100,
-                min = 10,
-                max = 1000,
-                step = 10,
-                width = "75%"
-              ),
               helpText(
                 tags$b(style = "color: #f39c12;", "Note: "),
                 "GLM-PCA computation may take 1-2 minutes for large datasets."
@@ -268,7 +259,7 @@ tabItem(
             splitLayout(
               checkboxInput(inputId = "showAxesPCA", label = "Axes lines?", value = TRUE),
               checkboxInput(inputId = "boldPCA", label = "Bold?", value = TRUE),
-              checkboxInput(inputId = "showLinesPCA", label = "Grid lines?", value = TRUE)
+              checkboxInput(inputId = "showLinesPCA", label = "Grid lines?", value = FALSE)
             ),
             hr(style = "border-top: 1px solid #000000;"), h4("Annotation settings"),
             numericInput(inputId = "pcaLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 10, step = 1, width = "33%"),
@@ -276,6 +267,33 @@ tabItem(
               sliderInput(inputId = "geneLabelNudgePCAX", label = "Nudge Labels X", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
               sliderInput(inputId = "geneLabelNudgePCAY", label = "Nudge Labels Y", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
               sliderInput(inputId = "geneLabelSizePCA", label = "Label Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = TRUE)
+            )
+          ),
+          tabPanel(
+            title = "Advanced",
+            h4("Preprocessing cascade"),
+            helpText("Drag steps to reorder the preprocessing pipeline. Steps are applied top to bottom."),
+            uiOutput("pcaCascadeUI"),
+            hr(),
+            tags$details(
+              tags$summary(tags$b("Guidance on step ordering")),
+              tags$ul(
+                tags$li(tags$b("Group subsetting vs Top N:"),
+                  "If group subsetting comes first (default), the top N most variable features are selected",
+                  "from within the selected groups only. If Top N comes first, features are selected based on",
+                  "variability across all samples, then groups are subsetted."
+                ),
+                tags$li(tags$b("Log2 transform & Batch correction:"),
+                  "limma::removeBatchEffect assumes data is on a log scale (additive batch effects).",
+                  "On linear-scale data (TPM, FPKM, Raw, Normalised), batch effects are multiplicative,",
+                  "so batch correction should generally come after a log2 transform.",
+                  "Already-logged count types (Normalised + Log2, VST) do not need the log2 step."
+                ),
+                tags$li(tags$b("Peptide filter (proteomics only):"),
+                  "Filters features by minimum number of peptides. Placing this before Top N",
+                  "ensures the SD-based selection only considers well-supported features."
+                )
+              )
             )
           ),
           tabPanel(

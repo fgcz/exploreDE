@@ -141,9 +141,8 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
 #' @param counts Matrix with genes as rows, samples as columns (RAW COUNTS)
 #' @param L Number of dimensions
 #' @param family Family (nb, poi, binom)
-#' @param minibatch Minibatch size for stochastic optimization
 #' @return List with scores, loadings, variance (deviance explained)
-calculate_glmpca <- function(counts, L = 10, family = "nb", minibatch = NULL) {
+calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
   if (nrow(counts) < 3 || ncol(counts) < 3) {
     return(NULL)
   }
@@ -172,7 +171,7 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", minibatch = NULL) {
   # GLM-PCA needs raw/normalized counts (not log-transformed)
   glmpca_result <- tryCatch(
     {
-      glmpca::glmpca(counts, L = L, fam = family)
+      glmpca::glmpca(counts, L = L, fam = family, X = X)
     },
     error = function(e) {
       warning("GLM-PCA error: ", e$message)
@@ -263,7 +262,61 @@ prepare_biplot_data <- function(ordination_result, top_n = 10,
   )
 }
 
-#' Prepare count data for ordination
+#' Preprocessing cascade step functions
+#' Each takes (counts, dataset, ...) and returns list(counts, dataset)
+#' so they can be composed in any order.
+
+step_group_subset <- function(counts, dataset, factor_col, groups) {
+  dataset <- dataset[dataset[[factor_col]] %in% groups, ]
+  counts <- counts[, rownames(dataset), drop = FALSE]
+  list(counts = counts, dataset = dataset)
+}
+
+step_peptide_filter <- function(counts, dataset, seqAnnoList, min_peptides) {
+  if (!is.null(seqAnnoList) && !is.null(min_peptides)) {
+    keep <- seqAnnoList[[1]]$feature_id[seqAnnoList[[1]]$nrPeptides >= min_peptides]
+    counts <- counts[rownames(counts) %in% keep, , drop = FALSE]
+  }
+  list(counts = counts, dataset = dataset)
+}
+
+step_log2 <- function(counts, dataset, counts_type) {
+  if (counts_type %in% c("TPM", "FPKM", "Raw", "Normalised")) {
+    counts <- log2(counts + 1)
+  }
+  list(counts = counts, dataset = dataset)
+}
+
+step_batch_correction <- function(counts, dataset, batch_column) {
+  if (!is.null(batch_column)) {
+    counts <- tryCatch({
+      if (any(is.na(dataset[[batch_column]]))) {
+        showNotification("Batch correction skipped: batch column contains NA values",
+          type = "warning", duration = 3)
+        counts
+      } else {
+        limma::removeBatchEffect(counts, dataset[[batch_column]])
+      }
+    }, error = function(e) {
+      showNotification(paste("Batch correction failed:", e$message, "\nProceeding without."),
+        type = "warning", duration = 3)
+      counts
+    })
+  }
+  list(counts = counts, dataset = dataset)
+}
+
+step_top_n_sd <- function(counts, dataset, top_n) {
+  top_n <- min(top_n, nrow(counts))
+  if (nrow(counts) > top_n) {
+    sds <- apply(counts, 1, sd, na.rm = FALSE)
+    top_features <- names(head(sort(sds, decreasing = TRUE), n = top_n))
+    counts <- counts[top_features, , drop = FALSE]
+  }
+  list(counts = counts, dataset = dataset)
+}
+
+#' Prepare count data for ordination (legacy wrapper, kept for reference)
 #' @param counts Raw count matrix (genes x samples)
 #' @param dataset Dataset with sample metadata
 #' @param method Ordination method
@@ -532,30 +585,70 @@ ordinationResults <- reactive({
   valid_groups <- input$pcaGroups[input$pcaGroups %in% available_groups]
   req(length(valid_groups) > 0)
 
-  # Prepare data: filter by groups and peptides
+  # Prepare data: start with full dataset and counts
+  # GLM-PCA requires raw counts; other methods use the user-selected count type
   datasetOrd <- inputDataReactive()$dataset
-  datasetOrd <- datasetOrd[datasetOrd[[input$pcaFactor1]] %in% valid_groups, ]
-
-  countsOrd <- inputDataReactive()$countList[[input$pcaCounts]]
-  countsOrd <- countsOrd[, rownames(datasetOrd)]
-
-  # If proteomics and minimum number of peptides selected, subset the counts
-  if (inputDataReactive()$dataType == "proteomics") {
-    if (!is.null(input$nrPeptidePCA) && !is.null(inputDataReactive()$seqAnnoList)) {
-      countsOrd <- countsOrd[which(rownames(countsOrd) %in% inputDataReactive()$seqAnnoList[[1]]$feature_id[which(inputDataReactive()$seqAnnoList[[1]]$nrPeptides >= input$nrPeptidePCA)]), ]
+  if (input$ordinationMethod == "glmpca") {
+    countsOrd <- inputDataReactive()$countList[["Raw"]]
+    if (is.null(countsOrd)) {
+      showNotification("GLM-PCA requires raw count data which is not available", type = "error", duration = 5)
+      return(NULL)
     }
+  } else {
+    countsOrd <- inputDataReactive()$countList[[input$pcaCounts]]
   }
 
-  # Prepare counts for the selected method
-  countsPrepared <- prepare_counts(
-    counts = countsOrd,
-    dataset = datasetOrd,
-    method = input$ordinationMethod,
-    log2_transform = input$pcaLog2,
-    counts_type = input$pcaCounts,
-    batch_column = if (input$pcaBatch != "None") input$pcaBatch else NULL,
-    top_n = input$pcaTopN
+  # Build cascade step map
+  batch_col <- if (input$pcaBatch != "None") input$pcaBatch else NULL
+  step_map <- list(
+    "Group subsetting" = function(cd) step_group_subset(cd$counts, cd$dataset, input$pcaFactor1, valid_groups),
+    "Peptide filter" = function(cd) {
+      if (inputDataReactive()$dataType == "proteomics") {
+        step_peptide_filter(cd$counts, cd$dataset, inputDataReactive()$seqAnnoList, input$nrPeptidePCA)
+      } else {
+        cd
+      }
+    },
+    "Log2 transform" = function(cd) {
+      if (input$ordinationMethod == "glmpca") {
+        cd  # GLM-PCA requires untransformed counts
+      } else if (input$pcaLog2) {
+        step_log2(cd$counts, cd$dataset, input$pcaCounts)
+      } else {
+        cd
+      }
+    },
+    "Batch correction" = function(cd) {
+      if (input$ordinationMethod == "glmpca") {
+        cd  # GLM-PCA handles batch via X covariate, not removeBatchEffect
+      } else {
+        step_batch_correction(cd$counts, cd$dataset, batch_col)
+      }
+    },
+    "Top N features (SD)" = function(cd) step_top_n_sd(cd$counts, cd$dataset, input$pcaTopN)
   )
+
+  # Execute cascade in user-defined order
+  cascade_order <- input$pcaCascadeOrder
+  if (is.null(cascade_order) || length(cascade_order) == 0) {
+    cascade_order <- c("Group subsetting", "Peptide filter", "Log2 transform", "Batch correction", "Top N features (SD)")
+  }
+
+  cd <- list(counts = countsOrd, dataset = datasetOrd)
+  for (step_name in cascade_order) {
+    if (step_name %in% names(step_map)) {
+      cd <- step_map[[step_name]](cd)
+    }
+  }
+  countsOrd <- cd$counts
+  datasetOrd <- cd$dataset
+
+  # Transpose for PCA/PCoA (GLM-PCA keeps genes x samples)
+  if (input$ordinationMethod != "glmpca") {
+    countsPrepared <- as.data.frame(t(countsOrd))
+  } else {
+    countsPrepared <- countsOrd
+  }
 
   if (is.null(countsPrepared)) {
     showNotification(
@@ -613,19 +706,27 @@ ordinationResults <- reactive({
     # Require GLM-PCA-specific inputs with strict validation
     req(
       !is.null(input$glmpcaFamily),
-      !is.null(input$glmpcaMinibatch),
       is.character(input$glmpcaFamily),
       nchar(input$glmpcaFamily) > 0,
       input$glmpcaFamily %in% c("poi", "nb", "binom")
     )
 
-    # For GLM-PCA, need raw counts (integer)
-    countsRaw <- inputDataReactive()$countList[["Raw"]]
-    if (is.null(countsRaw)) {
-      showNotification("GLM-PCA requires raw count data which is not available", type = "error", duration = 5)
+    # GLM-PCA uses the cascade-filtered countsPrepared (genes x samples, raw counts)
+    # The cascade already applied group subsetting, peptide filter, top N etc.
+    # but skipped log2 and batch correction (handled here natively)
+    if (is.null(countsPrepared) || nrow(countsPrepared) < 3 || ncol(countsPrepared) < 3) {
+      showNotification("GLM-PCA: not enough data after preprocessing", type = "error", duration = 5)
       return(NULL)
     }
-    countsRaw <- countsRaw[, datasetOrd$Name]
+
+    # Build batch covariate matrix for GLM-PCA (instead of removeBatchEffect)
+    X_covariates <- NULL
+    if (!is.null(batch_col) && batch_col %in% colnames(datasetOrd)) {
+      batch_factor <- as.factor(datasetOrd[[batch_col]])
+      if (nlevels(batch_factor) > 1) {
+        X_covariates <- model.matrix(~ batch_factor)[, -1, drop = FALSE]
+      }
+    }
 
     # Show waiter during GLM-PCA computation
     waiter <- waiter::Waiter$new(
@@ -641,10 +742,10 @@ ordinationResults <- reactive({
     on.exit(waiter$hide(), add = TRUE)
 
     ord_result <- calculate_glmpca(
-      counts = countsRaw,
+      counts = countsPrepared,
       family = input$glmpcaFamily,
       L = 2,
-      minibatch = input$glmpcaMinibatch
+      X = X_covariates
     )
   }
 
@@ -694,6 +795,36 @@ observeEvent(inputDataReactive(), {
     choices = c("None", inputDataReactive()$factors),
     selected = batchDefault
   )
+
+  # Render cascade steps based on data type, log2 checkbox, and count method
+  # Only available to staff (LDAP employee role)
+  output$pcaCascadeUI <- renderUI({
+    if (!exists("ldap_role") || ldap_role != "employee") {
+      return(helpText("Advanced preprocessing settings are available to FGCZ staff only."))
+    }
+    log2_checked <- !is.null(input$pcaLog2) && input$pcaLog2
+    is_linear <- !is.null(input$pcaCounts) && input$pcaCounts %in% c("TPM", "FPKM", "Raw", "Normalised")
+    show_log2 <- log2_checked && is_linear
+
+    steps <- c("Group subsetting", "Batch correction", "Top N features (SD)")
+    if (inputDataReactive()$dataType == "proteomics") {
+      steps <- c("Group subsetting", "Peptide filter", "Batch correction", "Top N features (SD)")
+    }
+    if (show_log2) {
+      # Insert Log2 before Batch correction
+      batch_pos <- which(steps == "Batch correction")
+      steps <- append(steps, "Log2 transform", after = batch_pos - 1)
+    }
+
+    sortable::rank_list(
+      text = "Preprocessing order",
+      labels = as.list(steps),
+      input_id = "pcaCascadeOrder",
+      options = sortable::sortable_options(multiDrag = FALSE)
+    )
+  })
+  outputOptions(output, "pcaCascadeUI", suspendWhenHidden = FALSE)
+
   lapply(c(1:2), function(i) {
     selected <- switch(i,
       "1" = inputDataReactive()$groupingName,
@@ -786,6 +917,7 @@ observeEvent(
     input$pcaX
     input$pcaY
     input$pcaTopN
+    input$pcaCascadeOrder
     input$pcaGroups
     input$pcaFactor2
     input$pcaCounts
@@ -814,7 +946,6 @@ observeEvent(
     input$ordinationPlotType
     input$pcoaDistance
     input$glmpcaFamily
-    input$glmpcaMinibatch
     input$biplotGeneSelectionMethod
     input$biplotNGenes
     input$biplotNGenesPerPC
@@ -1116,9 +1247,12 @@ observeEvent(
     figuresDataReactive$pcaStatic <- pcaPlot
 
     # Paired Plot
+    dim_cols <- grep("^(PC|PCo|NMDS|dim)\\d+", colnames(pc_scores))
+    dim_cols <- head(dim_cols, 5)  # max 5 dimensions
+    req(length(dim_cols) >= 2)
     pairedPlot <- ggpairs(
       data = pc_scores,
-      columns = 2:6,
+      columns = dim_cols,
       aes(fill = .data[[input$pcaFactor1]], alpha = input$alphaPCA),
       upper = list(continuous = wrap("points", alpha = input$alphaPCA, size = input$dotSizePCA, alpha = input$alphaPCA, pch = 21, stroke = input$dotBorderPCA)),
       lower = list(continuous = wrap("points", alpha = input$alphaPCA, size = input$dotSizePCA, alpha = input$alphaPCA, pch = 21, stroke = input$dotBorderPCA)),
