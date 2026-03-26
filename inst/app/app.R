@@ -18,7 +18,7 @@ cat("... packages loaded!")
 # Ensure shiny::validate is not masked by jsonlite::validate
 validate <- shiny::validate
 reactiveConsole(TRUE)
-if (file.exists("telemetry_module.R")) source("telemetry_module.R")
+if (file.exists("/srv/shiny-server/fgcz_apps/telemetry_module.R")) source("/srv/shiny-server/fgcz_apps/telemetry_module.R")
 
 my_theme <- create_theme(
   adminlte_color(
