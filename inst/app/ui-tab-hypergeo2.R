@@ -124,6 +124,7 @@ tabItem(
           )
         )
       ),
+      uiOutput("oraIsoformAggUI"),
       box(
         title = "Settings",
         width = NULL,

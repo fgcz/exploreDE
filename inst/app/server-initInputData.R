@@ -281,6 +281,12 @@ convert_proteomics_se <- function(se) {
     non_numeric <- colnames(sa)[!vapply(sa, is.numeric, logical(1))]
     keep <- unique(c("feature_id", non_numeric, intersect(stats_to_keep, colnames(sa))))
     sa <- sa[, keep, drop = FALSE]
+
+    # Guarantee description exists (volcano, brush tables, etc. expect it)
+    if (!"description" %in% colnames(sa)) {
+      sa$description <- if ("gene_name" %in% colnames(sa)) sa$gene_name else sa$feature_id
+    }
+
     sa
   }), contrasts)
 

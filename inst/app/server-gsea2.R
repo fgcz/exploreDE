@@ -91,11 +91,45 @@ output$gseaThreshOverview <- function() {
     )
 }
 
+# Isoform-level aggregation UI (only shown for isoform data)
+if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+  output$gseaIsoformAggUI <- renderUI({
+    tagList(
+      box(
+        title = "Isoform Aggregation",
+        width = NULL,
+        solidHeader = TRUE,
+        status = "info",
+        collapsible = TRUE,
+        collapsed = FALSE,
+        tags$div(
+          class = "callout callout-info",
+          tags$p(
+            tags$b("Note:"), "This dataset is at isoform level. Multiple transcripts per gene
+            were passed to the enrichment analysis, each with their own log2 fold change. To
+            display a single fold change per gene in the network plot, values are aggregated
+            using the method selected below."
+          )
+        ),
+        selectInput(
+          inputId = "gseaIsoformAgg",
+          label = "Aggregation method",
+          choices = c("Max absolute" = "maxabs", "Mean" = "mean", "Median" = "median", "Max" = "max", "Min" = "min"),
+          selected = "maxabs",
+          width = "50%"
+        )
+      )
+    )
+  })
+  outputOptions(output, "gseaIsoformAggUI", suspendWhenHidden = FALSE)
+}
+
 # Reactive values for current GSEA selection
 gseaToUse <- reactiveValues(er = NULL)
 
 # Main observer for GSEA type changes
-observeEvent(input$gseaType,
+observeEvent(
+  input$gseaType,
   {
     gseaToUse$er <- NULL
     gseaToUse$er_symbol <- NULL
@@ -152,9 +186,9 @@ observeEvent(input$gseaType,
         er_symbol <- er
         colsToTable <- c("Description", "enrichmentScore", "NES", "qvalue", "core_enrichment")
       }
-      # Prepare log2 ratio data for plotting
-      log2RatioGSEA <- metadata(se)$enrichInput$seqAnno$log2Ratio
-      names(log2RatioGSEA) <- metadata(se)$enrichInput$seqAnno$gene_name
+      # Prepare log2 ratio data for plotting (store raw, aggregate in plot observer)
+      log2RatioGSEA <- metadata(se)$enrichInput$log2Ratio
+      names(log2RatioGSEA) <- rowData(se)$gene_name[match(names(log2RatioGSEA), rowData(se)$gene_id)]
       log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
 
       # Update reactive values
@@ -266,6 +300,7 @@ observeEvent(
     input$gseaVisPThreshold
     input$gseaVisLFC
     input$gseaVisFilterMode
+    input$gseaIsoformAgg
   },
   {
     req(gseaToUse$er_symbol)
@@ -280,6 +315,20 @@ observeEvent(
 
     # Apply gene filtering based on visualisation thresholds
     log2RatioGSEA <- gseaToUse$log2RatioGSEA
+    # For isoform data, aggregate multiple transcripts per gene
+    if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+      agg_method <- if (!is.null(input$gseaIsoformAgg)) input$gseaIsoformAgg else "maxabs"
+      na_safe <- function(fn) function(x) { x <- x[!is.na(x)]; if (length(x) == 0) NA_real_ else fn(x) }
+      agg_fn <- switch(agg_method,
+        "maxabs" = na_safe(function(x) x[which.max(abs(x))]),
+        "mean"   = na_safe(mean),
+        "median" = na_safe(median),
+        "max"    = na_safe(max),
+        "min"    = na_safe(min)
+      )
+      log2RatioGSEA <- vapply(split(log2RatioGSEA, names(log2RatioGSEA)), agg_fn, numeric(1))
+      log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
+    }
     log2RatioGSEA_full <- log2RatioGSEA # Keep full list for reference
     genes_pass_filter <- names(log2RatioGSEA) # Default: all genes pass
 

@@ -144,6 +144,7 @@ tabItem(
           )
         )
       ),
+      uiOutput("gseaIsoformAggUI"),
       box(
         title = "Settings",
         width = NULL,

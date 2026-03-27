@@ -823,7 +823,6 @@ observeEvent(inputDataReactive(), {
       options = sortable::sortable_options(multiDrag = FALSE)
     )
   })
-  outputOptions(output, "pcaCascadeUI", suspendWhenHidden = FALSE)
 
   lapply(c(1:2), function(i) {
     selected <- switch(i,

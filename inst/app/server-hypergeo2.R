@@ -108,6 +108,39 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
       )
   }
 
+  # Isoform-level aggregation UI (only shown for isoform data)
+  if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+    output$oraIsoformAggUI <- renderUI({
+      tagList(
+        box(
+          title = "Isoform Aggregation",
+          width = NULL,
+          solidHeader = TRUE,
+          status = "info",
+          collapsible = TRUE,
+          collapsed = FALSE,
+          tags$div(
+            class = "callout callout-info",
+            tags$p(
+              tags$b("Note:"), "This dataset is at isoform level. Multiple transcripts per gene
+              were passed to the enrichment analysis, each with their own log2 fold change. To
+              display a single fold change per gene in the network plot, values are aggregated
+              using the method selected below."
+            )
+          ),
+          selectInput(
+            inputId = "oraIsoformAgg",
+            label = "Aggregation method",
+            choices = c("Max absolute" = "maxabs", "Mean" = "mean", "Median" = "median", "Max" = "max", "Min" = "min"),
+            selected = "maxabs",
+            width = "50%"
+          )
+        )
+      )
+    })
+    outputOptions(output, "oraIsoformAggUI", suspendWhenHidden = FALSE)
+  }
+
   # Generate main ORA table ----
   observeEvent(
     {
@@ -170,6 +203,7 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
       input$oraVisPThreshold
       input$oraVisLFC
       input$oraVisFilterMode
+      input$oraIsoformAgg
     },
     ignoreNULL = FALSE,
     ignoreInit = TRUE,
@@ -191,8 +225,21 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
 
       # Get log2FCs of genes for network plot
       sigGeneIds <- metadata(se)$enrichInput$selections[[input$oraDirection]]
-      log2RatioORA <- metadata(se)$enrichInput$seqAnno$log2Ratio[metadata(se)$enrichInput$seqAnno$gene_id %in% sigGeneIds]
-      names(log2RatioORA) <- metadata(se)$enrichInput$seqAnno$gene_name[metadata(se)$enrichInput$seqAnno$gene_id %in% sigGeneIds]
+      log2RatioORA <- metadata(se)$enrichInput$log2Ratio[names(metadata(se)$enrichInput$log2Ratio) %in% sigGeneIds]
+      names(log2RatioORA) <- rowData(se)$gene_name[match(names(log2RatioORA), rowData(se)$gene_id)]
+      # For isoform data, aggregate multiple transcripts per gene
+      if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+        agg_method <- if (!is.null(input$oraIsoformAgg)) input$oraIsoformAgg else "maxabs"
+        na_safe <- function(fn) function(x) { x <- x[!is.na(x)]; if (length(x) == 0) NA_real_ else fn(x) }
+        agg_fn <- switch(agg_method,
+          "maxabs" = na_safe(function(x) x[which.max(abs(x))]),
+          "mean"   = na_safe(mean),
+          "median" = na_safe(median),
+          "max"    = na_safe(max),
+          "min"    = na_safe(min)
+        )
+        log2RatioORA <- vapply(split(log2RatioORA, names(log2RatioORA)), agg_fn, numeric(1))
+      }
       log2RatioORA <- sort(log2RatioORA, decreasing = T)
 
       # Apply gene filtering based on visualisation thresholds
