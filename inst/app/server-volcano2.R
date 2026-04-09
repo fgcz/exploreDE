@@ -551,7 +551,7 @@ output$volcanoStatic <- renderPlot(
 output$volcanoPlotly <- renderPlotly({
   req(!is.null(figuresDataReactive$volcanoPlotly))
   volcanoPlotly <- figuresDataReactive$volcanoPlotly
-  volcanoPlotly <- config(
+  volcanoPlotly <- plotly::config(
     volcanoPlotly,
     displaylogo = FALSE,
     displayModeBar = TRUE,
