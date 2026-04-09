@@ -174,7 +174,7 @@ volcanoResultsList <- eventReactive(
       input[[paste0("volcanoColour", x)]]
     })
   },
-  ignoreInit = FALSE,
+  ignoreInit = TRUE,
   ignoreNULL = FALSE,
   {
     # Volcano plots are only applicable for RNASeq and proteomics data with DE results
