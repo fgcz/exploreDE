@@ -174,7 +174,7 @@ volcanoResultsList <- eventReactive(
       input[[paste0("volcanoColour", x)]]
     })
   },
-  ignoreInit = FALSE,
+  ignoreInit = TRUE,
   ignoreNULL = FALSE,
   {
     # Volcano plots are only applicable for RNASeq and proteomics data with DE results
@@ -551,7 +551,7 @@ output$volcanoStatic <- renderPlot(
 output$volcanoPlotly <- renderPlotly({
   req(!is.null(figuresDataReactive$volcanoPlotly))
   volcanoPlotly <- figuresDataReactive$volcanoPlotly
-  volcanoPlotly <- config(
+  volcanoPlotly <- plotly::config(
     volcanoPlotly,
     displaylogo = FALSE,
     displayModeBar = TRUE,
