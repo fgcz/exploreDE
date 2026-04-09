@@ -558,7 +558,7 @@ output$volcanoPlotly <- renderPlotly({
     modeBarButtonsToRemove = c("toImage", "select2d", "lasso2d")
   )
   volcanoPlotly %>%
-    layout(height = input$figHeightVolcano, width = input$figWidthVolcano)
+    plotly::layout(height = input$figHeightVolcano, width = input$figWidthVolcano)
 })
 # Download button for the plot
 # Download button for the plot

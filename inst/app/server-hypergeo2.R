@@ -164,6 +164,13 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
           }
           er@result$Label[i] <- label
         }
+        # Rebuild geneName from geneID with symbol lookup + fallback to gene ID
+        gene_id_to_name <- setNames(rowData(se)$gene_name, rowData(se)$gene_id)
+        er@result$geneName <- sapply(strsplit(er@result$geneID, "/"), function(ids) {
+          symbols <- gene_id_to_name[ids]
+          symbols <- ifelse(is.na(symbols) | nchar(symbols) == 0, ids, symbols)
+          paste(symbols, collapse = "/")
+        })
         output$selectedTable_ORA <- DT::renderDataTable({
           oraDfToShow <- as.data.frame(er)[, c("Label", "GeneRatio", "geneName")]
           oraDfToShow$geneNumber <- sapply(strsplit(as.character(oraDfToShow$GeneRatio), "/"), function(x) as.numeric(x[1]))
@@ -226,7 +233,11 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
       # Get log2FCs of genes for network plot
       sigGeneIds <- metadata(se)$enrichInput$selections[[input$oraDirection]]
       log2RatioORA <- metadata(se)$enrichInput$log2Ratio[names(metadata(se)$enrichInput$log2Ratio) %in% sigGeneIds]
-      names(log2RatioORA) <- rowData(se)$gene_name[match(names(log2RatioORA), rowData(se)$gene_id)]
+      gene_ids_ora <- names(log2RatioORA)
+      gene_symbols_ora <- rowData(se)$gene_name[match(gene_ids_ora, rowData(se)$gene_id)]
+      # Fall back to gene ID where gene symbol is blank/NA (e.g., non-reference organisms)
+      gene_symbols_ora <- ifelse(is.na(gene_symbols_ora) | nchar(gene_symbols_ora) == 0, gene_ids_ora, gene_symbols_ora)
+      names(log2RatioORA) <- gene_symbols_ora
       # For isoform data, aggregate multiple transcripts per gene
       if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
         agg_method <- if (!is.null(input$oraIsoformAgg)) input$oraIsoformAgg else "maxabs"
@@ -285,8 +296,13 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
         # For "labels" mode, keep all genes in log2RatioORA but use genes_pass_filter for labeling
       }
 
-      # Clean empty gene names from geneName (caused by unmapped Ensembl IDs)
-      er@result$geneName <- sapply(strsplit(er@result$geneName, "/"), function(g) paste(g[nchar(g) > 0], collapse = "/"))
+      # Rebuild geneName from geneID with symbol lookup + fallback to gene ID
+      gene_id_to_name <- setNames(rowData(se)$gene_name, rowData(se)$gene_id)
+      er@result$geneName <- sapply(strsplit(er@result$geneID, "/"), function(ids) {
+        symbols <- gene_id_to_name[ids]
+        symbols <- ifelse(is.na(symbols) | nchar(symbols) == 0, ids, symbols)
+        paste(symbols, collapse = "/")
+      })
 
       # In "genes" mode, also remove filtered genes from the enrichment result
       # so cnetplot doesn't render them as grey nodes
@@ -459,7 +475,7 @@ if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$go
         g <- er@result$geneName[i] %>%
           strsplit("/") %>%
           .[[1]]
-        g <- g[nchar(g) > 1]
+        g <- unique(g[nchar(g) > 1])
         g
       }), er@result$Label[input$selectedTable_ORA_rows_selected])
       m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)

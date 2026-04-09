@@ -160,6 +160,16 @@ observeEvent(
           er@result$Label[i] <- label
         }
         colsToTable <- c("Label", "enrichmentScore", "NES", "qvalue", "geneName")
+        # Rebuild geneName from core_enrichment with symbol lookup + fallback to gene ID
+        gene_id_to_name <- setNames(
+          metadata(se)$enrichInput$seqAnno$gene_name,
+          metadata(se)$enrichInput$seqAnno$gene_id
+        )
+        er@result$geneName <- sapply(strsplit(er@result$core_enrichment, "/"), function(ids) {
+          symbols <- gene_id_to_name[ids]
+          symbols <- ifelse(is.na(symbols) | nchar(symbols) == 0, ids, symbols)
+          paste(symbols, collapse = "/")
+        })
         # Convert gene IDs to gene names for core enrichment
         # Split all core enrichment strings and collect unique gene IDs
         all_core_genes <- er@result$core_enrichment %>%
@@ -178,7 +188,8 @@ observeEvent(
         er_symbol@result$core_enrichment <- vapply(er_symbol@result$core_enrichment, function(genes_string) {
           gene_ids <- strsplit(genes_string, "/")[[1]]
           gene_names <- gene_lookup[gene_ids]
-          gene_names <- gene_names[!is.na(gene_names) & nchar(gene_names) > 0]
+          # Fall back to gene ID where gene symbol is blank/NA
+          gene_names <- ifelse(is.na(gene_names) | nchar(gene_names) == 0, gene_ids, gene_names)
           paste(gene_names, collapse = "/")
         }, character(1), USE.NAMES = FALSE)
       } else {
@@ -188,7 +199,11 @@ observeEvent(
       }
       # Prepare log2 ratio data for plotting (store raw, aggregate in plot observer)
       log2RatioGSEA <- metadata(se)$enrichInput$log2Ratio
-      names(log2RatioGSEA) <- rowData(se)$gene_name[match(names(log2RatioGSEA), rowData(se)$gene_id)]
+      gene_ids_gsea <- names(log2RatioGSEA)
+      gene_symbols_gsea <- rowData(se)$gene_name[match(gene_ids_gsea, rowData(se)$gene_id)]
+      # Fall back to gene ID where gene symbol is blank/NA (e.g., non-reference organisms)
+      gene_symbols_gsea <- ifelse(is.na(gene_symbols_gsea) | nchar(gene_symbols_gsea) == 0, gene_ids_gsea, gene_symbols_gsea)
+      names(log2RatioGSEA) <- gene_symbols_gsea
       log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
 
       # Update reactive values
@@ -302,6 +317,8 @@ observeEvent(
     input$gseaVisFilterMode
     input$gseaIsoformAgg
   },
+  ignoreNULL = FALSE,
+  ignoreInit = TRUE,
   {
     req(gseaToUse$er_symbol)
     current_er <- isolate(gseaToUse$er)
@@ -556,7 +573,7 @@ observeEvent(
         g <- current_er@result[[colToUse]][i] %>%
           strsplit("/") %>%
           .[[1]]
-        g[nchar(g) > 1]
+        unique(g[nchar(g) > 1])
       }),
       current_er@result[[labelColumn]][input$selectedTable_GSEA_rows_selected]
     )
