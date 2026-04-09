@@ -362,8 +362,11 @@ observeEvent(
           genes_pass_filter <- genes_pass_filter[!is.na(genes_pass_filter)]
 
           # Apply filter mode
-          if (input$gseaVisFilterMode == "genes" && length(genes_pass_filter) > 0) {
-            # Filter genes entirely - only keep genes meeting thresholds
+          if (input$gseaVisFilterMode == "genes") {
+            if (length(genes_pass_filter) == 0) {
+              showNotification("No genes meet the current filter thresholds. Lower the Log2FC or P-Value threshold.", type = "warning")
+              return()
+            }
             log2RatioGSEA <- log2RatioGSEA[names(log2RatioGSEA) %in% genes_pass_filter]
           }
         }
@@ -373,11 +376,17 @@ observeEvent(
 
     # In "genes" mode, also remove filtered genes from the enrichment result
     # so cnetplot doesn't render them as grey nodes
-    if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode == "genes" && length(genes_pass_filter) > 0) {
+    if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode == "genes") {
       current_er_symbol@result$core_enrichment <- sapply(strsplit(current_er_symbol@result$core_enrichment, "/"), function(g) {
         g <- g[g %in% genes_pass_filter]
         paste(g, collapse = "/")
       })
+      # Check that selected pathways still have genes after filtering
+      sel_genes <- current_er_symbol@result$core_enrichment[input$selectedTable_GSEA_rows_selected]
+      if (!any(nchar(sel_genes) > 0)) {
+        showNotification("No genes in the selected pathways meet the current filter thresholds. Lower the Log2FC or P-Value threshold.", type = "warning")
+        return()
+      }
     }
 
     # Network plot
