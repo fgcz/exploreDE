@@ -229,9 +229,10 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
     gStoreList$design <- dataTypeGStore
     gStoreList$designLevels <- NULL
     if (dataTypeGStore == "CrisprCountQC") {
-      # Extract gene names from sgRNA IDs: GENE_guideN_SEQUENCE → GENE
+      # Extract gene names from sgRNA IDs
+      # Handles both GENE_N_SEQUENCE and GENE_sgrnaN_SEQUENCE patterns
       gStoreList$sgRNA_to_gene <- setNames(
-        gsub("_[0-9]+_[ACGT]+$", "", seqAnno$feature_id),
+        gsub("_(sgrna)?[0-9]+_[ACGT]+$", "", seqAnno$feature_id, ignore.case = TRUE),
         seqAnno$feature_id
       )
     }
