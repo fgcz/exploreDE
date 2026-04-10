@@ -293,16 +293,20 @@ convert_proteomics_se <- function(se) {
   # Get the feature IDs
   genes <- unique(unlist(lapply(seqAnnoList, `[[`, "feature_id")))
 
-  # Build gene → feature_id lookup (only useful for sub-protein data)
+  # Build lookup maps for feature selection modes
+  # Use first contrast's seqAnno as representative (all contrasts share the same features)
+  sa1 <- seqAnnoList[[1]]
+
+  # gene_lookup: gene_name → feature_ids (only if gene_name column exists and differs from feature_id)
   gene_lookup <- NULL
-  if ("gene_name" %in% colnames(seqAnnoList[[1]])) {
-    all_sa <- do.call(rbind, lapply(seqAnnoList, function(sa) {
-      sa[, c("feature_id", "gene_name"), drop = FALSE]
-    }))
-    all_sa <- unique(all_sa)
-    if (!identical(all_sa$feature_id, all_sa$gene_name)) {
-      gene_lookup <- split(all_sa$feature_id, all_sa$gene_name)
-    }
+  if ("gene_name" %in% colnames(sa1) && !identical(sa1$feature_id, sa1$gene_name)) {
+    gene_lookup <- split(sa1$feature_id, sa1$gene_name)
+  }
+
+  # protein_lookup: protein_Id → feature_ids (only for sub-protein data where protein_Id still exists)
+  protein_lookup <- NULL
+  if ("protein_Id" %in% colnames(sa1)) {
+    protein_lookup <- split(sa1$feature_id, sa1$protein_Id)
   }
 
   # Return the final list
@@ -315,9 +319,10 @@ convert_proteomics_se <- function(se) {
     "factors" = factors,
     "countList" = countList,
     "genes" = genes,
-    "gene_lookup" = gene_lookup,
     "factorLevels" = factorLevels,
-    "groupingName" = factors[[1]]
+    "groupingName" = factors[[1]],
+    "gene_lookup" = gene_lookup,
+    "protein_lookup" = protein_lookup
     )
   )
 }

@@ -55,10 +55,15 @@ parse_gene_text <- function(text) {
   genes[genes != ""]
 }
 
-# Resolve gene symbols to feature_ids when in gene_name search mode
+# Resolve gene symbols / protein IDs to feature_ids when not in feature_id mode
 resolve_features <- function(input_genes, search_mode = "feature_id") {
   if (search_mode == "gene_name" && !is.null(inputDataReactive()$gene_lookup)) {
     expanded <- unlist(inputDataReactive()$gene_lookup[input_genes], use.names = FALSE)
+    direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
+    return(unique(c(expanded, direct)))
+  }
+  if (search_mode == "protein_Id" && !is.null(inputDataReactive()$protein_lookup)) {
+    expanded <- unlist(inputDataReactive()$protein_lookup[input_genes], use.names = FALSE)
     direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
     return(unique(c(expanded, direct)))
   }
@@ -200,11 +205,19 @@ lapply(fb_reset_tabs, function(tab) {
 
 lapply(fb_input_tabs, function(tab) {
   output[[paste0("fb_search_mode_", tab)]] <- renderUI({
-    req(!is.null(inputDataReactive()$gene_lookup))
+    # Only show radio when at least one alternative lookup exists
+    has_gene <- !is.null(inputDataReactive()$gene_lookup)
+    has_protein <- !is.null(inputDataReactive()$protein_lookup)
+    req(has_gene || has_protein)
+
+    choices <- c("Feature ID" = "feature_id")
+    if (has_protein) choices <- c(choices, "Protein ID" = "protein_Id")
+    if (has_gene) choices <- c(choices, "Gene Symbol" = "gene_name")
+
     radioButtons(
       inputId = paste0("fb_search_by_", tab),
       label = "Search by:",
-      choices = c("Feature ID" = "feature_id", "Gene Symbol" = "gene_name"),
+      choices = choices,
       selected = "feature_id",
       inline = TRUE
     )
@@ -214,12 +227,30 @@ lapply(fb_input_tabs, function(tab) {
 lapply(fb_input_tabs, function(tab) {
   observeEvent(input[[paste0("fb_search_by_", tab)]], ignoreInit = TRUE, {
     mode <- input[[paste0("fb_search_by_", tab)]]
-    if (mode == "gene_name") {
-      choices <- names(inputDataReactive()$gene_lookup)
-    } else {
-      choices <- inputDataReactive()$genes
+
+    # Clear everything — search mode change invalidates bucket contents
+    bucket_clear(source = paste0("search_mode_", tab))
+    for (t in fb_input_tabs) {
+      updateTextAreaInput(session, paste0("fb_text_", t), value = "")
     }
-    updateSelectizeInput(session, paste0("fb_select_", tab),
-                         choices = choices, selected = NULL, server = TRUE)
+    volcanoStagedGenes$brushGenes <- character(0)
+    # Clear bucket-driven plots (boxplot, heatmap) but NOT volcano/MA
+    # — volcano renders all points independently; only labels come from bucket
+    figuresDataReactive$boxplot <- NULL
+    figuresDataReactive$barplot <- NULL
+    figuresDataReactive$heatmapCustom <- NULL
+
+    # Update selectize choices for the new mode across all tabs
+    choices <- if (mode == "gene_name") {
+      sort(names(inputDataReactive()$gene_lookup))
+    } else if (mode == "protein_Id") {
+      sort(names(inputDataReactive()$protein_lookup))
+    } else {
+      inputDataReactive()$genes
+    }
+    for (t in fb_input_tabs) {
+      updateSelectizeInput(session, paste0("fb_select_", t),
+                           choices = choices, selected = NULL, server = TRUE)
+    }
   })
 })
