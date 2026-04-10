@@ -54,7 +54,7 @@ output$multiDataSelectionBoxUI <- renderUI({
                         ),
                         actionButton(inputId = "multiImportButton", label = "Click to load the data"),
                         br(), br(),
-                        lapply(1:10, function(i) {
+                        lapply(1:12, function(i) {
                             splitLayout(
                                 textInput(
                                     inputId = paste0("multiContrastLink", i),
@@ -260,8 +260,8 @@ observeEvent(input$multiLoadSelected, {
     }
 
     # Validate selection limit
-    if (length(input$multiDatasetsCheckbox) > 10) {
-        showNotification("Please select 10 or fewer datasets.", type = "warning")
+    if (length(input$multiDatasetsCheckbox) > 12) {
+        showNotification("Please select 12 or fewer datasets.", type = "warning")
         return(NULL)
     }
 
@@ -430,7 +430,7 @@ output$multiDlExampleFile <- downloadHandler(
 observeEvent(input$multiImportButton, {
     withProgress(message = "Loading manually imported data...", value = 0, {
         inputTable <- data.frame("Link" = character(length = 10L), "Name" = character(length = 10L))
-        for (i in 1:10) {
+        for (i in 1:12) {
             inputTable[i, 1] <- input[[paste0("multiContrastLink", i)]]
             inputTable[i, 2] <- input[[paste0("multiContrastName", i)]]
         }

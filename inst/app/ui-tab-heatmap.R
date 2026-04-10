@@ -86,12 +86,17 @@ tabItem(
               uiOutput(outputId = "nrPeptidesHeatmapUI")
             ),
             conditionalPanel(
-              condition = "output.test == 'CountQC'",
+              condition = "output.test == 'CountQC' || output.test == 'CrisprCountQC'",
               helpText("Features are selected by standard deviation (variability across samples). More variable features will be shown."),
               numericInput(inputId = "heatmapGeneNumberCountQC", label = "Number of Features on Heatmap", min = 5, max = 5000, value = 2000, step = 10),
               helpText("Plotting > 1000 genes will take a few moments...")
             ),
-            
+            conditionalPanel(
+              condition = "output.test == 'CrisprCountQC'",
+              checkboxInput(inputId = "heatmapCollapseGuides", label = "Collapse sgRNA guides per gene (sum)", value = FALSE),
+              selectizeInput(inputId = "heatmapExcludeGuides", label = "Exclude genes/guides:", multiple = TRUE, choices = NULL, selected = NULL)
+            ),
+
             hr(style = "border-top: 1px solid #000000;"), h4("Count settings"),
             selectInput(inputId = "heatmapCounts", label = "Select count method to plot", choices = "", selected = ""),
             selectInput(inputId = "heatmapBatch", label = "Apply a batch-correction to the counts?", choices = "", multiple = FALSE),

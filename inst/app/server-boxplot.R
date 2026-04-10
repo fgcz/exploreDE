@@ -25,7 +25,7 @@ designReactive <- reactive({
     } else {
       return("No contrast selected")
     }
-  } else if (inputDataReactive()$dataType == "CountQC") {
+  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     return(inputDataReactive()$design)
   }
   return("Unknown")
@@ -33,7 +33,8 @@ designReactive <- reactive({
 
 # Update a bunch of input options ----
 output$boxplotStatic <- renderPlot({
-  NULL
+  req(figuresDataReactive$boxplot)
+  figuresDataReactive$boxplot
 })
 
 updateSelectInput(
@@ -43,6 +44,7 @@ updateSelectInput(
   selected = switch(inputDataReactive()$dataType,
     "RNASeq" = "Normalised + Log2",
     "CountQC" = "Normalised + Log2",
+    "CrisprCountQC" = "Normalised + Log2",
     "proteomics" = "transformedData"
   )
 )
@@ -54,6 +56,25 @@ updateSelectizeInput(
   selected = "",
   server = TRUE
 )
+
+# Update feature choices when collapse guides toggle changes
+observeEvent(input$boxplotCollapseGuides, {
+  if (inputDataReactive()$dataType == "CrisprCountQC") {
+    if (isTRUE(input$boxplotCollapseGuides)) {
+      gene_choices <- sort(unique(inputDataReactive()$sgRNA_to_gene))
+    } else {
+      gene_choices <- inputDataReactive()$genes
+    }
+    # Clear everything — feature level has changed
+    featureBucket$features <- character(0)
+    featureBucket$version <- isolate(featureBucket$version) + 1L
+    updateSelectizeInput(session, "fb_select_boxplot", choices = gene_choices, selected = NULL, server = TRUE)
+    updateTextAreaInput(session, "fb_text_boxplot", value = "")
+    # Clear plots
+    figuresDataReactive$boxplot <- NULL
+    figuresDataReactive$barplot <- NULL
+  }
+}, ignoreInit = TRUE)
 
 updateSelectInput(
   session = session,
@@ -118,7 +139,7 @@ if (inputDataReactive()$dataType == "RNASeq") {
   output$boxplotDesign <- renderText({
     inputDataReactive()$design
   })
-} else if (inputDataReactive()$dataType == "CountQC") {
+} else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
   seqAnnoReactive <- reactiveValues("sa" = inputDataReactive()$seqAnno, "saF" = NULL)
   design <- inputDataReactive()$design
 } else if (inputDataReactive()$dataType == "proteomics") {
@@ -198,11 +219,19 @@ boxplotCountsReactive <- eventReactive(
 
     # Get the count data
     countsBoxplot <- inputDataReactive()$countList[[input$boxplotCounts]]
+    # Collapse sgRNA guides to gene level if requested
+    if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$boxplotCollapseGuides)) {
+      countsBoxplot <- collapse_guides_to_genes(countsBoxplot, inputDataReactive()$sgRNA_to_gene)
+      # Map any sgRNA-level feature names to gene names
+      sgRNA_map <- inputDataReactive()$sgRNA_to_gene
+      genesToPlot <- unique(ifelse(genesToPlot %in% names(sgRNA_map), sgRNA_map[genesToPlot], genesToPlot))
+      genesToPlot <- genesToPlot[genesToPlot %in% rownames(countsBoxplot)]
+    }
 
     # Apply the following in this specific order as required: Log2, batch correct, Z-scale
     # If the user wants to log2, then do that
     if (input$boxplotCountsLog) {
-      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC")) {
+      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
           countsBoxplot <- log2(countsBoxplot + 1)
         }
@@ -253,7 +282,7 @@ boxplotCountsReactive <- eventReactive(
     }
 
     # add the DE results
-    if (inputDataReactive()$dataType != "CountQC") {
+    if (!inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
       countsBoxplotMelt$fdr <- seqAnnoReactive$sa$fdr[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
       countsBoxplotMelt$fdr[is.na(countsBoxplotMelt$fdr)] <- 1
       countsBoxplotMelt$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
@@ -283,7 +312,7 @@ boxplotCountsReactive <- eventReactive(
     )
     countsBarplot[[input$boxplotFactor1]] <- factor(countsBarplot[[input$boxplotFactor1]], levels = input$boxKeepBucket)
     countsBarplot$Feature <- factor(countsBarplot$Feature, genesToPlot)
-    if (inputDataReactive()$dataType != "CountQC") {
+    if (!inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
       for (f in c("fdr", "log2Ratio", "stars", "group1", "group2", "y.position")) {
         countsBarplot[[f]] <- countsBoxplotMelt[match(countsBarplot$Feature, countsBoxplotMelt$Feature), f]
       }
@@ -347,6 +376,12 @@ observeEvent(
   ignoreInit = FALSE,
   {
     req(!is.null(boxplotCountsReactive()$countsBoxplotMelt))
+    # If bucket is empty (e.g., just cleared by collapse toggle), clear plots
+    if (length(input$fb_keep_boxplot) < 1) {
+      figuresDataReactive$boxplot <- NULL
+      figuresDataReactive$barplot <- NULL
+      return()
+    }
     datasetBoxplot <- boxplotCountsReactive()$datasetBoxplot
     countsBoxplot <- boxplotCountsReactive()$countsBoxplot
     countsBoxplotMelt <- boxplotCountsReactive()$countsBoxplotMelt
@@ -489,7 +524,7 @@ output$boxplotTable <- renderDataTable({
     xvar = input$boxplotFactor1,
     yvar = "Counts"
   )
-  if (inputDataReactive()$dataType != "CountQC") {
+  if (!inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     colsToShowHere <- c("Name", input$boxplotFactor1, "Feature", "Counts", "log2Ratio", "fdr")
     colsToFormat <- c("Counts", "fdr", "log2Ratio")
   } else {

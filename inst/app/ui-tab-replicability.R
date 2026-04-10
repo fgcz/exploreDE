@@ -10,6 +10,10 @@ tabItem(
                 status = "primary",
                 selectInput(inputId = "replicabilityCounts", label = "Select count method", choices = NULL, selected = NULL),
                 conditionalPanel(
+                    condition = "output.test == 'CrisprCountQC'",
+                    checkboxInput(inputId = "replicabilityCollapseGuides", label = "Collapse sgRNA guides per gene (sum)", value = FALSE)
+                ),
+                conditionalPanel(
                     condition = "input.replicabilityCounts == 'TPM' || input.replicabilityCounts == 'FPKM' || input.replicabilityCounts == 'Normalised' || input.replicabilityCounts == 'Raw'",
                     checkboxInput(inputId = "replicabilityCountsLog", label = "Log2 Counts?", value = FALSE),
                     helpText("Only applies to counts that are not already on in log space.")

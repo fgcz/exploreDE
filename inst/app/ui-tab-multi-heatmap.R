@@ -77,7 +77,7 @@ tabItem(
                             value = TRUE
                         ),
                         checkboxInput(
-                            inputId = "clusterColsHeatmap",
+                            inputId = "clusterColsMultiHeatmap",
                             label = "Cluster columns (contrasts)?",
                             value = FALSE
                         )

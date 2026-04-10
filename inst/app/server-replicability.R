@@ -9,7 +9,7 @@ designReactive <- reactive({
     } else {
       return("No contrast selected")
     }
-  } else if (inputDataReactive()$dataType == "CountQC") {
+  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     return(inputDataReactive()$design)
   }
   return("Unknown")
@@ -21,10 +21,11 @@ observeEvent(inputDataReactive(), {
     default_count <- switch(inputDataReactive()$dataType,
         "RNASeq" = "Normalised + Log2",
         "proteomics" = if ("transformedData" %in% count_choices) "transformedData" else count_choices[1],
-        "CountQC" = "VST"
+        "CountQC" = "VST",
+        "CrisprCountQC" = "VST"
     ) # Default to VST for CountQC if available, or whatever is best
 
-    if (inputDataReactive()$dataType == "CountQC" && "VST" %in% count_choices) {
+    if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC") && "VST" %in% count_choices) {
         default_count <- "VST"
     }
 
@@ -66,6 +67,10 @@ replicabilityData <- reactive({
     req(inputDataReactive())
 
     counts <- inputDataReactive()$countList[[input$replicabilityCounts]]
+    # Collapse sgRNA guides to gene level if requested
+    if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$replicabilityCollapseGuides)) {
+      counts <- collapse_guides_to_genes(counts, inputDataReactive()$sgRNA_to_gene)
+    }
 
     # Apply Log2 if requested
     if (isTRUE(input$replicabilityCountsLog)) {

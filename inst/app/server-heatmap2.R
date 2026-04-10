@@ -111,6 +111,7 @@ observeEvent(inputDataReactive(), {
   default_count <- switch(inputDataReactive()$dataType,
     "RNASeq" = "Normalised + Log2",
     "CountQC" = "Normalised + Log2",
+    "CrisprCountQC" = "Normalised + Log2",
     "proteomics" = if ("transformedData" %in% count_choices) "transformedData" else count_choices[1]
   )
   updateSelectInput(
@@ -127,6 +128,22 @@ observeEvent(inputDataReactive(), {
     selected = NULL,
     server = T,
   )
+
+  # Populate exclude dropdown for CRISPR data
+  if (inputDataReactive()$dataType == "CrisprCountQC") {
+    updateSelectizeInput(session, "heatmapExcludeGuides", choices = inputDataReactive()$genes, selected = NULL, server = TRUE)
+  }
+
+  # Update feature choices when collapse guides toggle changes
+  observeEvent(input$heatmapCollapseGuides, {
+    if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$heatmapCollapseGuides)) {
+      gene_choices <- sort(unique(inputDataReactive()$sgRNA_to_gene))
+    } else {
+      gene_choices <- inputDataReactive()$genes
+    }
+    updateSelectizeInput(session, "fb_select_heatmap", choices = gene_choices, selected = "", server = TRUE)
+    updateSelectizeInput(session, "heatmapExcludeGuides", choices = gene_choices, selected = NULL, server = TRUE)
+  }, ignoreInit = TRUE)
 
   # Automatically set batch correction if grouping2Name exists
   batchDefault <- "None"
@@ -160,7 +177,7 @@ observeEvent(inputDataReactive(), {
   }
 
   # RNASeq-specific: GO term selection
-  if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC")) {
+  if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
     req(inputDataReactive()$allPathways)
     updateSelectizeInput(
       session,
@@ -194,7 +211,8 @@ output$heatmapColumnSelectUI <- renderUI({
   defaultColumn <- switch(data$dataType,
     "RNASeq" = "groupingName",
     "proteomics" = "factors",
-    "CountQC" = "factors"
+    "CountQC" = "factors",
+    "CrisprCountQC" = "factors"
   )
 
   defaultSelected <- NULL
@@ -320,13 +338,16 @@ observeEvent(inputDataReactive(), {
     updateCheckboxInput(session = session, inputId = "geneNamesHeatmap", value = FALSE)
     # Set cell border size to 0 for CountQC (will have many features)
     updateSliderInput(session = session, inputId = "cellBorderSizeHeatmap2", value = 0)
+  } else if (inputDataReactive()$dataType == "CrisprCountQC") {
+    # CRISPR data has fewer features, so show names by default
+    updateCheckboxInput(session = session, inputId = "geneNamesHeatmap", value = TRUE)
   }
 })
 
 # Dynamic tab title based on data type
 output$heatmapTabTitle <- renderUI({
   req(inputDataReactive())
-  if (inputDataReactive()$dataType == "CountQC") {
+  if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     "SD Features"
   } else {
     "DE Features"
@@ -400,6 +421,8 @@ heatmapInputs <- reactive({
     input$cellBorderColourHeatmap1,
     input$cellBorderSizeHeatmap2,
     input$cellBorderColourHeatmap2,
+    input$heatmapCollapseGuides,
+    input$heatmapExcludeGuides,
     # Add all color picker inputs as dependencies so plot updates when colors change
     lapply(seq_along(inputDataReactive()$factorLevels), function(i) {
       lapply(seq_along(inputDataReactive()$factorLevels[[i]]), function(j) {
@@ -420,7 +443,7 @@ observeEvent(
     heatmapInputsDebounced()
   },
   ignoreNULL = FALSE,
-  ignoreInit = TRUE,
+  ignoreInit = FALSE,
   {
     # Check if user has removed all factors - if so, clear the plot
     if (is.null(input$heatmapColumnSelect) || length(input$heatmapColumnSelect) == 0 ||
@@ -433,8 +456,8 @@ observeEvent(
     }
 
     # tryCatch({
-    if (!is.null(input$hmKeepBucket1)) {
-      set.seed(2)
+    req(input$hmKeepBucket1)
+    set.seed(2)
       figuresDataReactive[["heatmapDEFeatures"]] <- NULL
       # Get some variables ----
       if (inputDataReactive()$dataType == "proteomics") {
@@ -473,6 +496,14 @@ observeEvent(
 
       # Prepare the selected count matrix ----
       countsHeatmap <- inputDataReactive()$countList[[input$heatmapCounts]]
+      # Collapse sgRNA guides to gene level if requested
+      if (inputDataReactive()$dataType == "CrisprCountQC") {
+        if (isTRUE(input$heatmapCollapseGuides)) {
+          countsHeatmap <- collapse_guides_to_genes(countsHeatmap, inputDataReactive()$sgRNA_to_gene, exclude = input$heatmapExcludeGuides)
+        } else if (length(input$heatmapExcludeGuides) > 0) {
+          countsHeatmap <- countsHeatmap[!rownames(countsHeatmap) %in% input$heatmapExcludeGuides, , drop = FALSE]
+        }
+      }
       countsHeatmap <- countsHeatmap[, datasetHeatmap$Name]
 
       # Store original dataset BEFORE any aggregation for batch correction
@@ -625,7 +656,7 @@ observeEvent(
 
       # DE Heatmaps ----
       # Select genes based on data type
-      if (inputDataReactive()$dataType == "CountQC") {
+      if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
         # For CountQC: select by standard deviation
         top_n_countqc <- if (!is.null(input$heatmapGeneNumberCountQC)) input$heatmapGeneNumberCountQC else 2000
         top_genes <- select_genes_by_sd(
@@ -696,7 +727,7 @@ observeEvent(
         })
 
         # Limit to requested number of features based on data type
-        if (inputDataReactive()$dataType == "CountQC") {
+        if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
           max_features <- min(as.numeric(input$heatmapGeneNumberCountQC), nrow(countsHeatmapSig))
           countsHeatmapSig <- countsHeatmapSig[1:max_features, ]
         } else {
@@ -707,7 +738,7 @@ observeEvent(
         rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
 
         # Determine heatmap title based on data type
-        heatmap_title <- if (inputDataReactive()$dataType == "CountQC") {
+        heatmap_title <- if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
           paste("Top", nrow(countsHeatmapSig), "Features by SD", agg_label, ":\n", design)
         } else {
           paste("Top", nrow(countsHeatmapSig), "DE Features", agg_label, ":\n", design)
@@ -908,7 +939,7 @@ observeEvent(
 
 
       # GO heatmap ----
-      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC")) {
+      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         goGenes <- goHeatmapReactive$currentGenes
         countsHeatmapGO <- NULL
         goGenesTotal <- length(goGenes)
@@ -1018,7 +1049,7 @@ observeEvent(
       }
 
       # KEGG heatmap ----
-      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC") &&
+      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC") &&
           !is.null(keggHeatmapReactive$keggCode)) {
         keggGenes <- keggHeatmapReactive$currentGenes
         countsHeatmapKEGG <- NULL
@@ -1130,7 +1161,6 @@ observeEvent(
           }
         }
       }
-    }
     # }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
   }
 )

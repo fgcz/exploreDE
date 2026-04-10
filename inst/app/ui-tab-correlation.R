@@ -24,6 +24,10 @@ tabItem(
             title = "Main settings",
             selectizeInput(inputId = "correlationGene1", label = "Feature X", multiple = FALSE, choices = NULL, selected = NULL),
             selectizeInput(inputId = "correlationGene2", label = "Feature Y", multiple = FALSE, choices = NULL, selected = NULL),
+            conditionalPanel(
+              condition = "output.test == 'CrisprCountQC'",
+              checkboxInput(inputId = "correlationCollapseGuides", label = "Collapse sgRNA guides per gene (sum)", value = FALSE)
+            ),
             selectInput(inputId = "correlationColourBy", label = "Select column to colour by", choices = NULL, selected =  NULL),
             selectInput(inputId = "correlationShapeBy", label = "Select column to shape by", choices = NULL, selected =  NULL),
             selectInput(inputId = "correlationCounts", label = "Select count method to plot", choices = NULL, selected = NULL),

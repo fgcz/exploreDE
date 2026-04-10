@@ -300,7 +300,7 @@ server <- function(input, output, session) {
     )
 
     # 2. DE tabs (Shown if NOT CountQC)
-    if (dataType != "CountQC") {
+    if (!dataType %in% c("CountQC", "CrisprCountQC")) {
       menuItems <- c(menuItems, list(
         tags$li(class = "header", "DE Results"),
         menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
@@ -332,7 +332,7 @@ server <- function(input, output, session) {
     }
 
     # 4. Multi DE Analysis (NOT shown for CountQC)
-    if (dataType != "CountQC") {
+    if (!dataType %in% c("CountQC", "CrisprCountQC")) {
       menuItems <- c(menuItems, list(
         tags$li(class = "header", "Multi DE Analysis")
       ))

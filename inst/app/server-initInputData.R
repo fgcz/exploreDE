@@ -55,6 +55,22 @@ build_feature_id <- function(df) {
   gsub("~[^~]+~", "_", rownames(df))
 }
 
+#' collapse_guides_to_genes
+#' Collapse sgRNA-level count matrix to gene-level using row sums.
+#' Filters out negative control genes (matching ^negCtrl).
+#' @param counts A numeric matrix with sgRNA rows and sample columns
+#' @param sgRNA_to_gene Named character vector: names are sgRNA feature IDs, values are gene names
+#' @return A numeric matrix with gene-level rows
+collapse_guides_to_genes <- function(counts, sgRNA_to_gene, exclude = NULL) {
+  common <- intersect(rownames(counts), names(sgRNA_to_gene))
+  counts <- counts[common, , drop = FALSE]
+  collapsed <- rowsum(counts, group = sgRNA_to_gene[common], reorder = FALSE)
+  if (length(exclude) > 0) {
+    collapsed <- collapsed[!rownames(collapsed) %in% exclude, , drop = FALSE]
+  }
+  collapsed
+}
+
 #' convert_genomics_se
 #' @export
 convert_genomics_se <- function(se, dataDir, param = NULL) {
@@ -95,7 +111,9 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   } else {
     dataset <- data.frame(colData(se), check.names = FALSE)
   }
-  dataset <- dataset[which(dataset$Name %in% param$samples), ]
+  if (length(param$samples) > 0) {
+    dataset <- dataset[which(dataset$Name %in% param$samples), ]
+  }
   dataset[["Name"]] <- factor(dataset[["Name"]], levels = dataset[["Name"]])
   rownames(dataset) <- dataset$Name
   # Get the factors that should be available for plotting
@@ -177,7 +195,13 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   goTerms <- clusterProfiler::go2term(allPathwaysDEG)
   allPathways <- paste(goTerms[, 1], goTerms[, 2])
 
-  dataTypeGStore <- ifelse(grepl("CountQC", dataDir), "CountQC", "RNASeq")
+  dataTypeGStore <- if (grepl("ExploreMageckCounts", dataDir)) {
+    "CrisprCountQC"
+  } else if (grepl("CountQC", dataDir)) {
+    "CountQC"
+  } else {
+    "RNASeq"
+  }
 
   # Create the first part of the import list
   gStoreList <- list(
@@ -195,10 +219,17 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   )
 
   # DE results ----
-  if (dataTypeGStore == "CountQC") {
-    # CountQC doesn't have DE results, but some tabs expect these fields
-    gStoreList$design <- "CountQC"
+  if (dataTypeGStore %in% c("CountQC", "CrisprCountQC")) {
+    # CountQC/CrisprCountQC don't have DE results, but some tabs expect these fields
+    gStoreList$design <- dataTypeGStore
     gStoreList$designLevels <- NULL
+    if (dataTypeGStore == "CrisprCountQC") {
+      # Extract gene names from sgRNA IDs: GENE_guideN_SEQUENCE → GENE
+      gStoreList$sgRNA_to_gene <- setNames(
+        gsub("_[0-9]+_[ACGT]+$", "", seqAnno$feature_id),
+        seqAnno$feature_id
+      )
+    }
   } else if (dataTypeGStore == "RNASeq") {
     # Get the p-value and log2 columns
     pValueColumn <- grep("^p[-_]?value$", colnames(seqAnno), value = TRUE, ignore.case = TRUE)[[1]]
@@ -382,7 +413,7 @@ if (!is.null(dataUrl)) {
   if (grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) {
     dataDir <- paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl)
     dataType <- "proteomics"
-  } else if (grepl("CountQC|DESeq2|EdgeR|Limma", dataUrl, ignore.case = TRUE)) {
+  } else if (grepl("CountQC|DESeq2|EdgeR|Limma|ExploreMageckCounts", dataUrl, ignore.case = TRUE)) {
     urlDataRoot <- c("/srv/gstore/projects", "/srv/GT/analysis/course_sushi/public/gstore/projects")
     dataDir <- file.path(urlDataRoot, dataUrl)
     dataDir <- dataDir[file.exists(dataDir)][1]
@@ -515,7 +546,7 @@ if (dataType %in% c("gStore", "demo")) {
       # Store current dataset path for multi-analysis
       multiProjectInfo$currentDataDir <- dataDir
       # If CountQC, load that (we use only the 'present' genes because it has the normalised counts in the assays)
-    } else if (grepl("CountQC", dataDir)) {
+    } else if (grepl("CountQC|ExploreMageckCounts", dataDir)) {
       dataDir <- dirname(dataDir)
       if (file.exists(file.path(dataDir, "rawData_final.rds"))) {
         se <- readRDS(file.path(dataDir, "rawData_final.rds"))

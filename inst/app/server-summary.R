@@ -9,7 +9,7 @@ designReactive <- reactive({
     } else {
       return("No contrast selected")
     }
-  } else if (inputDataReactive()$dataType == "CountQC") {
+  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     return(inputDataReactive()$design)
   }
   return("Unknown")
@@ -216,7 +216,7 @@ observeEvent(inputDataReactive()$dataType, {
         helpText("Adds DE statistics from the current contrast as extra columns.")
       )
     })
-  } else if (inputDataReactive()$dataType == "CountQC") {
+  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     # No methods download for CountQC
     output$methodsDownloadUI <- renderUI({ NULL })
 
@@ -591,7 +591,7 @@ observe({
       )
     },
     content = function(file) {
-      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC")) {
+      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         ctdl <- countList[[input$downloadCount]]
         if (input$log2DownloadedCounts & !input$downloadCount %in% c("Normalised + Log2", "VST")) {
           ctdl <- log2(ctdl + 1)
@@ -952,7 +952,7 @@ observe({
           position = "left"
         )
     }
-  } else if (inputDataReactive()$dataType == "CountQC") {
+  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     output$settingsTable <- function() {
       param <- inputDataReactive()$param
       settings <- character()

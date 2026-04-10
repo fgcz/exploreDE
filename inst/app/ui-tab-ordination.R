@@ -63,6 +63,11 @@ tabItem(
               width = "75%"
             ),
 
+            conditionalPanel(
+              condition = "output.test == 'CrisprCountQC'",
+              checkboxInput(inputId = "pcaCollapseGuides", label = "Collapse sgRNA guides per gene (sum)", value = FALSE)
+            ),
+
             # Biplot-specific controls (conditionally shown)
             conditionalPanel(
               condition = "input.ordinationPlotType == 'biplot'",

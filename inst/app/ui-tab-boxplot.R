@@ -54,6 +54,10 @@ tabItem(
             ),
             helpText("Drag and drop to rearragne feature orders. You can also search for features by typing in the box above."),
             textAreaInput(inputId = "fb_text_boxplot", label = "Or, paste list of features:", placeholder = "feature1 feature2 feature3 feature4 ", cols = 1, rows = 2, resize = "vertical"),
+            conditionalPanel(
+              condition = "output.test == 'CrisprCountQC'",
+              checkboxInput(inputId = "boxplotCollapseGuides", label = "Collapse sgRNA guides per gene (sum)", value = FALSE)
+            ),
             uiOutput("boxplotGTError"),
             selectInput(inputId = "boxplotFactor1", label = "Select the main factor to plot by", choices = NULL, selected = NULL, multiple = FALSE),
             selectInput(inputId = "boxplotFactor2", label = "Select a second factor to plot by", choices = NULL, selected = NULL, multiple = FALSE),

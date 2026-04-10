@@ -41,6 +41,7 @@ observe({
       selected = switch(d$dataType,
         "RNASeq" = "Normalised + Log2",
         "CountQC" = "Normalised + Log2",
+        "CrisprCountQC" = "Normalised + Log2",
         "proteomics" = "transformedData",
         "Normalised + Log2" # Fallback
       )
@@ -255,7 +256,7 @@ multiBoxplotCountsReactive <- eventReactive(
 
     # Transformations
     if (input$multiBoxplotCountsLog) {
-       if (d$dataType %in% c("RNASeq", "CountQC")) {
+       if (d$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
          if (input$multiBoxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
             countsBoxplot <- log2(countsBoxplot + 1)
          }

@@ -9,7 +9,7 @@ designReactive <- reactive({
     } else {
       return("No contrast selected")
     }
-  } else if (inputDataReactive()$dataType == "CountQC") {
+  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     return(inputDataReactive()$design)
   }
   return("Unknown")
@@ -22,6 +22,20 @@ output$correlationStatic <- renderPlot({
 # Update some inputs
 updateSelectizeInput(session = session, inputId = "correlationGene1", label = "Feature X", choices = inputDataReactive()$genes, selected = "", server = TRUE)
 updateSelectizeInput(session = session, inputId = "correlationGene2", label = "Feature Y", choices = inputDataReactive()$genes, selected = "", server = TRUE)
+
+# Update feature choices when collapse guides toggle changes
+observeEvent(input$correlationCollapseGuides, {
+  if (inputDataReactive()$dataType == "CrisprCountQC") {
+    if (isTRUE(input$correlationCollapseGuides)) {
+      gene_choices <- sort(unique(inputDataReactive()$sgRNA_to_gene))
+    } else {
+      gene_choices <- inputDataReactive()$genes
+    }
+    updateSelectizeInput(session, "correlationGene1", choices = gene_choices, selected = "", server = TRUE)
+    updateSelectizeInput(session, "correlationGene2", choices = gene_choices, selected = "", server = TRUE)
+    correlationPlot$plot <- NULL
+  }
+}, ignoreInit = TRUE)
 updateSelectInput(session = session, inputId = "correlationColourBy", label = "Select column to colour by", choices = inputDataReactive()$factors, selected = inputDataReactive()$groupingName)
 updateSelectInput(session = session, inputId = "correlationShapeBy", label = "Select column to shape by", choices = c("None", inputDataReactive()$factors), selected = "None")
 count_choices <- names(inputDataReactive()$countList)
@@ -114,7 +128,12 @@ observeEvent(
     datasetCorrelation <- datasetCorrelation[, c("Name", grepv(paste0("^", inputDataReactive()$factors, "$", collapse = "|"), colnames(datasetCorrelation)))]
 
     # get the counts
-    countsCorrelation <- inputDataReactive()$countList[[input$correlationCounts]][c(input$correlationGene1, input$correlationGene2), ]
+    countsCorrelation <- inputDataReactive()$countList[[input$correlationCounts]]
+    # Collapse sgRNA guides to gene level if requested
+    if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$correlationCollapseGuides)) {
+      countsCorrelation <- collapse_guides_to_genes(countsCorrelation, inputDataReactive()$sgRNA_to_gene)
+    }
+    countsCorrelation <- countsCorrelation[c(input$correlationGene1, input$correlationGene2), ]
 
     # log2 if requested/necessary
     if (input$correlationCountsLog & !input$correlationCounts %in% c("Normalised + Log2", "VST", "transformedData")) {

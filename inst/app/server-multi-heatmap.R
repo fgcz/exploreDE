@@ -237,7 +237,7 @@ multiPathwayHeatmapObjectReactive <- reactive({
         col = colFun,
         top_annotation = topAnnotation,
         cluster_rows = input$clusterRowsHeatmap,
-        cluster_columns = input$clusterColsHeatmap,
+        cluster_columns = input$clusterColsMultiHeatmap,
         show_row_names = input$rownamesHeatmap,
         show_column_names = input$colnamesHeatmap,
         row_names_gp = gpar(fontsize = input$textSizeHeatmap),

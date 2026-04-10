@@ -21,7 +21,12 @@ featureBucket <- reactiveValues(
 # --- API functions ---
 
 bucket_add <- function(new_features, source = "unknown") {
-  valid <- new_features[new_features %in% seqAnnoReactive$sa$feature_id & new_features != ""]
+  valid_ids <- seqAnnoReactive$sa$feature_id
+  # Also accept gene-level names for CrisprCountQC collapsed mode
+  if (!is.null(inputDataReactive()$sgRNA_to_gene)) {
+    valid_ids <- c(valid_ids, unique(inputDataReactive()$sgRNA_to_gene))
+  }
+  valid <- new_features[new_features %in% valid_ids & new_features != ""]
   current <- isolate(featureBucket$features)
   to_add <- setdiff(valid, current)
   if (length(to_add) > 0) {
@@ -147,7 +152,7 @@ observeEvent(
 # DEG table tab (row selection)
 observeEvent(input$degTable_rows_selected, ignoreNULL = FALSE, ignoreInit = TRUE, {
   sa <- seqAnnoReactive$sa
-  if (inputDataReactive()$dataType != "CountQC") {
+  if (!inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     sa <- sa[order(sa$pValue), ]
   }
   selected <- sa$feature_id[input$degTable_rows_selected]

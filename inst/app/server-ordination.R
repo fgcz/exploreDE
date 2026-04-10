@@ -560,7 +560,7 @@ designReactive <- reactive({
     } else {
       return("No contrast selected")
     }
-  } else if (inputDataReactive()$dataType == "CountQC") {
+  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     return(inputDataReactive()$design)
   }
   return("Unknown")
@@ -596,6 +596,10 @@ ordinationResults <- reactive({
     }
   } else {
     countsOrd <- inputDataReactive()$countList[[input$pcaCounts]]
+  }
+  # Collapse sgRNA guides to gene level if requested
+  if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$pcaCollapseGuides)) {
+    countsOrd <- collapse_guides_to_genes(countsOrd, inputDataReactive()$sgRNA_to_gene)
   }
 
   # Build cascade step map
@@ -776,7 +780,7 @@ observeEvent(inputDataReactive(), {
     count_choices <- names(inputDataReactive()$countList)
     default_count <- if ("transformedData" %in% count_choices) "transformedData" else count_choices[1]
     updateSelectInput(session = session, inputId = "pcaCounts", choices = count_choices, selected = default_count)
-  } else if (inputDataReactive()$dataType == "CountQC") {
+  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
     output$pcaDesign <- renderText({
       designReactive()
     })
