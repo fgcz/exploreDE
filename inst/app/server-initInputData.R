@@ -151,7 +151,7 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   }
   # The app doesn't like empty strings in the factor columns, so for now, add "None" to those entries
   # dataset <- dataset %>% mutate_all(~ifelse(. == "", "None", .))
-  if (is.null(param$groupingName)) {
+  if (is.null(param$groupingName) || !nzchar(param$groupingName)) {
     param$groupingName <- factors[[1]]
   }
   # Prepare the count files
@@ -166,11 +166,16 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   }
   forVST <- as.matrix(assay(se, "counts"))
   mode(forVST) <- "integer"
-  if (nrow(forVST) < 1000) {
-    vstCountMatrix <- DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
-  } else {
-    vstCountMatrix <- DESeq2::vst(forVST, blind = FALSE)
-  }
+  vstCountMatrix <- tryCatch({
+    if (nrow(forVST) < 1000) {
+      DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
+    } else {
+      DESeq2::vst(forVST, blind = FALSE)
+    }
+  }, error = function(e) {
+    message("VST failed (", e$message, "), falling back to varianceStabilizingTransformation")
+    DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
+  })
   countList[["VST"]] <- vstCountMatrix
   # For all the counts, match the assays to the seqAnno order
   for (i in seq_along(countList)) {
@@ -429,8 +434,12 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl)) {
-  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
-  dataType <- "demo"
+  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
+  # dataDir <- "/srv/gstore/projects/p36911/o39664_o37783_o39124_o38710_o41353_ExploreMageckCounts_2026-04-09--15-07-24/ExploreMageckCounts/counts-yuunbieawvpw-EzResult.RData"
+  dataDir <- "/srv/gstore/projects/p29779/o41056_ExploreMageckCounts_2026-04-10--09-29-57/ExploreMageckCounts/counts-fzvwfvxsycwz-EzResult.RData"
+  dataType <- "gStore"
+  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335485/2997996.rds"
+  # dataType <- "proteomics"
   projectFromUrl <- dataDir %>%
     gsub(".*projects\\/", "", .) %>%
     gsub("\\/.*", "", .)
