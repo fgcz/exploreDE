@@ -22,6 +22,7 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Main settings",
+            uiOutput("fb_search_mode_correlation"),
             selectizeInput(inputId = "correlationGene1", label = "Feature X", multiple = FALSE, choices = NULL, selected = NULL),
             selectizeInput(inputId = "correlationGene2", label = "Feature Y", multiple = FALSE, choices = NULL, selected = NULL),
             conditionalPanel(

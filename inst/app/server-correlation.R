@@ -85,6 +85,22 @@ observeEvent(
 )
 
 correlationPlot <- reactiveValues(plot = NULL)
+
+# Update feature choices when search mode changes
+observeEvent(input$fb_search_by_correlation, ignoreInit = TRUE, {
+  mode <- input$fb_search_by_correlation
+  choices <- if (mode == "gene_name") {
+    sort(names(inputDataReactive()$gene_lookup))
+  } else if (mode == "protein_Id") {
+    sort(names(inputDataReactive()$protein_lookup))
+  } else {
+    inputDataReactive()$genes
+  }
+  updateSelectizeInput(session, "correlationGene1", choices = choices, selected = "", server = TRUE)
+  updateSelectizeInput(session, "correlationGene2", choices = choices, selected = "", server = TRUE)
+  correlationPlot$plot <- NULL
+})
+
 observeEvent(
   {
     input$correlationMethod
@@ -133,7 +149,52 @@ observeEvent(
     if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$correlationCollapseGuides)) {
       countsCorrelation <- collapse_guides_to_genes(countsCorrelation, inputDataReactive()$sgRNA_to_gene)
     }
-    countsCorrelation <- countsCorrelation[c(input$correlationGene1, input$correlationGene2), ]
+
+    # Resolve gene/protein names to feature_ids if in alternative search mode
+    corr_mode <- input$fb_search_by_correlation %||% "feature_id"
+    corr_features <- list(input$correlationGene1, input$correlationGene2)
+    corr_labels <- c(input$correlationGene1, input$correlationGene2)
+    if (corr_mode != "feature_id") {
+      corr_features <- lapply(corr_labels, function(sel) {
+        resolve_features(sel, corr_mode)
+      })
+    }
+    # Average across feature_ids when a gene/protein maps to multiple rows
+    # Build axis labels that show "(mean of N features)" when averaging
+    corr_axis_labels <- corr_labels
+    corr_rows <- lapply(seq_along(corr_features), function(i) {
+      fids <- corr_features[[i]]
+      fids <- fids[fids %in% rownames(countsCorrelation)]
+      req(length(fids) > 0)
+      if (length(fids) == 1) {
+        countsCorrelation[fids, , drop = FALSE]
+      } else {
+        corr_axis_labels[i] <<- paste0(corr_labels[i], " (mean of ", length(fids), " features)")
+        showNotification(
+          paste0(corr_labels[i], ": averaging ", length(fids), " features for correlation"),
+          type = "warning", duration = 6
+        )
+        matrix(
+          colMeans(countsCorrelation[fids, , drop = FALSE], na.rm = TRUE),
+          nrow = 1, dimnames = list(NULL, colnames(countsCorrelation))
+        )
+      }
+    })
+    countsCorrelation <- do.call(rbind, corr_rows)
+    rownames(countsCorrelation) <- corr_labels
+
+    # Warn about sparsity — count non-NaN samples per feature
+    n_samples <- ncol(countsCorrelation)
+    for (i in seq_along(corr_labels)) {
+      n_valid <- sum(!is.na(countsCorrelation[i, ]) & !is.nan(as.numeric(countsCorrelation[i, ])))
+      if (n_valid < n_samples) {
+        showNotification(
+          paste0(corr_labels[i], ": data available for ", n_valid, " of ", n_samples, " samples"),
+          type = if (n_valid < n_samples / 2) "error" else "warning",
+          duration = 8
+        )
+      }
+    }
 
     # log2 if requested/necessary
     if (input$correlationCountsLog & !input$correlationCounts %in% c("Normalised + Log2", "VST", "transformedData")) {
@@ -194,6 +255,7 @@ observeEvent(
     corr_plot1 <- corr_plot1 + scale_fill_manual(breaks = names(coloursCorrelation), values = as.character(coloursCorrelation))
     corr_plot1 <- corr_plot1 + theme_prism(base_size = input$textSizeCorrelation)
     corr_plot1 <- corr_plot1 + theme(legend.text = element_text(size = input$textSizeCorrelation, color = "black", face = "bold"))
+    corr_plot1 <- corr_plot1 + labs(x = corr_axis_labels[1], y = corr_axis_labels[2])
     corr_plot1
     correlationPlot$plot <- corr_plot1
     correlationPlot$counts <- countsCorrelation

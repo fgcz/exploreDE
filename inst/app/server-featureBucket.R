@@ -203,7 +203,7 @@ lapply(fb_reset_tabs, function(tab) {
 # Phase 8: Gene Symbol Search (sub-protein proteomics)
 # =============================================================================
 
-lapply(fb_input_tabs, function(tab) {
+lapply(c(fb_input_tabs, "correlation"), function(tab) {
   output[[paste0("fb_search_mode_", tab)]] <- renderUI({
     # Only show radio when at least one alternative lookup exists
     has_gene <- !is.null(inputDataReactive()$gene_lookup)
