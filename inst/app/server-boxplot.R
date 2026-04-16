@@ -405,6 +405,22 @@ observeEvent(
       facetFree <- "free_x"
     }
 
+    # Build a facet labeller that annotates feature_ids with gene symbols
+    # (proteomics only, when gene_name info exists in the seqAnno)
+    facet_labeller <- "label_value"
+    if (inputDataReactive()$dataType == "proteomics" && !is.null(input$contrastSelected)) {
+      sa_full <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
+      if ("gene_name" %in% colnames(sa_full)) {
+        gene_map <- setNames(sa_full$gene_name, sa_full$feature_id)
+        facet_labeller <- labeller(Feature = function(fids) {
+          gnames <- gene_map[fids]
+          ifelse(!is.na(gnames) & gnames != fids,
+                 paste0(gnames, "\n", fids),
+                 fids)
+        })
+      }
+    }
+
     # Boxplot ----
     boxplot <- ggplot(data = countsBoxplotMelt, aes(x = .data[[input$boxplotFactor1]], y = Counts))
     if (input$boxplotShowBox & !input$boxplotShowViolin) {
@@ -450,7 +466,7 @@ observeEvent(
       ylabToPlot <- paste(ylabToPlot, "[Z-score]")
     }
     boxplot <- boxplot + labs(y = ylabToPlot)
-    boxplot <- boxplot + facet_wrap(~Feature, scales = facetFree, ncol = input$boxplotNCol)
+    boxplot <- boxplot + facet_wrap(~Feature, scales = facetFree, ncol = input$boxplotNCol, labeller = facet_labeller)
     if (input$boxplotVertLines) {
       boxplot <- boxplot + geom_vline(xintercept = seq_along(input$boxKeepBucket)[-length(seq_along(input$boxKeepBucket))] + 0.5, linetype = "dashed", alpha = 0.7)
     }
@@ -476,7 +492,7 @@ observeEvent(
     # Barplot ----
     countsBarplot <- countsBarplot %>% complete(!!sym(input$boxplotFactor1), Feature, fill = list(Counts = 0))
     barplot <- ggplot(data = countsBarplot, aes(x = .data[[input$boxplotFactor1]], y = Counts, fill = .data[[input$boxplotFactor1]]))
-    barplot <- barplot + facet_wrap(~Feature, scales = "free", ncol = input$boxplotNCol)
+    barplot <- barplot + facet_wrap(~Feature, scales = "free", ncol = input$boxplotNCol, labeller = facet_labeller)
     barplot <- barplot + geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = input$boxplotBoxAlpha, show.legend = FALSE)
     barplot <- barplot + scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
     if (input$barplotSDorSE %in% c("SE", "SD")) {

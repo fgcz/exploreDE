@@ -78,10 +78,28 @@ lapply(fb_tabs, function(tab) {
     features <- featureBucket$features
     output[[paste0("fb_bucket_", tab)]] <- renderUI({
       if (length(features) == 0) {
-        div(
-          class = "text-muted text-center", style = "padding: 20px;",
-          icon("hand-pointer"),
-          " Select features from any tab to populate the bucket."
+        # Render an empty bucket_list so that input$fb_keep_<tab> is actively
+        # set to character(0). A plain div() would leave the old input value
+        # cached, causing the debounced reactive to miss changes when the same
+        # feature is re-added after a bucket clear (e.g. search mode switch).
+        hidden_bucket <- bucket_list(
+          header = NULL,
+          group_name = paste0("fb_group_", tab),
+          orientation = "horizontal",
+          add_rank_list(
+            text = NULL,
+            labels = NULL,
+            input_id = paste0("fb_keep_", tab)
+          )
+        )
+        hidden_bucket <- tagAppendAttributes(hidden_bucket, style = "display:none;")
+        tagList(
+          div(
+            class = "text-muted text-center", style = "padding: 20px;",
+            icon("hand-pointer"),
+            " Select features from any tab to populate the bucket."
+          ),
+          hidden_bucket
         )
       } else {
         bucket_list(
