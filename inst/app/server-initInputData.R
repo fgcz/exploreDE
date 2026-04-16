@@ -370,14 +370,18 @@ convert_proteomics_se <- function(se) {
 
   # gene_lookup: gene_name → feature_ids (only if gene_name column exists and differs from feature_id)
   gene_lookup <- NULL
+  gene_choices <- NULL
   if ("gene_name" %in% colnames(sa1) && !identical(sa1$feature_id, sa1$gene_name)) {
     gene_lookup <- split(sa1$feature_id, sa1$gene_name)
+    gene_choices <- unique(sa1$gene_name)
   }
 
   # protein_lookup: protein_Id → feature_ids (only for sub-protein data where protein_Id still exists)
   protein_lookup <- NULL
+  protein_choices <- NULL
   if ("protein_Id" %in% colnames(sa1)) {
     protein_lookup <- split(sa1$feature_id, sa1$protein_Id)
+    protein_choices <- unique(sa1$protein_Id)
   }
 
   # Return the final list
@@ -393,7 +397,9 @@ convert_proteomics_se <- function(se) {
     "factorLevels" = factorLevels,
     "groupingName" = factors[[1]],
     "gene_lookup" = gene_lookup,
-    "protein_lookup" = protein_lookup
+    "protein_lookup" = protein_lookup,
+    "gene_choices" = gene_choices,
+    "protein_choices" = protein_choices
   ))
 }
 

@@ -89,10 +89,10 @@ correlationPlot <- reactiveValues(plot = NULL)
 # Update feature choices when search mode changes
 observeEvent(input$fb_search_by_correlation, ignoreInit = TRUE, {
   mode <- input$fb_search_by_correlation
-  choices <- if (mode == "gene_name") {
-    sort(names(inputDataReactive()$gene_lookup))
-  } else if (mode == "protein_Id") {
-    sort(names(inputDataReactive()$protein_lookup))
+  choices <- if (mode == "gene_name" && !is.null(inputDataReactive()$gene_choices)) {
+    inputDataReactive()$gene_choices
+  } else if (mode == "protein_Id" && !is.null(inputDataReactive()$protein_choices)) {
+    inputDataReactive()$protein_choices
   } else {
     inputDataReactive()$genes
   }

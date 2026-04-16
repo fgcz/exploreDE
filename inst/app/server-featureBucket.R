@@ -181,10 +181,19 @@ fb_reset_tabs <- c("boxplot", "volcano", "heatmap", "deg")
 lapply(fb_reset_tabs, function(tab) {
   observeEvent(input[[paste0("fb_reset_", tab)]], ignoreInit = TRUE, {
     bucket_clear(source = paste0("reset_", tab))
-    # Clear ALL selectize and textarea inputs across ALL tabs
+    # Clear ALL selectize and textarea inputs across ALL tabs,
+    # respecting the current search mode so choices stay consistent
+    mode <- input[[paste0("fb_search_by_", tab)]] %||% "feature_id"
+    choices <- if (mode == "gene_name" && !is.null(inputDataReactive()$gene_choices)) {
+      inputDataReactive()$gene_choices
+    } else if (mode == "protein_Id" && !is.null(inputDataReactive()$protein_choices)) {
+      inputDataReactive()$protein_choices
+    } else {
+      inputDataReactive()$genes
+    }
     for (t in fb_input_tabs) {
       updateSelectizeInput(session, paste0("fb_select_", t),
-                           choices = inputDataReactive()$genes, selected = NULL, server = TRUE)
+                           choices = choices, selected = NULL, server = TRUE)
       updateTextAreaInput(session, paste0("fb_text_", t), value = "")
     }
     # Clear volcano staged genes
@@ -241,10 +250,10 @@ lapply(fb_input_tabs, function(tab) {
     figuresDataReactive$heatmapCustom <- NULL
 
     # Update selectize choices for the new mode across all tabs
-    choices <- if (mode == "gene_name") {
-      sort(names(inputDataReactive()$gene_lookup))
-    } else if (mode == "protein_Id") {
-      sort(names(inputDataReactive()$protein_lookup))
+    choices <- if (mode == "gene_name" && !is.null(inputDataReactive()$gene_choices)) {
+      inputDataReactive()$gene_choices
+    } else if (mode == "protein_Id" && !is.null(inputDataReactive()$protein_choices)) {
+      inputDataReactive()$protein_choices
     } else {
       inputDataReactive()$genes
     }

@@ -815,6 +815,9 @@ observeEvent(inputDataReactive(), {
                 factors = data$factors,
                 factorLevels = data$factorLevels,
                 gene_lookup = data$gene_lookup,
+                protein_lookup = data$protein_lookup,
+                gene_choices = data$gene_choices,
+                protein_choices = data$protein_choices,
                 groupingName = groupingName
             )
 
