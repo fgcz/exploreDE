@@ -223,6 +223,8 @@ tabItem(
             hr(style = "border-top: 0.1px solid #000000;"),
             selectInput(inputId = "pcaCounts", label = "Counts to plot", choices = "", selected = "", width = "75%"),
             selectInput(inputId = "pcaBatch", label = "Batch-correct by", choices = "", multiple = FALSE, width = "75%"),
+            selectInput(inputId = "pcaBatchDesign", label = "Design factor to preserve", choices = "", multiple = FALSE, width = "75%"),
+            helpText("The design factor tells removeBatchEffect which biological signal to protect. For two-factor DE this is locked to the primary grouping; for CountQC/Crispr you can pick any factor."),
             checkboxInput(inputId = "pcaLog2", label = "Log2 counts?", value = TRUE),
             helpText("Log2 only applies to non-logged RNA counts, e.g., TPM, FPKM"),
             hr(style = "border-top: 0.1px solid #000000;"),

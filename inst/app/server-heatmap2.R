@@ -145,14 +145,26 @@ observeEvent(inputDataReactive(), {
     updateSelectizeInput(session, "heatmapExcludeGuides", choices = gene_choices, selected = NULL, server = TRUE)
   }, ignoreInit = TRUE)
 
-  # Automatically set batch correction if grouping2Name exists
-  batchDefault <- "None"
-  if (!is.null(inputDataReactive()$param$grouping2Name)) {
-    if (inputDataReactive()$param$grouping2Name %in% inputDataReactive()$factors) {
-      batchDefault <- inputDataReactive()$param$grouping2Name
-    }
+  # Batch + design dropdowns — see server-boxplot.R for the decision table.
+  .dt       <- inputDataReactive()$dataType
+  .factors  <- inputDataReactive()$factors
+  .grouping <- inputDataReactive()$groupingName
+  .param    <- inputDataReactive()$param
+  .twoFactor <- !is.null(.param$grouping2Name) && nzchar(.param$grouping2Name) &&
+                .param$grouping2Name %in% .factors
+  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", NA_character_)
+
+  batchChoices <- c("None", .factors)
+  batchDefault <- if (.twoFactor) .param$grouping2Name else "None"
+  updateSelectInput(session = session, inputId = "heatmapBatch", choices = batchChoices, selected = batchDefault)
+
+  designChoices <- if (.dt %in% c("RNASeq", "proteomics") && .twoFactor) {
+    c("None", .deDesignCol)
+  } else {
+    c("None", .factors)
   }
-  updateSelectInput(session = session, inputId = "heatmapBatch", choices = c("None", inputDataReactive()$factors), selected = batchDefault)
+  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", "None")
+  updateSelectInput(session = session, inputId = "heatmapDesign", choices = designChoices, selected = designDefault)
 
   # Update p-value type based on data type
   if (inputDataReactive()$dataType == "proteomics") {
@@ -371,6 +383,7 @@ heatmapInputs <- reactive({
   list(
     input$textSizeHeatmap,
     input$heatmapBatch,
+    input$heatmapDesign,
     input$lfcHeatmap,
     input$pTypeHeatmap,
     input$pThresholdHeatmap,
@@ -504,31 +517,30 @@ observeEvent(
           countsHeatmap <- countsHeatmap[!rownames(countsHeatmap) %in% input$heatmapExcludeGuides, , drop = FALSE]
         }
       }
-      countsHeatmap <- countsHeatmap[, datasetHeatmap$Name]
-
-      # Store original dataset BEFORE any aggregation for batch correction
-      datasetHeatmapOriginal <- datasetHeatmap
-
-      # Apply the following in this specific order: Batch -> Log2 -> Centre/Scale -> Aggregation
-      ## 1. If the user wants to remove batch effect, then do that FIRST (use ORIGINAL dataset)
-      if (input$heatmapBatch != "None") {
-        req(input$heatmapBatch %in% colnames(datasetHeatmapOriginal))
-        # Check that batch factor has more than one level after filtering
-        batch_levels <- unique(datasetHeatmapOriginal[[input$heatmapBatch]])
-        if (length(batch_levels) > 1) {
-          countsHeatmap <- limma::removeBatchEffect(x = countsHeatmap, batch = datasetHeatmapOriginal[[input$heatmapBatch]])
-        } else {
-          showNotification(
-            paste0("Batch correction skipped: '", input$heatmapBatch, "' has only ", length(batch_levels), " level in the selected samples"),
-            type = "warning",
-            duration = 5
-          )
-        }
-      }
-      ## 2. If the user wants to log2, then do that
+      # Log2 and batch correction on FULL matrix (all genes, all samples) before subsetting
+      is_logged <- input$heatmapCounts %in% c("Normalised + Log2", "VST") ||
+        inputDataReactive()$dataType == "proteomics"
       if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
         countsHeatmap <- log2(countsHeatmap + 1)
+        is_logged <- TRUE
       }
+      if (input$heatmapBatch != "None") {
+        if (is_logged) {
+          countsHeatmap <- apply_batch_correction(
+            counts    = countsHeatmap,
+            dataset   = inputDataReactive()$dataset,
+            batchCol  = input$heatmapBatch,
+            designCol = input$heatmapDesign
+          )
+        } else {
+          showNotification("Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
+            type = "warning", duration = 8)
+        }
+      }
+
+      # Subset to selected samples
+      countsHeatmap <- countsHeatmap[, datasetHeatmap$Name]
+      datasetHeatmapOriginal <- datasetHeatmap
       ## Fix the proteomics rownames
       if (inputDataReactive()$dataType == "proteomics") {
         rownames(countsHeatmap) <- gsub("\\~.*", "", rownames(countsHeatmap))

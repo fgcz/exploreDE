@@ -44,14 +44,28 @@ default_count <- switch(inputDataReactive()$dataType,
   "proteomics" = if ("transformedData" %in% count_choices) "transformedData" else count_choices[1]
 )
 updateSelectInput(session = session, inputId = "correlationCounts", label = "Select count method to plot", choices = count_choices, selected = default_count)
-# Automatically set batch correction if grouping2Name exists
-batchDefault <- "None"
-if (!is.null(inputDataReactive()$param$grouping2Name)) {
-  if (inputDataReactive()$param$grouping2Name %in% inputDataReactive()$factors) {
-    batchDefault <- inputDataReactive()$param$grouping2Name
+# Batch + design dropdowns — see server-boxplot.R for the decision table.
+observeEvent(inputDataReactive(), {
+  .dt       <- inputDataReactive()$dataType
+  .factors  <- inputDataReactive()$factors
+  .grouping <- inputDataReactive()$groupingName
+  .param    <- inputDataReactive()$param
+  .twoFactor <- !is.null(.param$grouping2Name) && nzchar(.param$grouping2Name) &&
+                .param$grouping2Name %in% .factors
+  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", NA_character_)
+
+  batchChoices <- c("None", .factors)
+  batchDefault <- if (.twoFactor) .param$grouping2Name else "None"
+  updateSelectInput(session = session, inputId = "correlationBatch", label = "Apply a batch-correction to the counts?", choices = batchChoices, selected = batchDefault)
+
+  designChoices <- if (.dt %in% c("RNASeq", "proteomics") && .twoFactor) {
+    c("None", .deDesignCol)
+  } else {
+    c("None", .factors)
   }
-}
-updateSelectInput(session = session, inputId = "correlationBatch", label = "Apply a batch-correction to the counts?", choices = c("None", inputDataReactive()$factors), selected = batchDefault)
+  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", "None")
+  updateSelectInput(session = session, inputId = "correlationDesign", label = "Design factor to preserve during batch correction", choices = designChoices, selected = designDefault)
+})
 updateSliderInput(session = session, inputId = "correlationCorPosX", label = "Label position x", min = 1, max = 100, value = 10, step = 1)
 updateSliderInput(session = session, inputId = "correlationCorPosY", label = "Label position y", min = 1, max = 100, value = 10, step = 1)
 
@@ -110,6 +124,7 @@ observeEvent(
     input$correlationShapeBy
     input$correlationCounts
     input$correlationBatch
+    input$correlationDesign
     input$correlationCorPosX
     input$correlationCorPosY
     input$correlationPointSize
@@ -143,14 +158,35 @@ observeEvent(
     datasetCorrelation$Name <- factor(datasetCorrelation$Name, levels = datasetCorrelation$Name)
     datasetCorrelation <- datasetCorrelation[, c("Name", grepv(paste0("^", inputDataReactive()$factors, "$", collapse = "|"), colnames(datasetCorrelation)))]
 
-    # get the counts
+    # get the counts (full matrix — all genes, all samples)
     countsCorrelation <- inputDataReactive()$countList[[input$correlationCounts]]
     # Collapse sgRNA guides to gene level if requested
     if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$correlationCollapseGuides)) {
       countsCorrelation <- collapse_guides_to_genes(countsCorrelation, inputDataReactive()$sgRNA_to_gene)
     }
 
-    # Resolve gene/protein names to feature_ids if in alternative search mode
+    # Log2 and batch correction on full matrix BEFORE extracting genes
+    is_logged <- input$correlationCounts %in% c("Normalised + Log2", "VST") ||
+      inputDataReactive()$dataType == "proteomics"
+    if (input$correlationCountsLog & !is_logged) {
+      countsCorrelation <- log2(countsCorrelation + 1)
+      is_logged <- TRUE
+    }
+    if (input$correlationBatch != "None") {
+      if (is_logged) {
+        countsCorrelation <- apply_batch_correction(
+          counts    = countsCorrelation,
+          dataset   = inputDataReactive()$dataset,
+          batchCol  = input$correlationBatch,
+          designCol = input$correlationDesign
+        )
+      } else {
+        showNotification("Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
+          type = "warning", duration = 8)
+      }
+    }
+
+    # Now extract the two genes of interest
     corr_mode <- input$fb_search_by_correlation %||% "feature_id"
     corr_features <- list(input$correlationGene1, input$correlationGene2)
     corr_labels <- c(input$correlationGene1, input$correlationGene2)
@@ -160,7 +196,6 @@ observeEvent(
       })
     }
     # Average across feature_ids when a gene/protein maps to multiple rows
-    # Build axis labels that show "(mean of N features)" when averaging
     corr_axis_labels <- corr_labels
     corr_rows <- lapply(seq_along(corr_features), function(i) {
       fids <- corr_features[[i]]
@@ -183,7 +218,7 @@ observeEvent(
     countsCorrelation <- do.call(rbind, corr_rows)
     rownames(countsCorrelation) <- corr_labels
 
-    # Warn about sparsity — count non-NaN samples per feature
+    # Warn about sparsity
     n_samples <- ncol(countsCorrelation)
     for (i in seq_along(corr_labels)) {
       n_valid <- sum(!is.na(countsCorrelation[i, ]) & !is.nan(as.numeric(countsCorrelation[i, ])))
@@ -194,16 +229,6 @@ observeEvent(
           duration = 8
         )
       }
-    }
-
-    # log2 if requested/necessary
-    if (input$correlationCountsLog & !input$correlationCounts %in% c("Normalised + Log2", "VST", "transformedData")) {
-      countsCorrelation <- log2(countsCorrelation + 1)
-    }
-
-    # remove batch effect if requested
-    if (input$correlationBatch != "None") {
-      countsCorrelation <- limma::removeBatchEffect(x = countsCorrelation, batch = inputDataReactive()$dataset[[input$correlationBatch]])
     }
 
     # prepare the counts

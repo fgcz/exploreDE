@@ -100,6 +100,8 @@ tabItem(
             hr(style = "border-top: 1px solid #000000;"), h4("Count settings"),
             selectInput(inputId = "heatmapCounts", label = "Select count method to plot", choices = "", selected = ""),
             selectInput(inputId = "heatmapBatch", label = "Apply a batch-correction to the counts?", choices = "", multiple = FALSE),
+            selectInput(inputId = "heatmapDesign", label = "Design factor to preserve during batch correction", choices = "", multiple = FALSE),
+            helpText("The design factor tells removeBatchEffect which biological signal to protect. For two-factor DE this is locked to the primary grouping; for CountQC/Crispr you can pick any factor."),
             checkboxInput(inputId = "heatmapLog2", label = "Log2 transform counts?", value = TRUE),
             helpText("Only applies to counts not already in log space."),
             radioButtons(inputId = "heatmapZScore", label = "Centre or use Z-Scores?", choices = c("None", "Centred", "Z-Score"), selected = "Centred"),

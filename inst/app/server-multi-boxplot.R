@@ -4,7 +4,7 @@ dataSummary <- function(data, varname, groupnames) {
     c(
       mean = mean(x[[col]], na.rm = TRUE),
       sd = sd(x[[col]], na.rm = TRUE),
-      se = sqrt(sd(x[[col]]) / length(x[[col]]))
+      se = sd(x[[col]], na.rm = TRUE) / sqrt(sum(!is.na(x[[col]])))
     )
   }
   data_sum <- plyr::ddply(
@@ -68,18 +68,31 @@ observe({
       selected = "None"
     )
     
-    # Automatically set batch correction if grouping2Name exists
-    batchDefault <- "None"
-    if (!is.null(d$param$grouping2Name) && !is.null(d$factors)) {
-      if (d$param$grouping2Name %in% d$factors) {
-        batchDefault <- d$param$grouping2Name
-      }
-    }
+    # Batch + design dropdowns — see server-boxplot.R for the decision table.
+    .twoFactor <- !is.null(d$param$grouping2Name) && nzchar(d$param$grouping2Name) &&
+                  !is.null(d$factors) && d$param$grouping2Name %in% d$factors
+    .deDesignCol <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = "G_", NA_character_)
+
+    batchChoices <- c("None", d$factors)
+    batchDefault <- if (.twoFactor) d$param$grouping2Name else "None"
     updateSelectInput(
       session = session,
       inputId = "multiBoxplotBatch",
-      choices = c("None", d$factors),
+      choices = batchChoices,
       selected = batchDefault
+    )
+
+    designChoices <- if (d$dataType %in% c("RNASeq", "proteomics") && .twoFactor) {
+      c("None", .deDesignCol)
+    } else {
+      c("None", d$factors)
+    }
+    designDefault <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = "G_", "None")
+    updateSelectInput(
+      session = session,
+      inputId = "multiBoxplotDesign",
+      choices = designChoices,
+      selected = designDefault
     )
 })
 
@@ -222,6 +235,7 @@ multiBoxplotCountsReactive <- eventReactive(
     input$multiBoxKeepBucket
     input$multiBoxplotFactor2
     input$multiBoxplotBatch
+    input$multiBoxplotDesign
     input$multiBoxplotCounts
     input$multiBoxplotCountsLog
     input$multiBoxplotZScore
@@ -255,15 +269,28 @@ multiBoxplotCountsReactive <- eventReactive(
     countsBoxplot <- d$countList[[input$multiBoxplotCounts]]
 
     # Transformations
+    is_logged <- input$multiBoxplotCounts %in% c("Normalised + Log2", "VST") ||
+      d$dataType == "proteomics"
     if (input$multiBoxplotCountsLog) {
        if (d$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
          if (input$multiBoxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
             countsBoxplot <- log2(countsBoxplot + 1)
+            is_logged <- TRUE
          }
        }
     }
     if (input$multiBoxplotBatch != "None") {
-      countsBoxplot <- limma::removeBatchEffect(countsBoxplot, datasetBoxplot[[input$multiBoxplotBatch]])
+      if (is_logged) {
+        countsBoxplot <- apply_batch_correction(
+          counts    = countsBoxplot,
+          dataset   = datasetBoxplot,
+          batchCol  = input$multiBoxplotBatch,
+          designCol = input$multiBoxplotDesign
+        )
+      } else {
+        showNotification("Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
+          type = "warning", duration = 8)
+      }
     }
     if (input$multiBoxplotZScore) {
       countsBoxplot <- t(scale(t(countsBoxplot)))

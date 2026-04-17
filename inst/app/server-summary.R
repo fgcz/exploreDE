@@ -174,8 +174,7 @@ observeEvent(inputDataReactive()$dataType, {
         h4("Download Count Files"),
         helpText("Select the type of count data you wish to download for all samples in the dataset."),
         selectizeInput(inputId = "downloadCount", "Select Count Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
-
-        textInput(inputId = "filename_summary", label = NULL, value = "Counts", placeholder = "Filename"),
+        textInput(inputId = "filename_summary", label = "File name", value = "Counts", placeholder = "Filename", width = "33%"),
         downloadButton("dlTable_summary", "Download selected count file"),
         checkboxInput(inputId = "log2DownloadedCounts", label = "Log2 Counts?", value = FALSE),
         helpText("Log2 adds a psuedocount of 1, and only works on counts not already in log2 scale."),

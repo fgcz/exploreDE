@@ -35,7 +35,9 @@ tabItem(
             helpText("Only applies to counts that are not already in log space."),
             checkboxInput(inputId = "correlationCountsLog", label = "Log2 Counts?", value = FALSE),
             selectInput(inputId = "correlationBatch", label = "Apply a batch-correction to the counts?", choices = NULL, selected = NULL, multiple = FALSE),
-            
+            selectInput(inputId = "correlationDesign", label = "Design factor to preserve during batch correction", choices = NULL, selected = NULL, multiple = FALSE),
+            helpText("The design factor tells removeBatchEffect which biological signal to protect. For two-factor DE this is locked to the primary grouping; for CountQC/Crispr you can pick any factor."),
+
             hr(style = "border-top: 1px solid #000000;"), h4("Correlation Settings"),
             selectInput(inputId = "correlationMethod", label = "Correlation method", choices = c("Spearman", "Pearson", "Kendall"), selected = "Pearson", multiple = FALSE),
             fluidRow(

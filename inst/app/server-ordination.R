@@ -287,21 +287,19 @@ step_log2 <- function(counts, dataset, counts_type) {
   list(counts = counts, dataset = dataset)
 }
 
-step_batch_correction <- function(counts, dataset, batch_column) {
-  if (!is.null(batch_column)) {
-    counts <- tryCatch({
-      if (any(is.na(dataset[[batch_column]]))) {
-        showNotification("Batch correction skipped: batch column contains NA values",
-          type = "warning", duration = 3)
-        counts
-      } else {
-        limma::removeBatchEffect(counts, dataset[[batch_column]])
-      }
-    }, error = function(e) {
-      showNotification(paste("Batch correction failed:", e$message, "\nProceeding without."),
-        type = "warning", duration = 3)
-      counts
-    })
+step_batch_correction <- function(counts, dataset, batch_column, design_column = "None") {
+  if (!is.null(batch_column) && nzchar(batch_column) && batch_column != "None") {
+    if (any(is.na(dataset[[batch_column]]))) {
+      showNotification("Batch correction skipped: batch column contains NA values",
+        type = "warning", duration = 8)
+    } else {
+      counts <- apply_batch_correction(
+        counts    = counts,
+        dataset   = dataset,
+        batchCol  = batch_column,
+        designCol = design_column
+      )
+    }
   }
   list(counts = counts, dataset = dataset)
 }
@@ -314,66 +312,6 @@ step_top_n_sd <- function(counts, dataset, top_n) {
     counts <- counts[top_features, , drop = FALSE]
   }
   list(counts = counts, dataset = dataset)
-}
-
-#' Prepare count data for ordination (legacy wrapper, kept for reference)
-#' @param counts Raw count matrix (genes x samples)
-#' @param dataset Dataset with sample metadata
-#' @param method Ordination method
-#' @param log2_transform Apply log2 transform?
-#' @param counts_type Type of counts being used
-#' @param batch_column Batch column name for correction (NULL for no correction)
-#' @param top_n Number of top features to keep (by SD)
-#' @return Processed count matrix (samples x genes for PCA/PCoA, genes x samples for GLM-PCA)
-prepare_counts <- function(counts, dataset, method, log2_transform = FALSE, counts_type = NULL, batch_column = NULL, top_n = 2000) {
-  # For GLM-PCA, return raw counts as-is (genes x samples)
-  if (method == "glmpca") {
-    return(counts)
-  }
-
-  # For PCA/PCoA: apply transformations
-  if (log2_transform) {
-    # Only apply log2 to non-logged data
-    if (!is.null(counts_type) && counts_type %in% c("TPM", "FPKM", "Raw", "Normalised")) {
-      counts <- log2(counts + 1)
-    }
-  }
-
-  # Apply batch correction if requested
-  if (!is.null(batch_column) && !is.null(dataset)) {
-    counts <- tryCatch(
-      {
-        if (any(is.na(dataset[[batch_column]]))) {
-          showNotification("Batch correction skipped: batch column contains NA values",
-            type = "warning", duration = 3
-          )
-          counts
-        } else {
-          limma::removeBatchEffect(counts, dataset[[batch_column]])
-        }
-      },
-      error = function(e) {
-        showNotification(paste("Batch correction failed:", e$message, "\nProceeding without."),
-          type = "warning", duration = 3
-        )
-        counts
-      }
-    )
-  }
-
-  # Transpose to samples x genes for PCA/PCoA
-  counts <- as.data.frame(t(counts))
-
-  # Keep top N features by standard deviation
-  # Cap top_n at the number of available features to prevent issues
-  top_n <- min(top_n, ncol(counts))
-
-  if (ncol(counts) > top_n) {
-    top_features <- names(head(sort(sapply(counts, sd, na.rm = FALSE), decreasing = TRUE), n = top_n))
-    counts <- counts[, top_features]
-  }
-
-  return(counts)
 }
 
 #' Plot ordination (samples only)
@@ -603,7 +541,12 @@ ordinationResults <- reactive({
   }
 
   # Build cascade step map
-  batch_col <- if (input$pcaBatch != "None") input$pcaBatch else NULL
+  # Track whether counts are in log space (needed for batch correction)
+  batch_col    <- if (input$pcaBatch != "None") input$pcaBatch else NULL
+  design_col   <- input$pcaBatchDesign  # read here so ordinationResults() tracks it as a dep even if the cascade step short-circuits
+  is_logged <- input$pcaCounts %in% c("Normalised + Log2", "VST") ||
+    inputDataReactive()$dataType == "proteomics"
+
   step_map <- list(
     "Group subsetting" = function(cd) step_group_subset(cd$counts, cd$dataset, input$pcaFactor1, valid_groups),
     "Peptide filter" = function(cd) {
@@ -617,7 +560,9 @@ ordinationResults <- reactive({
       if (input$ordinationMethod == "glmpca") {
         cd  # GLM-PCA requires untransformed counts
       } else if (input$pcaLog2) {
-        step_log2(cd$counts, cd$dataset, input$pcaCounts)
+        result <- step_log2(cd$counts, cd$dataset, input$pcaCounts)
+        is_logged <<- TRUE
+        result
       } else {
         cd
       }
@@ -625,8 +570,13 @@ ordinationResults <- reactive({
     "Batch correction" = function(cd) {
       if (input$ordinationMethod == "glmpca") {
         cd  # GLM-PCA handles batch via X covariate, not removeBatchEffect
+      } else if (!is_logged) {
+        showNotification("Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
+          type = "warning", duration = 8)
+        cd
       } else {
-        step_batch_correction(cd$counts, cd$dataset, batch_col)
+        step_batch_correction(cd$counts, cd$dataset, batch_col,
+                              design_column = design_col)
       }
     },
     "Top N features (SD)" = function(cd) step_top_n_sd(cd$counts, cd$dataset, input$pcaTopN)
@@ -635,7 +585,7 @@ ordinationResults <- reactive({
   # Execute cascade in user-defined order
   cascade_order <- input$pcaCascadeOrder
   if (is.null(cascade_order) || length(cascade_order) == 0) {
-    cascade_order <- c("Group subsetting", "Peptide filter", "Log2 transform", "Batch correction", "Top N features (SD)")
+    cascade_order <- c("Peptide filter", "Log2 transform", "Batch correction", "Group subsetting", "Top N features (SD)")
   }
 
   cd <- list(counts = countsOrd, dataset = datasetOrd)
@@ -786,18 +736,37 @@ observeEvent(inputDataReactive(), {
     })
     updateSelectInput(session = session, inputId = "pcaCounts", choices = names(inputDataReactive()$countList), selected = "VST")
   }
-  # Automatically set batch correction if grouping2Name exists
-  batchDefault <- "None"
-  if (!is.null(inputDataReactive()$param$grouping2Name)) {
-    if (inputDataReactive()$param$grouping2Name %in% inputDataReactive()$factors) {
-      batchDefault <- inputDataReactive()$param$grouping2Name
-    }
-  }
+  # Batch + design dropdowns — see server-boxplot.R for the decision table.
+  # NB: the design input is `pcaBatchDesign` because `pcaDesign` is already a
+  # textOutput on this tab (the DE design-formula string).
+  .dt       <- inputDataReactive()$dataType
+  .factors  <- inputDataReactive()$factors
+  .grouping <- inputDataReactive()$groupingName
+  .param    <- inputDataReactive()$param
+  .twoFactor <- !is.null(.param$grouping2Name) && nzchar(.param$grouping2Name) &&
+                .param$grouping2Name %in% .factors
+  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", NA_character_)
+
+  batchChoices <- c("None", .factors)
+  batchDefault <- if (.twoFactor) .param$grouping2Name else "None"
   updateSelectInput(
     session = session,
     inputId = "pcaBatch",
-    choices = c("None", inputDataReactive()$factors),
+    choices = batchChoices,
     selected = batchDefault
+  )
+
+  designChoices <- if (.dt %in% c("RNASeq", "proteomics") && .twoFactor) {
+    c("None", .deDesignCol)
+  } else {
+    c("None", .factors)
+  }
+  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", "None")
+  updateSelectInput(
+    session = session,
+    inputId = "pcaBatchDesign",
+    choices = designChoices,
+    selected = designDefault
   )
 
   # Render cascade steps based on data type, log2 checkbox, and count method
@@ -810,9 +779,9 @@ observeEvent(inputDataReactive(), {
     is_linear <- !is.null(input$pcaCounts) && input$pcaCounts %in% c("TPM", "FPKM", "Raw", "Normalised")
     show_log2 <- log2_checked && is_linear
 
-    steps <- c("Group subsetting", "Batch correction", "Top N features (SD)")
+    steps <- c("Batch correction", "Group subsetting", "Top N features (SD)")
     if (inputDataReactive()$dataType == "proteomics") {
-      steps <- c("Group subsetting", "Peptide filter", "Batch correction", "Top N features (SD)")
+      steps <- c("Peptide filter", "Batch correction", "Group subsetting", "Top N features (SD)")
     }
     if (show_log2) {
       # Insert Log2 before Batch correction
@@ -926,6 +895,7 @@ observeEvent(
     input$pcaCounts
     input$pcaAxesProp
     input$pcaBatch
+    input$pcaBatchDesign
     input$pcaCentre
     input$pcaScale
     input$textSizePCA

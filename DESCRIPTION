@@ -1,7 +1,7 @@
 Package: exploreDE
 Type: Package
 Title: exploreDE
-Version: 3.5.0
+Version: 3.6.0
 Author: Peter Leary [aut, cre]
 Maintainer: Peter Leary <you@example.com>
 Description: exploreDE
@@ -49,6 +49,9 @@ Imports:
   glmpca,
   limma,
   officer
+Suggests:
+  testthat (>= 3.0.0)
+Config/testthat/edition: 3
 Remotes:
   fgcz/exploreDE
 RoxygenNote: 7.3.2

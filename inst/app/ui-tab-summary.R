@@ -45,23 +45,18 @@ tabItem(
         ),
         uiOutput(outputId = "referencesText"),
         box(
-          title = "Updates, December 2025",
+          title = "Updates, April 2026",
           width = NULL,
           solidHeader = TRUE,
           status = "primary",
-          tags$b("Exciting new updates to your favourite shiny app, to help you have even more fun with your data into 2026!"),
+          tags$b("Your favourite shiny app continues to get new features, how fab!"),
           br(), br(),
-          tags$p("Introducing explodeDE v 3.5.0! What's new?"),
-          tags$p("- App now supports CountQC data and more proteomics data types! As such, the tabs have been rejigged."),
-          tags$p("- MultiDE has been subsumed! You can now select other DE results from your project directly in exploreDE."),
-          tags$p("- PCA has been reborn as ordination, and now supports MDS, NMDS, and my favourite new feature, biplot mode!"),
-          tags$p("- A new 'Replicability' tab has been added to show sample-to-sample correlations and replicate consistency."),
-          tags$p("- In the heatmaps tab, you can now group the samples by a factor column, and plot the mean or median per group."),
-          helpText("It's hidden right at the bottom of the settings box..."),
-          tags$p("- In the volcano tab, if you select a feature to highlight, but then drop it into the exclude bucket, it'll remove the feature from the plot entirely."),
-          tags$p("- In the ORA and GSEA tabs, you can now filter which genes are highlighted/displayed in the figures. The box is hidden at the bottom of the page."),
-          tags$p("- Now, in places where you can download the feature counts (summary, boxplot, heatmap), you can choose to append the DE results (RNA seq only for now.)"),
-          tags$p("Most of these new features are here because of user requests, so please keep the feedback coming!")
+          tags$p("Say hello to explodeDE v 3.6.0! What treats have we added for you this time?"),
+          tags$p("- The app now supports Mageck counts from Crispr screens! So now you can boxplot your favourite guides, and hope they expanded."),
+          tags$p("- Batch correction has been modified to include the ability to pass the design. In DE tests, this will be defaulted to the column tested. If you applied a batch correction, this will be passed as default. It'll help make batch correction "),
+          tags$p("- Proteomics: You can now select features using the gene symbol. So, if you have peptide level data and select geneA, you'll see all the peptides for that gene."),
+          tags$p("- Genomics: A whole bunch of QC plots have been brough over the CountQC and DE static reports, with two new tabs. Play around!"),
+          tags$p("As always, feedback on the app (good and bad), feature requests, and bug reports are greatly appreciated!")
         )
       )
     )

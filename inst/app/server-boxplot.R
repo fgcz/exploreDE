@@ -3,7 +3,7 @@ dataSummary <- function(data, varname, groupnames) {
     c(
       mean = mean(x[[col]], na.rm = TRUE),
       sd = sd(x[[col]], na.rm = TRUE),
-      se = sqrt(sd(x[[col]]) / length(x[[col]]))
+      se = sd(x[[col]], na.rm = TRUE) / sqrt(sum(!is.na(x[[col]])))
     )
   }
   data_sum <- ddply(
@@ -89,19 +89,42 @@ updateSelectInput(
   selected = "None"
 )
 
-# Automatically set batch correction if grouping2Name exists
-batchDefault <- "None"
-if (!is.null(inputDataReactive()$param$grouping2Name)) {
-  if (inputDataReactive()$param$grouping2Name %in% inputDataReactive()$factors) {
-    batchDefault <- inputDataReactive()$param$grouping2Name
+# Batch + design dropdowns. For two-factor DE (param$grouping2Name set),
+# auto-select batch = grouping2Name and lock design to the DE design column
+# so the tab loads in the analysis's own batch-corrected view. Otherwise
+# batch defaults to None and any factor can be chosen as design (free
+# exploration for CountQC/CrisprCountQC, groupingName pre-selected for DE).
+observeEvent(inputDataReactive(), {
+  .dt       <- inputDataReactive()$dataType
+  .factors  <- inputDataReactive()$factors
+  .grouping <- inputDataReactive()$groupingName
+  .param    <- inputDataReactive()$param
+  .twoFactor <- !is.null(.param$grouping2Name) && nzchar(.param$grouping2Name) &&
+                .param$grouping2Name %in% .factors
+  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", NA_character_)
+
+  batchChoices <- c("None", .factors)
+  batchDefault <- if (.twoFactor) .param$grouping2Name else "None"
+  updateSelectInput(
+    session = session,
+    inputId = "boxplotBatch",
+    choices = batchChoices,
+    selected = batchDefault
+  )
+
+  designChoices <- if (.dt %in% c("RNASeq", "proteomics") && .twoFactor) {
+    c("None", .deDesignCol)
+  } else {
+    c("None", .factors)
   }
-}
-updateSelectInput(
-  session = session,
-  inputId = "boxplotBatch",
-  choices = c("None", inputDataReactive()$factors),
-  selected = batchDefault
-)
+  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", "None")
+  updateSelectInput(
+    session = session,
+    inputId = "boxplotDesign",
+    choices = designChoices,
+    selected = designDefault
+  )
+})
 
 observeEvent(
   {
@@ -191,6 +214,7 @@ boxplotCountsReactive <- eventReactive(
     input$boxKeepBucket
     input$boxplotFactor2
     input$boxplotBatch
+    input$boxplotDesign
     input$boxplotCounts
     input$contrastSelected
     input$boxplotShowPHeight
@@ -230,16 +254,29 @@ boxplotCountsReactive <- eventReactive(
 
     # Apply the following in this specific order as required: Log2, batch correct, Z-scale
     # If the user wants to log2, then do that
+    is_logged <- input$boxplotCounts %in% c("Normalised + Log2", "VST") ||
+      inputDataReactive()$dataType == "proteomics"
     if (input$boxplotCountsLog) {
       if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
           countsBoxplot <- log2(countsBoxplot + 1)
+          is_logged <- TRUE
         }
       }
     }
     # If the user wants to remove batch effect, then do that
     if (input$boxplotBatch != "None") {
-      countsBoxplot <- limma::removeBatchEffect(countsBoxplot, datasetBoxplot[[input$boxplotBatch]])
+      if (is_logged) {
+        countsBoxplot <- apply_batch_correction(
+          counts    = countsBoxplot,
+          dataset   = datasetBoxplot,
+          batchCol  = input$boxplotBatch,
+          designCol = input$boxplotDesign
+        )
+      } else {
+        showNotification("Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
+          type = "warning", duration = 8)
+      }
     }
     # If the user wants to plot gene-wise Z-scores, then do that
     if (input$boxplotZScore) {

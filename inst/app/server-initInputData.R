@@ -1,5 +1,111 @@
 # Helper functions
 
+#' batch_correction_design
+#' Build a design matrix for limma::removeBatchEffect that preserves biological
+#' signal. Never throws — returns a tagged result so callers can notify the
+#' user and decide whether to skip batch correction or proceed without a
+#' design matrix.
+#' @param dataset Sample metadata data.frame
+#' @param designColumn Column name to build the design from. "None" / empty
+#'   means "no design" (batch correction still runs, without preserving any
+#'   biology).
+#' @param batchColumn Column name of the batch factor — required for the
+#'   collinearity check.
+#' @return list(design = <matrix or NULL>, skip = <logical>, msg = <chr or NULL>)
+#' @export
+batch_correction_design <- function(dataset, designColumn, batchColumn) {
+  null_design <- list(design = NULL, skip = FALSE, msg = NULL)
+  skipped     <- function(msg) list(design = NULL, skip = TRUE,  msg = msg)
+  warned      <- function(msg) list(design = NULL, skip = FALSE, msg = msg)
+
+  if (is.null(designColumn) || !nzchar(designColumn) || designColumn == "None") {
+    return(null_design)
+  }
+  if (!designColumn %in% colnames(dataset)) {
+    return(skipped(sprintf(
+      "Design column '%s' missing from sample metadata — batch correction skipped.",
+      designColumn
+    )))
+  }
+
+  grp <- factor(dataset[[designColumn]])
+  if (nlevels(grp) < 2) {
+    return(warned(sprintf(
+      "Design factor '%s' has only one level — batch correction applied without a design matrix.",
+      designColumn
+    )))
+  }
+
+  design <- tryCatch(stats::model.matrix(~grp), error = function(e) e)
+  if (inherits(design, "error")) {
+    return(skipped(sprintf(
+      "Could not build design matrix from '%s': %s — batch correction skipped.",
+      designColumn, conditionMessage(design)
+    )))
+  }
+
+  if (!is.null(batchColumn) && nzchar(batchColumn) && batchColumn != "None" &&
+      batchColumn %in% colnames(dataset)) {
+    batch <- factor(dataset[[batchColumn]])
+    if (nlevels(batch) >= 2) {
+      batch_mm <- tryCatch(stats::model.matrix(~batch), error = function(e) NULL)
+      if (!is.null(batch_mm)) {
+        combined <- cbind(batch_mm, design[, -1, drop = FALSE])
+        if (qr(combined)$rank < ncol(combined)) {
+          return(warned(sprintf(
+            "Batch ('%s') and design ('%s') are confounded — batch correction applied without a design matrix.",
+            batchColumn, designColumn
+          )))
+        }
+      }
+    }
+  }
+
+  list(design = design, skip = FALSE, msg = NULL)
+}
+
+#' apply_batch_correction
+#' Graceful-failure wrapper around limma::removeBatchEffect. Never throws:
+#' on any validation or limma error, returns the original counts unchanged
+#' and surfaces a Shiny notification.
+#' @export
+apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
+  if (is.null(batchCol) || !nzchar(batchCol) || batchCol == "None") return(counts)
+
+  notify <- function(msg, type = "warning") {
+    if (!is.null(shiny::getDefaultReactiveDomain())) {
+      shiny::showNotification(msg, type = type, duration = 8)
+    } else {
+      warning(msg, call. = FALSE)
+    }
+  }
+
+  if (!batchCol %in% colnames(dataset) ||
+      nlevels(factor(dataset[[batchCol]])) < 2) {
+    notify(sprintf("Batch factor '%s' has <2 levels — batch correction skipped.", batchCol))
+    return(counts)
+  }
+
+  info <- batch_correction_design(dataset, designCol, batchCol)
+  if (!is.null(info$msg)) {
+    notify(info$msg, type = if (isTRUE(info$skip)) "error" else "warning")
+  }
+  if (isTRUE(info$skip)) return(counts)
+
+  args <- list(x = counts, batch = dataset[[batchCol]])
+  if (!is.null(info$design)) args$design <- info$design
+
+  tryCatch(
+    do.call(limma::removeBatchEffect, args),
+    error = function(e) {
+      notify(sprintf("Batch correction failed: %s — showing uncorrected counts.",
+                     conditionMessage(e)),
+             type = "error")
+      counts
+    }
+  )
+}
+
 #' standardise_columns
 #' Fuzzy-match incoming column names to canonical names.
 #' Upstream data may call columns anything; this maps them to a known schema

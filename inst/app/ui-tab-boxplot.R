@@ -68,6 +68,8 @@ tabItem(
             checkboxInput(inputId = "boxplotCountsLog", label = "Log2 Counts?", value = FALSE),
             helpText("Only applies to counts that are not already on in log space."),
             selectInput(inputId = "boxplotBatch", label = "Apply a batch-correction to the counts?", choices = NULL, multiple = FALSE),
+            selectInput(inputId = "boxplotDesign", label = "Design factor to preserve during batch correction", choices = NULL, multiple = FALSE),
+            helpText("The design factor tells removeBatchEffect which biological signal to protect. For two-factor DE this is locked to the primary grouping; for CountQC/Crispr you can pick any factor."),
             hr(style = "border-top: 1px solid #000000;"), h4("Feature Bucket"),
             h5(
               "Features will be added to this bucket as you select them from the DE table tab and from the inputs in various tabs. You can use this bucket to quickly

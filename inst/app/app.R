@@ -20,6 +20,17 @@ validate <- shiny::validate
 reactiveConsole(TRUE)
 if (file.exists("/srv/shiny-server/fgcz_apps/telemetry_module.R")) source("/srv/shiny-server/fgcz_apps/telemetry_module.R")
 
+# Source package R/ helpers at startup (dev mode — no install required).
+# Provides global definitions of the conversion / plotting helpers.
+# server-*.R files source() with local = TRUE to redefine reactive-coupled
+# helpers (bucket_*, resolve_features, etc.) inside the server scope.
+r_dir <- if (dir.exists("../../R")) "../../R" else if (dir.exists("R")) "R" else NULL
+if (!is.null(r_dir)) {
+  r_files <- list.files(r_dir, pattern = "\\.R$", full.names = TRUE)
+  invisible(lapply(r_files, source))
+  cat("sourced", length(r_files), "R/ helper file(s) from", r_dir, "\n")
+}
+
 my_theme <- create_theme(
   adminlte_color(
     light_blue = "#527085"
@@ -198,11 +209,13 @@ ui <- dashboardPage(
       source("ui-tab-colour.R", local = TRUE)$value,
       source("ui-tab-DEGTable.R", local = TRUE)$value,
       source("ui-tab-volcano.R", local = TRUE)$value,
+      source("ui-tab-deQc.R", local = TRUE)$value,
       source("ui-tab-hypergeo2.R", local = TRUE)$value,
       source("ui-tab-gsea2.R", local = TRUE)$value,
       source("ui-tab-goTile.R", local = TRUE)$value,
       source("ui-tab-kegg.R", local = TRUE)$value,
       source("ui-tab-replicability.R", local = TRUE)$value,
+      source("ui-tab-countQc.R", local = TRUE)$value,
       source("ui-tab-multi-data-selection.R", local = TRUE)$value,
       source("ui-tab-multi-de-table.R", local = TRUE)$value,
       source("ui-tab-multi-boxplot.R", local = TRUE)$value,
@@ -247,6 +260,7 @@ server <- function(input, output, session) {
   source("server-summary.R", local = TRUE)
   source("server-DEGTable.R", local = TRUE)
   source("server-volcano2.R", local = TRUE)
+  source("server-deQc.R", local = TRUE)
   source("server-heatmap2.R", local = TRUE)
   source("server-ordination.R", local = TRUE)
   source("server-boxplot.R", local = TRUE)
@@ -256,6 +270,7 @@ server <- function(input, output, session) {
   source("server-goTile.R", local = TRUE)
   source("server-kegg.R", local = TRUE)
   source("server-replicability.R", local = TRUE)
+  source("server-countQc.R", local = TRUE)
   source("server-multi-data-selection.R", local = TRUE)
   source("server-multi-de-table.R", local = TRUE)
   source("server-multi-upset.R", local = TRUE)
@@ -298,14 +313,22 @@ server <- function(input, output, session) {
       menuItem(text = "Correlations", tabName = "correlationsTab", icon = icon("chart-line")),
       menuItem(text = "Replicability", tabName = "replicabilityTab", icon = icon("copy"))
     )
+    # Count QC — RNASeq / CountQC / CrisprCountQC only (hidden for proteomics)
+    if (dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
+      menuItems <- c(menuItems, list(
+        menuItem(text = "Count QC", tabName = "countQcTab", icon = icon("chart-bar"))
+      ))
+    }
 
     # 2. DE tabs (Shown if NOT CountQC)
     if (!dataType %in% c("CountQC", "CrisprCountQC")) {
-      menuItems <- c(menuItems, list(
+      deMenuItems <- list(
         tags$li(class = "header", "DE Results"),
         menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
-        menuItem(text = "Volcano Plots", tabName = "volcanoTab", icon = icon("wifi"))
-      ))
+        menuItem(text = "Volcano Plots", tabName = "volcanoTab", icon = icon("wifi")),
+        menuItem(text = "DE QC", tabName = "deQcTab", icon = icon("chart-line"))
+      )
+      menuItems <- c(menuItems, deMenuItems)
     }
 
     # 3. Pathway tabs (Shown ONLY if RNASeq)
