@@ -565,12 +565,8 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl)) {
-  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/"
-  # dataDir <- "/srv/gstore/projects/p36911/o39664_o37783_o39124_o38710_o41353_ExploreMageckCounts_2026-04-09--15-07-24/ExploreMageckCounts/counts-yuunbieawvpw-EzResult.RData"
-  dataDir <- "/srv/gstore/projects/p29779/o41056_ExploreMageckCounts_2026-04-10--09-29-57/ExploreMageckCounts/counts-fzvwfvxsycwz-EzResult.RData"
+  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/" # teaching dataset
   dataType <- "gStore"
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335485/2997996.rds"
-  # dataType <- "proteomics"
   projectFromUrl <- dataDir %>%
     gsub(".*projects\\/", "", .) %>%
     gsub("\\/.*", "", .)
