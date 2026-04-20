@@ -53,7 +53,7 @@ tabItem(
           br(), br(),
           tags$p("Say hello to explodeDE v 3.6.0! What treats have we added for you this time?"),
           tags$p("- The app now supports Mageck counts from Crispr screens! So now you can boxplot your favourite guides, and hope they expanded."),
-          tags$p("- Batch correction has been modified to include the ability to pass the design. In DE tests, this will be defaulted to the column tested. If you applied a batch correction, this will be passed as default. It'll help make batch correction "),
+          tags$p("- Batch correction has been modified to include the ability to pass the design. In DE tests, this will be defaulted to the column tested. If you applied a batch correction, this will be passed as default. It'll help make batch correction that bit more accurate."),
           tags$p("- Proteomics: You can now select features using the gene symbol. So, if you have peptide level data and select geneA, you'll see all the peptides for that gene."),
           tags$p("- Genomics: A whole bunch of QC plots have been brough over the CountQC and DE static reports, with two new tabs. Play around!"),
           tags$p("As always, feedback on the app (good and bad), feature requests, and bug reports are greatly appreciated!")
