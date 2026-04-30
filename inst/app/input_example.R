@@ -261,8 +261,13 @@ convert_proteomics_se <- function(se) {
   }
   
   # Map raw SE rownames → clean feature_ids via lookup (no quant-type regex)
-  raw_rn <- rownames(as.data.frame(rowData(se)[[paste0("constrast_", contrasts[1])]]))
-  fid_lookup <- setNames(seqAnnoList[[1]]$feature_id, raw_rn)
+  # NB: seqAnnoList is sorted by pValue, so we must build the lookup from the
+  # UNSORTED contrast_df to keep rowname→feature_id alignment correct.
+  unsorted_df <- as.data.frame(rowData(se)[[paste0("constrast_", contrasts[1])]])
+  unsorted_sa <- standardise_columns(unsorted_df)
+  unsorted_sa$feature_id <- build_feature_id(unsorted_sa)
+  raw_rn <- rownames(unsorted_df)
+  fid_lookup <- setNames(unsorted_sa$feature_id, raw_rn)
 
   countList <- setNames(lapply(names(assays(se)), function(ass) {
     x <- assay(se, ass)
@@ -439,7 +444,6 @@ input$ordinationMethod <- "pca"
 input$ordinationPlotType <- "samples"
 input$pcoaDistance <- "euclidean"
 input$glmpcaFamily <- "poi"
-input$glmpcaMinibatch <- 100
 input$biplotNGenes <- 10
 input$biplotArrowScale <- 1
 input$biplotArrowColour <- "#E41A1C"
@@ -685,7 +689,7 @@ dataSummary <- function(data, varname, groupnames){
   summary_func <- function(x, col){
     c(mean = mean(x[[col]], na.rm=TRUE),
       sd = sd(x[[col]], na.rm=TRUE),
-      se = sqrt(sd(x[[col]]) / length(x[[col]])))
+      se = sd(x[[col]], na.rm = TRUE) / sqrt(sum(!is.na(x[[col]]))))
   }
   data_sum <- ddply(
     data, groupnames, .fun=summary_func, varname)

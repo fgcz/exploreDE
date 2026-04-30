@@ -178,7 +178,12 @@ countQcBarVisible <- reactive({
 # within each group.
 countQcBarData <- reactive({
   req(countQcBarVisible())
-  se <- inputDataReactive()$se
+  # Prefer the unfiltered SE (rawData.rds) when available so the denominator
+  # is the full transcriptome — matches the ezRun CountQC.Rmd "Genomic
+  # features with reads above threshold" plot. Falls back to the main SE
+  # for RNASeq (deResult.rds already carries all features) and for
+  # CountQC/CrisprCountQC outputs that don't ship rawData.rds.
+  se <- inputDataReactive()$seUnfiltered %||% inputDataReactive()$se
   req("counts" %in% assayNames(se))
   raw_counts <- assay(se, "counts")
   has_pf <- "presentFlag" %in% assayNames(se)
@@ -291,11 +296,18 @@ build_features_above_plot <- function() {
     scale_fill_manual(values = countQcGroupColours()) +
     scale_y_continuous(
       labels = function(v) paste0(v, "%"),
-      limits = c(0, 100), expand = expansion(mult = c(0, 0.02))
+      limits = c(0, 105), expand = expansion(mult = c(0, 0.02))
     ) +
     ggprism::theme_prism(base_size = cqT(), axis_text_angle = 45) +
     labs(title = "Features Above Threshold",
          y = "% features present", x = NULL)
+  if (isTRUE(input$countQcBarShowPctLabel)) {
+    p <- p + geom_text(
+      aes(label = paste0(signif(Pct_num, 3), "%")),
+      vjust = -0.3,
+      size  = input$countQcBarPctLabelSize %||% 3.5
+    )
+  }
   maybe_facet(p, df)
 }
 
@@ -552,7 +564,7 @@ countQcIntraData <- reactive({
   offset <- if (!is.null(param$backgroundExpression) &&
                 input$countQcIntraCountType %in% c("Normalised", "Raw", "FPKM", "TPM")) {
     param$backgroundExpression
-  } else 0
+  } else 10 # SUSHI default 
   signal <- cts + offset
 
   # Align signal to seqAnno by feature_id (with isoform fallback). Keeps rd

@@ -64,7 +64,19 @@ tabItem(
             helpText("If set, bar charts split into panels by this factor.
                      Drag the facet levels below to pick which panels appear
                      and their order."),
-            uiOutput("countQcBarFacetBucketUI")
+            uiOutput("countQcBarFacetBucketUI"),
+            hr(),
+            checkboxInput(
+              inputId = "countQcBarShowPctLabel",
+              label = "Show % labels on Features Above Threshold bars",
+              value = FALSE
+            ),
+            sliderInput(
+              inputId = "countQcBarPctLabelSize",
+              label = "Label size",
+              min = 2, max = 10, value = 3.5, step = 0.5,
+              width = "85%", ticks = FALSE
+            )
           ),
           tabPanel(
             title = "Dominant",

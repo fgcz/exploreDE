@@ -689,6 +689,15 @@ if (dataType %in% c("gStore", "demo")) {
       } else if (file.exists(file.path(dataDir, "rawData_final.qs2"))) {
         se <- qs2::qs_read(file.path(dataDir, "rawData_final.qs2"), nthreads = 4)
       }
+      # Also load the unfiltered SE (pre-isValid) so the Features Above
+      # Threshold bar plot can use the full transcriptome as denominator
+      # (matching the ezRun CountQC.Rmd report).
+      seUnfiltered <- NULL
+      if (file.exists(file.path(dataDir, "rawData.rds"))) {
+        seUnfiltered <- readRDS(file.path(dataDir, "rawData.rds"))
+      } else if (file.exists(file.path(dataDir, "rawData.qs2"))) {
+        seUnfiltered <- qs2::qs_read(file.path(dataDir, "rawData.qs2"), nthreads = 4)
+      }
     } else {
       # Or tell the user their URL is wrong
       showModal(modalDialog(
@@ -715,7 +724,11 @@ inputDataReactive <- reactive({
 
   # Load RNA Seq data ----
   if (dataType %in% c("demo", "gStore")) {
-    return(convert_genomics_se(se, dataDir))
+    gStoreList <- convert_genomics_se(se, dataDir)
+    if (exists("seUnfiltered", inherits = TRUE) && !is.null(seUnfiltered)) {
+      gStoreList$seUnfiltered <- seUnfiltered
+    }
+    return(gStoreList)
   }
 })
 inputDataReactive()$dataType
