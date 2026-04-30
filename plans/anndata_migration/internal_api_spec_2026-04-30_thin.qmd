@@ -1,0 +1,792 @@
+---
+title: "exploreDE — Storage-Agnostic Internal API"
+subtitle: "Design and migration plan for the canonical-AnnData reader"
+author: "Peter Leary"
+date: "2026-04-30"
+format:
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 4
+    code-fold: show
+    theme: cosmo
+editor_options:
+  chunk_output_type: console
+---
+
+## Overview
+
+This document specifies the **internal API** that decouples
+exploreDE's server modules from the on-disk format of the data they
+visualise. Today, modules read directly from a SUSHI / proteomics
+`SummarizedExperiment` via a deconstructed `gStoreList`. After this
+work, modules call accessors on a single R6 instance — `eds` —
+backed by an in-memory `anndataR::AnnData` conforming to the
+[2026-04-17 AnnData spec](anndata_spec_2026-04-17.qmd).
+
+### Goals
+
+1. **Storage-format agnostic.** Server modules see one accessor API
+   regardless of what produced the data. Adding a new on-disk format
+   later is one converter function, not a sprawl through every
+   server module.
+2. **FGCZ-agnostic. exploreDE works on anyone's data, anywhere.**
+   The current app hard-couples to gStore/pStore paths, LDAP auth,
+   SUSHI `param$*` conventions, and FGCZ-specific factor encoding
+   (`[Factor]` colData suffix, `^constrast_` rowData nesting). The
+   target is a tool researchers anywhere can point at their own
+   data — counts CSV + sample sheet, or a `.h5ad` they built
+   themselves — and have the app load and visualise it without
+   needing FGCZ infrastructure. The canonical AnnData layout is the
+   contract that makes this possible; see the AnnData spec's
+   [§"Minimum viable AnnData"](anndata_spec_2026-04-17.qmd) for the
+   smallest valid input. BYOD UX work (vignettes, CSV→h5ad helper,
+   friendly validator errors) is Phase 4a (§7.6).
+3. **No feature loss.** Every existing tab, plot, filter, and
+   download keeps working. The migration is non-disruptive — Phase 1
+   ships a legacy compatibility shim so server modules can be
+   migrated one at a time without ever leaving master broken.
+4. **Multi-omics ready.** Genomics (RNA-seq, CRISPR), proteomics
+   (protein, peptide, phospho), and future metabolomics / lipidomics
+   all flow through the same code path.
+
+### Three fronts of the larger migration
+
+This spec is the consumer-side piece. The full migration spans three
+fronts (see directory `README.md`):
+
+1. **Upstream producers** emit canonical `.h5ad` directly — separate
+   workstream, tracked in
+   [`producer_migration_2026-04-30.md`](producer_migration_2026-04-30.md).
+   Until producers migrate, exploreDE bridges via the SE → canonical
+   AnnData converter.
+2. **Canonical on-disk format** — defined in
+   [`anndata_spec_2026-04-17.qmd`](anndata_spec_2026-04-17.qmd).
+3. **Downstream consumer** — exploreDE reads canonical h5ad. **This
+   spec.**
+
+### Validation
+
+The chosen design (canonical-AnnData converter) was validated against
+six real datasets via
+[`poc_canonical_2026-04-30.R`](poc_canonical_2026-04-30.R). An
+alternative four-SE-subclasses design was considered and rejected; see
+[`pocs_comparison_2026-04-30.md`](pocs_comparison_2026-04-30.md) for
+the head-to-head and Appendix A for the rejected-alternative summary.
+
+### Reading order
+
+If you're new: read this overview, then §1 (architecture) and §2
+(accessor contract). Skip ahead to §7 (phasing) when you're ready to
+plan implementation work; consult §6 (migration map) per-module
+during Phase 2.
+
+---
+
+## 1. Architecture
+
+Every input becomes an in-memory `anndataR::AnnData` conforming to the
+canonical layout. A single concrete R6 reader (`ExploreDatasetH5AD`)
+provides the accessor API. SE shape diversity is reconciled at load
+time by a converter; the reader doesn't know whether the AnnData came
+from disk or from an SE.
+
+### 1.1 Top-level shape
+
+```
+file.rds / .qs2 / .RData    → load_se()    → ┐
+SummarizedExperiment object                   ├→ se_to_canonical_anndata(se) ─┐
+.RData (Mageck via dir-strip)                ─┘                                ├→ ExploreDatasetH5AD
+                                                                               │
+file.h5ad                                    → anndataR::read_h5ad()          ─┘
+in-memory anndataR::AnnData object                                            ─┘
+```
+
+Two concepts only:
+
+- **The reader** (`ExploreDatasetH5AD`, R6) — reads from a live
+  `AnnData` via slot-walking; one concrete class for every input.
+- **The converter** (`se_to_canonical_anndata`) — turns a legacy SE
+  into canonical AnnData; legacy-shape tax payer; obsolete the day
+  upstream producers (front 1) start emitting `.h5ad` natively.
+
+The reference implementation is
+[`poc_canonical_2026-04-30.R`](poc_canonical_2026-04-30.R) — every
+non-trivial method body in this spec mirrors what's in the POC.
+
+### 1.2 The reader: `ExploreDatasetH5AD`
+
+A single R6 class that inherits from an abstract `ExploreDataset`
+base. Method bodies are 2-8 lines each:
+
+| Method               | Reads from                          |
+|----------------------|-------------------------------------|
+| `samples()`          | `adata$obs` (strip `factor_` prefix) |
+| `features()`         | `adata$var` + computed `display_name` from `label_*` fallback chain |
+| `assay(name, ...)`   | `t(adata$X)` if name is the omics-X-name, else `t(adata$layers[[name]])` |
+| `contrasts()`        | `sub("^de_", "", grep("^de_", names(adata$varm)))` |
+| `de(c)`              | `as.data.frame(adata$varm[[paste0("de_", c)]])` |
+| `contrast_meta(c)`   | `adata$uns$de[[c]]` |
+| `enrichment(c, kind)`| `adata$uns$enrichment_native[[c]]` filtered by kind |
+| `data_type()`        | `adata$uns$omics_type` |
+| `factor_names()`     | `sub("^factor_", "", grep("^factor_", colnames(obs)))` |
+
+No `data_type` branching anywhere in any read method. The data shape
+is canonical; the reader walks slots uniformly.
+
+### 1.3 The converter: `se_to_canonical_anndata()`
+
+Top-level dispatcher + four per-shape implementations:
+
+```r
+se_to_canonical_anndata(se):
+  switch(detect_se_shape(se),
+    rna_seq         = .se_to_canon_rnaseq(se),         # ~80 lines
+    count_qc        = .se_to_canon_count_qc(se),       # ~50 lines
+    crispr_count_qc = .se_to_canon_crispr_count_qc(se),# ~10 lines (delta on count_qc)
+    proteomics      = .se_to_canon_proteomics(se)      # ~120 lines
+  )
+```
+
+Each per-shape implementation produces an `AnnData` with the canonical
+layout: `X` / `layers` / `obs` / `var` / `varm["de_<c>"]` /
+`uns["de"]` / `uns["enrichment_native"]` / `uns["omics_type"]` etc.
+
+The converter functions are the legacy-shape tax payers — the only
+place SUSHI/B-Fabric quirks (`[Factor]` colData suffix, `^constrast_`
+typo, `^G_` proteomics factor convention, `build_feature_id` for
+proteomics, fid_lookup for assay rownames) appear in the codebase.
+
+**Non-FGCZ users skip the converter entirely.** A user who builds a
+canonical `.h5ad` on their own machine (per the AnnData spec
+§"Minimum viable AnnData") loads it directly via
+`anndataR::read_h5ad()`. None of the SE-shape detection, FGCZ factor
+conventions, or `^constrast_` parsing apply — those are SUSHI / FGCZ
+proteomics legacy. The reader is the same.
+
+### 1.4 Free benefit: `.h5ad` export
+
+The converter's output IS canonical AnnData. Producing a `.h5ad` is:
+
+```r
+adata <- se_to_canonical_anndata(se)
+anndataR::write_h5ad(adata, "/path/to/output.h5ad")
+```
+
+That's the SE → `.h5ad` exporter we'd need anyway. We get it for free
+from Phase 1 onwards.
+
+### 1.5 Adding a new backend later
+
+A future Parquet, Zarr, or DuckDB backend:
+
+1. Write `parquet_to_canonical_anndata(path)` (or whatever).
+2. Add a branch in the `new_explore_dataset()` factory.
+
+That's it. **No new reader subclass, no fan-out.** The canonical
+layout absorbs all storage-format diversity.
+
+### 1.6 Adding a new omics
+
+If FGCZ metabolomics or lipidomics ships SEs with a fifth shape:
+
+- New `.se_to_canon_metabolomics(se)` function in the converter.
+- One new branch in `detect_se_shape()` and the converter's switch.
+- **The reader is unchanged.** The canonical layout already handles
+  the omics-type axis via `uns["omics_type"]`, `uns["hierarchy"]`,
+  `var["label_*"]` columns.
+
+If new omics arrive as `.h5ad` directly: nothing changes; the
+existing reader handles them.
+
+---
+
+## 2. Accessor contract
+
+The public API exploreDE modules call. Same names, same return types
+across all backends.
+
+| Method                                   | Returns                                                                  |
+|------------------------------------------|--------------------------------------------------------------------------|
+| `eds$data_type()`                        | `character(1)` — one of the `uns$omics_type` allowlist                  |
+| `eds$has_de()` / `$has_enrichment()`     | `logical(1)`                                                            |
+| `eds$organism()` / `$ref_build()`        | `character(1)` or `NA`                                                  |
+| `eds$feature_id_kind()`                  | `character(1)` (`gene`/`isoform`/`protein`/`peptide`/`site`/…)         |
+| `eds$samples()`                          | `data.frame`, rownames = sample ids, factor cols typed                  |
+| `eds$sample_ids()` / `$n_samples()`      | `character`, `integer(1)`                                               |
+| `eds$factor_names()`                     | `character`                                                             |
+| `eds$factor_levels(f)`                   | `character`, canonical order                                            |
+| `eds$primary_grouping()`                 | `character(1)`                                                          |
+| `eds$features()`                         | `data.frame`, rownames = feature_id, includes computed `display_name`   |
+| `eds$feature_ids()` / `$n_features()`    | `character`, `integer(1)`                                               |
+| `eds$feature_display(ids)`               | `character`, named by feature_id                                        |
+| `eds$assay_names()` / `$has_assay(n)`    | `character`, `logical(1)`                                               |
+| `eds$assay(name, features=, samples=)`   | `numeric matrix`, features × samples                                    |
+| `eds$raw_assay()` / `$primary_assay()`   | `numeric matrix`                                                        |
+| `eds$contrasts()` / `$primary_contrast()`| `character`, `character(1)`                                             |
+| `eds$de(contrast)`                       | `data.frame` with canonical cols `effect_log2fc`, `score_pvalue`, `score_fdr` (per AnnData spec) |
+| `eds$de_all()`                           | named `list` of data.frames                                             |
+| `eds$contrast_meta(c)`                   | `list` with `test_group`, `reference_group`, `factor_name`, `method`    |
+| `eds$enrichment_kinds()`                 | `character` ⊆ `c("ora","gsea")`                                         |
+| `eds$enrichment(c, kind)`                | named `list` of `clusterProfiler::enrichResult` (ora) or `gseaResult` (gsea); empty list if not run |
+| `eds$enrichment_input(c)`                | `list(seq_anno, ranked_l2fc, selections)` (derived on the fly under the canonical schema) |
+| `eds$go_terms(ids=, ontology=)`          | `data.frame` long format (feature_id, ontology, go_id, term_name)       |
+| `eds$all_pathways()`                     | `character`                                                             |
+| `eds$sgrna_to_gene()`                    | named `character` or `NULL`                                             |
+| `eds$proteomics_choices(kind)`           | `list(choices, lookup)` or `NULL`                                       |
+| `eds$source()`                           | `list` (provenance)                                                     |
+| `eds$backend()`                          | the underlying `AnnData`. **Escape hatch — see §5.2.**                  |
+
+**Invariant**: `eds$enrichment(c, kind)` always returns a list of
+`clusterProfiler` objects (or empty list); never `NULL`, never raw
+data.frames. Modules can pass results straight to
+`enrichplot::dotplot()` / `gseaplot2()` etc.
+
+---
+
+## 3. Configuration
+
+Most of what the legacy `gStoreList$param` carries is now either:
+
+- Encoded in the canonical AnnData itself (`uns$omics_type`,
+  `uns$hierarchy`, `uns$de`, `uns$design`, `uns$reference_genome`,
+  `uns$organism`, `uns$app_hints`), or
+- Derivable from `obs` / `var` via the accessors above.
+
+There is **no separate config object** in the canonical design — the
+canonical AnnData is self-describing. (An earlier subclass-design
+draft had a separate `config` list; that's no longer needed.)
+
+The mapping between SUSHI's `metadata(se)$param` fields and the
+canonical AnnData slots is documented in
+[`anndata_spec_2026-04-17.qmd` §"SUSHI decoupling — what goes away"](anndata_spec_2026-04-17.qmd).
+
+---
+
+## 4. Validation
+
+Two validators ship in Phase 0 (§7.2). Both important.
+
+### 4.1 Object validator
+
+`validate_explore_dataset(eds, strict = TRUE)` — runtime invariants on
+the live `eds` instance:
+
+1. **Concrete subclass**: `inherits(eds, "ExploreDataset")` and the
+   runtime class is one of `ExploreDatasetH5AD` (today) or any future
+   concrete subclass — not the abstract base.
+2. **Cross-references resolve** (subclass-agnostic — runs through
+   accessors):
+   - Every `eds$factor_names()[i]` is a column in `eds$samples()`.
+   - Every `eds$contrasts()[c]` resolves: calling `eds$de(c)`
+     succeeds.
+   - `eds$primary_grouping() ∈ eds$factor_names()`.
+   - `eds$primary_contrast() ∈ eds$contrasts() ∪ NA`.
+3. **Sample / feature alignment**: `colnames(eds$raw_assay())` ==
+   `eds$sample_ids()`; `rownames(eds$raw_assay())` ==
+   `eds$feature_ids()`.
+
+Cost is proportional to the number of contrasts (one `eds$de(c)`
+round-trip each) plus one each of `samples()`, `features()`,
+`assay_names()`, `raw_assay()`. Skip with `validate = FALSE` in
+`$initialize()` for fast-path repeated construction.
+
+### 4.2 Schema validator
+
+`validate_anndata_schema(adata, strict = TRUE)` — invariants on a
+`.h5ad` file or in-memory `AnnData` per the AnnData spec
+§"Validator":
+
+1. `uns$schema_version == "exploreDE/1.0"`.
+2. `uns$omics_type` in the allowlist.
+3. `obs_names` and `var_names` unique strings.
+4. For each `varm[de_*]`: required cols `effect_log2fc`,
+   `score_pvalue`, `score_fdr`; row count == `n_vars`; key exists in
+   `uns$de`.
+5. For each `uns$de[<c>]`: required fields `assay_used`,
+   `factor_used`, `test_group`, `reference_group`; cross-refs
+   resolve.
+6. Hierarchy declaration matches `hierarchy_*` columns in `var`.
+7. `factor_*` colData columns are categorical with explicit levels.
+
+Schema validation runs:
+- On every `new_explore_dataset()` call (catches converter bugs +
+  malformed user h5ad at load time).
+- On every CI test run via `test-round-trip.R`.
+
+---
+
+## 5. Cross-cutting concerns
+
+### 5.1 Caching strategy: there isn't one (in the class)
+
+Methods are pure backend reads. Every `eds$samples()`,
+`eds$assay("counts")`, `eds$de(c)` reaches through to the AnnData.
+
+The cache is the **Shiny reactive graph**. Server modules wrap any
+expensive accessor in a `reactive()`, and Shiny memoises at exactly
+the right granularity:
+
+```r
+# Correct usage:
+de_table <- reactive({
+  eds <- inputDataReactive()$.eds
+  eds$de(input$contrast)        # only re-runs when input$contrast changes
+})
+
+# Within one reactive evaluation, extract once if reused:
+plot_data <- reactive({
+  eds <- inputDataReactive()$.eds
+  cd  <- eds$samples()
+  cts <- eds$assay("counts")
+  build_plot(cd, cts, …)
+})
+```
+
+Reasons:
+
+- **Shiny is already a memoisation engine.** A second cache inside
+  the class would double-cache and add a second invalidation story.
+- **Class becomes simpler.** No `.cache` field, no `.cached()`
+  helper, no `invalidate_cache()` method.
+- **Cheap reads stay cheap.** `obs` / `var` are already in memory.
+
+For non-Shiny callers (tests, scripts), extract to a local if you'll
+reuse:
+
+```r
+de <- eds$de("treated_vs_control")
+plot_volcano(de); plot_ma(de); save_csv(de)
+```
+
+If a non-Shiny use case ever needs aggressive memoisation, write a
+thin `with_cache(eds)` decorator class then. We do not ship one in
+Phase 0 — YAGNI.
+
+### 5.2 Backend escape hatch
+
+`eds$backend()` returns the underlying `anndataR::AnnData`. Used by:
+
+- Methods-text generation (provenance).
+- Download handlers (`anndataR::write_h5ad(eds$backend(), path)`).
+- Debugging.
+
+**Forbidden** in module read paths. If a module thinks it needs
+`eds$backend()` to access data, it needs a new accessor instead.
+Code-review rule, not a runtime check.
+
+### 5.3 Memory peak during loading
+
+The one real downside vs an SE-wrapper design: during
+`new_explore_dataset(path)` for an SE-derived dataset, the SE and the
+converted AnnData both exist in memory until the SE is dropped (which
+happens when `se_to_canonical_anndata()` returns and the local `se`
+variable goes out of scope). For a 170k-feature isoform-level dataset
+this is a ~1-2 GB peak lasting maybe a second.
+
+Irrelevant in practice. Mitigatable to zero with a 5-line change in
+the converter (drop the SE reference before returning) if it ever
+becomes a problem.
+
+---
+
+## 6. Migration map: today's reads → new accessor calls
+
+Every read pattern that exists in `inst/app/server-*.R` today, paired
+with its replacement. Drives Phase 2 PRs (§7.4).
+
+### 6.1 Direct SE accesses (must die)
+
+| Today                                            | Replacement                                  |
+|--------------------------------------------------|----------------------------------------------|
+| `assay(inputDataReactive()$se, "counts")`        | `eds$assay("counts")`                        |
+| `assay(se, "presentFlag")`                       | `eds$assay("present_flag")`                  |
+| `assays(se)`, `names(assays(se))`                | `eds$assay_names()`                          |
+| `rowData(se)$gene_name`                          | `eds$features()$label_gene_symbol`           |
+| `rowData(se)[[paste0("constrast_", c)]]`         | `eds$de(c)`                                  |
+| `colData(se)`                                    | `eds$samples()`                              |
+| `rownames(se)` / `nrow(se)` / `ncol(se)`         | `eds$feature_ids()` / `eds$n_*()`            |
+| `metadata(se)$param$<x>`                         | see §6.2                                     |
+| `metadata(se)$enrichResult`                      | `eds$enrichment(c, "ora")`                   |
+| `metadata(se)$enrichResultGSEA`                  | `eds$enrichment(c, "gsea")`                  |
+| `metadata(se)$enrichInput`                       | `eds$enrichment_input(c)`                    |
+| `inputDataReactive()$seUnfiltered`               | `eds$assay("counts_unfiltered")`             |
+
+### 6.2 SUSHI param fields → API methods
+
+| `metadata(se)$param$X`   | Replacement                                            |
+|--------------------------|--------------------------------------------------------|
+| `sampleGroup`            | `eds$contrast_meta(c)$test_group`                      |
+| `refGroup`               | `eds$contrast_meta(c)$reference_group`                 |
+| `groupingName`           | `eds$primary_grouping()`                               |
+| `featureLevel`           | `eds$feature_id_kind()`                                |
+| `comparison`             | `eds$contrasts()` / `eds$primary_contrast()`           |
+| `backgroundExpression`   | absorbed into `assay("normalised_log2")` computation   |
+| `refBuild`               | `eds$ref_build()`                                      |
+| `runGO`                  | `eds$has_enrichment()`                                 |
+| `fdrThreshORA`, `fdrThreshGSEA`, `pValThreshGO`, `log2RatioThreshGO` | `eds$contrast_meta(c)$thresholds[[...]]` (where present) |
+
+### 6.3 `gStoreList` fields → API methods
+
+| `inputDataReactive()$X`  | Replacement                                            |
+|--------------------------|--------------------------------------------------------|
+| `dataType`               | `eds$data_type()`                                      |
+| `seqAnno`                | `eds$de(eds$primary_contrast())`                       |
+| `seqAnnoList`            | `eds$de_all()`                                         |
+| `countList`              | `eds$assay_names()` + `eds$assay(...)` per name        |
+| `countList[["Raw"]]`     | `eds$assay("counts")`                                  |
+| `countList[["Normalised"]]`        | `eds$assay("normalised")`                    |
+| `countList[["Normalised + Log2"]]` | `eds$assay("normalised_log2")`               |
+| `countList[["VST"]]`     | `eds$assay("vst")`                                     |
+| `countList[["FPKM"]]`    | `eds$assay("fpkm")`                                    |
+| `countList[["TPM"]]`     | `eds$assay("tpm")`                                     |
+| `dataset`                | `eds$samples()`                                        |
+| `factors`                | `eds$factor_names()`                                   |
+| `factorLevels`           | `eds$factor_levels(f)` per `f`                         |
+| `factorNames`            | `eds$factor_names()`                                   |
+| `groupingName`           | `eds$primary_grouping()`                               |
+| `genes`                  | `eds$feature_ids()`                                    |
+| `gene_choices`, `gene_lookup`, `protein_choices`, `protein_lookup` | `eds$proteomics_choices("gene"\|"protein")` |
+| `sgRNA_to_gene`          | `eds$sgrna_to_gene()`                                  |
+| `goObjects`              | `eds$enrichment(c, "ora"\|"gsea")`                     |
+| `goObjects$runGO`        | `eds$has_enrichment()`                                 |
+| `allPathways`            | `eds$all_pathways()`                                   |
+| `contrasts`              | `eds$contrasts()`                                      |
+| `design`, `designLevels` | `eds$contrast_meta(c)$test_group` / `$reference_group` |
+| `param`                  | DELETED — fields go through §6.2                       |
+| `se`, `seUnfiltered`     | `eds$backend()` (escape hatch only — see §5.2)         |
+
+### 6.4 DE column rename at the boundary
+
+The API exposes AnnData-canonical names (`effect_log2fc` /
+`score_pvalue` / `score_fdr`). Modules currently using `log2Ratio` /
+`pValue` / `fdr` rename at the existing `dplyr::select()` boundary —
+typically one line per module:
+
+```r
+seqAnnoFilt <- eds$de(input$contrastSelected) %>%
+  dplyr::select(
+    feature_id,
+    log2Ratio = effect_log2fc,
+    pValue    = score_pvalue,
+    fdr       = score_fdr
+  )
+# Rest of the module continues to use log2Ratio / pValue / fdr unchanged.
+```
+
+---
+
+## 7. Implementation phasing
+
+The chosen plan, validated by `poc_canonical_2026-04-30.R`. Single
+source of truth; no other section in this document holds phasing.
+
+### 7.1 Pre-decisions (resolved before Phase 1 starts)
+
+Three open questions from the design phase, resolved here so Phase 1
+proceeds without further debate.
+
+**(a) DE column names: AnnData-canonical wins.**
+The API exposes `effect_log2fc` / `score_pvalue` / `score_fdr`
+(matching the AnnData spec's `varm["de_<c>"]` columns). Reason: those
+are the names natively in the canonical AnnData; renaming inside
+`eds$de()` would just be churn. Modules currently reading `log2Ratio`
+/ `pValue` / `fdr` rename at their `dplyr::select()` boundary — see
+§6.4.
+
+**(b) Per-group means: legacy shim materialises them in Phase 1;
+computed accessor lands in Phase 2.**
+Today's modules read `seqAnno$<assay>_<group>_Mean` /
+`<assay>_<group>_SD` columns built by `convert_genomics_se()`.
+Phase 1's `legacy_gStoreList_from_eds()` reproduces these exactly so
+the shim is truly drop-in. When a Phase 2 module migration needs
+them, it switches from the column read to a new accessor
+`eds$assay_group_means(contrast, assay)` (added to the contract by
+the first migration PR that needs it).
+
+**(c) Producer-side migration is a separate workstream.**
+Tracked in
+[`producer_migration_2026-04-30.md`](producer_migration_2026-04-30.md).
+exploreDE is unaffected by its timeline — when producers migrate, the
+SE converters become obsolete; until then, the converters do their
+job.
+
+### 7.2 Phase 0 — Foundation (no app changes)
+
+Lift the canonical POC into package code, add what's missing for
+production, ensure tests cover the converter and reader. **Phase 0
+ships working code from the POC, package-quality, with tests** — not
+stubs.
+
+**Files to add / modify:**
+
+- `DESCRIPTION` — add `anndataR`, `R6` to `Imports:`.
+- `R/ExploreDataset.R` — abstract base class (lifted from POC).
+- `R/ExploreDatasetH5AD.R` — concrete reader (lifted from POC).
+- `R/se_to_canonical_anndata.R` — dispatcher + four per-shape
+  converters (lifted from POC: `.se_to_canon_rnaseq`,
+  `_count_qc`, `_crispr_count_qc`, `_proteomics`).
+- `R/new_explore_dataset.R` — factory (lifted from POC).
+- `R/utils_explore_dataset.R` — shared helpers
+  (`build_feature_id`, `standardise_de_columns`, etc., lifted from
+  POC's `poc_*` helpers and renamed without the `poc_` prefix).
+- `R/validate_explore_dataset.R` — runtime validator on the live
+  `eds` instance (per §4.1).
+- `R/validate_anndata_schema.R` — schema validator on `.h5ad` file
+  / in-memory `AnnData` (per §4.2).
+
+**Tests (`tests/testthat/`):**
+
+- `test-converter-rnaseq.R`, `test-converter-count_qc.R`,
+  `test-converter-crispr_count_qc.R`, `test-converter-proteomics.R`
+  — per-shape tests against demo datasets; output AnnData passes
+  the schema validator.
+- `test-reader-shape.R` — abstract `ExploreDataset$new()` errors;
+  every public method exists with documented signature; methods
+  return documented types against a synthetic AnnData fixture.
+- `test-round-trip.R` — for each demo dataset: SE →
+  `se_to_canonical_anndata()` → `anndataR::write_h5ad()` →
+  `anndataR::read_h5ad()` → reader → equivalent reads. Catches
+  converter regressions and h5ad serialisation issues.
+- `test-validator-object.R`, `test-validator-schema.R`.
+
+**Acceptance:** `R CMD check` clean; tests pass against the 6 demo
+datasets; running app unchanged.
+
+### 7.3 Phase 1 — Wire into the running app via legacy shim
+
+The bottleneck phase. Builds `legacy_gStoreList_from_eds()` and
+modifies the existing `convert_*_se()` / `inputDataReactive()` so the
+running app uses the new infrastructure under the hood, while every
+server module continues to read from the legacy `gStoreList$X` shape.
+
+**Files to add / modify:**
+
+- `R/legacy_glue.R` — `legacy_gStoreList_from_eds(eds, se = NULL)`
+  produces all 23 gStoreList fields the audit enumerated:
+  `allPathways`, `contrasts`, `countList`, `dataset`, `dataType`,
+  `design`, `designLevels`, `factorLevels`, `factorNames`, `factors`,
+  `gene_choices`, `gene_lookup`, `genes`, `goObjects`, `groupingName`,
+  `param`, `protein_choices`, `protein_lookup`, `se`, `seqAnno`,
+  `seqAnnoList`, `seUnfiltered`, `sgRNA_to_gene`. Each field is
+  derived from `eds$method()` calls + a few computations (per-group
+  means, log2 transforms, `seqAnno`-shape construction). ~250 lines.
+- `R/helperFunctions.R` — `convert_genomics_se()` body becomes:
+  ```r
+  eds <- new_explore_dataset(se)
+  legacy_gStoreList_from_eds(eds, se = se)   # se passed for $se field
+  ```
+  Same for `convert_proteomics_se()`.
+- `inst/app/server-initInputData.R` — `inputDataReactive()` returns
+  `c(gStoreList, list(.eds = eds))` so old `inputDataReactive()$X`
+  reads still work AND new `inputDataReactive()$.eds` is available.
+
+**Tests:**
+
+- `test-legacy-shim-equivalence.R` — for each demo dataset, run the
+  OLD `convert_genomics_se()` (snapshot from before Phase 1) and the
+  NEW shim'd version, assert field-by-field equivalence on every
+  gStoreList field.
+
+**Acceptance:** equivalence tests pass; in-app smoke test on each of
+the 6 demo datasets — no visual regressions.
+
+### 7.4 Phase 2 — Module migration
+
+Driven by [`module_inventory_2026-04-30.md`](module_inventory_2026-04-30.md).
+One PR per module. Each PR:
+
+1. Replaces every `inputDataReactive()$X` read with the corresponding
+   `eds$method()` call from the migration map (§6).
+2. Renames DE columns at the existing `dplyr::select()` boundary
+   where needed (per §6.4).
+3. Replaces `seqAnno$<assay>_<group>_Mean` reads with
+   `eds$assay_group_means(contrast, assay)` (added in the first
+   Phase 2 PR that needs it).
+
+**Tier ordering** (from the inventory's S/M/L sizing × low/medium/high
+risk):
+
+| Tier | Modules | Count |
+|------|---------|------:|
+| 2.1 — S, low | `R/exploreDE.R`, `R/downloadHelpers.R`, `server-multi-de-table.R`, `ui-tab-*.R` | 27 |
+| 2.2 — M, low | `server-featureBucket.R`, `server-goTile.R`, `server-kegg.R`, multi-* (`boxplot`, `heatmap`, `kegg`, `tile`, `bubble`, `upset`) | 9 |
+| 2.3 — M, medium | `server-volcano2.R`, `server-DEGTable.R`, `server-deQc.R`, `server-correlation.R`, `server-countQc.R`, `server-replicability.R`, `server-boxplot.R`, `server-hypergeo2.R` | 8 |
+| 2.4 — M, high | `server-gsea2.R` (the `enrichInput` fallback) | 1 |
+| 2.5 — L, medium | `server-summary.R`, `server-heatmap2.R`, `server-ordination.R` | 3 |
+| 2.6 — L, high | `server-multi-data-selection.R` (only multi-* with direct SE access) | 1 |
+| 2.7 — L, high, last | `server-initInputData.R` (drop the legacy shim with this PR) | 1 |
+
+After 2.7: `legacy_gStoreList_from_eds()` is dead code. Delete it; the
+`convert_*_se()` body collapses to `new_explore_dataset(se)`.
+
+**Per-PR acceptance:** smoke test on the affected tab/feature for all
+6 demo datasets.
+
+**End-of-Phase-2 acceptance:** no module reads `inputDataReactive()$X`
+for any X except `.eds`; the legacy shim is deleted.
+
+### 7.5 Phase 3 — Native `.h5ad` I/O
+
+Plumbing only — the heavy lifting was Phase 0.
+
+- `inst/app/server-initInputData.R` — wire native `.h5ad` URL
+  handling into the existing routing (alongside `.rds` / `.qs2` /
+  `.RData` cases).
+- Download menu item: `anndataR::write_h5ad(eds$backend(), tempfile(...))`
+  exposed as a button.
+- LDAP / auth flow updates for native `.h5ad` uploads if needed.
+
+**Acceptance:** a user can load an `.h5ad` URL or local file and get
+the same app experience as loading the equivalent SE.
+
+### 7.6 Phase 4a — Bring-your-own-data (BYOD)
+
+The "FGCZ-agnostic" goal from the Overview lands here. Architectural
+support for BYOD exists from Phase 0 (the factory accepts any input
+that yields a canonical `AnnData`); Phase 4a is the documentation +
+UX work that makes BYOD actually usable by external researchers.
+
+**Deliverables:**
+
+- `vignettes/byod.Rmd` — "minimum viable AnnData" guide, worked
+  examples per omics modality (RNA-seq counts, proteomics
+  intensities, CRISPR sgRNA counts), step-by-step CSV → `.h5ad`
+  walkthrough.
+- `R/csv_to_canonical_anndata.R` — helper for the common BYOD case
+  of `counts.csv` + `samples.csv` + `features.csv` + optional
+  `de_<contrast>.csv`. Produces a conformant `.h5ad` with the right
+  factor encoding, `var_names` setup, `uns` metadata.
+- Friendly validator error messages with field-by-field diagnosis
+  (the schema validator from §4.2 wrapped in a UI surface that
+  guides users to fix their `.h5ad`).
+- App entry point that accepts a local `.h5ad` upload (not just
+  gStore/pStore URLs) — the running app today routes everything
+  through SUSHI/B-Fabric path conventions; Phase 4a generalises this
+  so a researcher can drag a file in.
+
+**Acceptance:** a researcher with no FGCZ access loads exploreDE,
+points it at their own canonical `.h5ad`, and gets the same app
+experience as an internal user with a SUSHI dataset.
+
+### 7.7 Phase 4b — Producer-side migration (separate workstream)
+
+Out of scope for this spec. Tracked in
+[`producer_migration_2026-04-30.md`](producer_migration_2026-04-30.md).
+The exploreDE-side cleanup when this completes:
+
+- Deprecate `R/se_to_canonical_anndata.R`.
+- Drop the `convert_genomics_se()` / `convert_proteomics_se()`
+  legacy entry points.
+- Remove `SummarizedExperiment` from `Imports:`.
+
+### 7.8 Cross-cutting (every phase)
+
+- **Round-trip tests run on every push** in CI.
+- **Performance baseline**: converter + load on the 170k-feature
+  isoform dataset. Budget < 5s wall clock; fail CI on regressions
+  > 50%.
+- **Validator on every load** via `new_explore_dataset()`. Catches
+  converter regressions and malformed user `.h5ad` files at load
+  time with a useful error.
+- **`module_inventory_2026-04-30.md` is the Phase 2 checklist.** Tick
+  one row per PR.
+
+---
+
+## 8. Open questions
+
+Two questions remain unresolved. Both are Phase-2-time decisions —
+**they MUST be answered before the relevant Phase 2 PR is opened**,
+not before. Listed here so they aren't forgotten.
+
+### 8.1 — OPEN — `contrast_label(c)` helper or not
+
+**Decide at**: first Phase 2 PR that touches plot titles or download
+filenames (likely Tier 2.3 — volcano2 / DEGTable / boxplot).
+
+**The question.** Today modules read `gStoreList$design` (a string
+like `"diff--over--undiff"`) for plot titles and download filenames.
+The new API exposes `eds$contrast_meta(c)$test_group` and
+`$reference_group` separately. Two options for surfacing a display
+string:
+
+- Each module does its own `paste()` of test + reference.
+- Add `eds$contrast_label(c)` helper to the API contract; returns one
+  canonical string (e.g. `"diff_vs_undiff"` or `"diff vs undiff"`).
+
+**Status**: undecided.
+
+**My lean** (not a decision): the helper, because every consumer
+wants the same string and centralising the format avoids drift. But
+the call belongs to the person migrating the first plot module —
+that's where the use cases become concrete.
+
+### 8.2 — OPEN — Methods-text panel rendering strategy
+
+**Decide at**: Tier 2.5 — when migrating `server-summary.R`.
+
+**The question.** Today `server-summary.R` renders a `kable()` table
+of `metadata(se)$param` (SUSHI parameters that produced the analysis:
+`comparison`, `sampleGroup`, `featureLevel`, `refBuild`, `runGO`,
+FDR thresholds, etc.) The canonical AnnData has no `param` — those
+fields decompose across `uns$de`, `uns$design`, `uns$omics_type`,
+`uns$reference_genome`, `uns$app_hints`, `uns$provenance`. Two
+strategies:
+
+- **Pre-render** the prose to HTML/markdown at converter time, stash
+  on `uns$provenance$methods_text`, expose via `eds$methods_text()`.
+  Module just prints the string. (Frozen at converter time but
+  simple.)
+- **Reconstruct** the table from canonical slots at render time
+  using `eds$contrast_meta(c)`, `eds$ref_build()`, etc.
+  (Module owns the formatting; flexible.)
+
+**Status**: undecided.
+
+**My lean** (not a decision): reconstruct at render time, so modules
+own their UI formatting and the API just exposes data. But the call
+belongs to whoever migrates `server-summary.R`.
+
+---
+
+### Resolved (kept here for the audit trail)
+
+- ~~Method vs. free-function call style.~~ → **pure R6** method-call
+  style (`eds$samples()`, `eds$de(c)`). No free-function wrapper
+  layer. Resolved 2026-04-30.
+
+---
+
+## Appendix A — Alternative design considered
+
+Before settling on the canonical-AnnData converter approach
+documented above, a four-SE-subclasses design was considered:
+
+- An abstract `ExploreDataset` base
+- An abstract `ExploreDatasetSE` intermediate
+- Concrete `ExploreDatasetSE_RNASeq`, `_CountQC`, `_CrisprCountQC`,
+  `_Proteomics` subclasses each handling one SE shape
+- A future `ExploreDatasetH5AD` subclass for h5ad
+
+A working POC of this design exists at
+[`poc_explore_dataset_2026-04-30.R`](poc_explore_dataset_2026-04-30.R)
+(1051 lines, 5 classes).
+
+It was rejected in favour of the canonical-converter approach. The
+head-to-head argument is in
+[`pocs_comparison_2026-04-30.md`](pocs_comparison_2026-04-30.md). The
+short version:
+
+- The canonical approach delivered better proteomics data than the
+  subclass approach (subclass POC had bugs the canonical POC
+  exposed and fixed).
+- The `.h5ad` export pipeline drops out free.
+- Adding new backends doesn't fan out (one converter function each;
+  reader unchanged).
+- Spec compliance is mechanically enforced at conversion time.
+- Less code (883 vs 1051 lines).
+
+The subclass POC is preserved as a fallback; if the AnnData direction
+is ever reconsidered, that POC is the documented alternative
+implementation.

@@ -1,0 +1,690 @@
+---
+title: "exploreDE AnnData Format Specification"
+subtitle: "Migrating from SummarizedExperiment to AnnData for multi-omics harmonisation"
+author:
+  - "PL"
+  - "Claude AI"
+date: "2026-04-17"
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    number-sections: true
+    code-fold: false
+editor:
+  markdown:
+    wrap: 80
+---
+
+# Aim
+
+Establish the **exact** AnnData (`.h5ad`) format that exploreDE will consume,
+based on the current app's actual requirements. This document freezes the
+schema; subsequent plans will cover the migration, loader refactor, and
+validator.
+
+Scope of this document: **schema only**. Not migration steps, not UI changes,
+not a roadmap.
+
+# Goals
+
+1. **One container for all omics.** Genomics (bulk RNA, CRISPR CountQC),
+   proteomics (protein / peptide / PTM), metabolomics, lipidomics — all read
+   through the same code path.
+2. **Detach from SUSHI / B-Fabric.** No `param$*` requirement. No reliance on
+   gStore paths, `[Factor]` column suffixes, or `constrast_` rowData nesting.
+   All experimental design information lives inside the AnnData object itself.
+3. **Public-ready.** A researcher with their own counts CSV + sample CSV must
+   be able to build an AnnData that loads cleanly.
+4. **Preserve everything the app currently does.** Every tab, every plot,
+   every filter must keep working. No feature loss from the migration.
+5. **Respect the `feature_id` refactor (2026-03-12).** `feature_id` remains
+   the universal unique row key (`var_names` in AnnData).
+
+# Non-goals
+
+- Compatibility shim for reading legacy SE objects — that belongs in a separate
+  migration plan.
+- MuData (multi-modal) support — the container harmonises the **schema** for
+  all omics types but each `.h5ad` still holds one modality. Cross-modality
+  joining comes later.
+- Changing UI / plot behaviour.
+- Interactive AnnData editing.
+
+# Axis convention — the critical flip
+
+SummarizedExperiment is **features × samples** (rows × cols). AnnData is
+**samples × features** (obs × var). Every matrix transposes on ingest.
+
+| SE slot            | AnnData slot | Shape             |
+|--------------------|--------------|-------------------|
+| `assays()[[k]]`    | `layers[k]`  | `n_obs × n_vars`  |
+| `colData`          | `obs`        | `n_obs × p_obs`   |
+| `rowData`          | `var`        | `n_vars × p_var`  |
+| `metadata`         | `uns`        | dict              |
+| —                  | `obsm`       | sample embeddings |
+| —                  | `varm`       | feature matrices  |
+
+**Convention in this spec:** when examples show a matrix, rows are samples
+unless explicitly noted.
+
+# Top-level layout
+
+```text
+adata.X                       # primary assay (canonical for the modality)
+adata.layers[<name>]          # all other assays (vst, log2, tpm, imputed, …)
+adata.obs                     # sample metadata + experimental factors
+adata.var                     # feature annotation (shared across contrasts)
+adata.obsm["X_pca"], …        # cached sample embeddings (optional)
+adata.varm["de_<contrast>"]   # per-contrast DE statistics (dense)
+adata.uns["schema_version"]   # "exploreDE/1.0"
+adata.uns["omics_type"]       # "rnaseq_bulk" | "proteomics" | …
+adata.uns["hierarchy"]        # feature hierarchy declaration
+adata.uns["design"]           # factors, grouping, formula hints
+adata.uns["de"]               # per-contrast DE metadata (mirrors varm keys)
+adata.uns["enrichment"]       # ORA / GSEA / KEGG / STRING results
+adata.uns["provenance"]       # who/when/what produced this object
+```
+
+# `adata.X` and `adata.layers`
+
+## Primary assay (`X`)
+
+Exactly one matrix lives in `X`. It is the **canonical input** for the
+modality — the matrix that statistical methods would consume by default.
+
+| Modality           | `X` contains             | Typical dtype        |
+|--------------------|--------------------------|----------------------|
+| `rnaseq_bulk`      | raw integer counts       | int32 / sparse CSR   |
+| `crispr_countqc`   | raw sgRNA counts         | int32                |
+| `proteomics`       | transformed intensities  | float32              |
+| `metabolomics`     | normalised intensities   | float32              |
+| `lipidomics`       | normalised intensities   | float32              |
+
+Rationale: proteomics pipelines (prolfqua, MaxLFQ) deliver
+already-transformed values as the analysis-ready matrix; raw intensities are
+preserved alongside in `layers["intensities_raw"]`. For RNA-seq, raw counts
+stay in `X` so DESeq2/edgeR-style downstream work remains trivial.
+
+## Additional assays (`layers`)
+
+Any other matrix shape-compatible with `X`. Names are lower-case, no spaces.
+The current app needs (at minimum) the following layer names to be **reserved
+and recognised** when present:
+
+| Layer key            | Meaning                                               |
+|----------------------|-------------------------------------------------------|
+| `counts`             | raw integer counts (RNA-seq / CRISPR)                 |
+| `normalised`         | size-factor / library-normalised (replaces SUSHI `signal` / `xNorm`) |
+| `log2`               | `log2(normalised + pseudocount)`                      |
+| `vst`                | `DESeq2::varianceStabilizingTransformation()`         |
+| `tpm`                | transcripts per million (RNA-seq only)                |
+| `fpkm`               | fragments per kb per million (RNA-seq only)           |
+| `intensities_raw`    | raw MS intensities (proteomics / metabolomics)        |
+| `intensities_norm`   | normalised intensities                                |
+| `imputed`            | imputed intensities                                   |
+| `nr_peptides`        | peptides per protein per sample (proteomics)          |
+| `present_flag`       | logical/0-1 matrix (CRISPR CountQC `presentFlag`)     |
+
+Any other layer is allowed but not specially interpreted.
+
+**Distribution detection stays runtime** (per the 2025-10-02 spec):
+skewness + kurtosis classification selects log vs linear plot scales — not
+encoded in names.
+
+## Sparse storage
+
+`X` and `layers` MAY be sparse (CSR in AnnData's default convention). Raw
+RNA-seq counts and CRISPR counts SHOULD be sparse for space. Proteomics
+intensities are usually dense.
+
+# `adata.obs` — sample metadata
+
+`obs_names` (the index) are sample identifiers — matching colnames of the
+original assay matrices. They must be unique, string-typed, and stable across
+the object's lifetime.
+
+## Required columns
+
+| Column                  | Type             | Notes                                     |
+|-------------------------|------------------|-------------------------------------------|
+| `sample_label`          | string           | human-readable display name               |
+
+## Experimental factors (`factor_*`)
+
+All experimental design covariates are declared with the `factor_` prefix.
+This replaces the SUSHI `[Factor]` column-name suffix.
+
+| Column pattern   | Type           | Examples                             |
+|------------------|----------------|--------------------------------------|
+| `factor_<name>`  | categorical    | `factor_condition`, `factor_batch`, `factor_genotype`, `factor_sex` |
+| `factor_<name>`  | numeric        | `factor_timepoint`, `factor_age`     |
+
+Rules:
+
+- Column levels for categorical factors are declared via pandas `Categorical`
+  with explicit `categories=` to preserve ordering. (`anndataR` in R maps
+  this to `factor()` with `levels=` on read.)
+- The app infers available factors by scanning for the `factor_` prefix. No
+  allow-list in `uns` required — but one may be supplied (see
+  `uns["design"]`).
+
+## Optional convention columns
+
+| Column                  | Type       | Notes                                       |
+|-------------------------|------------|---------------------------------------------|
+| `organism`              | string     | e.g. `"Homo sapiens"`                       |
+| `feature_level`         | string     | `"gene"`, `"isoform"`, `"protein"`, `"peptide"`, `"phosphosite"`, `"compound"` — sample-level *declaration* of what the features represent |
+| `sample_type`           | string     | `"biological"`, `"qc"`, `"blank"`, `"pool"` |
+| `bfabric_sample_id`     | string     | optional external ID                        |
+| `label_*`               | any        | any annotation for plots/tables (library size, creatinine, collection date …) |
+
+`sample_type` replaces the implicit "all samples are biological" assumption
+and lets the loader filter QC/blanks out of DE plots without code branching
+per modality.
+
+## Migration from current `param$sampleGroup` / `param$refGroup`
+
+These two are **deprecated as top-level fields**. Test vs. reference
+assignment per contrast now lives in `uns["de"][<contrast>]` (see §
+"Differential expression"). The colData itself only holds the factors; the
+contrast spec lives with the contrast.
+
+# `adata.var` — feature annotation
+
+`var_names` (the index) = **`feature_id`**, the universal unique key
+established in the 2026-03-12 refactor. Format:
+
+- RNA-seq (gene-level): `scuttle::uniquifyFeatureNames(gene_id, gene_name)`
+- Proteomics (protein-level): `protein_Id` if unique
+- Proteomics (peptide/PTM): `build_feature_id()` output, e.g.
+  `A0A2R8Y4L2_A0A2R8Y4L2_S199_SGsGNFGGGR`
+- Metabolomics: `compound_id` or `m_z_rt` string
+
+## Required columns
+
+| Column        | Type   | Notes                                                            |
+|---------------|--------|------------------------------------------------------------------|
+| `description` | string | free-text, searchable, SUSHI `[Source]...` tail stripped on ingest |
+
+## Canonical identifier columns (`label_*`)
+
+All identifier columns use the `label_` prefix. None are required; all that
+are present are exposed as optional column-visibility toggles in the DE table
+and as search targets in the feature selector.
+
+| Column                     | Applies to            |
+|----------------------------|-----------------------|
+| `label_gene_symbol`        | all                   |
+| `label_gene_id`            | RNA-seq (Ensembl)     |
+| `label_transcript_id`      | RNA-seq isoform       |
+| `label_entrez_id`          | all                   |
+| `label_ensembl_gene_id`    | all                   |
+| `label_uniprot_id`         | proteomics            |
+| `label_flydb_id`           | fly datasets          |
+| `label_biotype`            | RNA-seq               |
+| `label_chromosome`         | all (for locus plots) |
+| `label_assignment_method`  | metabolomics / PTM    |
+| `label_nr_peptides`        | proteomics            |
+| `label_global_base_mean`   | all                   |
+| `label_go_bp` / `_mf` / `_cc` | RNA-seq            |
+
+## Hierarchy columns (`hierarchy_*`)
+
+For proteomics and PTM data, the sub-feature lineage is encoded with
+`hierarchy_` columns. **Each column alone may contain duplicates; the
+combination of all hierarchy columns uniquely identifies each row.** The
+declared order is coarsest → finest.
+
+| Column                    | Meaning                                    |
+|---------------------------|--------------------------------------------|
+| `hierarchy_protein`       | protein identifier                         |
+| `hierarchy_peptide`       | peptide sequence                           |
+| `hierarchy_peptidoform`   | modified peptide sequence                  |
+| `hierarchy_site`          | PTM site (e.g. `S199`)                     |
+| `hierarchy_multiplicity`  | integer — PTMs per peptide                 |
+| `hierarchy_ion`           | precursor ion (`mz_charge`)                |
+
+The order is declared in `uns["hierarchy"]["levels"]` (see §
+"Unstructured metadata"). For RNA-seq the hierarchy is trivially
+`["gene"]` (or `["gene", "transcript"]` for isoform-level).
+
+## Per-feature display columns (`display_*`)
+
+Per the display_label_plan. Optional:
+
+| Column                   | Notes                                                 |
+|--------------------------|-------------------------------------------------------|
+| `display_label_primary`  | what to show in plots/tables by default               |
+| `display_label_secondary`| shown on hover/tooltip                                |
+
+If absent, the app falls back to `label_gene_symbol` → `feature_id`.
+
+# `adata.varm` — per-contrast DE statistics
+
+**Design decision:** DE results per contrast go in `varm`, keyed
+`de_<contrast>`. Each entry is a dense `n_vars × k` table. This is the
+AnnData-native place for per-feature, per-contrast statistics and mirrors
+scanpy's convention for gene-group results.
+
+## Required columns in each `varm["de_<contrast>"]`
+
+| Column          | Type    | Notes                                                     |
+|-----------------|---------|-----------------------------------------------------------|
+| `effect_log2fc` | float   | log2 fold change — volcano x-axis                         |
+| `score_pvalue`  | float   | raw p-value — volcano y-axis                              |
+| `score_fdr`     | float   | adjusted p / q-value — significance threshold             |
+
+## Optional columns (surface in DE table column-visibility)
+
+| Column                  | Type          | Notes                                         |
+|-------------------------|---------------|-----------------------------------------------|
+| `effect_<other>`        | float         | alternate effect sizes (e.g. `effect_difference` for proteomics) |
+| `score_<other>`         | float         | `score_t_statistic`, `score_wald_stat`, …     |
+| `label_base_mean`       | float         | DE-specific mean (MA plot y-axis)             |
+| `label_ave_log_cpm`     | float         | edgeR MA plot alternative                     |
+| `label_n_missing`       | int           | missing-value count (proteomics)              |
+| `label_ci_lower` / `_upper` | float     | confidence interval bounds                   |
+| `label_se`              | float         | standard error                                |
+| `label_direction`       | string        | pre-computed "up"/"down"/"ns" for convenience |
+
+**Column order matters** for the default DE-table view: first `effect_*`,
+then `score_*`, then `label_*`. Implementation enforces this on read.
+
+## Per-assay group-mean columns
+
+The current app computes `<assay>_<group>_Mean` and `<assay>_<group>_SD`
+columns on load. Under AnnData these are **still computed on the fly** from
+`layers` + `uns["de"][<contrast>]["test_group"]` / `["reference_group"]` —
+they do NOT need to be baked into `varm`. This keeps contrast tables lean.
+
+# `adata.obsm` — sample-space embeddings (optional)
+
+Precomputed embeddings to avoid re-running on every app launch.
+
+| Key           | Shape             | Contents                          |
+|---------------|-------------------|-----------------------------------|
+| `X_pca`       | `n_obs × k`       | principal components              |
+| `X_umap`      | `n_obs × 2`       | UMAP                              |
+| `X_mds`       | `n_obs × k`       | MDS                               |
+| `X_tsne`      | `n_obs × 2`       | t-SNE                             |
+
+Companion metadata (variance explained, method params) goes in
+`uns["embeddings"][<key>]`.
+
+# `adata.uns` — unstructured metadata
+
+A nested dict. Keys below are either required (R) or optional (O). Missing
+optional keys → app uses sensible defaults.
+
+## `schema_version` (R)
+
+String. Must equal `"exploreDE/1.0"` for this spec. Bumps on breaking changes.
+
+## `omics_type` (R)
+
+One of:
+
+- `"rnaseq_bulk"`
+- `"crispr_countqc"`
+- `"proteomics"` (subtypes declared via `feature_level` in `obs`)
+- `"metabolomics"`
+- `"lipidomics"`
+- `"atac_bulk"` (future)
+
+## `hierarchy` (R)
+
+```yaml
+hierarchy:
+  levels: ["protein", "peptide", "site"]   # maps to hierarchy_* var cols
+  unit:   "site"                            # which level a single row represents
+```
+
+For RNA-seq: `{ levels: ["gene"], unit: "gene" }`.
+
+## `design` (O, strongly recommended)
+
+```yaml
+design:
+  factors: ["factor_condition", "factor_batch"]   # primary + nuisance
+  grouping: "factor_condition"                    # default colour-by in plots
+  formula: "~ factor_batch + factor_condition"    # advisory only
+```
+
+If absent, the loader infers `factors` by scanning `obs` for the `factor_`
+prefix and picks the first as `grouping`. Explicit declaration is
+recommended for non-trivial designs.
+
+## `de` (R, one entry per contrast)
+
+The DE metadata dict. Keys mirror the `varm["de_<contrast>"]` names (no
+`de_` prefix here).
+
+```yaml
+de:
+  treatment_vs_control:
+    assay_used:        "vst"                    # which layer/X drove DE
+    factor_used:       ["factor_condition", "factor_batch"]
+    test_group:        "treatment"              # replaces param$sampleGroup
+    reference_group:   "control"                # replaces param$refGroup
+    contrast_formula:  "factor_condition_treatment - factor_condition_control"
+    model:             "DESeq2"                 # or limma, edgeR, prolfqua, msqrob2 …
+    n_test:            12
+    n_reference:       12
+  OT_vs_Manual:
+    assay_used:        "transformedData"
+    factor_used:       ["factor_condition"]
+    test_group:        "OT"
+    reference_group:   "Manual"
+    contrast_formula:  "OT - Manual"
+    model:             "prolfqua"
+```
+
+Required fields per contrast: `assay_used`, `factor_used`, `test_group`,
+`reference_group`. All others optional.
+
+## `enrichment` (R where available, one entry per contrast)
+
+Pathway / enrichment analysis results are a **first-class, uniform
+requirement across all omics**, not a genomics-only convenience. Proteomics,
+metabolomics, and lipidomics objects must carry enrichment results in the
+same slot, with the same shape, as genomics. If enrichment has not yet been
+run for a modality, the exporter is responsible for running it before
+producing the `.h5ad`.
+
+### Target: clusterProfiler parity for all omics
+
+The reference implementation is `clusterProfiler` — specifically its
+`enrichResult` (ORA) and `gseaResult` (GSEA) objects, as already produced
+for genomics under the SUSHI pipeline. The aim in the first phase is to
+deliver clusterProfiler-equivalent outputs for **every** omics modality:
+
+- **Genomics (RNA-seq, CRISPR):** already runs `clusterProfiler::enrichGO`,
+  `clusterProfiler::gseGO`, `clusterProfiler::enrichKEGG`, etc. No change in
+  upstream computation — only in storage location.
+- **Proteomics:** currently ships **no** enrichment. Exporter must generate
+  clusterProfiler results from the DE contrast, mapping
+  `label_uniprot_id` → Entrez via `bitr()` (or equivalent) before calling
+  `enrichGO` / `gseGO` / `enrichKEGG`.
+- **Metabolomics / lipidomics (future):** clusterProfiler
+  `enrichPathway` / custom `enricher()` with KEGG compound sets, HMDB
+  classifications, or LipidMaps categories. Same storage slot, same
+  downstream app code.
+
+Downstream app code (the ORA / GSEA / KEGG tabs) must not branch on omics
+type — it reads `uns["enrichment"][<contrast>][<method>]` uniformly.
+
+### Storage — dual mode
+
+Each contrast holds one dict of method → result. Two storage modes
+co-exist:
+
+1. **Native clusterProfiler object, serialised** (primary for R loader,
+   lossless):
+   ```
+   uns["enrichment_native"][<contrast>][<method>]
+   ```
+   An `enrichResult` or `gseaResult` R object, serialised as raw bytes in
+   `.h5ad`. The R loader unserialises these directly and feeds them to the
+   existing plotting / table code with zero translation.
+
+2. **Tidy DataFrame mirror** (for portability + Python readers + diffing):
+   ```yaml
+   enrichment:
+     treatment_vs_control:
+       ora_up:   <DataFrame>
+       ora_down: <DataFrame>
+       gsea:     <DataFrame>
+       kegg:     <DataFrame>
+       reactome: <DataFrame>           # optional, if run
+   ```
+   Columns: `category`, `id`, `description`, `n_genes_mapped`,
+   `n_genes_in_set`, `gene_ratio`, `bg_ratio`, `enrichment_score`, `nes`,
+   `pvalue`, `p_adjust`, `q_value`, `method`, `ontology`, `feature_ids`
+   (list-col of `var_names`), `feature_labels` (list-col of gene symbols).
+
+Exporters SHOULD write both; the R loader prefers native, Python readers
+read tidy. If only one is present, the app degrades gracefully.
+
+### Method keys (reserved)
+
+| Key         | clusterProfiler call                    |
+|-------------|-----------------------------------------|
+| `ora_up`    | `enrichGO` / `enrichKEGG` on up-regulated genes   |
+| `ora_down`  | `enrichGO` / `enrichKEGG` on down-regulated genes |
+| `ora_all`   | `enrichGO` on all DE genes (non-directional)      |
+| `gsea`      | `gseGO` / `gseKEGG` ranked by `effect_log2fc`     |
+| `kegg`      | `enrichKEGG` / `gseKEGG`                          |
+| `reactome`  | `ReactomePA::enrichPathway` / `gsePathway`        |
+| `string`    | STRING-DB (for future network views)              |
+
+Additional keys allowed; app renders whatever is present.
+
+### Inputs no longer stored
+
+The current app's `metadata$enrichInput` (the `log2Ratio` named vector,
+`selections$upGenes` / `downGenes`, and `seqAnno`) is **derived on the fly**
+under the new schema — not stored. When a tab needs those inputs (e.g.
+re-running enrichment with a different threshold interactively), they are
+reconstructed from `varm["de_<contrast>"]` + `var` + `uns["de"][<contrast>]`
++ `uns["app_hints"]` thresholds.
+
+## `provenance` (O but strongly recommended for public release)
+
+```yaml
+provenance:
+  created_utc:         "2026-04-17T14:22:00Z"
+  created_by:          "exploreDE-export v0.3.2"
+  source_format:       "SummarizedExperiment"
+  source_path:         "/srv/gstore/projects/p3009/…"   # may be null for user uploads
+  converter_version:   "anndata-export/1.0"
+  notes:               "Converted from SUSHI DESeq2 output."
+```
+
+## `app_hints` (O)
+
+```yaml
+app_hints:
+  default_contrast:    "treatment_vs_control"
+  default_assay:       "vst"
+  fdr_threshold:       0.05
+  log2fc_threshold:    1.0
+  go_fdr_threshold:    0.1
+```
+
+Hints only — the app UI always lets the user override.
+
+# Data-type-specific notes
+
+## RNA-seq bulk
+
+- `X` = raw counts (sparse int32)
+- Required layers: none (all derived in-app if missing), but typically:
+  `normalised`, `log2`, `vst`, optionally `tpm` / `fpkm`.
+- Hierarchy: `["gene"]` or `["gene", "transcript"]`.
+
+## CRISPR CountQC
+
+- `X` = raw sgRNA counts.
+- Required layer: `present_flag` (replaces SE `assay(se, "presentFlag")`).
+- `var` additional columns: `label_sgrna_sequence`, `label_target_gene`
+  (for `collapse_guides_to_genes()`).
+- `obs` may include `label_library_size` to avoid recomputation.
+
+## Proteomics
+
+- `X` = transformed / analysis-ready intensities (prolfqua output).
+- Required layers: `intensities_raw`, optionally `intensities_norm`,
+  `imputed`, `nr_peptides`.
+- Hierarchy declares the level actually in `var` — `["protein"]`,
+  `["protein", "peptide"]`, `["protein", "site", "multiplicity"]`, etc.
+- `var` retains domain columns: `label_uniprot_id`, `label_gene_symbol`,
+  `label_nr_peptides`, plus any `hierarchy_*`.
+- Multiple contrasts native — one `varm["de_<contrast>"]` per contrast, not
+  nested DataFrames in `var`.
+
+## Metabolomics / lipidomics (future)
+
+- `X` = normalised intensities.
+- `var`: `label_compound`, `label_inchi_key`, `label_hmdb_id`,
+  `label_lipidmaps_id`, `label_mz`, `label_retention_time`,
+  `label_assignment_method` (MS1 / MS2 / manual).
+- `obs`: `sample_type` critical — distinguishes QC / blank / pool.
+- DE storage identical to proteomics.
+
+# SUSHI decoupling — what goes away
+
+| Current (SUSHI coupling)                  | New (AnnData-native)                              |
+|-------------------------------------------|---------------------------------------------------|
+| `metadata$param$sampleGroup` / `$refGroup`| `uns["de"][<c>]["test_group"]` / `["reference_group"]` |
+| `metadata$param$comparison`               | contrast name = key of `uns["de"]`                |
+| `metadata$param$groupingName`             | `uns["design"]["grouping"]`                       |
+| `metadata$param$featureLevel`             | `obs["feature_level"]` + `uns["hierarchy"]["unit"]` |
+| `metadata$param$backgroundExpression`     | pseudocount baked into `layers["log2"]` (or `uns["app_hints"]["log2_pseudocount"]`) |
+| `metadata$param$refBuild`                 | `uns["reference_genome"]` (string only)           |
+| `metadata$param$runGO` + `enrichResult` / `enrichResultGSEA` (genomics only) | `uns["enrichment_native"][<c>][<method>]` **for all omics**; tidy mirror in `uns["enrichment"][<c>][<method>]`. Proteomics exporters must run clusterProfiler before export to reach parity. |
+| `metadata$param$samples` (subset filter)  | dropped — callers subset before export            |
+| `[Factor]` column-name suffix             | `factor_` column-name prefix                      |
+| `constrast_<c>` rowData nesting           | `varm["de_<c>"]`                                  |
+| gStore/pStore URL discovery, LDAP         | out of loader — app accepts a local path or URL to `.h5ad` |
+| RDS / QS2 file format                     | HDF5 (`.h5ad`); RDS accepted only through a one-way converter |
+
+# Traceability: every current app read → AnnData slot
+
+| Current code access                           | AnnData location                                              |
+|-----------------------------------------------|---------------------------------------------------------------|
+| `assay(se, "counts")`                         | `layers["counts"]` (RNA/CRISPR) or `X`                        |
+| `assay(se, "signal")` / `"xNorm"`             | `layers["normalised"]`                                        |
+| `assay(se, "presentFlag")`                    | `layers["present_flag"]`                                      |
+| computed `log2(normalised + pseudo)`          | `layers["log2"]`                                              |
+| `getTpm(se)`, `getRpkm(se)`                   | `layers["tpm"]`, `layers["fpkm"]`                             |
+| proteomics assays (rawData, transformedData)  | `X` = transformedData, `layers["intensities_raw"]` = rawData  |
+| `colData$Name` / `Sample` / `sampleName`      | `obs_names`                                                   |
+| `colData$<Factor>` columns (with `[Factor]`)  | `obs["factor_<name>"]`                                        |
+| `param$sampleGroup`, `param$refGroup`         | `uns["de"][<c>]["test_group"]` / `["reference_group"]`        |
+| `rowData$gene_id`, `gene_name`, `description` | `var["label_gene_id"]`, `var["label_gene_symbol"]`, `var["description"]` |
+| `rowData$feature_id`                          | `var_names`                                                   |
+| `rowData$type` (biotype)                      | `var["label_biotype"]`                                        |
+| `rowData$GO BP` / `MF` / `CC`                 | `var["label_go_bp"]` / `_mf` / `_cc`                          |
+| `rowData$constrast_<c>$log2Ratio` etc.        | `varm["de_<c>"]["effect_log2fc"]`                             |
+| `rowData$log2Ratio` / `pValue` / `fdr` (genomics, single DE) | `varm["de_<c>"]["effect_log2fc"]` / `score_pvalue` / `score_fdr` |
+| `param$comparison` (`"diff--over--undiff"`)   | contrast key in `uns["de"]`                                   |
+| `param$runGO`, `enrichResult`, `enrichResultGSEA` | `uns["enrichment"][<c>][...]`                             |
+| `metadata$enrichInput$seqAnno`                | derived from `var` at call-site                               |
+| `metadata$enrichInput$log2Ratio`              | derived from `varm["de_<c>"]["effect_log2fc"]`                |
+| `metadata$enrichInput$selections$upGenes`     | derived from `varm["de_<c>"]` + thresholds                    |
+| `sgRNA_to_gene` (CRISPR)                      | `var["label_target_gene"]`                                    |
+
+# Minimum viable AnnData (bring-your-own-data)
+
+The smallest object that loads cleanly:
+
+```r
+library(anndataR)
+
+adata <- AnnData(
+  X      = counts_matrix,                    # samples × features
+  obs    = data.frame(
+             row.names    = sample_ids,
+             sample_label = sample_ids,
+             factor_condition = factor(c("ctrl","ctrl","trt","trt"))
+           ),
+  var    = data.frame(
+             row.names   = feature_ids,
+             description = descriptions
+           ),
+  uns    = list(
+    schema_version = "exploreDE/1.0",
+    omics_type     = "rnaseq_bulk",
+    hierarchy      = list(levels = "gene", unit = "gene"),
+    design         = list(factors = "factor_condition",
+                          grouping = "factor_condition"),
+    de             = list()    # empty → app still loads, DE tabs gracefully disabled
+  )
+)
+
+anndataR::write_h5ad(adata, "my_experiment.h5ad")
+```
+
+Adding a contrast is a matter of populating `varm["de_<name>"]` and
+`uns["de"][<name>]`.
+
+# Validator
+
+A dedicated validator (follow-on work) will:
+
+1. Verify `schema_version == "exploreDE/1.0"`.
+2. Check `omics_type` is from the allowed set.
+3. Confirm `obs_names` and `var_names` are unique strings.
+4. For each `varm["de_*"]`: require `effect_log2fc`, `score_pvalue`,
+   `score_fdr`; row count == `n_vars`; key exists in `uns["de"]`.
+5. For each `uns["de"][<c>]`: require `assay_used`, `factor_used`,
+   `test_group`, `reference_group`; `assay_used` resolves to `X` or a layer
+   key; `factor_used` entries exist in `obs`; `test_group` / `reference_group`
+   are levels of `obs[factor_used[1]]`.
+6. Warn on `factor_` columns not listed in `uns["design"]["factors"]` (and
+   vice versa).
+7. Warn on hierarchy columns missing a declaration in
+   `uns["hierarchy"]["levels"]`.
+
+Mirror of the existing `validate_summarized_experiment.R`, rewritten for
+AnnData in R (via `anndataR`) with an equivalent Python version for users
+producing `.h5ad` outside R.
+
+# Open questions — to resolve with WEW before freezing
+
+1. **`X` vs `layers["counts"]` as canonical for RNA-seq.** Bioconductor
+   convention is "raw in X, derived in layers" (what scanpy also does),
+   which we've picked. Scanpy users sometimes put log-normalised in X and
+   raw in `layers["counts"]`. Either is fine — we pick raw-in-X for
+   symmetry with proteomics (where the analysis-ready matrix is in X).
+   → **Confirm.**
+
+2. **Enrichment: tidy DataFrame vs native object.** Tidy is portable,
+   clusterProfiler-native is lossless. Decision (2026-04-17): write both
+   when an `enrichResult` / `gseaResult` exists; R loader prefers native,
+   Python readers read tidy. → **Confirm dual storage is acceptable
+   size-wise.** Follow-up: inventory the proteomics ID → Entrez mapping
+   path (UniProt → Entrez via `bitr()` / `AnnotationDbi`) so the proteomics
+   exporter can actually run clusterProfiler.
+
+3. **`display_label_*` vs computing display at load.** The display_label_plan
+   (2026-03-xx) is still in flux. This spec reserves the columns but does
+   not require them. → **Align with display_label_plan outcome.**
+
+4. **Multi-SE (`server-multi-*`) future.** Do multi-dataset tabs read
+   multiple `.h5ad` files, or a single MuData / anndata collection? Out of
+   scope here, but the schema is chosen so either works.
+
+5. **Numeric factors.** AnnData obs columns must be categorical OR numeric
+   — there's no native "factor with ordered levels" dtype in Python. For
+   ordered categorical factors (e.g. timepoint = 0, 2, 4, 8h) we rely on
+   pandas `CategoricalDtype(ordered=True)`. → **Verify anndataR round-trip
+   preserves ordering.**
+
+6. **Sparse vs dense for proteomics.** Proteomics intensity matrices have
+   MNAR missingness but are otherwise dense — keep dense with NaN? Or
+   sparse with explicit NaN encoding? → **Dense + NaN preferred unless
+   memory becomes a problem.**
+
+7. **Contrast naming convention.** Free-form string keys are flexible but
+   allow collisions and messy UI. Propose: `<test>_vs_<reference>`,
+   lower-case, `[a-z0-9_]` only. → **Confirm and enforce in validator.**
+
+# Follow-on plans (not in this document)
+
+- `anndata_migration_plan_<date>.qmd` — loader refactor, SE-to-AnnData
+  converter for legacy SUSHI outputs, phased cut-over per tab, regression
+  test matrix against the 4 canonical datasets.
+- `anndata_validator_<date>.qmd` — R + Python validator implementation.
+- `anndata_byod_guide_<date>.qmd` — public-facing "bring your own data"
+  guide with worked examples per omics type.
+- `byod_from_csv_<date>.qmd` — helper that takes `counts.csv` +
+  `samples.csv` + `features.csv` + optional `de_<contrast>.csv` and
+  produces a conformant `.h5ad`.
+
+# Version history
+
+| Date       | Version | Changes                                            |
+|------------|---------|----------------------------------------------------|
+| 2026-04-17 | 0.1     | Initial draft based on 2025-10-02 SE spec + current-app requirements inventory |
