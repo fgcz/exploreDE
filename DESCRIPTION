@@ -48,7 +48,11 @@ Imports:
   vegan,
   glmpca,
   limma,
-  officer
+  officer,
+  R6,
+  anndataR,
+  SummarizedExperiment,
+  S4Vectors
 Suggests:
   testthat (>= 3.0.0)
 Config/testthat/edition: 3
