@@ -188,16 +188,7 @@ if (!is.null(dataUrl)) {
   }
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl)) {
-  # dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/" # teaching dataset
-  # dataDir <- "/srv/gstore/projects/p36911/o39664_o37783_o39124_o38710_o41353_ExploreMageckCounts_2026-04-09--15-07-24/ExploreMageckCounts/counts-yuunbieawvpw-EzResult.RData" # mageck
-  # dataDir <- "/srv/gstore/projects/p29779/o41056_ExploreMageckCounts_2026-04-10--09-29-57/ExploreMageckCounts/counts-fzvwfvxsycwz-EzResult.RData" # more mageck
-  # dataDir <- "/srv/gstore/projects/p29779/o40890_DESeq2_shp65_w_HP--over--shp65_wo_HP_2026-04-16--13-38-37/shp65_w_HP--over--shp65_wo_HP" # rna with two factors
-  # dataDir <- "/srv/gstore/projects/p34429/o35733_DESeq2_Palbo_day6--over--Palbo_day2_2024-08-22--11-21-44/Palbo_day6--over--Palbo_day2/" # rna isoform
-  # dataType <- "gStore"
-  dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p23078/bfabric/Proteomics/exploreDE/2026/2026-03/2026-03-10/workunit_342063/3106962.rds" # prot
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335485/2997996.rds" # phos
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p41085/bfabric/Proteomics/exploreDE/2026/2026-03/2026-03-10/workunit_342065/3106968.rds" # pep
-  # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p40560/bfabric/Proteomics/exploreDE/2026/2026-02/2026-02-05/workunit_340316/3081908.rds" # real prot
+  dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/" # teaching dataset
   # Infer dataType from whichever demo dataDir was last (un)commented above —
   # avoids the "I uncommented mageck but forgot to flip dataType" footgun.
   dataType <- if (grepl("Proteomics|prolfqua", dataDir, ignore.case = TRUE)) {
