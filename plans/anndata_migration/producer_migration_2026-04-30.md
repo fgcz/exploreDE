@@ -12,9 +12,11 @@ because:
   rather than just exploreDE / Peter.
 - The timeline is multi-quarter and depends on those teams' priorities.
 - The relevant code lives in *their* repositories, not in exploreDE.
-- exploreDE works fine without this — the converters in
-  `poc_canonical_2026-04-30.R::se_to_canonical_anndata()` bridge the
-  gap. This work just makes those converters obsolete.
+- exploreDE works fine without this — the per-shape SE subclasses in
+  `poc_explore_dataset_2026-04-30.R` read the legacy SEs directly, and
+  the SE→canonical AnnData mapping is documented in
+  `build_example_anndata.R`. This producer work just makes the SE
+  bridge obsolete.
 
 ## Producers in scope
 
@@ -59,12 +61,14 @@ Affected workflows:
 
 ## Reference implementation
 
-`poc_canonical_2026-04-30.R::se_to_canonical_anndata()` is the
-reference: it produces the canonical AnnData layout from each of the
-four legacy SE shapes today. Producer teams can:
+`build_example_anndata.R` is the reference: its
+`convert_rnaseq()` / `convert_crispr_countqc()` / `convert_proteomics()`
+functions produce the canonical AnnData layout from each of the legacy
+SE shapes, with every SE-slot → AnnData-slot mapping narrated inline.
+Producer teams can:
 
 1. Run their existing pipeline as-is, producing the SE.
-2. Pass the SE through `se_to_canonical_anndata()`.
+2. Pass the SE through the appropriate `convert_*()` function.
 3. Write the result via `anndataR::write_h5ad()` to the same gStore /
    pStore path alongside (or instead of) the `.rds`.
 
@@ -75,9 +79,10 @@ AnnData directly without going through an SE.
 ## When this is done
 
 The exploreDE-side cleanup (per
-`internal_api_spec_2026-04-30_thin.qmd` §10.7):
+`internal_api_spec_2026-04-30_thin.qmd`):
 
-- Deprecate `R/se_to_canonical_anndata.R`.
+- Retire the per-subclass `ExploreDatasetSE_*` classes (only the
+  `ExploreDatasetH5AD` subclass remains).
 - Drop `convert_genomics_se()` / `convert_proteomics_se()` legacy
   entry points.
 - Remove `SummarizedExperiment` from `Imports:`.

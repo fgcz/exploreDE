@@ -1,0 +1,133 @@
+claude --resume 9db3d209-752d-477b-8081-9b4b2d76e8a5
+
+---
+title: "exploreDE: Display Label Feature for Proteomics"
+date: "2026-03-27"
+format: html
+---
+
+## Goal
+
+Allow users to choose what ID column proteomics features are **displayed** by on plots. Currently, all labels use `feature_id` (Uniprot-based). Users should be able to see gene symbols (and for peptide/phospho data, protein IDs) alongside or instead of the raw feature ID.
+
+## Display Format
+
+Labels follow the pattern: `feature_id (selected_label)`.
+
+- Protein-level: `Q07820 (MCL1)`
+- Peptide-level: `A0A024RBG1;Q9NZJ9_EVYEEAGVK (MCL1)`
+- Phospho: `A0A2R8Y4L2_A0A2R8... (MCL1)`
+
+**Truncation rule:** when `feature_id` exceeds 15 characters, truncate to `first_15_chars... (LABEL)`. This keeps heatmap rows and boxplot facet strips readable.
+
+When `gene_name` is `NA` for a given feature, show the bare `feature_id` with no brackets.
+
+## Radio Button Options (Dynamic Per Data Type)
+
+### Protein-level data (`feature_id == protein_Id`)
+
+| Option | Label example |
+|--------|---------------|
+| Protein ID (default) | `Q07820` |
+| Gene Symbol | `Q07820 (MCL1)` |
+
+### Peptide / phospho data (`feature_id != protein_Id`)
+
+| Option | Label example |
+|--------|---------------|
+| Feature ID (default) | `A0A024RBG1;Q9NZJ9_EVYEEAGVK` |
+| Protein ID | `A0A024RBG1;Q9NZJ9_EVYEEAGVK (A0A024RBG1;Q9NZJ9)` |
+| Gene Symbol | `A0A024RBG1;Q9NZ... (MCL1)` |
+
+The radio sits **above the feature selectize dropdown** on each tab. Changing it:
+
+1. Updates the selectize dropdown choices to match the selected ID space
+2. Clears current selectize/text inputs (bucket contents stay)
+3. Updates plot labels across all tabs
+
+## Behaviour When User Selects Gene Symbol
+
+- Selectize shows gene symbols as choices
+- Selecting a gene symbol adds **all** matching feature_ids to the bucket (1:N expansion via `gene_lookup`)
+- Features with `NA` gene_name are not selectable in this mode
+- The bucket internally still stores `feature_id` values (the unique key for count matrix lookups)
+
+## Current Bug: `gene_lookup` Not Available in App
+
+The `gene_lookup` infrastructure exists in `R/helperFunctions.R` (package version of `convert_proteomics_se`), but the app runs its own local copy in `inst/app/server-initInputData.R` which **diverged** and never got the `gene_lookup` code. Specifically:
+
+- `helperFunctions.R` lines 297-306: builds `gene_lookup` and returns it
+- `server-initInputData.R` lines 330-342: no `gene_lookup`, not returned
+
+This means `inputDataReactive()$gene_lookup` is always `NULL`, the existing "Search by" radio buttons (`fb_search_mode_*` in `server-featureBucket.R:196-220`) silently fail to render, and the whole gene-symbol search pathway is dead code in the live app.
+
+**Fix first:** sync `server-initInputData.R` with the package version before building the display label feature.
+
+## Architecture
+
+### New reactive: `display_lookup`
+
+Built at init time from seqAnnoList, updated when the radio changes:
+
+```r
+# feature_id -> display_label
+# e.g. for gene_name mode:
+display_lookup <- setNames(seqAnnoList[[1]]$gene_name, seqAnnoList[[1]]$feature_id)
+```
+
+### New helper: `make_display_label(feature_ids, lookup, max_chars = 15)`
+
+```r
+make_display_label <- function(feature_ids, lookup = NULL, max_chars = 15) {
+  if (is.null(lookup)) return(feature_ids)
+  labels <- lookup[feature_ids]
+  # Where lookup matches feature_id or is NA, return bare feature_id
+  same_or_na <- is.na(labels) | labels == feature_ids
+  out <- ifelse(
+    same_or_na,
+    feature_ids,
+    ifelse(
+      nchar(feature_ids) > max_chars,
+      paste0(substr(feature_ids, 1, max_chars), "... (", labels, ")"),
+      paste0(feature_ids, " (", labels, ")")
+    )
+  )
+  out
+}
+```
+
+### Merging search + display radios
+
+The existing per-tab `fb_search_by_*` radios get replaced by a single `display_by` concept. One radio per tab (synced via observer) or one global radio. Controls both:
+
+- What the selectize shows as choices
+- What labels appear on plots
+
+## Files to Modify
+
+| File | What changes |
+|------|-------------|
+| `server-initInputData.R` | Sync `convert_proteomics_se` with package: add `gene_lookup` to return list |
+| `server-featureBucket.R` | Replace `fb_search_by_*` radios with display-mode radios; update `resolve_features()`; add `display_lookup` reactive |
+| `R/helperFunctions.R` | Add `make_display_label()` export |
+| `server-boxplot.R:241-246` | Apply `make_display_label()` to `Feature` column before facet_wrap |
+| `server-heatmap2.R:707,833` | Apply to rownames before ComplexHeatmap |
+| `server-volcano2.R:357-365` | Apply to `Label` column |
+| `server-volcano2.R:464` | Apply to plotly `text` aesthetic |
+| `server-DEGTable.R` | Add display label as a column alongside feature_id |
+| `ui-tab-boxplot.R:50` | Update uiOutput ID if renaming |
+| `ui-tab-volcano.R:59` | Update uiOutput ID if renaming |
+| `ui-tab-heatmap.R:234` | Update uiOutput ID if renaming |
+
+## Edge Cases
+
+- **NA gene_name**: feature not selectable in gene-symbol mode; bare feature_id shown on plots
+- **Multiple feature_ids per gene**: all get added to bucket when gene selected; each gets its own facet/row with its own feature_id in the label
+- **Switching radio clears inputs**: selectize and text area empty, bucket contents preserved
+- **Downloads (xlsx)**: should include both `feature_id` and the display column so data is traceable
+
+## Open Questions
+
+1. Should the radio be truly global (one widget, all tabs follow) or per-tab but synced?
+2. For the DEG table, should the display label be a filterable column or replace feature_id?
+3. Protein_Id column is currently dropped for protein-level data when it equals feature_id -- need to preserve it (or gene_name) for the lookup to work
