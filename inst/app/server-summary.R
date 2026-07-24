@@ -568,10 +568,11 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 output$workunitsLinkUI <- renderUI({
   wu_id <- NA_character_
   if (!is.null(dataUrl) && nzchar(dataUrl)) {
+    # The workunit ID is only encoded in the URL for proteomics (…/workunit_<id>/…).
+    # Genomics URLs carry only the order number (o<id>), which is NOT a workunit —
+    # so we deliberately show no link there rather than link to the wrong entity.
     if (grepl("workunit_[0-9]+", dataUrl)) {
-      wu_id <- regmatches(dataUrl, regexpr("[0-9]+", regmatches(dataUrl, regexpr("workunit_[0-9]+", dataUrl))))
-    } else if (grepl("/o[0-9]+_", dataUrl)) {
-      wu_id <- regmatches(dataUrl, regexpr("[0-9]+", regmatches(dataUrl, regexpr("o[0-9]+_", dataUrl))))
+      wu_id <- sub(".*workunit_([0-9]+).*", "\\1", dataUrl)
     }
   }
   if (!is.na(wu_id)) {

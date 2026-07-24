@@ -47,6 +47,12 @@ tabItem(
           is to take the top n genes for that pathway from each contrast, in order of p-value. You can enter any number above 1.
           If you both check the box and enter a number, the filtering will be done in that order:
           First only genes that are DE in at least one contrast, and then take the top n."
+                ),
+                h4("KEGG Pathway tab"),
+                tags$p(
+                    "Like the GO Pathway tab, but the gene list comes from a KEGG pathway.
+          Enter a KEGG pathway ID (e.g. 04110) and click 'Fetch pathway genes'. The same
+          two limiting options are available. KEGG is only available for human and mouse data."
                 )
             ),
             box(
@@ -191,6 +197,34 @@ tabItem(
                             downloadButton(outputId = "dlTable_tileGO", label = "Download This Table (Excel)"),
                             br(), br(),
                             DT::dataTableOutput(outputId = "TopNTileGOTable")
+                        )
+                    ),
+                    tabPanel(
+                        title = "KEGG Pathway Genes",
+                        column(
+                            width = 3,
+                            helpText("Plot the DE results of features in a KEGG pathway (human/mouse data only). Fetch a pathway, then optionally limit the gene list just like the GO tab."),
+                            textInput(inputId = "tileKeggInput", label = "Enter a KEGG pathway ID", placeholder = "e.g. 04110 or mmu04110", value = ""),
+                            actionButton(inputId = "tileKeggGo", label = "Fetch pathway genes", icon = icon("search")),
+                            uiOutput("tileKeggInfo"),
+                            hr(style = "border-top: 1px solid #000000;"),
+                            h5("Selected KEGG pathway has too many genes? Want to only show genes that are DE in at least one contrast?"),
+                            checkboxInput(inputId = "KEGGTooMany", label = "Yes, limit my pathway", value = FALSE),
+                            h5("Still too many genes? Want to limit to the first n by p-value? If so, enter a number here:"),
+                            numericInput(inputId = "KEGGTooManyN", label = "Top genes by p-value", value = "", min = 5, max = 1000)
+                        ),
+                        column(
+                            width = 9,
+                            h3("Tile Plot"),
+                            textInput(inputId = "filename_tileKEGG", label = NULL, value = "KEGG_Tile", placeholder = "Filename"),
+                            downloadButton(outputId = "dlPlot_tileKEGG", label = "Download This Plot"),
+                            br(), br(),
+                            plotOutput(outputId = "KEGGTileMap", inline = TRUE),
+                            br(), br(),
+                            h3("Table"),
+                            downloadButton(outputId = "dlTable_tileKEGG", label = "Download This Table (Excel)"),
+                            br(), br(),
+                            DT::dataTableOutput(outputId = "TopNTileKEGGTable")
                         )
                     )
                 )

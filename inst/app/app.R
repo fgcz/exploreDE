@@ -188,7 +188,7 @@ ui <- dashboardPage(
             if (event.name === 'tabs') {
               var multiTabs = ['multiDataSelectionTab', 'multiDETableTab', 'multiBoxplotTab',
                                'multiUpsetPlotTab', 'multiTilePlotTab', 'multiBubbleTab',
-                               'multiHeatmapTab', 'multiKeggTab'];
+                               'multiPathwaySelectTab', 'multiHeatmapTab', 'multiKeggTab'];
               if (multiTabs.indexOf(event.value) !== -1) {
                 $('body').addClass('multi-active');
               } else {
@@ -222,6 +222,7 @@ ui <- dashboardPage(
       source("ui-tab-multi-upset.R", local = TRUE)$value,
       source("ui-tab-multi-tile.R", local = TRUE)$value,
       source("ui-tab-multi-bubble.R", local = TRUE)$value,
+      source("ui-tab-multi-pathway-select.R", local = TRUE)$value,
       source("ui-tab-multi-heatmap.R", local = TRUE)$value,
       source("ui-tab-multi-kegg.R", local = TRUE)$value
     ),
@@ -275,6 +276,7 @@ server <- function(input, output, session) {
   source("server-multi-de-table.R", local = TRUE)
   source("server-multi-upset.R", local = TRUE)
   source("server-multi-bubble.R", local = TRUE)
+  source("server-multi-pathway-select.R", local = TRUE)
   source("server-multi-heatmap.R", local = TRUE)
   source("server-multi-boxplot.R", local = TRUE)
   source("server-multi-tile.R", local = TRUE)
@@ -352,7 +354,7 @@ server <- function(input, output, session) {
       )
       if (has_go) {
         pathwayItems <- c(pathwayItems, list(
-          menuItem(text = "GO Tile Plots", tabName = "goTileTab", icon = icon("table"))
+          menuItem(text = "Pathway Tile Plots", tabName = "goTileTab", icon = icon("table"))
         ))
       }
       if (keggSpeciesSupported) {
@@ -395,10 +397,13 @@ server <- function(input, output, session) {
           multiBubbleItem <- menuItem(text = "Pathway Bubble Plots", tabName = "multiBubbleTab", icon = icon("circle"))
           multiBubbleItem$attribs$class <- paste(multiBubbleItem$attribs$class, "multi-menu-item")
 
+          multiPathwaySelectItem <- menuItem(text = "Pathway Selection", tabName = "multiPathwaySelectTab", icon = icon("diagram-project"))
+          multiPathwaySelectItem$attribs$class <- paste(multiPathwaySelectItem$attribs$class, "multi-menu-item")
+
           multiHeatmapItem <- menuItem(text = "Pathway Heatmaps", tabName = "multiHeatmapTab", icon = icon("fire"))
           multiHeatmapItem$attribs$class <- paste(multiHeatmapItem$attribs$class, "multi-menu-item")
 
-          multiPathwayItems <- list(multiBubbleItem, multiHeatmapItem)
+          multiPathwayItems <- list(multiBubbleItem, multiPathwaySelectItem, multiHeatmapItem)
 
           if (keggSpeciesSupported) {
             multiKeggItem <- menuItem(text = "KEGG Pathway Plots", tabName = "multiKeggTab", icon = icon("egg"))

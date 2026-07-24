@@ -345,12 +345,22 @@ is_url <- function(dataDir) {
 # dataDir <- "/srv/gstore/projects/p23793/o32655_CountQC_2023-10-05--18-33-15/Count_QC/counts-sswoowrqapiv-EzResult.RData"
 # dataDir <- "/srv/gstore/projects/p23793/o32655_CountQC_2023-10-05--18-33-15/Count_QC/counts-sswoowrqapiv-EzResult.RData" # CountQC
 # dataDir <- "https://fgcz-ms.uzh.ch/public/pStore/p39763/bfabric/Proteomics/exploreDE/2025/2025-11/2025-11-03/workunit_335997/3012890.rds" # Proteomics
+# https://fgcz-ms.uzh.ch/public/pStore/p41085/bfabric/Proteomics/exploreDE/2026/2026-03/2026-03-18/workunit_342581/3112919.rds
 # dataDir <- "/srv/gstore/projects/p39374/o39634_DESeq2_IVD_Disc_Matrix--over--IVD_unstimulated_2025-11-13--09-20-35/IVD_Disc_Matrix--over--IVD_unstimulated" # twoFactor
 # dataDir <- "/srv/gstore/projects/p38738/o40056_EdgeR_HDM_F2_STI--over--HDM_F2_2025-11-30--08-06-19/HDM_F2_STI--over--HDM_F2"
 # dataDir <- "/srv/gstore/projects/p38738/o40056_EdgeR_HDM_F2--over--HDM_FR2_2025-12-03--11-48-47/HDM_F2--over--HDM_FR2"
 dataDir <- "/srv/gstore/projects/p29284/o36981_EdgeR_HR2_B_cells--over--HR1_B_cells_2025-06-27--09-16-12/HR2_B_cells--over--HR1_B_cells"
 dataUrl <- "p29284/o36981_EdgeR_HR2_B_cells--over--HR1_B_cells_2025-06-27--09-16-12/HR2_B_cells--over--HR1_B_cells"
 dataDir <- "/srv/gstore/projects/p29779/o38737_DESeq2_AP_C_shp65_w_HP--over--AP_C_shp65_wo_HP_2025-07-29--10-21-00/AP_C_shp65_w_HP--over--AP_C_shp65_wo_HP"
+dataDir <- "/srv/gstore/projects/p36911/o39664_o37783_o39124_o38710_o41353_ExploreMageckCounts_2026-04-09--15-07-24/ExploreMageckCounts/counts-yuunbieawvpw-EzResult.RData"
+
+# ProteinLevel DEA (normal, used in 90%)
+"https://fgcz-ms.uzh.ch/public/pStore/p23078/bfabric/Proteomics/exploreDE/2026/2026-03/2026-03-10/workunit_342063/3106962.rds"
+# PTM-(phospho)-DEA
+"https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335485/2997996.rds"
+# PeptideLevelDEA
+"https://fgcz-ms.uzh.ch/public/pStore/p23078/bfabric/Proteomics/exploreDE/2026/2026-03/2026-03-10/workunit_342065/3106968.rds"
+
 username <- Sys.getenv("SHINYPROXY_USERNAME")
 if (is_url(dataDir)) {
   se <- readRDS(url(dataDir))  # If it's a URL

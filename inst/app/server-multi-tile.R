@@ -1,6 +1,9 @@
 # Multi-Contrast Tile Plot Server Logic
 
-tilePlots <- reactiveValues(top = NULL, custom = NULL, go = NULL, mat1 = NULL, df3 = NULL, custom_df3 = NULL, go_df3 = NULL)
+tilePlots <- reactiveValues(top = NULL, custom = NULL, go = NULL, kegg = NULL, mat1 = NULL, df3 = NULL, custom_df3 = NULL, go_df3 = NULL, kegg_df3 = NULL)
+
+# Multi KEGG tile: species detection + pathway-gene fetch (human/mouse only)
+multiTileKegg <- reactiveValues(keggCode = NULL, cache = list(), currentGenes = NULL, currentPathwayName = NULL, currentKeggId = NULL)
 
 multiMatReactive <- eventReactive(multiDeReactive$results, {
     req(multiDeReactive$results)
@@ -212,6 +215,110 @@ observe({
 
     updateSliderInput(session = session, inputId = "figHeightTile", value = max(100, valH))
     # updateSliderInput(session = session, inputId = "figWidthTile", value = max(100, valW))
+})
+
+# Detect species for the KEGG tile tab; hide the tab for unsupported species
+# (mirrors server-multi-kegg.R: human/mouse only, from the first contrast's refBuild)
+observe({
+    req(multiDeReactive$results)
+    req(length(multiDeReactive$results) > 0)
+    refBuild <- multiDeReactive$results[[1]]$param$refBuild
+    if (is.null(refBuild) && !is.null(multiDeReactive$results[[1]]$param$ezRef)) {
+        refBuild <- multiDeReactive$results[[1]]$param$ezRef@refBuild
+    }
+    code <- NULL
+    if (!is.null(refBuild)) {
+        if (grepl("Homo_sapiens|GRCh|hg", refBuild, ignore.case = TRUE)) {
+            code <- "hsa"
+        } else if (grepl("Mus_musculus|GRCm|mm", refBuild, ignore.case = TRUE)) {
+            code <- "mmu"
+        }
+    }
+    multiTileKegg$keggCode <- code
+    if (is.null(code)) {
+        hideTab(inputId = "multiTileTabs", target = "KEGG Pathway Genes")
+    } else {
+        showTab(inputId = "multiTileTabs", target = "KEGG Pathway Genes")
+    }
+})
+
+# KEGG tile: fetch pathway genes on button click (mirrors server-heatmap2.R)
+observeEvent(input$tileKeggGo, {
+    req(input$tileKeggInput)
+    req(multiTileKegg$keggCode)
+    req(length(multiDeReactive$results) > 0)
+
+    keggCode     <- multiTileKegg$keggCode
+    pathwayInput <- trimws(input$tileKeggInput)
+    pathwayId    <- if (grepl("^[0-9]", pathwayInput)) paste0(keggCode, pathwayInput) else pathwayInput
+
+    if (pathwayId %in% names(multiTileKegg$cache)) {
+        cached <- multiTileKegg$cache[[pathwayId]]
+        multiTileKegg$currentGenes       <- cached$genes
+        multiTileKegg$currentPathwayName <- cached$name
+        multiTileKegg$currentKeggId      <- pathwayId
+        return()
+    }
+
+    # A table carrying the ID columns needed to map ENTREZ -> feature_id
+    firstTable <- NULL
+    if (!is.null(multiDeReactive$results[[1]]$degResultsTable)) {
+        firstTable <- multiDeReactive$results[[1]]$degResultsTable
+    } else if (!is.null(multiDeReactive$results[[1]]$seqAnno)) {
+        firstTable <- multiDeReactive$results[[1]]$seqAnno
+    } else if (!is.null(multiDeReactive$results[[1]]$seqAnnoList)) {
+        firstTable <- multiDeReactive$results[[1]]$seqAnnoList[[1]]
+    }
+    req(firstTable)
+
+    result <- withProgress(message = "Fetching KEGG pathway genes...", {
+        tryCatch({
+            pathInfo    <- KEGGREST::keggGet(pathwayId)
+            pathwayName <- sub(" - .*$", "", pathInfo[[1]]$NAME)
+
+            geneLinks <- KEGGREST::keggLink(keggCode, paste0("path:", pathwayId))
+            entrezIds <- gsub(paste0(keggCode, ":"), "", geneLinks)
+
+            if ("entrez_id" %in% colnames(firstTable)) {
+                keggFeatureIds <- firstTable$feature_id[firstTable$entrez_id %in% entrezIds]
+            } else {
+                idMapping   <- pathview::eg2id(entrezIds, category = c("SYMBOL", "ENSEMBL"), org = keggCode)
+                geneSymbols <- na.omit(idMapping[, "SYMBOL"])
+                ensemblIds  <- na.omit(idMapping[, "ENSEMBL"])
+                matchByName <- firstTable$feature_id[firstTable$gene_name %in% geneSymbols]
+                matchById   <- firstTable$feature_id[firstTable$gene_id %in% ensemblIds]
+                keggFeatureIds <- unique(c(matchByName, matchById))
+            }
+
+            list(genes = keggFeatureIds, name = pathwayName)
+        }, error = function(e) {
+            showNotification(
+                paste("Failed to fetch KEGG pathway:", e$message),
+                type = "error", duration = 8
+            )
+            NULL
+        })
+    })
+
+    if (!is.null(result)) {
+        multiTileKegg$cache[[pathwayId]]  <- result
+        multiTileKegg$currentGenes        <- result$genes
+        multiTileKegg$currentPathwayName  <- result$name
+        multiTileKegg$currentKeggId       <- pathwayId
+    } else {
+        multiTileKegg$currentGenes        <- NULL
+        multiTileKegg$currentPathwayName  <- NULL
+        multiTileKegg$currentKeggId       <- NULL
+    }
+})
+
+output$tileKeggInfo <- renderUI({
+    req(multiTileKegg$currentPathwayName)
+    tagList(
+        hr(),
+        tags$b("Pathway: "), multiTileKegg$currentPathwayName, br(),
+        tags$b("Genes found in dataset: "), length(multiTileKegg$currentGenes)
+    )
 })
 
 observeEvent(
@@ -576,11 +683,15 @@ observeEvent(
         input$tileGenesPathway
         input$GOTooMany
         input$GOTooManyN
+        input$KEGGTooMany
+        input$KEGGTooManyN
+        multiTileKegg$currentGenes
     },
     {
         customList <- list(
             "Custom" = list(),
-            "GO" = list()
+            "GO" = list(),
+            "KEGG" = list()
         )
 
         hGT <- NULL
@@ -615,7 +726,15 @@ observeEvent(
             }
         }
 
-        lapply(c("Custom", "GO"), function(plotty) {
+        # KEGG pathway genes (fetched via the "Fetch pathway genes" button)
+        if (!is.null(multiTileKegg$currentGenes) && length(multiTileKegg$currentGenes) > 0) {
+            customList[["KEGG"]][["highlightersC"]] <- multiTileKegg$currentGenes
+            customList[["KEGG"]][["plotTitle"]] <- paste0(
+                multiTileKegg$currentPathwayName %||% multiTileKegg$currentKeggId, " Tile Plot"
+            )
+        }
+
+        lapply(c("Custom", "GO", "KEGG"), function(plotty) {
             if (length(customList[[plotty]][["highlightersC"]]) >= 1) { # Changed from 3 to 1 to allow smaller selections
                 # Determine p-value type
                 if (input$pTypeTile == "Raw") {
@@ -632,16 +751,25 @@ observeEvent(
                 # Some GO Pathways have hundreds or thousands of genes, and plotting them all might be ugly, so we can filter the table in two ways
                 # This can either be done separately or additionally
                 # 1. we can make sure any gene is DE in at least one contrast
-                if (input$GOTooMany) {
+                # Per-source "too many genes" filters: KEGG uses its own controls,
+                # GO (and Custom) use the GO controls as before.
+                if (plotty == "KEGG") {
+                    tooManyBox <- isTRUE(input$KEGGTooMany)
+                    tooManyN   <- input$KEGGTooManyN
+                } else {
+                    tooManyBox <- isTRUE(input$GOTooMany)
+                    tooManyN   <- input$GOTooManyN
+                }
+                if (tooManyBox) {
                     df3 <- df3[apply(df3[grep(pTypeTile, colnames(df3))] <= as.numeric(input$pThresholdTile), 1, any), ]
                 }
 
                 # 2. we can select the top N genes from each contrast for that pathway
-                if (!is.na(input$GOTooManyN)) {
+                if (!is.na(tooManyN)) {
                     tooManyHighlighters <- list()
                     for (n in names(multiDeReactive$results)) {
                         df4 <- df3[order(df3[, grep(paste0(n, "_", pTypeTile), colnames(df3))]), ]
-                        tooManyHighlighters[[n]] <- df4$Gene[1:min(nrow(df4), input$GOTooManyN)]
+                        tooManyHighlighters[[n]] <- df4$Gene[1:min(nrow(df4), tooManyN)]
                     }
                     tooManyHighlighters <- unique(unlist(tooManyHighlighters))
                     df3 <- df3[which(df3$Gene %in% tooManyHighlighters), ]
@@ -747,43 +875,28 @@ observeEvent(
                         heatmap_legend_param = list(labels_gp = gpar(fontsize = input$textSizeTile), title_gp = gpar(fontsize = input$textSizeTile, fontface = "bold"))
                     )
 
-                    # Store in reactive values
-                    if (plotty == "Custom") {
-                        tilePlots$custom <- hm
-                        tilePlots$custom_df3 <- df3
-                    } else {
-                        tilePlots$go <- hm
-                        tilePlots$go_df3 <- df3
-                    }
+                    # Store in reactive values (keyed by lower-case source name)
+                    tilePlots[[tolower(plotty)]] <- hm
+                    tilePlots[[paste0(tolower(plotty), "_df3")]] <- df3
                 } else {
                     # If no genes remain after filtering, clear the plot and table
-                    if (plotty == "Custom") {
-                        tilePlots$custom <- NULL
-                        tilePlots$custom_df3 <- NULL
-                    } else {
-                        tilePlots$go <- NULL
-                        tilePlots$go_df3 <- NULL
-                    }
+                    tilePlots[[tolower(plotty)]] <- NULL
+                    tilePlots[[paste0(tolower(plotty), "_df3")]] <- NULL
                 }
             } else {
                 # If no highlighters, clear the plot and table
-                if (plotty == "Custom") {
-                    tilePlots$custom <- NULL
-                    tilePlots$custom_df3 <- NULL
-                } else {
-                    tilePlots$go <- NULL
-                    tilePlots$go_df3 <- NULL
-                }
+                tilePlots[[tolower(plotty)]] <- NULL
+                tilePlots[[paste0(tolower(plotty), "_df3")]] <- NULL
             }
         })
     }
 )
 
-# Output Custom/GO heatmaps and tables (Top Level)
-lapply(c("Custom", "GO"), function(plotty) {
+# Output Custom/GO/KEGG heatmaps and tables (Top Level)
+lapply(c("Custom", "GO", "KEGG"), function(plotty) {
     output[[paste0(plotty, "TileMap")]] <- renderPlot(
         {
-            hm <- if (plotty == "Custom") tilePlots$custom else tilePlots$go
+            hm <- tilePlots[[tolower(plotty)]]
             validate(need(!is.null(hm), "No genes selected or meeting criteria for this plot."))
             draw(hm, merge_legend = TRUE)
         },
@@ -800,8 +913,8 @@ lapply(c("Custom", "GO"), function(plotty) {
             )
         },
         content = function(file) {
-            if (plotty == "Custom") req(tilePlots$custom) else req(tilePlots$go)
-            hm <- if (plotty == "Custom") tilePlots$custom else tilePlots$go
+            req(tilePlots[[tolower(plotty)]])
+            hm <- tilePlots[[tolower(plotty)]]
             export_plot_standard(
                 plot_object = hm,
                 filename = file,
@@ -814,8 +927,8 @@ lapply(c("Custom", "GO"), function(plotty) {
     )
 
     output[[paste0("TopNTile", plotty, "Table")]] <- renderDataTable({
-        if (plotty == "Custom") req(tilePlots$custom_df3) else req(tilePlots$go_df3)
-        df3 <- if (plotty == "Custom") tilePlots$custom_df3 else tilePlots$go_df3
+        req(tilePlots[[paste0(tolower(plotty), "_df3")]])
+        df3 <- tilePlots[[paste0(tolower(plotty), "_df3")]]
 
         DT::datatable(
             data = df3,
@@ -852,8 +965,8 @@ lapply(c("Custom", "GO"), function(plotty) {
             )
         },
         content = function(file) {
-            if (plotty == "Custom") req(tilePlots$custom_df3) else req(tilePlots$go_df3)
-            df3 <- if (plotty == "Custom") tilePlots$custom_df3 else tilePlots$go_df3
+            req(tilePlots[[paste0(tolower(plotty), "_df3")]])
+            df3 <- tilePlots[[paste0(tolower(plotty), "_df3")]]
             export_excel_standard(
                 df = df3,
                 filename = file,

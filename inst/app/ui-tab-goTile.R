@@ -11,10 +11,11 @@ tabItem(
         collapsible = TRUE,
         collapsed = TRUE,
         tags$p(
-          "Select a GO Term to plot. All the features in that pathway will be displayed.
-          Cells are coloured by log2 fold change, and have stars denoting p-value. 
-          You can change whether the raw or adjusted p-values are displayed. You can
-          also only display features with a p-value of <= 0.05."
+          "Select one or more GO Terms to plot, and/or fetch a KEGG pathway. All the
+          features in each pathway will be displayed as a tile. Cells are coloured by
+          log2 fold change, and have stars denoting p-value. You can change whether the
+          raw or adjusted p-values are displayed, and optionally limit the features shown
+          to those passing a log2 fold change and p-value threshold."
         )
       ),
       box(
@@ -22,14 +23,33 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        h4("GO Tile Input settings"),
+        h4("Tile Input settings"),
         selectizeInput(
           inputId = "goTileInput",
           choices = NULL,
-          multiple = TRUE, 
-          label = "Enter the GO Term you wish to plot",
+          multiple = TRUE,
+          label = "Enter the GO Term(s) you wish to plot",
           options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
         ),
+        # KEGG pathway tile — RNASeq + supported species (hsa/mmu/rno) only.
+        conditionalPanel(
+          condition = "output.goTileKeggSupported",
+          tags$b("Or plot a KEGG pathway"),
+          textInput(
+            inputId = "goTileKeggInput",
+            label = "Enter a KEGG pathway ID",
+            placeholder = "e.g. 04110 or mmu04110",
+            value = ""
+          ),
+          actionButton(
+            inputId = "goTileKeggGo",
+            label = "Fetch pathway genes",
+            icon = icon("search")
+          ),
+          uiOutput("goTileKeggInfo"),
+          helpText("The fetched pathway is shown as an additional tile alongside any GO terms.")
+        ),
+        hr(style = "border-top: 1px solid #000000;"),
         selectInput(
           inputId = "pTypeGoTile",
           choices = c("FDR", "Raw"),
@@ -43,11 +63,18 @@ tabItem(
         ),
         checkboxInput(
           inputId = "degOnlyGoTile",
-          label = "Only show features with significant p-values?",
+          label = "Only show significant features?",
           value = FALSE
         ),
+        # Significance limits, revealed only when the box above is ticked
+        # (mirrors the heatmap KEGG significance panel).
+        conditionalPanel(
+          condition = "input.degOnlyGoTile == true",
+          numericInput(inputId = "lfcGoTile", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
+          selectInput(inputId = "pThresholdGoTile", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
+        ),
         hr(style = "border-top: 1px solid #000000;"), 
-        h4("GO Tile Plot display settings"),
+        h4("Pathway Tile Plot display settings"),
         # Select whether to cluster the rows (features):
         checkboxInput(
           inputId = "clusterRowsGoTile",
@@ -100,7 +127,7 @@ tabItem(
     column(
       width = 9,
       box(
-        title = "Go Tile Plot",
+        title = "Pathway Tile Plot",
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
@@ -110,8 +137,8 @@ tabItem(
             selectInput(inputId = "downloadFormatGoTile", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
             selectInput(inputId = "dpiGoTile", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
         ),
-        textInput(inputId = "filename_goTile", label = "Enter filename", value = "GO_Tile"),
-        downloadButton(outputId = "dlGoTilePlot", label = "Download GO Tile Plot"),
+        textInput(inputId = "filename_goTile", label = "Enter filename", value = "Pathway_Tile"),
+        downloadButton(outputId = "dlGoTilePlot", label = "Download Pathway Tile Plot"),
         br(),
         plotOutput("goTileOutput", inline = TRUE)
       ) # end of box

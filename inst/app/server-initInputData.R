@@ -189,6 +189,7 @@ if (!is.null(dataUrl)) {
   projectFromUrl <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
 } else if (is.null(dataUrl)) {
   dataDir <- "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff/" # teaching dataset
+  # dataDir <- "/srv/gstore/projects/p29779/o42234_ExploreMageckCounts_2026-07-24--10-25-25/ExploreMageckCounts/counts-kpavroyajloc-EzResult.RData"
   # Infer dataType from whichever demo dataDir was last (un)commented above —
   # avoids the "I uncommented mageck but forgot to flip dataType" footgun.
   dataType <- if (grepl("Proteomics|prolfqua", dataDir, ignore.case = TRUE)) {
