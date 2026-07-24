@@ -8,6 +8,15 @@
 # is verified by eye / shinytest2 end-to-end, not here.
 # ============================================================================
 
+# helperFunctions.R calls functions from these packages without namespace
+# qualifiers (it was written for a Shiny app context where all are attached).
+# Attach them explicitly here since devtools::load_all() doesn't attach Imports.
+library(grid)           # gpar()
+library(dendextend)     # labels_colors<-
+library(ComplexHeatmap) # HeatmapAnnotation, Heatmap, draw
+library(circlize)       # colorRamp2
+library(RColorBrewer)   # brewer.pal
+
 make_rep_input <- function(overrides = list()) {
   base <- list(
     replicabilityTextSize      = 12,
