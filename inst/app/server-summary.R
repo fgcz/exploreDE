@@ -1,26 +1,22 @@
+eds <- inputDataReactive()$.eds
+req(eds)
+se <- eds$backend()   # SE-only escape hatch for legacy ezRun helpers below
+
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
-  req(inputDataReactive())
-  if (inputDataReactive()$dataType == "RNASeq") {
-    return(inputDataReactive()$design)
-  } else if (inputDataReactive()$dataType == "proteomics") {
+  if (eds$data_type() == "RNASeq") {
+    return(eds$contrast_label(eds$primary_contrast()))
+  } else if (eds$omics_class() == "proteomics") {
     if (isTruthy(input$contrastSelected)) {
       return(input$contrastSelected)
     } else {
       return("No contrast selected")
     }
-  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
-    return(inputDataReactive()$design)
+  } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+    return(eds$data_type())   # no contrast — legacy used the dataType string
   }
   return("Unknown")
 })
-
-req(!is.null(inputDataReactive()$se))
-
-se <- inputDataReactive()$se
-factorNames <- inputDataReactive()$factorNames
-countList <- inputDataReactive()$countList
-factorLevels <- inputDataReactive()$factorLevels
 
 catalystCols <- c(
   "#DC050C", "#FB8072", "#1965B0", "#7BAFDE", "#882E72", "#B17BA6",
@@ -63,11 +59,13 @@ outputOptions(output, "colourPaletteUI", suspendWhenHidden = FALSE)
 # Colour picker for each of the groups in Condition:
 observeEvent(input$colourPalette, {
   output$colourPickerUI <- renderUI({
-    lapply(seq_along(factorLevels), function(i) {
-      lapply(seq_along(factorLevels[[i]]), function(j) {
+    factor_names <- eds$factor_names()
+    lapply(factor_names, function(fname) {
+      levs <- eds$factor_levels(fname)
+      lapply(seq_along(levs), function(j) {
         colourpicker::colourInput(
-          inputId = paste0("GroupColour", names(factorLevels)[[i]], factorLevels[[i]][[j]]),
-          label = paste0(names(factorLevels)[i], ": ", factorLevels[[i]][j]),
+          inputId = paste0("GroupColour", fname, levs[[j]]),
+          label = paste0(fname, ": ", levs[[j]]),
           value = rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j],
           palette = "square",
           closeOnClick = TRUE,
@@ -123,8 +121,8 @@ observeEvent(input$importColourFile, {
   }
 })
 
-observeEvent(inputDataReactive()$dataType, {
-  if (inputDataReactive()$dataType == "RNASeq") {
+observeEvent(eds$data_type(), {
+  if (eds$data_type() == "RNASeq") {
     output$linkToMultiDEG <- renderUI({
       box(
         title = "Compare Multiple DE Tests!",
@@ -173,7 +171,7 @@ observeEvent(inputDataReactive()$dataType, {
         hr(style = "border-top: 1px solid #000000;"),
         h4("Download Count Files"),
         helpText("Select the type of count data you wish to download for all samples in the dataset."),
-        selectizeInput(inputId = "downloadCount", "Select Count Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
+        selectizeInput(inputId = "downloadCount", "Select Count Table", choices = eds$assay_names(), selected = eds$assay_names()[1], width = "33%"),
         textInput(inputId = "filename_summary", label = "File name", value = "Counts", placeholder = "Filename", width = "33%"),
         downloadButton("dlTable_summary", "Download selected count file"),
         checkboxInput(inputId = "log2DownloadedCounts", label = "Log2 Counts?", value = FALSE),
@@ -182,7 +180,7 @@ observeEvent(inputDataReactive()$dataType, {
         helpText("Adds DE statistics from the current contrast as extra columns.")
       )
     })
-  } else if (inputDataReactive()$dataType == "proteomics") {
+  } else if (eds$omics_class() == "proteomics") {
     # No methods download for proteomics
     output$methodsDownloadUI <- renderUI({ NULL })
 
@@ -192,13 +190,15 @@ observeEvent(inputDataReactive()$dataType, {
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        tags$p("If you plan to publish results generated in b-fabric and prolfqua, and/or figures from this app, please consider citing us!"),
+        tags$p("If you plan to publish results generated in b-fabric and prolfqua/prolfquapp, and/or figures from this app, please consider citing us!"),
         tags$b("prolfqua: A Comprehensive R‑Package for Proteomics Differential Expression Analysis, Wolski et al., 2023"),
         tags$p("Witold E. Wolski, Paolo Nanni, Jonas Grossmann, Maria d’Errico, Ralph Schlapbach, and Christian Panse. Journal of Proteome Research 2023 22 (4), 1092-1104. DOI: 10.1021/acs.jproteome.2c00441"),
+        tags$b("prolfquapp: Shiny Application for Proteomics Differential Expression Analysis, Wolski et al."),
+        tags$p("Witold E. Wolski, et al. prolfquapp: Differential Expression Analysis for Proteomics Data. https://github.com/fgcz/prolfquapp"),
         tags$b("b-fabric: Panse et al., 2022"),
-        tags$p('Panse, Christian, Trachsel, Christian and Türker, Can. "Bridging data management platforms and visualization tools to enable ad-hoc and smart analytics in life sciences" Journal of Integrative Bioinformatics, vol. 19, no. 4, 2022, pp. 20220031. https://doi.org/10.1515/jib-2022-0031'),
+        tags$p("Panse, Christian, Trachsel, Christian and Türker, Can. 'Bridging data management platforms and visualization tools to enable ad-hoc and smart analytics in life sciences' Journal of Integrative Bioinformatics, vol. 19, no. 4, 2022, pp. 20220031. https://doi.org/10.1515/jib-2022-0031"),
         tags$b("exploreDE Shiny app: Leary and Rehrauer, 2023"),
-        tags$p("Peter Leary, & Hubert Rehrauer. (2023). exploreDEG Interactive Shiny App. Zenodo. https://doi.org/10.5281/zenodo.10026461"),
+        tags$p("Peter Leary, & Hubert Rehrauer. (2023). exploreDE Interactive Shiny App. Zenodo. https://doi.org/10.5281/zenodo.13927692"),
         tags$p("For the full list of citations required for the generation of these results, and/or for a written methods section, please email us at proteomics@fgcz.ethz.ch.")
       )
     })
@@ -207,7 +207,7 @@ observeEvent(inputDataReactive()$dataType, {
         hr(style = "border-top: 1px solid #000000;"),
         h4("Download Feature Value Files"),
         helpText("Select the type of value data you wish to download for all samples in the dataset. For proteomics, this would be intensity values."),
-        selectizeInput(inputId = "downloadCount", "Select Value Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
+        selectizeInput(inputId = "downloadCount", "Select Value Table", choices = eds$assay_names(), selected = eds$assay_names()[1], width = "33%"),
 
         textInput(inputId = "filename_summary", label = NULL, value = "Counts", placeholder = "Filename"),
         downloadButton("dlTable_summary", "Download selected file"),
@@ -215,7 +215,7 @@ observeEvent(inputDataReactive()$dataType, {
         helpText("Adds DE statistics from the current contrast as extra columns.")
       )
     })
-  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+  } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
     # No methods download for CountQC
     output$methodsDownloadUI <- renderUI({ NULL })
 
@@ -224,7 +224,7 @@ observeEvent(inputDataReactive()$dataType, {
         hr(style = "border-top: 1px solid #000000;"),
         h4("Download Count Files"),
         helpText("Select the type of count data you wish to download for all samples in the dataset."),
-        selectizeInput(inputId = "downloadCount", "Select Count Table", choices = names(inputDataReactive()$countList), selected = names(inputDataReactive()$countList)[1], width = "33%"),
+        selectizeInput(inputId = "downloadCount", "Select Count Table", choices = eds$assay_names(), selected = eds$assay_names()[1], width = "33%"),
 
         textInput(inputId = "filename_summary", label = NULL, value = "Counts", placeholder = "Filename"),
         downloadButton("dlTable_summary", "Download selected count file"),
@@ -564,14 +564,30 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
   return(sections)
 }
 
+# Workunit link — extract B-Fabric workunit ID from the dataset URL
+output$workunitsLinkUI <- renderUI({
+  wu_id <- NA_character_
+  if (!is.null(dataUrl) && nzchar(dataUrl)) {
+    if (grepl("workunit_[0-9]+", dataUrl)) {
+      wu_id <- regmatches(dataUrl, regexpr("[0-9]+", regmatches(dataUrl, regexpr("workunit_[0-9]+", dataUrl))))
+    } else if (grepl("/o[0-9]+_", dataUrl)) {
+      wu_id <- regmatches(dataUrl, regexpr("[0-9]+", regmatches(dataUrl, regexpr("o[0-9]+_", dataUrl))))
+    }
+  }
+  if (!is.na(wu_id)) {
+    bf_url <- paste0("https://fgcz-bfabric.uzh.ch/bfabric/userlab/show-workunit.html?id=", wu_id)
+    tags$p(tags$b("Input workunit: "), tags$a(href = bf_url, target = "_blank", paste0("Workunit ", wu_id, " on B-Fabric")))
+  }
+})
+
 # updateSelectInput(session = session, inputId = "downloadCount", choices = names(countList), selected = names(countList)[1])
 
 observe({
   # Create a table of the samples available in this app instance
   output$inputTable <- function() {
-    cD <- inputDataReactive()$dataset
+    cD <- eds$samples()
     cD <- cD %>% rownames_to_column("Sample ID")
-    cD <- cD %>% dplyr::select(all_of(c("Sample ID", inputDataReactive()$factors)))
+    cD <- cD %>% dplyr::select(all_of(c("Sample ID", eds$factor_names())))
     kable(
       cD,
       row.names = FALSE, format = "html"
@@ -590,29 +606,30 @@ observe({
       )
     },
     content = function(file) {
-      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
-        ctdl <- countList[[input$downloadCount]]
-        if (input$log2DownloadedCounts & !input$downloadCount %in% c("Normalised + Log2", "VST")) {
+      if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
+        ctdl <- eds$assay(input$downloadCount)
+        if (input$log2DownloadedCounts & !input$downloadCount %in% c("normalised_log2", "vst")) {
           ctdl <- log2(ctdl + 1)
         }
         ctdl <- as.data.frame(ctdl) %>% rownames_to_column("feature_id")
 
-        # Try to add annotation columns if they exist
-        anno_cols <- c("gene_id", "transcript_id", "feature_id")
-        valid_cols <- intersect(anno_cols, colnames(inputDataReactive()$seqAnno))
-        if (length(valid_cols) > 0) {
-          ctdl <- ctdl %>% left_join(inputDataReactive()$seqAnno[, valid_cols, drop = FALSE], by = "feature_id")
-        }
+        # Try to add annotation columns if they exist (RNA-seq has DE; CountQC does not)
+        if (eds$data_type() == "RNASeq") {
+          seqAnno <- eds$de(eds$primary_contrast())
+          anno_cols <- c("gene_id", "transcript_id", "feature_id")
+          valid_cols <- intersect(anno_cols, colnames(seqAnno))
+          if (length(valid_cols) > 0) {
+            ctdl <- ctdl %>% left_join(seqAnno[, valid_cols, drop = FALSE], by = "feature_id")
+          }
 
-        # Add DE statistics if requested (RNASeq only, not CountQC)
-        if (inputDataReactive()$dataType == "RNASeq" &&
-            !is.null(input$includeDEStats) &&
-            input$includeDEStats) {
-          de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-          valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
-          if (length(valid_de_cols) > 1) {  # More than just feature_id
-            de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
-            ctdl <- ctdl %>% left_join(de_data, by = "feature_id")
+          # Add DE statistics if requested (RNASeq only, not CountQC)
+          if (!is.null(input$includeDEStats) && input$includeDEStats) {
+            de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
+            valid_de_cols <- intersect(de_cols, colnames(seqAnno))
+            if (length(valid_de_cols) > 1) {
+              de_data <- seqAnno[, valid_de_cols, drop = FALSE]
+              ctdl <- ctdl %>% left_join(de_data, by = "feature_id")
+            }
           }
         }
 
@@ -622,17 +639,19 @@ observe({
           sheet_name = "Count Data",
           table_name = "CountData"
         )
-      } else if (inputDataReactive()$dataType == "proteomics") {
-        ctdl <- as.data.frame(countList[[input$downloadCount]]) %>% rownames_to_column("feature_id")
+      } else if (eds$omics_class() == "proteomics") {
+        ctdl <- as.data.frame(eds$assay(input$downloadCount)) %>% rownames_to_column("feature_id")
 
         # Add DE statistics if requested
         if (!is.null(input$includeDEStats) &&
             input$includeDEStats &&
-            !is.null(input$contrastSelected)) {
+            !is.null(input$contrastSelected) &&
+            input$contrastSelected %in% eds$contrasts()) {
           de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-          valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
+          seqAnno_c <- eds$de(input$contrastSelected)
+          valid_de_cols <- intersect(de_cols, colnames(seqAnno_c))
           if (length(valid_de_cols) > 1) {
-            de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
+            de_data <- seqAnno_c[, valid_de_cols, drop = FALSE]
             ctdl <- ctdl %>% left_join(de_data, by = "feature_id")
           }
         }
@@ -671,7 +690,7 @@ observe({
       )
     },
     content = function(file) {
-      qs::qsave(x = saved_inputs(), file = file, nthreads = 8)
+      qs2::qs_save(object = saved_inputs(), file = file, nthreads = 8)
     }
   )
 
@@ -685,7 +704,7 @@ observe({
       )
     },
     content = function(file) {
-      qs::qsave(x = inputDataReactive(), file = file, nthreads = 8)
+      qs2::qs_save(object = inputDataReactive(), file = file, nthreads = 8)
     }
   )
 
@@ -701,12 +720,14 @@ observe({
     content = function(file) {
       tryCatch({
         # Only proceed if RNASeq data
-        req(inputDataReactive()$dataType == "RNASeq")
+        req(eds$data_type() == "RNASeq")
 
-        param <- inputDataReactive()$param
-        se <- inputDataReactive()$se
+        # Methods generation is SUSHI/ezRun-only; reach for the SE + param
+        # via the backend escape hatch.
+        se    <- eds$backend()
+        param <- S4Vectors::metadata(se)$param
 
-        # Extract dataDir from attribute
+        # Extract dataDir from attribute (still emitted by the legacy shim)
         dataDir <- attr(inputDataReactive(), "dataDir")
         if (is.null(dataDir)) {
           dataDir <- ""
@@ -746,7 +767,7 @@ observe({
 
       # Prepare raw reads text
       raw_reads_text <- ""
-      dataset <- inputDataReactive()$dataset
+      dataset <- eds$samples()
       if (!is.null(dataset)) {
         # Look for common read count column names (Reads, Total Reads, Read Count, etc)
         # Look for common read count column names (Reads, Total Reads, Read Count, etc)
@@ -904,12 +925,13 @@ observe({
   )
 
   # Proteomics: Create metadata table
-  if (inputDataReactive()$dataType == "proteomics") {
+  if (eds$omics_class() == "proteomics") {
     output$settingsTable <- function() {
-      if ("contrasts" %in% names(metadata(inputDataReactive()$se))) {
-        contrastSummary <- as.data.frame(metadata(inputDataReactive()$se)$contrasts)
+      md <- S4Vectors::metadata(eds$backend())
+      if ("contrasts" %in% names(md)) {
+        contrastSummary <- as.data.frame(md$contrasts)
       } else {
-        contrastSummary <- as.data.frame(metadata(inputDataReactive()$se))
+        contrastSummary <- as.data.frame(md)
       }
       kable(
         contrastSummary,
@@ -924,9 +946,9 @@ observe({
   }
 
   # RNA Seq: Create settings and thresholds table
-  if (inputDataReactive()$dataType == "RNASeq") {
+  if (eds$data_type() == "RNASeq") {
     output$settingsTable <- function() {
-      kable(makeCountResultSummary(inputDataReactive()$param, se),
+      kable(makeCountResultSummary(S4Vectors::metadata(se)$param, se),
         row.names = TRUE,
         col.names = "Setting", format = "html"
       ) %>%
@@ -937,10 +959,11 @@ observe({
     }
     output$summaryTable <- function() {
       settings <- character()
-      settings["Number of features:"] <- nrow(se)
-      if (!is.null(rowData(se)$isPresentProbe)) {
+      settings["Number of features:"] <- eds$n_features()
+      seqAnno <- eds$de(eds$primary_contrast())
+      if (!is.null(seqAnno$isPresentProbe)) {
         settings["Number of features with counts above threshold:"] <-
-          sum(rowData(se)$isPresentProbe)
+          sum(seqAnno$isPresentProbe)
       }
       knitr::kable(as.data.frame(settings),
         format = "html",
@@ -951,9 +974,9 @@ observe({
           position = "left"
         )
     }
-  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+  } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
     output$settingsTable <- function() {
-      param <- inputDataReactive()$param
+      param <- S4Vectors::metadata(se)$param
       settings <- character()
 
       if (!is.null(param$refBuild)) settings["Reference:"] <- param$refBuild
@@ -961,7 +984,7 @@ observe({
       if (!is.null(param$signalThreshold)) settings["Log2 signal threshold:"] <- param$signalThreshold
       if (!is.null(param$signalThreshold)) settings["Linear signal threshold:"] <- round(2^param$signalThreshold, 2)
       if (!is.null(param$featureLevel)) settings["Feature level:"] <- param$featureLevel
-      settings["Number of features:"] <- nrow(se)
+      settings["Number of features:"] <- eds$n_features()
       if (!is.null(param$countColumn)) settings["Data Column Used:"] <- param$countColumn
 
       kable(as.data.frame(settings),

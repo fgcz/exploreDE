@@ -7,7 +7,8 @@
 ##   - Intra-group scatter with 3 colour-by flavours
 ##     (GC / Width flavours require gc / featWidth in seqAnno)
 
-req(!is.null(inputDataReactive()$dataType))
+eds <- inputDataReactive()$.eds
+req(eds)
 
 # ---- Sync Settings tabset to the Results tabset -----------------------------
 observeEvent(input$countQcPlotsTabs, ignoreInit = TRUE, {
@@ -42,10 +43,10 @@ countQcFamilyPresets <- list(
 
 # ---- Populate the "colour bars by factor" selector ---------------------------
 observe({
-  req(inputDataReactive()$factors)
-  factors <- inputDataReactive()$factors
-  grouping <- inputDataReactive()$groupingName
-  default <- if (!is.null(grouping) && grouping %in% factors) grouping else factors[[1]]
+  factors <- eds$factor_names()
+  req(length(factors) > 0)
+  grouping <- eds$primary_grouping()
+  default <- if (!is.null(grouping) && !is.na(grouping) && grouping %in% factors) grouping else factors[[1]]
   updateSelectInput(session, "countQcBarColourBy",
                     choices = factors, selected = default)
 })
@@ -55,9 +56,8 @@ observe({
 # factor's levels. Same pattern used by the Boxplots and Heatmaps tabs.
 observeEvent(input$countQcBarColourBy, ignoreInit = FALSE, {
   req(input$countQcBarColourBy)
-  req(inputDataReactive()$dataset)
   fc <- input$countQcBarColourBy
-  dataset <- inputDataReactive()$dataset
+  dataset <- eds$samples()
   req(fc %in% colnames(dataset))
   lvls <- levels(as.factor(dataset[[fc]]))
   output$countQcBarBucketUI <- renderUI({
@@ -85,8 +85,8 @@ observeEvent(input$countQcBarColourBy, ignoreInit = FALSE, {
 # Populate facet-by choices with "(none)" + all factors. The observer rebuilds
 # the facet bucket whenever the user picks a new facet factor.
 observe({
-  req(inputDataReactive()$factors)
-  factors <- inputDataReactive()$factors
+  factors <- eds$factor_names()
+  req(length(factors) > 0)
   updateSelectInput(session, "countQcBarFacetBy",
                     choices = c("(none)", factors),
                     selected = isolate(input$countQcBarFacetBy) %||% "(none)")
@@ -98,7 +98,7 @@ observeEvent(input$countQcBarFacetBy, ignoreInit = FALSE, {
     output$countQcBarFacetBucketUI <- renderUI({ NULL })
     return()
   }
-  dataset <- inputDataReactive()$dataset
+  dataset <- eds$samples()
   req(fc %in% colnames(dataset))
   lvls <- levels(as.factor(dataset[[fc]]))
   output$countQcBarFacetBucketUI <- renderUI({
@@ -124,36 +124,36 @@ observeEvent(input$countQcBarFacetBy, ignoreInit = FALSE, {
 
 # ---- Populate count-type selector (intra-group) ------------------------------
 observe({
-  req(inputDataReactive()$countList)
-  choices <- names(inputDataReactive()$countList)
-  default <- if ("Normalised" %in% choices) "Normalised" else choices[[1]]
+  assay_keys <- eds$assay_names()
+  req(length(assay_keys) > 0)
+  count_choices <- setNames(assay_keys, vapply(assay_keys, eds$assay_label, character(1)))
+  default <- if ("normalised" %in% assay_keys) "normalised" else assay_keys[[1]]
   updateSelectInput(session, "countQcIntraCountType",
-                    choices = choices, selected = default)
+                    choices = count_choices, selected = default)
 })
 
 # ---- Populate highlight selectize -------------------------------------------
 observe({
-  req(inputDataReactive()$genes)
   updateSelectizeInput(
     session = session, inputId = "countQcHighlightSelect",
-    choices = inputDataReactive()$genes, selected = character(0),
+    choices = eds$feature_ids(), selected = character(0),
     server = TRUE
   )
 })
 
 # ---- Intra-group: factor and level selectors --------------------------------
 output$countQcIntraFactorUI <- renderUI({
-  req(inputDataReactive()$factors)
-  factors <- inputDataReactive()$factors
-  grouping <- inputDataReactive()$groupingName
-  default <- if (!is.null(grouping) && grouping %in% factors) grouping else factors[[1]]
+  factors <- eds$factor_names()
+  req(length(factors) > 0)
+  grouping <- eds$primary_grouping()
+  default <- if (!is.null(grouping) && !is.na(grouping) && grouping %in% factors) grouping else factors[[1]]
   selectInput("countQcIntraFactor", "Group by factor",
               choices = factors, selected = default)
 })
 
 output$countQcIntraGroupUI <- renderUI({
   req(input$countQcIntraFactor)
-  dataset <- inputDataReactive()$dataset
+  dataset <- eds$samples()
   req(input$countQcIntraFactor %in% colnames(dataset))
   levels_avail <- unique(as.character(dataset[[input$countQcIntraFactor]]))
   selectInput("countQcIntraGroup", "Group level to display",
@@ -166,7 +166,7 @@ output$countQcIntraGroupUI <- renderUI({
 
 # Visibility: only RNASeq / CountQC (proteomics has no raw counts + presentFlag)
 countQcBarVisible <- reactive({
-  isTRUE(inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC"))
+  eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")
 })
 
 # Bar / Dominant plot tabs live in a shared tabsetPanel; each render function
@@ -183,14 +183,16 @@ countQcBarData <- reactive({
   # features with reads above threshold" plot. Falls back to the main SE
   # for RNASeq (deResult.rds already carries all features) and for
   # CountQC/CrisprCountQC outputs that don't ship rawData.rds.
-  se <- inputDataReactive()$seUnfiltered %||% inputDataReactive()$se
+  # seUnfiltered is still attached as a legacy gStoreList field by initInputData;
+  # falls back to eds$backend() (the filtered SE) when absent.
+  se <- inputDataReactive()$seUnfiltered %||% eds$backend()
   req("counts" %in% assayNames(se))
   raw_counts <- assay(se, "counts")
   has_pf <- "presentFlag" %in% assayNames(se)
   present_flag <- if (has_pf) assay(se, "presentFlag") else (raw_counts > 0) * 1L
 
-  dataset <- inputDataReactive()$dataset
-  factorCol <- input$countQcBarColourBy %||% inputDataReactive()$groupingName
+  dataset <- eds$samples()
+  factorCol <- input$countQcBarColourBy %||% eds$primary_grouping()
   req(factorCol %in% colnames(dataset))
 
   # Per-sample group from dataset
@@ -329,7 +331,7 @@ countQcDomVisible <- reactive(countQcBarVisible())
 
 countQcDominantData <- reactive({
   req(countQcDomVisible())
-  se <- inputDataReactive()$se
+  se <- eds$backend()
   req("counts" %in% assayNames(se))
   counts <- assay(se, "counts")
   rd <- rowData(se)
@@ -499,12 +501,15 @@ output$countQcDominant <- renderPlot(
 # 3. Intra-group scatter (all data types; GC/Width require gc/featWidth)
 # ==============================================================================
 
+.countQc_seqAnno_or_null <- function() {
+  if (length(eds$contrasts()) > 0) eds$de(eds$primary_contrast()) else NULL
+}
 countQcHasGC <- reactive({
-  sa <- inputDataReactive()$seqAnno
+  sa <- .countQc_seqAnno_or_null(); if (is.null(sa)) return(FALSE)
   "gc" %in% colnames(sa) && !all(is.na(sa$gc))
 })
 countQcHasWidth <- reactive({
-  sa <- inputDataReactive()$seqAnno
+  sa <- .countQc_seqAnno_or_null(); if (is.null(sa)) return(FALSE)
   "featWidth" %in% colnames(sa) && !all(is.na(sa$featWidth))
 })
 
@@ -524,7 +529,8 @@ countQcHighlightIds <- reactive({
   tokens <- c(input$countQcHighlightSelect, parse_gene_text(input$countQcHighlightText))
   tokens <- unique(tokens[nzchar(tokens)])
   if (!length(tokens)) return(character(0))
-  sa <- inputDataReactive()$seqAnno
+  sa <- .countQc_seqAnno_or_null()
+  if (is.null(sa)) return(character(0))
   hits <- sa$feature_id[sa$feature_id %in% tokens]
   if ("gene_name" %in% colnames(sa)) {
     hits <- unique(c(hits, sa$feature_id[sa$gene_name %in% tokens]))
@@ -537,20 +543,17 @@ countQcIntraData <- reactive({
   req(input$countQcIntraFactor)
   req(input$countQcIntraGroup)
   req(input$countQcIntraCountType)
-  dataset <- inputDataReactive()$dataset
-  param <- inputDataReactive()$param
-  countList <- inputDataReactive()$countList
-  se <- inputDataReactive()$se
-  dataType <- inputDataReactive()$dataType
-  # Proteomics has no single seqAnno — fall back to the currently selected
-  # contrast's seqAnnoList entry (shared between all exploreDE tabs).
-  seqAnno <- if (dataType == "proteomics") {
-    sa_list <- inputDataReactive()$seqAnnoList
-    contr <- input$contrastSelected %||% names(sa_list)[[1]]
-    sa_list[[contr]]
-  } else {
-    inputDataReactive()$seqAnno
-  }
+  dataset  <- eds$samples()
+  se       <- eds$backend()
+  dataType <- eds$data_type()
+  # Proteomics: use the currently selected contrast's DE table
+  seqAnno <- if (eds$omics_class() == "proteomics") {
+    contr <- input$contrastSelected %||% eds$contrasts()[[1]]
+    eds$de(contr)
+  } else if (length(eds$contrasts()) > 0) {
+    eds$de(eds$primary_contrast())
+  } else NULL
+  req(!is.null(seqAnno))
 
   req(input$countQcIntraFactor %in% colnames(dataset))
   fc <- input$countQcIntraFactor
@@ -558,13 +561,12 @@ countQcIntraData <- reactive({
   idx <- which(as.character(dataset[[fc]]) == grp)
   validate(need(length(idx) >= 2, "Need at least 2 samples in the selected group."))
 
-  cts <- countList[[input$countQcIntraCountType]]
+  cts <- eds$assay(input$countQcIntraCountType)
   req(!is.null(cts))
-  # Apply background offset if the count type looks linear and we have a param
-  offset <- if (!is.null(param$backgroundExpression) &&
-                input$countQcIntraCountType %in% c("Normalised", "Raw", "FPKM", "TPM")) {
-    param$backgroundExpression
-  } else 10 # SUSHI default 
+  # Apply background offset if the count type looks linear
+  offset <- if (input$countQcIntraCountType %in% c("normalised", "counts", "fpkm", "tpm")) {
+    eds$background_expression()
+  } else 10
   signal <- cts + offset
 
   # Align signal to seqAnno by feature_id (with isoform fallback). Keeps rd

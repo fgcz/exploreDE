@@ -1,21 +1,43 @@
-req(inputDataReactive()$dataType)
+eds <- inputDataReactive()$.eds
+req(eds)
 
 # Bucket render removed — now in server-featureBucket.R
 
-if (inputDataReactive()$dataType == "RNASeq") {
+if (eds$data_type() == "RNASeq") {
+  contrast <- eds$primary_contrast()
+  cm       <- eds$contrast_meta(contrast)
+  de_df    <- eds$de(contrast)
+  design   <- eds$contrast_label(contrast)
+
+  # Augment de_df with per-group TPM means used by the interactive datatable
+  # (legacy convert_genomics_se pre-computed these on seqAnno; the new eds
+  # API leaves it to consumers so we compute on-demand).
+  if (eds$has_assay("tpm")) {
+    .tpm     <- eds$assay("tpm")
+    .samples <- eds$samples()
+    .grouping <- eds$primary_grouping()
+    .test_idx <- which(.samples[[.grouping]] == cm$test_group)
+    .ref_idx  <- which(.samples[[.grouping]] == cm$reference_group)
+    de_df$TPM_mean <- rowMeans(.tpm, na.rm = TRUE)[de_df$feature_id]
+    de_df[[paste0("TPM_", cm$test_group, "_Mean")]] <-
+      rowMeans(.tpm[, .test_idx, drop = FALSE], na.rm = TRUE)[de_df$feature_id]
+    de_df[[paste0("TPM_", cm$reference_group, "_Mean")]] <-
+      rowMeans(.tpm[, .ref_idx, drop = FALSE], na.rm = TRUE)[de_df$feature_id]
+  }
+
   # Create the download link in XLSX format:
   # Create the download link in XLSX format:
   output$dlTable_deg <- downloadHandler(
     filename = function() {
       generate_filename(
         base_name = paste0(input$filename_deg, "_Full"),
-        design_name = inputDataReactive()$param$comparison,
+        design_name = design,
         extension = "xlsx"
       )
     },
     content = function(file) {
       export_excel_standard(
-        df = inputDataReactive()$seqAnno,
+        df = de_df,
         filename = file,
         sheet_name = "DE Results",
         table_name = "DEResults"
@@ -23,33 +45,55 @@ if (inputDataReactive()$dataType == "RNASeq") {
     }
   )
 
-  # Output the results summary table
+  # Output the results summary table — significance counts at p-value × log2FC grid
   output$resultsTable <- DT::renderDataTable({
-    DT::datatable(
-      data = makeSignificantCounts(inputDataReactive()$se),
-      rownames = TRUE
+    pThresh    <- c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001)
+    log2Thresh <- c(0, 0.5, 1, 1.5, 2, 3, 4)
+    tested <- de_df$usedInTest == 1
+    log2fc <- abs(de_df$log2Ratio)
+    pvals  <- de_df$pValue
+    fdrs   <- de_df$fdr
+    sig_counts <- vapply(pThresh, function(p) sum(pvals < p & tested, na.rm = TRUE), integer(1))
+    fdr_max    <- vapply(pThresh, function(p) {
+      hits <- pvals < p & tested
+      if (sum(hits, na.rm = TRUE) == 0) NA_real_
+      else signif(max(fdrs[hits], na.rm = TRUE), 4)
+    }, numeric(1))
+    fc_mat <- outer(pThresh, log2Thresh, Vectorize(function(p, lfc) {
+      sum(pvals < p & tested & log2fc >= lfc, na.rm = TRUE)
+    }))
+    colnames(fc_mat) <- paste("log2FC >=", log2Thresh)
+    sig_table <- data.frame(
+      `#significants` = sig_counts,
+      FDR             = fdr_max,
+      fc_mat,
+      row.names       = paste("p <", pThresh),
+      check.names     = FALSE
     )
+    DT::datatable(data = sig_table, rownames = TRUE)
   })
   output$DEGDesign <- renderText({
-    inputDataReactive()$design
+    design
   })
 
   colsToPlotR <- c(
-    "gene_id", "feature_id", "description", "type", "log2Ratio", "pValue", "fdr", "TPM_mean", paste0("TPM_", inputDataReactive()$param$sampleGroup, "_Mean"), paste0("TPM_", inputDataReactive()$param$refGroup, "_Mean")
+    "gene_id", "feature_id", "description", "type", "log2Ratio", "pValue", "fdr", "TPM_mean",
+    paste0("TPM_", cm$test_group, "_Mean"), paste0("TPM_", cm$reference_group, "_Mean")
   )
   colNamesToPlotR <- c(
-    "Ensembl ID", "Feature", "Description", "Type", "Log2 Ratio", "Raw p-value", "FDR", "Mean TPM", paste0(inputDataReactive()$param$sampleGroup, " Mean TPM"), paste0(inputDataReactive()$param$refGroup, " Mean TPM")
+    "Ensembl ID", "Feature", "Description", "Type", "Log2 Ratio", "Raw p-value", "FDR", "Mean TPM",
+    paste0(cm$test_group, " Mean TPM"), paste0(cm$reference_group, " Mean TPM")
   )
   # Output the interactive data table
   dt1 <- DT::datatable(
-    data = inputDataReactive()$seqAnno %>% dplyr::select(all_of(colsToPlotR)),
+    data = de_df %>% dplyr::select(all_of(colsToPlotR)),
     filter = "top",
     class = "cell-border stripe",
     rownames = FALSE,
     colnames = colNamesToPlotR
   ) %>%
     DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
-    DT::formatSignif(columns = c("pValue", "fdr", "TPM_mean", paste0("TPM_", inputDataReactive()$param$sampleGroup, "_Mean"), paste0("TPM_", inputDataReactive()$param$refGroup, "_Mean")), digits = 3) %>%
+    DT::formatSignif(columns = c("pValue", "fdr", "TPM_mean", paste0("TPM_", cm$test_group, "_Mean"), paste0("TPM_", cm$reference_group, "_Mean")), digits = 3) %>%
     DT::formatSignif(columns = "log2Ratio", digits = 5) %>%
     DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
     DT::formatStyle(columns = c("pValue", "fdr"), color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")
@@ -60,12 +104,12 @@ if (inputDataReactive()$dataType == "RNASeq") {
   })
 
   observeEvent(input$degTable_rows_selected, {
-    seqAnnoSelected <- inputDataReactive()$seqAnno[input$degTable_rows_selected, ]
+    seqAnnoSelected <- de_df[input$degTable_rows_selected, ]
     output$dlTableSelected_deg <- downloadHandler(
       filename = function() {
         generate_filename(
           base_name = paste0(input$filename_deg, "_Selected"),
-          design_name = inputDataReactive()$param$comparison,
+          design_name = design,
           extension = "xlsx"
         )
       },
@@ -92,7 +136,7 @@ if (inputDataReactive()$dataType == "RNASeq") {
         featureCalcPType <- "fdr"
       }
 
-      seqAnnoCalc <- inputDataReactive()$seqAnno[inputDataReactive()$seqAnno$usedInTest == TRUE, ]
+      seqAnnoCalc <- de_df[de_df$usedInTest == TRUE, ]
       seqAnnoCalc <- seqAnnoCalc[which(seqAnnoCalc[[featureCalcPType]] <= as.numeric(input$featureCalcPValue) & abs(seqAnnoCalc[["log2Ratio"]]) >= as.numeric(input$featureCalcLFC)), ]
 
       seqAnnoCalcTable <- data.frame(
@@ -135,7 +179,7 @@ if (inputDataReactive()$dataType == "RNASeq") {
 }
 
 
-if (inputDataReactive()$dataType == "proteomics") {
+if (eds$omics_class() == "proteomics") {
   observeEvent(
     {
       input$contrastSelected
@@ -160,7 +204,7 @@ if (inputDataReactive()$dataType == "proteomics") {
           )
         },
         content = function(file) {
-          tableToWrite <- as.data.frame(rowData(se)[[grep(input$contrastSelected, names(rowData(se)))]])
+          tableToWrite <- eds$de(input$contrastSelected)
           export_excel_standard(
             df = tableToWrite,
             filename = file,
@@ -170,7 +214,7 @@ if (inputDataReactive()$dataType == "proteomics") {
         }
       )
 
-      seqAnnoDEG <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
+      seqAnnoDEG <- eds$de(input$contrastSelected)
 
       # Output the results summary table
       signifCountsTable <- data.frame(

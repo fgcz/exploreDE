@@ -4,19 +4,18 @@
 ##   - P-value histogram
 ##   - GC + Length LOESS bias (RNASeq only; seqAnno needs gc / featWidth)
 
-req(!is.null(inputDataReactive()$dataType))
+eds <- inputDataReactive()$.eds
+req(eds)
 deQcVisible <- reactive({
-  inputDataReactive()$dataType %in% c("RNASeq", "proteomics")
+  eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics"
 })
 
 # ---- Hide inapplicable plot tabs per dataType --------------------------------
 # GC/Length LOESS bias plots require log2Ratio + gc/featWidth, which
-# proteomics seqAnnoList doesn't carry. Scatter colour-by radio also restricts
+# proteomics DE tables don't carry. Scatter colour-by radio also restricts
 # to Standard when gc/featWidth columns are absent.
 observe({
-  req(inputDataReactive()$dataType)
-  dataType <- inputDataReactive()$dataType
-  is_rna <- dataType == "RNASeq"
+  is_rna <- eds$data_type() == "RNASeq"
   if (is_rna) {
     showTab("deQcPlotsTabs", "GC Bias",     session = session)
     showTab("deQcPlotsTabs", "Length Bias", session = session)
@@ -58,7 +57,7 @@ observe({
   updateSelectizeInput(
     session = session,
     inputId = "deQcHighlightSelect",
-    choices = inputDataReactive()$genes,
+    choices = eds$feature_ids(),
     selected = character(0),
     server = TRUE
   )
@@ -70,18 +69,18 @@ observe({
 # selectInputs materialise with sensible defaults the moment the UI is drawn
 # (rather than relying on update* observers that race the plot render).
 output$deQcProteomicsSelectorsUI <- renderUI({
-  if (!isTRUE(inputDataReactive()$dataType == "proteomics")) return(NULL)
-  ch_counts <- names(inputDataReactive()$countList) %||% character(0)
-  default_count <- if ("Normalised" %in% ch_counts) "Normalised" else ch_counts[[1]]
+  if (eds$omics_class() != "proteomics") return(NULL)
+  ch_counts <- eds$assay_names() %||% character(0)
+  default_count <- if ("intensities" %in% ch_counts) "intensities" else ch_counts[[1]]
 
   contr <- input$contrastSelected
-  levels_avail <- if (!is.null(contr) && nzchar(contr)) {
-    v <- strsplit(contr, "_vs_")[[1]]
-    if (length(v) == 2) v else character(0)
+  levels_avail <- if (!is.null(contr) && nzchar(contr) && contr %in% eds$contrasts()) {
+    cm <- eds$contrast_meta(contr)
+    c(cm$test_group, cm$reference_group)
   } else character(0)
   if (!length(levels_avail)) {
-    dataset <- inputDataReactive()$dataset
-    f1 <- inputDataReactive()$factors[[1]]
+    dataset <- eds$samples()
+    f1 <- eds$primary_grouping()
     if (!is.null(f1) && f1 %in% colnames(dataset)) {
       levels_avail <- unique(as.character(dataset[[f1]]))
     }
@@ -109,7 +108,9 @@ deQcHighlightIds <- reactive({
   tokens <- c(input$deQcHighlightSelect, parse_gene_text(input$deQcHighlightText))
   tokens <- unique(tokens[nzchar(tokens)])
   if (!length(tokens)) return(character(0))
-  sa <- inputDataReactive()$seqAnno
+  contr <- if (eds$omics_class() == "proteomics") input$contrastSelected else eds$primary_contrast()
+  req(!is.null(contr), nzchar(contr))
+  sa <- eds$de(contr)
   # Match on feature_id first, then gene_name
   hits <- sa$feature_id[sa$feature_id %in% tokens]
   if ("gene_name" %in% colnames(sa)) {
@@ -124,34 +125,29 @@ deQcHighlightIds <- reactive({
 # (user-picked groups + contrast's seqAnnoList).
 deQcScatterData <- reactive({
   req(deQcVisible())
-  dataType <- inputDataReactive()$dataType
-  countList <- inputDataReactive()$countList
-  dataset <- inputDataReactive()$dataset
-  param <- inputDataReactive()$param
-  req(!is.null(countList))
+  dataset <- eds$samples()
 
-  if (dataType == "RNASeq") {
-    seqAnno <- inputDataReactive()$seqAnno
-    req(!is.null(seqAnno))
-    grouping <- param$groupingName
-    req(!is.null(param$sampleGroup), !is.null(param$refGroup),
+  if (eds$data_type() == "RNASeq") {
+    contrast <- eds$primary_contrast()
+    cm       <- eds$contrast_meta(contrast)
+    seqAnno  <- eds$de(contrast)
+    grouping <- eds$primary_grouping()
+    req(!is.null(cm$test_group), !is.null(cm$reference_group),
         grouping %in% colnames(dataset))
-    signal <- countList[["Normalised"]] + (param$backgroundExpression %||% 10)
+    signal <- eds$assay("normalised") + eds$background_expression()
     rd <- seqAnno
-    sample_label <- param$sampleGroup
-    ref_label    <- param$refGroup
-    sample_idx <- which(dataset[[grouping]] == param$sampleGroup)
-    ref_idx    <- which(dataset[[grouping]] == param$refGroup)
+    sample_label <- cm$test_group
+    ref_label    <- cm$reference_group
+    sample_idx <- which(dataset[[grouping]] == cm$test_group)
+    ref_idx    <- which(dataset[[grouping]] == cm$reference_group)
   } else {
     # proteomics
     contr <- input$contrastSelected
     req(!is.null(contr), nzchar(contr))
-    sa_list <- inputDataReactive()$seqAnnoList
-    req(!is.null(sa_list), contr %in% names(sa_list))
-    rd <- sa_list[[contr]]
-    signal <- countList[[input$deQcProtCountType %||% names(countList)[[1]]]]
-    req(!is.null(signal))
-    grouping <- inputDataReactive()$factors[[1]]
+    req(contr %in% eds$contrasts())
+    rd <- eds$de(contr)
+    signal <- eds$assay(input$deQcProtCountType %||% eds$assay_names()[[1]])
+    grouping <- eds$primary_grouping()
     # prefer the G_ column used by proteomics tabs if it exists
     if ("G_" %in% colnames(dataset)) grouping <- "G_"
     req(grouping %in% colnames(dataset))
@@ -248,9 +244,8 @@ deQcScatterData <- reactive({
 # ---- Output: design / comparison label ---------------------------------------
 output$deQcScatterDesign <- renderText({
   req(deQcVisible())
-  dataType <- inputDataReactive()$dataType
-  if (dataType == "RNASeq") {
-    inputDataReactive()$design %||% ""
+  if (eds$data_type() == "RNASeq") {
+    eds$contrast_label(eds$primary_contrast()) %||% ""
   } else {
     input$contrastSelected %||% ""
   }
@@ -358,9 +353,8 @@ output$deQcScatterBrushTable <- DT::renderDataTable({
 deQcPhistDf <- reactive({
   req(deQcVisible())
   pcol <- input$deQcPhistType %||% "pValue"
-  dataType <- inputDataReactive()$dataType
-  if (dataType == "RNASeq") {
-    sa <- inputDataReactive()$seqAnno
+  if (eds$data_type() == "RNASeq") {
+    sa <- eds$de(eds$primary_contrast())
     req(pcol %in% colnames(sa))
     df <- tibble::tibble(
       pval = sa[[pcol]],
@@ -368,9 +362,9 @@ deQcPhistDf <- reactive({
     )
   } else {
     contr <- input$contrastSelected
-    req(!is.null(contr), nzchar(contr))
-    sa <- inputDataReactive()$seqAnnoList[[contr]]
-    req(!is.null(sa), pcol %in% colnames(sa))
+    req(!is.null(contr), nzchar(contr), contr %in% eds$contrasts())
+    sa <- eds$de(contr)
+    req(pcol %in% colnames(sa))
     # modelName-aware categorisation (Linear vs Imputed) — falls back
     # to a single category when modelName isn't present.
     Category <- if ("modelName" %in% colnames(sa)) {
@@ -417,13 +411,13 @@ height = deQcH)
 # ---- Bias plots (GC, length) -------------------------------------------------
 # Which bias plots are supported depends on seqAnno columns.
 deQcHasGC <- reactive({
-  if (!isTRUE(inputDataReactive()$dataType == "RNASeq")) return(FALSE)
-  sa <- inputDataReactive()$seqAnno
+  if (eds$data_type() != "RNASeq") return(FALSE)
+  sa <- eds$de(eds$primary_contrast())
   "gc" %in% colnames(sa) && !all(is.na(sa$gc))
 })
 deQcHasWidth <- reactive({
-  if (!isTRUE(inputDataReactive()$dataType == "RNASeq")) return(FALSE)
-  sa <- inputDataReactive()$seqAnno
+  if (eds$data_type() != "RNASeq") return(FALSE)
+  sa <- eds$de(eds$primary_contrast())
   "featWidth" %in% colnames(sa) && !all(is.na(sa$featWidth))
 })
 
@@ -431,9 +425,9 @@ deQcHasWidth <- reactive({
 # show a friendly message when its required column is missing.
 
 deQcBiasData <- reactive({
-  validate(need(isTRUE(inputDataReactive()$dataType == "RNASeq"),
+  validate(need(eds$data_type() == "RNASeq",
                 "LOESS bias plots are only available for RNASeq DE results."))
-  sa <- inputDataReactive()$seqAnno
+  sa <- eds$de(eds$primary_contrast())
   req("log2Ratio" %in% colnames(sa), "pValue" %in% colnames(sa))
   df <- sa[which(sa$usedInTest & !is.na(sa$pValue) & !is.na(sa$log2Ratio)), , drop = FALSE]
   req(nrow(df) > 0)

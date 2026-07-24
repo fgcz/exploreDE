@@ -1,44 +1,58 @@
+# ---------------------------------------------------------------------------
+# Phase 2 migration (2026-05-15) — partial.
+# Second server-*.R file moved to the new ExploreDataset API. Same pattern
+# as server-correlation.R.
+# Migrated to eds$method() calls:
+#   $factors, $dataset, $sgRNA_to_gene, $dataType, $countList, $design
+# ---------------------------------------------------------------------------
+
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   req(inputDataReactive())
-  if (inputDataReactive()$dataType == "RNASeq") {
-    return(inputDataReactive()$design)
-  } else if (inputDataReactive()$dataType == "proteomics") {
-    if (isTruthy(input$contrastSelected)) {
-      return(input$contrastSelected)
+  eds <- inputDataReactive()$.eds
+  if (eds$has_de()) {
+    contrast <- if (eds$omics_class() == "proteomics" && isTruthy(input$contrastSelected)) {
+      input$contrastSelected
     } else {
-      return("No contrast selected")
+      eds$primary_contrast()
     }
-  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
-    return(inputDataReactive()$design)
+    eds$contrast_label(contrast)
+  } else if (eds$omics_class() == "proteomics") {
+    "No contrast selected"
+  } else {
+    eds$data_type()   # QC fallback — no DE, use the data type name
   }
-  return("Unknown")
 })
 
 # Update inputs
 observeEvent(inputDataReactive(), {
-    count_choices <- names(inputDataReactive()$countList)
-    default_count <- switch(inputDataReactive()$dataType,
-        "RNASeq" = "Normalised + Log2",
-        "proteomics" = if ("transformedData" %in% count_choices) "transformedData" else count_choices[1],
-        "CountQC" = "VST",
-        "CrisprCountQC" = "VST"
-    ) # Default to VST for CountQC if available, or whatever is best
-
-    if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC") && "VST" %in% count_choices) {
-        default_count <- "VST"
+    eds <- inputDataReactive()$.eds
+    assay_keys <- eds$assay_names()
+    count_choices <- setNames(assay_keys,
+                              vapply(assay_keys, eds$assay_label, character(1)))
+    default_count <- if (eds$data_type() == "RNASeq" && "normalised_log2" %in% assay_keys) {
+      "normalised_log2"
+    } else if (eds$omics_class() == "proteomics" && "intensities" %in% assay_keys) {
+      "intensities"
+    } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC") && "vst" %in% assay_keys) {
+      "vst"
+    } else {
+      assay_keys[1]
     }
 
-    updateSelectInput(session = session, inputId = "replicabilityCounts", choices = count_choices, selected = default_count)
+    updateSelectInput(session = session, inputId = "replicabilityCounts",
+                      choices = count_choices, selected = default_count)
 })
 
 output$replicabilityFactorSelectUI <- renderUI({
+    eds <- inputDataReactive()$.eds
+    fs  <- eds$factor_names()
     selectizeInput(
         inputId = "replicabilityFactors",
         label = "Select factors for annotation",
-        choices = inputDataReactive()$factors,
+        choices = fs,
         multiple = TRUE,
-        selected = inputDataReactive()$factors[1]
+        selected = fs[1]
     )
 })
 
@@ -65,11 +79,12 @@ observeEvent(replicabilityData(), {
 replicabilityData <- reactive({
     req(input$replicabilityCounts)
     req(inputDataReactive())
+    eds <- inputDataReactive()$.eds
 
-    counts <- inputDataReactive()$countList[[input$replicabilityCounts]]
+    counts <- eds$assay(input$replicabilityCounts)
     # Collapse sgRNA guides to gene level if requested
-    if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$replicabilityCollapseGuides)) {
-      counts <- collapse_guides_to_genes(counts, inputDataReactive()$sgRNA_to_gene)
+    if (eds$data_type() == "CrisprCountQC" && isTRUE(input$replicabilityCollapseGuides)) {
+      counts <- collapse_guides_to_genes(counts, eds$sgrna_to_gene())
     }
 
     # Apply Log2 if requested
@@ -113,8 +128,8 @@ replicabilityData <- reactive({
     res_top100 <- calc_corr_hclust(counts_top100)
 
     list(
-        all = list(corr = res_all$corr, hclust = res_all$hclust, dataset = inputDataReactive()$dataset),
-        top100 = list(corr = res_top100$corr, hclust = res_top100$hclust, dataset = inputDataReactive()$dataset)
+        all    = list(corr = res_all$corr,    hclust = res_all$hclust,    dataset = eds$samples()),
+        top100 = list(corr = res_top100$corr, hclust = res_top100$hclust, dataset = eds$samples())
     )
 })
 
@@ -267,7 +282,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
 # Render Heatmaps
 output$replicabilityHeatmap <- renderPlot(
     {
-        make_rep_heatmap(replicabilityData()$all, title_suffix = "All Genes")
+        make_rep_heatmap(replicabilityData()$all, title_suffix = "All Features")
     },
     width = function() input$figWidthReplicability,
     height = function() input$figHeightReplicability
@@ -275,7 +290,7 @@ output$replicabilityHeatmap <- renderPlot(
 
 output$replicabilityHeatmapTop100 <- renderPlot(
     {
-        make_rep_heatmap(replicabilityData()$top100, title_suffix = "Top 100 Abundant Genes")
+        make_rep_heatmap(replicabilityData()$top100, title_suffix = "Top 100 Abundant Features")
     },
     width = function() input$figWidthReplicability,
     height = function() input$figHeightReplicability
@@ -284,7 +299,7 @@ output$replicabilityHeatmapTop100 <- renderPlot(
 # Render Dendrograms
 output$replicabilityDendrogram <- renderPlot(
     {
-        make_rep_dendrogram(replicabilityData()$all, title_suffix = "All Genes")
+        make_rep_dendrogram(replicabilityData()$all, title_suffix = "All Features")
     },
     width = function() input$figWidthReplicability,
     height = function() input$figHeightReplicability
@@ -292,7 +307,7 @@ output$replicabilityDendrogram <- renderPlot(
 
 output$replicabilityDendrogramTop100 <- renderPlot(
     {
-        make_rep_dendrogram(replicabilityData()$top100, title_suffix = "Top 100 Abundant Genes")
+        make_rep_dendrogram(replicabilityData()$top100, title_suffix = "Top 100 Abundant Features")
     },
     width = function() input$figWidthReplicability,
     height = function() input$figHeightReplicability
@@ -312,8 +327,8 @@ output$replicabilityDownloadHeatmap <- downloadHandler(
         req(replicabilityData())
         
         # Select dataset
-        data_set <- if (input$replicabilityDownloadSet == "All Genes") replicabilityData()$all else replicabilityData()$top100
-        
+        data_set <- if (input$replicabilityDownloadSet == "All Features") replicabilityData()$all else replicabilityData()$top100
+
         export_plot_standard(
             plot_object = function() {
                 make_rep_heatmap(data_set, title_suffix = input$replicabilityDownloadSet)
@@ -340,8 +355,8 @@ output$replicabilityDownloadDendrogram <- downloadHandler(
         req(replicabilityData())
         
         # Select dataset
-        data_set <- if (input$replicabilityDownloadSet == "All Genes") replicabilityData()$all else replicabilityData()$top100
-        
+        data_set <- if (input$replicabilityDownloadSet == "All Features") replicabilityData()$all else replicabilityData()$top100
+
         export_plot_standard(
             plot_object = function() {
                 make_rep_dendrogram(data_set, title_suffix = input$replicabilityDownloadSet)
@@ -368,8 +383,8 @@ output$replicabilityDownloadCorr <- downloadHandler(
         req(replicabilityData())
         
         # Select dataset
-        data_set <- if (input$replicabilityDownloadSet == "All Genes") replicabilityData()$all else replicabilityData()$top100
-        
+        data_set <- if (input$replicabilityDownloadSet == "All Features") replicabilityData()$all else replicabilityData()$top100
+
         export_excel_standard(
             df = as.data.frame(data_set$corr) %>% rownames_to_column("Sample"),
             filename = file,

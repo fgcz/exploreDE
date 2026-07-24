@@ -1,14 +1,13 @@
-if(inputDataReactive()$dataType == "RNASeq") {
-  se <- inputDataReactive()$se
-  param <- inputDataReactive()$param
-  design <- inputDataReactive()$design
+eds <- inputDataReactive()$.eds
+
+if (eds$data_type() == "RNASeq") {
+  design <- eds$contrast_label(eds$primary_contrast())
   keggPlotReactive <- reactiveValues(outfile = NULL, gD = NULL, keggInput = NULL, spp = NULL)
-  output$keggPlotDesign <- renderText({design})
-  
-  spp <- ezRun::getSpecies(param$refBuild)
-  if (grepl("^Rattus", param$refBuild)){
-    spp <- "Rat"
-  }
+  output$keggPlotDesign <- renderText({ design })
+
+  ref <- eds$ref_build()
+  spp <- ezRun::getSpecies(ref)
+  if (grepl("^Rattus", ref)) spp <- "Rat"
   
   observeEvent(
     {
@@ -39,11 +38,13 @@ if(inputDataReactive()$dataType == "RNASeq") {
         keggInput <- input$keggInput
       }
       
-      gD <- metadata(se)$enrichInput$log2Ratio[
-        names(metadata(se)$enrichInput$log2Ratio) %in% inputDataReactive()$seqAnno$gene_id[
-          which(inputDataReactive()$seqAnno[[pTypeKEGG]] <= as.numeric(input$pThresholdKEGG) & abs(inputDataReactive()$seqAnno$log2Ratio) >= as.numeric(input$lfcKEGG))
-        ]
+      ei     <- eds$enrichment_input(eds$primary_contrast())
+      de_df  <- eds$de(eds$primary_contrast())
+      sig_ids <- de_df$gene_id[
+        which(de_df[[pTypeKEGG]] <= as.numeric(input$pThresholdKEGG) &
+              abs(de_df$log2Ratio) >= as.numeric(input$lfcKEGG))
       ]
+      gD <- ei$ranked_l2fc[names(ei$ranked_l2fc) %in% sig_ids]
       
       outfile <- paste0(keggInput, ".pathview.png")
       keggPlotReactive$outfile <- outfile

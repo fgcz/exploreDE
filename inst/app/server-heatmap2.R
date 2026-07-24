@@ -13,13 +13,15 @@ keggHeatmapReactive <- reactiveValues(
   currentPathwayName = NULL
 )
 
-observeEvent(inputDataReactive(), {
-  req(inputDataReactive()$dataType)
+eds <- inputDataReactive()$.eds
+req(eds)
 
+observe({
   # Detect species for KEGG heatmap
   keggHeatmapReactive$keggCode <- tryCatch({
-    spp <- ezRun::getSpecies(inputDataReactive()$param$refBuild)
-    if (grepl("^Rattus", inputDataReactive()$param$refBuild)) spp <- "Rat"
+    rb  <- eds$ref_build()
+    spp <- ezRun::getSpecies(rb)
+    if (grepl("^Rattus", rb)) spp <- "Rat"
     switch(spp, "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
   }, error = function(e) NULL)
 
@@ -93,7 +95,7 @@ observeEvent(inputDataReactive(), {
   }
 
 
-  if (inputDataReactive()$dataType == "proteomics") {
+  if (eds$omics_class() == "proteomics") {
     output$clusterWarningProteomics <- renderUI({
       helpText(
         "Clustering by row/column may break the heatmap for proteomics data, due
@@ -107,13 +109,14 @@ observeEvent(inputDataReactive(), {
   }
 
   # Update inputs ----
-  count_choices <- names(inputDataReactive()$countList)
-  default_count <- switch(inputDataReactive()$dataType,
-    "RNASeq" = "Normalised + Log2",
-    "CountQC" = "Normalised + Log2",
-    "CrisprCountQC" = "Normalised + Log2",
-    "proteomics" = if ("transformedData" %in% count_choices) "transformedData" else count_choices[1]
-  )
+  assay_keys    <- eds$assay_names()
+  count_choices <- setNames(assay_keys,
+                            vapply(assay_keys, eds$assay_label, character(1)))
+  default_count <- if (eds$omics_class() == "proteomics") {
+    if ("intensities" %in% assay_keys) "intensities" else assay_keys[1]
+  } else {
+    if ("normalised_log2" %in% assay_keys) "normalised_log2" else assay_keys[1]
+  }
   updateSelectInput(
     session = session,
     inputId = "heatmapCounts",
@@ -124,38 +127,38 @@ observeEvent(inputDataReactive(), {
   updateSelectizeInput(
     session = session,
     inputId = "fb_select_heatmap",
-    choices = inputDataReactive()$genes,
+    choices = eds$feature_ids(),
     selected = NULL,
     server = T,
   )
 
   # Populate exclude dropdown for CRISPR data
-  if (inputDataReactive()$dataType == "CrisprCountQC") {
-    updateSelectizeInput(session, "heatmapExcludeGuides", choices = inputDataReactive()$genes, selected = NULL, server = TRUE)
+  if (eds$data_type() == "CrisprCountQC") {
+    updateSelectizeInput(session, "heatmapExcludeGuides", choices = eds$feature_ids(), selected = NULL, server = TRUE)
   }
 
   # Update feature choices when collapse guides toggle changes
   observeEvent(input$heatmapCollapseGuides, {
-    if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$heatmapCollapseGuides)) {
-      gene_choices <- sort(unique(inputDataReactive()$sgRNA_to_gene))
+    if (eds$data_type() == "CrisprCountQC" && isTRUE(input$heatmapCollapseGuides)) {
+      gene_choices <- sort(unique(eds$sgrna_to_gene()))
     } else {
-      gene_choices <- inputDataReactive()$genes
+      gene_choices <- eds$feature_ids()
     }
     updateSelectizeInput(session, "fb_select_heatmap", choices = gene_choices, selected = "", server = TRUE)
     updateSelectizeInput(session, "heatmapExcludeGuides", choices = gene_choices, selected = NULL, server = TRUE)
   }, ignoreInit = TRUE)
 
   # Batch + design dropdowns — see server-boxplot.R for the decision table.
-  .dt       <- inputDataReactive()$dataType
-  .factors  <- inputDataReactive()$factors
-  .grouping <- inputDataReactive()$groupingName
-  .param    <- inputDataReactive()$param
-  .twoFactor <- !is.null(.param$grouping2Name) && nzchar(.param$grouping2Name) &&
-                .param$grouping2Name %in% .factors
-  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", NA_character_)
+  .dt        <- eds$data_type()
+  .factors   <- eds$factor_names()
+  .grouping  <- eds$primary_grouping()
+  .secondary <- eds$secondary_grouping()
+  .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
+  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, NA_character_)
+  if (eds$omics_class() == "proteomics") .deDesignCol <- "G_"
 
   batchChoices <- c("None", .factors)
-  batchDefault <- if (.twoFactor) .param$grouping2Name else "None"
+  batchDefault <- if (.twoFactor) .secondary else "None"
   updateSelectInput(session = session, inputId = "heatmapBatch", choices = batchChoices, selected = batchDefault)
 
   designChoices <- if (.dt %in% c("RNASeq", "proteomics") && .twoFactor) {
@@ -167,16 +170,16 @@ observeEvent(inputDataReactive(), {
   updateSelectInput(session = session, inputId = "heatmapDesign", choices = designChoices, selected = designDefault)
 
   # Update p-value type based on data type
-  if (inputDataReactive()$dataType == "proteomics") {
+  if (eds$omics_class() == "proteomics") {
     updateSelectInput(session = session, inputId = "pTypeHeatmap", selected = "Raw")
   } else {
     updateSelectInput(session = session, inputId = "pTypeHeatmap", selected = "FDR")
   }
 
   # Proteomics-specific: peptide filter UI
-  if (inputDataReactive()$dataType == "proteomics") {
-    req(inputDataReactive()$seqAnnoList)
-    if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+  if (eds$omics_class() == "proteomics") {
+    if (length(eds$contrasts()) > 0 &&
+        "nrPeptides" %in% colnames(eds$de(eds$contrasts()[[1]]))) {
       output$nrPeptidesHeatmapUI <- renderUI({
         sliderInput(inputId = "nrPeptideHeatmap", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
       })
@@ -189,12 +192,13 @@ observeEvent(inputDataReactive(), {
   }
 
   # RNASeq-specific: GO term selection
-  if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
-    req(inputDataReactive()$allPathways)
+  if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
+    pathways <- eds$all_pathways()
+    req(length(pathways) > 0)
     updateSelectizeInput(
       session,
       inputId = "heatmapGoInput",
-      choices = inputDataReactive()$allPathways,
+      choices = pathways,
       server = TRUE # ← this is what activates server-side mode
     )
     output$heatmapGOUI2 <- renderUI({
@@ -215,25 +219,18 @@ observeEvent(inputDataReactive(), {
 })
 
 output$heatmapColumnSelectUI <- renderUI({
-  req(inputDataReactive())
-  data <- inputDataReactive()
-  req(data$dataType)
+  factors  <- eds$factor_names()
+  grouping <- eds$primary_grouping()
 
   # Calculate default selection
-  defaultColumn <- switch(data$dataType,
-    "RNASeq" = "groupingName",
-    "proteomics" = "factors",
-    "CountQC" = "factors",
-    "CrisprCountQC" = "factors"
-  )
-
-  defaultSelected <- NULL
-  if (!is.null(data[[defaultColumn]]) && length(data[[defaultColumn]]) > 0) {
-    defaultSelected <- data[[defaultColumn]][1]
-  }
+  defaultSelected <- if (eds$data_type() == "RNASeq" && !is.null(grouping) && !is.na(grouping)) {
+    grouping
+  } else if (length(factors) > 0) {
+    factors[[1]]
+  } else NULL
 
   # Get current selection and available choices
-  choices <- data$factors
+  choices <- factors
   currentSelection <- isolate(input$heatmapColumnSelect)
 
   # Validate current selection against new choices
@@ -294,7 +291,7 @@ observeEvent(
             orientation = "horizontal",
             add_rank_list(
               text = "Include these groups",
-              labels = as.list(unique(levels(as.factor(inputDataReactive()$dataset[[input$heatmapColumnSelect[[i]]]])))),
+              labels = as.list(unique(levels(as.factor(eds$samples()[[input$heatmapColumnSelect[[i]]]])))),
               input_id = paste0("hmKeepBucket", i),
               options = sortable::sortable_options(multiDrag = TRUE)
             ),
@@ -334,8 +331,8 @@ observeEvent({
   input$heatmapLog2
   input$heatmapZScore
 }, ignoreInit = TRUE, {
-  isLogSpace <- grepl("Log2", input$heatmapCounts, ignore.case = TRUE) ||
-    (input$heatmapLog2 && input$heatmapCounts %in% c("TPM", "FPKM", "Normalised"))
+  isLogSpace <- input$heatmapCounts %in% c("normalised_log2", "vst") ||
+    (input$heatmapLog2 && input$heatmapCounts %in% c("tpm", "fpkm", "normalised", "counts"))
   isScaled <- input$heatmapZScore %in% c("Z-Score", "Centred")
 
   stepVal <- if (isScaled || isLogSpace) 0.1 else 1
@@ -344,13 +341,13 @@ observeEvent({
 })
 
 # Update settings for CountQC data type
-observeEvent(inputDataReactive(), {
-  if (inputDataReactive()$dataType == "CountQC") {
+observe({
+  if (eds$data_type() == "CountQC") {
     # For CountQC, hide gene names by default since there will be many features
     updateCheckboxInput(session = session, inputId = "geneNamesHeatmap", value = FALSE)
     # Set cell border size to 0 for CountQC (will have many features)
     updateSliderInput(session = session, inputId = "cellBorderSizeHeatmap2", value = 0)
-  } else if (inputDataReactive()$dataType == "CrisprCountQC") {
+  } else if (eds$data_type() == "CrisprCountQC") {
     # CRISPR data has fewer features, so show names by default
     updateCheckboxInput(session = session, inputId = "geneNamesHeatmap", value = TRUE)
   }
@@ -358,8 +355,7 @@ observeEvent(inputDataReactive(), {
 
 # Dynamic tab title based on data type
 output$heatmapTabTitle <- renderUI({
-  req(inputDataReactive())
-  if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+  if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
     "SD Features"
   } else {
     "DE Features"
@@ -437,9 +433,9 @@ heatmapInputs <- reactive({
     input$heatmapCollapseGuides,
     input$heatmapExcludeGuides,
     # Add all color picker inputs as dependencies so plot updates when colors change
-    lapply(seq_along(inputDataReactive()$factorLevels), function(i) {
-      lapply(seq_along(inputDataReactive()$factorLevels[[i]]), function(j) {
-        input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]], inputDataReactive()$factorLevels[[i]][[j]])]]
+    lapply(eds$factor_names(), function(fname) {
+      lapply(eds$factor_levels(fname), function(lev) {
+        input[[paste0("GroupColour", fname, lev)]]
       })
     }),
     lapply(1:10, function(i) {
@@ -473,17 +469,21 @@ observeEvent(
     set.seed(2)
       figuresDataReactive[["heatmapDEFeatures"]] <- NULL
       # Get some variables ----
-      if (inputDataReactive()$dataType == "proteomics") {
+      if (eds$omics_class() == "proteomics") {
         design <- input$contrastSelected
-        seqAnnoHeatmap <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
+        req(!is.null(design) && nzchar(design) && design %in% eds$contrasts())
+        seqAnnoHeatmap <- eds$de(design)
         seqAnnoHeatmap[["usedInTest"]] <- TRUE
-        if (!is.null(input$nrPeptideHeatmap)) {
+        if (!is.null(input$nrPeptideHeatmap) && "nrPeptides" %in% colnames(seqAnnoHeatmap)) {
           seqAnnoHeatmap <- seqAnnoHeatmap[which(seqAnnoHeatmap$nrPeptides >= input$nrPeptideHeatmap), ]
         }
+      } else if (length(eds$contrasts()) > 0) {
+        design <- eds$contrast_label(eds$primary_contrast())
+        seqAnnoHeatmap <- eds$de(eds$primary_contrast())
       } else {
-        seqAnnoHeatmap <- inputDataReactive()$seqAnno
-        param <- inputDataReactive()$param
-        design <- inputDataReactive()$design
+        # CountQC/CrisprCountQC — no DE results
+        design <- eds$data_type()
+        seqAnnoHeatmap <- NULL
       }
 
       # Get the desired p-value column
@@ -495,7 +495,7 @@ observeEvent(
 
 
       # Prepare the metadata for the top annotation ----
-      datasetHeatmap <- inputDataReactive()$dataset
+      datasetHeatmap <- eds$samples()
       for (i in seq_along(input$heatmapColumnSelect)) {
         datasetHeatmap <- datasetHeatmap[which(datasetHeatmap[[input$heatmapColumnSelect[[i]]]] %in% input[[paste0("hmKeepBucket", i)]]), ]
         datasetHeatmap[[input$heatmapColumnSelect[[i]]]] <- factor(datasetHeatmap[[input$heatmapColumnSelect[[i]]]], levels = input[[paste0("hmKeepBucket", i)]])
@@ -508,19 +508,19 @@ observeEvent(
       }
 
       # Prepare the selected count matrix ----
-      countsHeatmap <- inputDataReactive()$countList[[input$heatmapCounts]]
+      countsHeatmap <- eds$assay(input$heatmapCounts)
       # Collapse sgRNA guides to gene level if requested
-      if (inputDataReactive()$dataType == "CrisprCountQC") {
+      if (eds$data_type() == "CrisprCountQC") {
         if (isTRUE(input$heatmapCollapseGuides)) {
-          countsHeatmap <- collapse_guides_to_genes(countsHeatmap, inputDataReactive()$sgRNA_to_gene, exclude = input$heatmapExcludeGuides)
+          countsHeatmap <- collapse_guides_to_genes(countsHeatmap, eds$sgrna_to_gene(), exclude = input$heatmapExcludeGuides)
         } else if (length(input$heatmapExcludeGuides) > 0) {
           countsHeatmap <- countsHeatmap[!rownames(countsHeatmap) %in% input$heatmapExcludeGuides, , drop = FALSE]
         }
       }
       # Log2 and batch correction on FULL matrix (all genes, all samples) before subsetting
-      is_logged <- input$heatmapCounts %in% c("Normalised + Log2", "VST") ||
-        inputDataReactive()$dataType == "proteomics"
-      if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
+      is_logged <- input$heatmapCounts %in% c("normalised_log2", "vst") ||
+        eds$omics_class() == "proteomics"
+      if (input$heatmapLog2 & input$heatmapCounts %in% c("tpm", "fpkm", "normalised", "counts")) {
         countsHeatmap <- log2(countsHeatmap + 1)
         is_logged <- TRUE
       }
@@ -528,7 +528,7 @@ observeEvent(
         if (is_logged) {
           countsHeatmap <- apply_batch_correction(
             counts    = countsHeatmap,
-            dataset   = inputDataReactive()$dataset,
+            dataset   = eds$samples(),
             batchCol  = input$heatmapBatch,
             designCol = input$heatmapDesign
           )
@@ -541,10 +541,6 @@ observeEvent(
       # Subset to selected samples
       countsHeatmap <- countsHeatmap[, datasetHeatmap$Name]
       datasetHeatmapOriginal <- datasetHeatmap
-      ## Fix the proteomics rownames
-      if (inputDataReactive()$dataType == "proteomics") {
-        rownames(countsHeatmap) <- gsub("\\~.*", "", rownames(countsHeatmap))
-      }
       ## 3. If the user wants to plot gene-wise Z-scores or centre, then do that
       if (input$heatmapZScore == "Z-Score") {
         countsHeatmap <- t(scale(t(countsHeatmap)))
@@ -668,7 +664,7 @@ observeEvent(
 
       # DE Heatmaps ----
       # Select genes based on data type
-      if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+      if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
         # For CountQC: select by standard deviation
         top_n_countqc <- if (!is.null(input$heatmapGeneNumberCountQC)) input$heatmapGeneNumberCountQC else 2000
         top_genes <- select_genes_by_sd(
@@ -706,9 +702,9 @@ observeEvent(
         top_genes <- geneDirections[[input$heatmapFeatureDirection]][1:ntp]
       }
 
-      # Prepare heatmap name (used by all heatmaps)
-      hmName <- paste(input$heatmapCounts %>% gsub("\\+", "\n\\+", .))
-      if (input$heatmapLog2 & input$heatmapCounts %in% c("TPM", "FPKM", "Normalised")) {
+      # Prepare heatmap name (used by all heatmaps) — pretty label for the legend
+      hmName <- eds$assay_label(input$heatmapCounts) %>% gsub("\\+", "\n\\+", .)
+      if (input$heatmapLog2 & input$heatmapCounts %in% c("tpm", "fpkm", "normalised", "counts")) {
         hmName <- paste(hmName, "\n(Log2)")
       }
       if (input$heatmapZScore == "Z-Score") {
@@ -739,7 +735,7 @@ observeEvent(
         })
 
         # Limit to requested number of features based on data type
-        if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+        if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
           max_features <- min(as.numeric(input$heatmapGeneNumberCountQC), nrow(countsHeatmapSig))
           countsHeatmapSig <- countsHeatmapSig[1:max_features, ]
         } else {
@@ -750,7 +746,7 @@ observeEvent(
         rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
 
         # Determine heatmap title based on data type
-        heatmap_title <- if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+        heatmap_title <- if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
           paste("Top", nrow(countsHeatmapSig), "Features by SD", agg_label, ":\n", design)
         } else {
           paste("Top", nrow(countsHeatmapSig), "DE Features", agg_label, ":\n", design)
@@ -800,22 +796,22 @@ observeEvent(
             basic_cols <- colnames(counts_export)
 
             # Add DE statistics if requested
-            if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+            if (eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics" &&
                 !is.null(input$includeDEStatsHeatmap) &&
                 input$includeDEStatsHeatmap) {
 
-              if (inputDataReactive()$dataType == "RNASeq") {
+              if (eds$data_type() == "RNASeq") {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
+                valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
                 if (length(valid_de_cols) > 1) {
-                  de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
+                  de_data <- eds$de(eds$primary_contrast())[, valid_de_cols, drop = FALSE]
                   counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               } else if (!is.null(input$contrastSelected)) {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
+                valid_de_cols <- intersect(de_cols, colnames(eds$de(input$contrastSelected)))
                 if (length(valid_de_cols) > 1) {
-                  de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
+                  de_data <- eds$de(input$contrastSelected)[, valid_de_cols, drop = FALSE]
                   counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               }
@@ -916,22 +912,22 @@ observeEvent(
           basic_cols <- colnames(counts_export)
 
           # Add DE statistics if requested
-          if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+          if (eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics" &&
               !is.null(input$includeDEStatsHeatmap) &&
               input$includeDEStatsHeatmap) {
 
-            if (inputDataReactive()$dataType == "RNASeq") {
+            if (eds$data_type() == "RNASeq") {
               de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-              valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
+              valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
               if (length(valid_de_cols) > 1) {
-                de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
+                de_data <- eds$de(eds$primary_contrast())[, valid_de_cols, drop = FALSE]
                 counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
               }
             } else if (!is.null(input$contrastSelected)) {
               de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-              valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
+              valid_de_cols <- intersect(de_cols, colnames(eds$de(input$contrastSelected)))
               if (length(valid_de_cols) > 1) {
-                de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
+                de_data <- eds$de(input$contrastSelected)[, valid_de_cols, drop = FALSE]
                 counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
               }
             }
@@ -951,7 +947,7 @@ observeEvent(
 
 
       # GO heatmap ----
-      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
+      if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         goGenes <- goHeatmapReactive$currentGenes
         countsHeatmapGO <- NULL
         goGenesTotal <- length(goGenes)
@@ -1023,22 +1019,22 @@ observeEvent(
             basic_cols <- colnames(counts_export)
 
             # Add DE statistics if requested
-            if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+            if (eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics" &&
                 !is.null(input$includeDEStatsHeatmap) &&
                 input$includeDEStatsHeatmap) {
 
-              if (inputDataReactive()$dataType == "RNASeq") {
+              if (eds$data_type() == "RNASeq") {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
+                valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
                 if (length(valid_de_cols) > 1) {
-                  de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
+                  de_data <- eds$de(eds$primary_contrast())[, valid_de_cols, drop = FALSE]
                   counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               } else if (!is.null(input$contrastSelected)) {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
+                valid_de_cols <- intersect(de_cols, colnames(eds$de(input$contrastSelected)))
                 if (length(valid_de_cols) > 1) {
-                  de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
+                  de_data <- eds$de(input$contrastSelected)[, valid_de_cols, drop = FALSE]
                   counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               }
@@ -1061,7 +1057,7 @@ observeEvent(
       }
 
       # KEGG heatmap ----
-      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC") &&
+      if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC") &&
           !is.null(keggHeatmapReactive$keggCode)) {
         keggGenes <- keggHeatmapReactive$currentGenes
         countsHeatmapKEGG <- NULL
@@ -1138,21 +1134,21 @@ observeEvent(
                 counts_export <- as.data.frame(countsHeatmapKEGG) %>% rownames_to_column("feature_id")
                 basic_cols <- colnames(counts_export)
 
-                if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+                if (eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics" &&
                     !is.null(input$includeDEStatsHeatmap) &&
                     input$includeDEStatsHeatmap) {
-                  if (inputDataReactive()$dataType == "RNASeq") {
+                  if (eds$data_type() == "RNASeq") {
                     de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                    valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnno))
+                    valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
                     if (length(valid_de_cols) > 1) {
-                      de_data <- inputDataReactive()$seqAnno[, valid_de_cols, drop = FALSE]
+                      de_data <- eds$de(eds$primary_contrast())[, valid_de_cols, drop = FALSE]
                       counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                     }
                   } else if (!is.null(input$contrastSelected)) {
                     de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                    valid_de_cols <- intersect(de_cols, colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]]))
+                    valid_de_cols <- intersect(de_cols, colnames(eds$de(input$contrastSelected)))
                     if (length(valid_de_cols) > 1) {
-                      de_data <- inputDataReactive()$seqAnnoList[[input$contrastSelected]][, valid_de_cols, drop = FALSE]
+                      de_data <- eds$de(input$contrastSelected)[, valid_de_cols, drop = FALSE]
                       counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                     }
                   }
@@ -1180,11 +1176,11 @@ observeEvent(
 # GO heatmap: fetch GO term genes on button click
 observeEvent(input$heatmapGoGo, {
   req(input$heatmapGoInput)
-  req(inputDataReactive()$seqAnno)
+  req(length(eds$contrasts()) > 0)
 
   goId <- gsub(" .*", "", input$heatmapGoInput)
   goName <- sub("^\\S+\\s+", "", input$heatmapGoInput)
-  seqAnno <- inputDataReactive()$seqAnno
+  seqAnno <- eds$de(eds$primary_contrast())
 
   goGenes <- seqAnno$feature_id[with(seqAnno, grepl(goId, paste(`GO BP`, `GO MF`, `GO CC`)))]
 
@@ -1239,7 +1235,7 @@ observeEvent(input$heatmapKeggGo, {
       entrezIds <- gsub(paste0(keggCode, ":"), "", geneLinks)
 
       # Match ENTREZ IDs to feature_ids in seqAnno
-      seqAnno <- inputDataReactive()$seqAnno
+      seqAnno <- eds$de(eds$primary_contrast())
 
       if ("entrez_id" %in% colnames(seqAnno)) {
         # Primary strategy: direct match on entrez_id column

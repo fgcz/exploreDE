@@ -19,7 +19,7 @@ tabItem(
                     helpText("Only applies to counts that are not already on in log space.")
                 ),
                 uiOutput("replicabilityFactorSelectUI"),
-                sliderInput(inputId = "replicabilityTopGenes", label = "Number of top variable genes", min = 100, max = 5000, value = 1000, step = 100),
+                sliderInput(inputId = "replicabilityTopGenes", label = "Number of top variable features", min = 100, max = 5000, value = 1000, step = 100),
                 selectInput(inputId = "replicabilityCorrMethod", label = "Correlation Method", choices = c("pearson", "spearman", "kendall"), selected = "pearson"),
                 selectInput(inputId = "replicabilityDistMethod", label = "Distance Method", choices = c("euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski"), selected = "euclidean"),
                 selectInput(inputId = "replicabilityClustMethod", label = "Clustering Method", choices = c("ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid"), selected = "ward.D2"),
@@ -61,7 +61,7 @@ tabItem(
             tabsetPanel(
                 id = "replicabilityTabs",
                 tabPanel(
-                    "All Genes",
+                    "All Features",
                     br(),
                     box(
                         title = "Sample Correlation Heatmap",
@@ -108,7 +108,7 @@ tabItem(
                     selectInput(inputId = "dpiReplicability", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
                 ),
                 textInput(inputId = "filename_replicability", label = "Enter filename", value = "Replicability"),
-                selectInput(inputId = "replicabilityDownloadSet", label = "Select dataset", choices = c("All Genes", "Top 100 Abundant"), selected = "All Genes"),
+                selectInput(inputId = "replicabilityDownloadSet", label = "Select dataset", choices = c("All Features", "Top 100 Abundant"), selected = "All Features"),
                 downloadButton("replicabilityDownloadHeatmap", "Download Heatmap"),
                 downloadButton("replicabilityDownloadDendrogram", "Download Dendrogram"),
                 downloadButton("replicabilityDownloadCorr", "Download Correlation Matrix (Excel)")

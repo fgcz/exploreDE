@@ -14,19 +14,21 @@ dataSummary <- function(data, varname, groupnames) {
   return(data_sum)
 }
 
+eds <- inputDataReactive()$.eds
+req(eds)
+
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
-  req(inputDataReactive())
-  if (inputDataReactive()$dataType == "RNASeq") {
-    return(inputDataReactive()$design)
-  } else if (inputDataReactive()$dataType == "proteomics") {
+  if (eds$data_type() == "RNASeq") {
+    return(eds$contrast_label(eds$primary_contrast()))
+  } else if (eds$omics_class() == "proteomics") {
     if (isTruthy(input$contrastSelected)) {
       return(input$contrastSelected)
     } else {
       return("No contrast selected")
     }
-  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
-    return(inputDataReactive()$design)
+  } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+    return(eds$data_type())
   }
   return("Unknown")
 })
@@ -37,33 +39,35 @@ output$boxplotStatic <- renderPlot({
   figuresDataReactive$boxplot
 })
 
+.assay_keys    <- eds$assay_names()
+.count_choices <- setNames(.assay_keys, vapply(.assay_keys, eds$assay_label, character(1)))
+.default_count <- if (eds$omics_class() == "proteomics") {
+  if ("intensities" %in% .assay_keys) "intensities" else .assay_keys[1]
+} else {
+  if ("normalised_log2" %in% .assay_keys) "normalised_log2" else .assay_keys[1]
+}
 updateSelectInput(
   session = session,
   inputId = "boxplotCounts",
-  choices = names(inputDataReactive()$countList),
-  selected = switch(inputDataReactive()$dataType,
-    "RNASeq" = "Normalised + Log2",
-    "CountQC" = "Normalised + Log2",
-    "CrisprCountQC" = "Normalised + Log2",
-    "proteomics" = "transformedData"
-  )
+  choices = .count_choices,
+  selected = .default_count
 )
 
 updateSelectizeInput(
   session = session,
   inputId = "fb_select_boxplot",
-  choices = inputDataReactive()$genes,
+  choices = eds$feature_ids(),
   selected = "",
   server = TRUE
 )
 
 # Update feature choices when collapse guides toggle changes
 observeEvent(input$boxplotCollapseGuides, {
-  if (inputDataReactive()$dataType == "CrisprCountQC") {
+  if (eds$data_type() == "CrisprCountQC") {
     if (isTRUE(input$boxplotCollapseGuides)) {
-      gene_choices <- sort(unique(inputDataReactive()$sgRNA_to_gene))
+      gene_choices <- sort(unique(eds$sgrna_to_gene()))
     } else {
-      gene_choices <- inputDataReactive()$genes
+      gene_choices <- eds$feature_ids()
     }
     # Clear everything — feature level has changed
     featureBucket$features <- character(0)
@@ -79,13 +83,13 @@ observeEvent(input$boxplotCollapseGuides, {
 updateSelectInput(
   session = session,
   inputId = "boxplotFactor1",
-  choices = inputDataReactive()$factors,
-  selected = inputDataReactive()$groupingName
+  choices = eds$factor_names(),
+  selected = eds$primary_grouping()
 )
 updateSelectInput(
   session = session,
   inputId = "boxplotFactor2",
-  choices = c("None", "Feature", inputDataReactive()$factors),
+  choices = c("None", "Feature", eds$factor_names()),
   selected = "None"
 )
 
@@ -94,17 +98,18 @@ updateSelectInput(
 # so the tab loads in the analysis's own batch-corrected view. Otherwise
 # batch defaults to None and any factor can be chosen as design (free
 # exploration for CountQC/CrisprCountQC, groupingName pre-selected for DE).
-observeEvent(inputDataReactive(), {
-  .dt       <- inputDataReactive()$dataType
-  .factors  <- inputDataReactive()$factors
-  .grouping <- inputDataReactive()$groupingName
-  .param    <- inputDataReactive()$param
-  .twoFactor <- !is.null(.param$grouping2Name) && nzchar(.param$grouping2Name) &&
-                .param$grouping2Name %in% .factors
-  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", NA_character_)
+observe({
+  .dt        <- eds$data_type()
+  .factors   <- eds$factor_names()
+  .grouping  <- eds$primary_grouping()
+  .secondary <- eds$secondary_grouping()
+  .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
+  .deDesignCol <- if (.dt == "RNASeq") .grouping
+                  else if (eds$omics_class() == "proteomics") "G_"
+                  else NA_character_
 
   batchChoices <- c("None", .factors)
-  batchDefault <- if (.twoFactor) .param$grouping2Name else "None"
+  batchDefault <- if (.twoFactor) .secondary else "None"
   updateSelectInput(
     session = session,
     inputId = "boxplotBatch",
@@ -112,12 +117,14 @@ observeEvent(inputDataReactive(), {
     selected = batchDefault
   )
 
-  designChoices <- if (.dt %in% c("RNASeq", "proteomics") && .twoFactor) {
+  designChoices <- if ((.dt == "RNASeq" || eds$omics_class() == "proteomics") && .twoFactor) {
     c("None", .deDesignCol)
   } else {
     c("None", .factors)
   }
-  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", "None")
+  designDefault <- if (.dt == "RNASeq") .grouping
+                   else if (eds$omics_class() == "proteomics") "G_"
+                   else "None"
   updateSelectInput(
     session = session,
     inputId = "boxplotDesign",
@@ -138,7 +145,7 @@ observeEvent(
         orientation = "horizontal",
         add_rank_list(
           text = "Include these groups",
-          labels = as.list(unique(levels(as.factor(inputDataReactive()$dataset[[input$boxplotFactor1]])))),
+          labels = as.list(unique(levels(as.factor(eds$samples()[[input$boxplotFactor1]])))),
           input_id = "boxKeepBucket",
           options = sortable::sortable_options(multiDrag = TRUE)
         ),
@@ -155,24 +162,30 @@ observeEvent(
 )
 
 # Extract the appropriate data ----
-if (inputDataReactive()$dataType == "RNASeq") {
-  seqAnnoReactive <- reactiveValues("sa" = inputDataReactive()$seqAnno, "saF" = NULL)
-  design <- inputDataReactive()$design
-  designLevels <- inputDataReactive()$designLevels
+if (eds$data_type() == "RNASeq") {
+  .contrast <- eds$primary_contrast()
+  seqAnnoReactive <- reactiveValues("sa" = eds$de(.contrast), "saF" = NULL)
   output$boxplotDesign <- renderText({
-    inputDataReactive()$design
+    eds$contrast_label(.contrast)
   })
-} else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
-  seqAnnoReactive <- reactiveValues("sa" = inputDataReactive()$seqAnno, "saF" = NULL)
-  design <- inputDataReactive()$design
-} else if (inputDataReactive()$dataType == "proteomics") {
+} else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+  # CountQC has no DE results — leave seqAnno NULL; every downstream consumer
+  # gates on dataType, so this is never queried.
   seqAnnoReactive <- reactiveValues("sa" = NULL, "saF" = NULL)
+} else if (eds$omics_class() == "proteomics") {
+  # Initialize seqAnno with the first available contrast immediately so that
+  # bucket_add() validation works before the user explicitly changes the selector.
+  .first_contrast <- if (length(eds$contrasts())) eds$contrasts()[[1]] else NULL
+  .first_sa <- if (!is.null(.first_contrast)) {
+    eds$de(.first_contrast) %>%
+      dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
+  } else NULL
+  seqAnnoReactive <- reactiveValues("sa" = .first_sa, "saF" = .first_sa)
   observeEvent(input$contrastSelected,
     {
-      seqAnnoReactive$sa <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
-      seqAnnoReactive$sa <- seqAnnoReactive$sa %>% dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
+      seqAnnoReactive$sa <- eds$de(input$contrastSelected) %>%
+        dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
       seqAnnoReactive$saF <- seqAnnoReactive$sa
-      design <- input$contrastSelected
       output$boxplotDesign <- renderText({
         input$contrastSelected
       })
@@ -226,39 +239,46 @@ boxplotCountsReactive <- eventReactive(
   {
     req(length(debouncedFeatures()) >= 1)
     req(!is.null(input$boxplotFactor1))
-    req(input$boxKeepBucket[[1]] %in% inputDataReactive()$dataset[[input$boxplotFactor1]])
+    req(input$boxKeepBucket[[1]] %in% eds$samples()[[input$boxplotFactor1]])
 
-    if (inputDataReactive()$dataType == "proteomics") {
-      designLevels <- input$contrastSelected %>%
-        strsplit("_vs_") %>%
-        .[[1]]
+    # Resolve the contrast's test/reference group labels (used for stat_pvalue_manual
+    # brackets below). RNA-seq uses primary contrast; proteomics tracks the picker.
+    designLevels <- NULL
+    if (eds$omics_class() == "proteomics") {
+      if (input$contrastSelected %in% eds$contrasts()) {
+        cm <- eds$contrast_meta(input$contrastSelected)
+        designLevels <- c(cm$test_group, cm$reference_group)
+      }
+    } else if (eds$data_type() == "RNASeq" && length(eds$contrasts())) {
+      cm <- eds$contrast_meta(eds$primary_contrast())
+      designLevels <- c(cm$test_group, cm$reference_group)
     }
 
     genesToPlot <- debouncedFeatures()
     if (length(genesToPlot) > 50) {
       genesToPlot <- genesToPlot[1:50]
     }
-    datasetBoxplot <- inputDataReactive()$dataset
+    datasetBoxplot <- eds$samples()
     datasetBoxplot$Name <- factor(datasetBoxplot$Name, levels = datasetBoxplot$Name)
 
     # Get the count data
-    countsBoxplot <- inputDataReactive()$countList[[input$boxplotCounts]]
+    countsBoxplot <- eds$assay(input$boxplotCounts)
     # Collapse sgRNA guides to gene level if requested
-    if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$boxplotCollapseGuides)) {
-      countsBoxplot <- collapse_guides_to_genes(countsBoxplot, inputDataReactive()$sgRNA_to_gene)
+    if (eds$data_type() == "CrisprCountQC" && isTRUE(input$boxplotCollapseGuides)) {
+      countsBoxplot <- collapse_guides_to_genes(countsBoxplot, eds$sgrna_to_gene())
       # Map any sgRNA-level feature names to gene names
-      sgRNA_map <- inputDataReactive()$sgRNA_to_gene
+      sgRNA_map <- eds$sgrna_to_gene()
       genesToPlot <- unique(ifelse(genesToPlot %in% names(sgRNA_map), sgRNA_map[genesToPlot], genesToPlot))
       genesToPlot <- genesToPlot[genesToPlot %in% rownames(countsBoxplot)]
     }
 
     # Apply the following in this specific order as required: Log2, batch correct, Z-scale
     # If the user wants to log2, then do that
-    is_logged <- input$boxplotCounts %in% c("Normalised + Log2", "VST") ||
-      inputDataReactive()$dataType == "proteomics"
+    is_logged <- input$boxplotCounts %in% c("normalised_log2", "vst") ||
+      eds$omics_class() == "proteomics"
     if (input$boxplotCountsLog) {
-      if (inputDataReactive()$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
-        if (input$boxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
+      if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
+        if (input$boxplotCounts %in% c("tpm", "fpkm", "normalised", "counts")) {
           countsBoxplot <- log2(countsBoxplot + 1)
           is_logged <- TRUE
         }
@@ -282,16 +302,13 @@ boxplotCountsReactive <- eventReactive(
     if (input$boxplotZScore) {
       countsBoxplot <- t(scale(t(countsBoxplot)))
     }
-    # Clean up proteomics feature names
-    if (inputDataReactive()$dataType == "proteomics") {
-      rownames(countsBoxplot) <- gsub("\\~.*", "", rownames(countsBoxplot))
-    }
+    # Proteomics rowname remapping is handled inside eds$assay() via .fid_lookup.
     countsBoxplot <- as.data.frame(t(countsBoxplot))
     countsBoxplot$Name <- rownames(countsBoxplot)
     countsBoxplot <- countsBoxplot %>% dplyr::select(all_of(c("Name", genesToPlot)))
 
     # Add the metadata
-    countsBoxplot <- left_join(countsBoxplot, datasetBoxplot[, c("Name", inputDataReactive()$factors)], by = "Name")
+    countsBoxplot <- left_join(countsBoxplot, datasetBoxplot[, c("Name", eds$factor_names())], by = "Name")
 
     # Include only the conditions selected
     countsBoxplot <- countsBoxplot[countsBoxplot[[input$boxplotFactor1]] %in% input$boxKeepBucket, ]
@@ -304,7 +321,7 @@ boxplotCountsReactive <- eventReactive(
     countsBoxplot[["Name"]] <- factor(countsBoxplot[["Name"]], levels = countsBoxplot[["Name"]])
 
     # melt the table
-    countsBoxplotMelt <- reshape2:::melt.data.frame(data = countsBoxplot, id.vars = c("Name", inputDataReactive()$factors), value.name = "Counts", variable.name = "Feature")
+    countsBoxplotMelt <- reshape2:::melt.data.frame(data = countsBoxplot, id.vars = c("Name", eds$factor_names()), value.name = "Counts", variable.name = "Feature")
     countsBoxplotMelt$Feature <- as.factor(x = countsBoxplotMelt$Feature)
 
     # Force the order of the genes as factor so the order the genes are
@@ -319,7 +336,7 @@ boxplotCountsReactive <- eventReactive(
     }
 
     # add the DE results
-    if (!inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+    if (!eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
       countsBoxplotMelt$fdr <- seqAnnoReactive$sa$fdr[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
       countsBoxplotMelt$fdr[is.na(countsBoxplotMelt$fdr)] <- 1
       countsBoxplotMelt$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
@@ -349,7 +366,7 @@ boxplotCountsReactive <- eventReactive(
     )
     countsBarplot[[input$boxplotFactor1]] <- factor(countsBarplot[[input$boxplotFactor1]], levels = input$boxKeepBucket)
     countsBarplot$Feature <- factor(countsBarplot$Feature, genesToPlot)
-    if (!inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+    if (!eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
       for (f in c("fdr", "log2Ratio", "stars", "group1", "group2", "y.position")) {
         countsBarplot[[f]] <- countsBoxplotMelt[match(countsBarplot$Feature, countsBoxplotMelt$Feature), f]
       }
@@ -403,9 +420,9 @@ observeEvent(
     input$boxplotYScaleFree
     input$boxplotPlotBorder
     # Add all color picker inputs as dependencies so plot updates when colors change
-    lapply(seq_along(inputDataReactive()$factorLevels), function(i) {
-      lapply(seq_along(inputDataReactive()$factorLevels[[i]]), function(j) {
-        input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]], inputDataReactive()$factorLevels[[i]][[j]])]]
+    lapply(eds$factor_names(), function(fname) {
+      lapply(eds$factor_levels(fname), function(lev) {
+        input[[paste0("GroupColour", fname, lev)]]
       })
     })
   },
@@ -430,10 +447,9 @@ observeEvent(
       paste0(col2hex(input[[paste0("GroupColour", input$boxplotFactor1, k)]]), "FF")
     }), input$boxKeepBucket)
 
-    if (inputDataReactive()$dataType == "proteomics") {
-      designLevels <- input$contrastSelected %>%
-        strsplit("_vs_") %>%
-        .[[1]]
+    if (eds$omics_class() == "proteomics" && input$contrastSelected %in% eds$contrasts()) {
+      cm <- eds$contrast_meta(input$contrastSelected)
+      designLevels <- c(cm$test_group, cm$reference_group)
     }
 
     facetFree <- "free"
@@ -445,8 +461,9 @@ observeEvent(
     # Build a facet labeller that annotates feature_ids with gene symbols
     # (proteomics only, when gene_name info exists in the seqAnno)
     facet_labeller <- "label_value"
-    if (inputDataReactive()$dataType == "proteomics" && !is.null(input$contrastSelected)) {
-      sa_full <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
+    if (eds$omics_class() == "proteomics" && !is.null(input$contrastSelected) &&
+        input$contrastSelected %in% eds$contrasts()) {
+      sa_full <- eds$de(input$contrastSelected)
       if ("gene_name" %in% colnames(sa_full)) {
         gene_map <- setNames(sa_full$gene_name, sa_full$feature_id)
         facet_labeller <- labeller(Feature = function(fids) {
@@ -577,7 +594,7 @@ output$boxplotTable <- renderDataTable({
     xvar = input$boxplotFactor1,
     yvar = "Counts"
   )
-  if (!inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+  if (!eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
     colsToShowHere <- c("Name", input$boxplotFactor1, "Feature", "Counts", "log2Ratio", "fdr")
     colsToFormat <- c("Counts", "fdr", "log2Ratio")
   } else {
@@ -646,20 +663,23 @@ output$dlTable_boxplot <- downloadHandler(
 
     # Determine which columns to include
     # Basic columns: Name, factor columns, Feature, Counts
-    basic_cols <- c("Name", inputDataReactive()$factors, "Feature", "Counts")
+    basic_cols <- c("Name", eds$factor_names(), "Feature", "Counts")
 
-    if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics") &&
+    if ((eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics") &&
         !is.null(input$includeDEStatsBoxplot) &&
         input$includeDEStatsBoxplot) {
       # Add DE statistics: log2Ratio, pValue, fdr
       # First add pValue if it doesn't exist (it's not in countsBoxplotMelt by default)
-      if (inputDataReactive()$dataType == "RNASeq") {
-        if ("pValue" %in% colnames(inputDataReactive()$seqAnno)) {
-          counts_data$pValue <- inputDataReactive()$seqAnno$pValue[match(counts_data$Feature, inputDataReactive()$seqAnno$feature_id)]
+      if (eds$data_type() == "RNASeq") {
+        seqAnno_dl <- eds$de(eds$primary_contrast())
+        if ("pValue" %in% colnames(seqAnno_dl)) {
+          counts_data$pValue <- seqAnno_dl$pValue[match(counts_data$Feature, seqAnno_dl$feature_id)]
         }
-      } else if (!is.null(input$contrastSelected)) {
-        if ("pValue" %in% colnames(inputDataReactive()$seqAnnoList[[input$contrastSelected]])) {
-          counts_data$pValue <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]$pValue[match(counts_data$Feature, inputDataReactive()$seqAnnoList[[input$contrastSelected]]$feature_id)]
+      } else if (!is.null(input$contrastSelected) &&
+                 input$contrastSelected %in% eds$contrasts()) {
+        seqAnno_dl <- eds$de(input$contrastSelected)
+        if ("pValue" %in% colnames(seqAnno_dl)) {
+          counts_data$pValue <- seqAnno_dl$pValue[match(counts_data$Feature, seqAnno_dl$feature_id)]
         }
       }
 
@@ -686,8 +706,7 @@ output$dlTable_boxplot <- downloadHandler(
 
 # Show/Hide DE P-values tab based on data type
 observe({
-  req(inputDataReactive())
-  if (inputDataReactive()$dataType %in% c("RNASeq", "proteomics")) {
+  if (eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics") {
     showTab(inputId = "boxplotSettingsTabs", target = "dePValuesTab")
   } else {
     hideTab(inputId = "boxplotSettingsTabs", target = "dePValuesTab")

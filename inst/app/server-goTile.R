@@ -1,12 +1,9 @@
-if(inputDataReactive()$dataType == "RNASeq") {
+eds <- inputDataReactive()$.eds
 
-  dataset <- inputDataReactive()$dataset
-  factors <- inputDataReactive()$factors
-  countList <- inputDataReactive()$countList
-  factorLevels <- inputDataReactive()$factorLevels
-  param <- inputDataReactive()$param
-  design <- inputDataReactive()$design
-  allPathways <- inputDataReactive()$allPathways
+if (eds$data_type() == "RNASeq") {
+
+  design      <- eds$contrast_label(eds$primary_contrast())
+  allPathways <- eds$all_pathways()
   
   output$goTilePlotDesign <- renderText({
     design
@@ -55,8 +52,9 @@ if(inputDataReactive()$dataType == "RNASeq") {
         }
         
         goToPlot <- gsub(" .*", "", input$goTileInput)
+        seqAnno <- eds$de(eds$primary_contrast())
         dfToPlotList <- lapply(goToPlot, function(GO) {
-          d1 <- inputDataReactive()$seqAnno[with(inputDataReactive()$seqAnno, grepl(GO, paste(`GO BP`, `GO MF`, `GO CC`))), ]
+          d1 <- seqAnno[with(seqAnno, grepl(GO, paste(`GO BP`, `GO MF`, `GO CC`))), ]
           d1 <- d1[d1$usedInTest == TRUE, ]
           if (input$degOnlyGoTile) {
             d1 <- d1[which(d1[[pTypeGoTile]] <= 0.05), ]

@@ -12,6 +12,9 @@
 #   - Adding features (selectize, textarea, DEG table, volcano brush) goes through
 #     bucket_add() which updates the central store → all tabs re-render
 
+eds <- inputDataReactive()$.eds
+req(eds)
+
 # --- Central reactive store ---
 featureBucket <- reactiveValues(
   features = character(0),
@@ -23,8 +26,9 @@ featureBucket <- reactiveValues(
 bucket_add <- function(new_features, source = "unknown") {
   valid_ids <- seqAnnoReactive$sa$feature_id
   # Also accept gene-level names for CrisprCountQC collapsed mode
-  if (!is.null(inputDataReactive()$sgRNA_to_gene)) {
-    valid_ids <- c(valid_ids, unique(inputDataReactive()$sgRNA_to_gene))
+  sg <- eds$sgrna_to_gene()
+  if (!is.null(sg)) {
+    valid_ids <- c(valid_ids, unique(sg))
   }
   valid <- new_features[new_features %in% valid_ids & new_features != ""]
   current <- isolate(featureBucket$features)
@@ -57,13 +61,15 @@ parse_gene_text <- function(text) {
 
 # Resolve gene symbols / protein IDs to feature_ids when not in feature_id mode
 resolve_features <- function(input_genes, search_mode = "feature_id") {
-  if (search_mode == "gene_name" && !is.null(inputDataReactive()$gene_lookup)) {
-    expanded <- unlist(inputDataReactive()$gene_lookup[input_genes], use.names = FALSE)
+  gene_lookup    <- eds$proteomics_choices("gene")$lookup
+  protein_lookup <- eds$proteomics_choices("protein")$lookup
+  if (search_mode == "gene_name" && !is.null(gene_lookup)) {
+    expanded <- unlist(gene_lookup[input_genes], use.names = FALSE)
     direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
     return(unique(c(expanded, direct)))
   }
-  if (search_mode == "protein_Id" && !is.null(inputDataReactive()$protein_lookup)) {
-    expanded <- unlist(inputDataReactive()$protein_lookup[input_genes], use.names = FALSE)
+  if (search_mode == "protein_Id" && !is.null(protein_lookup)) {
+    expanded <- unlist(protein_lookup[input_genes], use.names = FALSE)
     direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
     return(unique(c(expanded, direct)))
   }
@@ -175,7 +181,7 @@ observeEvent(
 # DEG table tab (row selection)
 observeEvent(input$degTable_rows_selected, ignoreNULL = FALSE, ignoreInit = TRUE, {
   sa <- seqAnnoReactive$sa
-  if (!inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
+  if (!eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
     sa <- sa[order(sa$pValue), ]
   }
   selected <- sa$feature_id[input$degTable_rows_selected]
@@ -202,12 +208,14 @@ lapply(fb_reset_tabs, function(tab) {
     # Clear ALL selectize and textarea inputs across ALL tabs,
     # respecting the current search mode so choices stay consistent
     mode <- input[[paste0("fb_search_by_", tab)]] %||% "feature_id"
-    choices <- if (mode == "gene_name" && !is.null(inputDataReactive()$gene_choices)) {
-      inputDataReactive()$gene_choices
-    } else if (mode == "protein_Id" && !is.null(inputDataReactive()$protein_choices)) {
-      inputDataReactive()$protein_choices
+    gene_ch    <- eds$proteomics_choices("gene")$choices
+    protein_ch <- eds$proteomics_choices("protein")$choices
+    choices <- if (mode == "gene_name" && !is.null(gene_ch)) {
+      gene_ch
+    } else if (mode == "protein_Id" && !is.null(protein_ch)) {
+      protein_ch
     } else {
-      inputDataReactive()$genes
+      eds$feature_ids()
     }
     for (t in fb_input_tabs) {
       updateSelectizeInput(session, paste0("fb_select_", t),
@@ -233,8 +241,8 @@ lapply(fb_reset_tabs, function(tab) {
 lapply(c(fb_input_tabs, "correlation"), function(tab) {
   output[[paste0("fb_search_mode_", tab)]] <- renderUI({
     # Only show radio when at least one alternative lookup exists
-    has_gene <- !is.null(inputDataReactive()$gene_lookup)
-    has_protein <- !is.null(inputDataReactive()$protein_lookup)
+    has_gene    <- !is.null(eds$proteomics_choices("gene")$lookup)
+    has_protein <- !is.null(eds$proteomics_choices("protein")$lookup)
     req(has_gene || has_protein)
 
     choices <- c("Feature ID" = "feature_id")
@@ -268,12 +276,14 @@ lapply(fb_input_tabs, function(tab) {
     figuresDataReactive$heatmapCustom <- NULL
 
     # Update selectize choices for the new mode across all tabs
-    choices <- if (mode == "gene_name" && !is.null(inputDataReactive()$gene_choices)) {
-      inputDataReactive()$gene_choices
-    } else if (mode == "protein_Id" && !is.null(inputDataReactive()$protein_choices)) {
-      inputDataReactive()$protein_choices
+    gene_ch    <- eds$proteomics_choices("gene")$choices
+    protein_ch <- eds$proteomics_choices("protein")$choices
+    choices <- if (mode == "gene_name" && !is.null(gene_ch)) {
+      gene_ch
+    } else if (mode == "protein_Id" && !is.null(protein_ch)) {
+      protein_ch
     } else {
-      inputDataReactive()$genes
+      eds$feature_ids()
     }
     for (t in fb_input_tabs) {
       updateSelectizeInput(session, paste0("fb_select_", t),

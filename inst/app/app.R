@@ -294,7 +294,11 @@ server <- function(input, output, session) {
 
   output$sidebarMenu <- renderMenu({
     req(inputDataReactive())
-    dataType <- inputDataReactive()$dataType
+    eds      <- inputDataReactive()$.eds
+    dataType <- eds$data_type()
+    # Column-presence check: cheap, no DB lookup. goTile tab is only shown when
+    # SUSHI has annotated features with GO terms (GO BP / MF / CC columns).
+    has_go   <- any(c("GO BP", "GO MF", "GO CC") %in% colnames(eds$features()))
     # Create dependency on menuUpdateTrigger for manual updates
     multiDeReactive$menuUpdateTrigger
     # Use isolate to check hasMultiData without automatic re-rendering
@@ -335,17 +339,22 @@ server <- function(input, output, session) {
     if (dataType == "RNASeq") {
       # Check if species is supported for KEGG (human, mouse, rat)
       keggSpeciesSupported <- tryCatch({
-        spp <- ezRun::getSpecies(inputDataReactive()$param$refBuild)
-        if (grepl("^Rattus", inputDataReactive()$param$refBuild)) spp <- "Rat"
+        ref <- eds$ref_build()
+        spp <- ezRun::getSpecies(ref)
+        if (grepl("^Rattus", ref)) spp <- "Rat"
         spp %in% c("Human", "Mouse", "Rat")
       }, error = function(e) FALSE)
 
       pathwayItems <- list(
         tags$li(class = "header", "Pathway Analyses"),
         menuItem(text = "Over-Representation Analysis", tabName = "oraTab", icon = icon("hubspot")),
-        menuItem(text = "Gene Set Enrichment Analysis", tabName = "gseaTab", icon = icon("hubspot")),
-        menuItem(text = "GO Tile Plots", tabName = "goTileTab", icon = icon("table"))
+        menuItem(text = "Gene Set Enrichment Analysis", tabName = "gseaTab", icon = icon("hubspot"))
       )
+      if (has_go) {
+        pathwayItems <- c(pathwayItems, list(
+          menuItem(text = "GO Tile Plots", tabName = "goTileTab", icon = icon("table"))
+        ))
+      }
       if (keggSpeciesSupported) {
         pathwayItems <- c(pathwayItems, list(
           menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))

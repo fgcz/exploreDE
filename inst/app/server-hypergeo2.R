@@ -1,6 +1,10 @@
+eds <- inputDataReactive()$.eds
+req(eds)
+.ora_raw <- function() S4Vectors::metadata(eds$backend())$enrichResult
+
 observeEvent(input$tabs, {
   if (input$tabs == "oraTab") {
-    if (is_empty(inputDataReactive()$goObjects$ora)) {
+    if (is_empty(.ora_raw())) {
       showModal(modalDialog(title = "No ORA Results", "No pathway analysis was performed so this tab is empty."))
     }
   }
@@ -15,12 +19,12 @@ oraPlotReactive <- reactiveValues(
   "upset" = NULL
 )
 
-if (inputDataReactive()$dataType == "RNASeq" && !is_empty(inputDataReactive()$goObjects$ora)) {
-  # Get data
-  ora <- inputDataReactive()$goObjects$ora
-  se <- inputDataReactive()$se
-  design <- inputDataReactive()$design
-  param <- inputDataReactive()$param
+if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
+  # Get data — ORA visualisation is RNA-seq + SUSHI-only; uses the SE escape hatch.
+  ora    <- .ora_raw()
+  se     <- eds$backend()
+  design <- eds$contrast_label(eds$primary_contrast())
+  param  <- S4Vectors::metadata(se)$param
 
   output$oraDesign <- renderText({
     design

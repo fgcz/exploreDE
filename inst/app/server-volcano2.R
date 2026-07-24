@@ -1,6 +1,7 @@
-req(!is.null(inputDataReactive()$dataType))
+eds <- inputDataReactive()$.eds
+req(eds)
 
-if (inputDataReactive()$dataType == "proteomics") {
+if (eds$omics_class() == "proteomics") {
   updateNumericInput(session = session, inputId = "xLimVolcano", value = 2)
 }
 
@@ -15,9 +16,8 @@ volcanoColoursDefault <- c(
   "FoldChangeSignificantDown" = "deepskyblue4"
 )
 
-if (inputDataReactive()$dataType == "proteomics") {
-  req(!is.null(inputDataReactive()$seqAnnoList))
-  if ("modelName" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+if (eds$omics_class() == "proteomics") {
+  if ("modelName" %in% colnames(eds$de(eds$primary_contrast()))) {
     volcanoColoursDefault <- c(volcanoColoursDefault, "Imputed" = "burlywood3")
   }
 }
@@ -38,7 +38,7 @@ outputOptions(output, "volcanoColourPicker", suspendWhenHidden = FALSE)
 updateSelectizeInput(
   session = session,
   inputId = "fb_select_volcano",
-  choices = inputDataReactive()$genes,
+  choices = eds$feature_ids(),
   selected = "",
   server = TRUE
 )
@@ -49,18 +49,18 @@ observeEvent(
   {
     input$pTypeVolcano
     input$contrastSelected
-    inputDataReactive()
   },
   ignoreInit = TRUE,
   ignoreNULL = TRUE,
   {
     # Volcano plots are only applicable for RNASeq and proteomics data with DE results
     # CountQC data does not have differential expression results
-    req(inputDataReactive()$dataType %in% c("RNASeq", "proteomics"))
+    req(eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics")
 
-    if (inputDataReactive()$dataType == "RNASeq") {
-      seqAnno <- inputDataReactive()$seqAnno
-      design <- inputDataReactive()$design
+    if (eds$data_type() == "RNASeq") {
+      contrast    <- eds$primary_contrast()
+      design      <- eds$contrast_label(contrast)
+      seqAnno     <- eds$de(contrast)
       output$volcanoDesign <- renderText({
         design
       })
@@ -68,11 +68,10 @@ observeEvent(
       updateTextInput(session = session, inputId = "filename_volcano", value = design)
     }
 
-    if (inputDataReactive()$dataType == "proteomics") {
+    if (eds$omics_class() == "proteomics") {
       req(!is.null(input$contrastSelected))
-      req(!is.null(inputDataReactive()$seqAnnoList))
-      req(input$contrastSelected %in% names(inputDataReactive()$seqAnnoList))
-      seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
+      req(input$contrastSelected %in% eds$contrasts())
+      seqAnnoFilt <- eds$de(input$contrastSelected)
       seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, log2Ratio, pValue, fdr)
 
       output$volcanoDesign <- renderText({
@@ -100,10 +99,10 @@ observeEvent(
   }
 )
 
-if (inputDataReactive()$dataType == "proteomics") {
-  req(!is.null(inputDataReactive()$seqAnnoList))
+if (eds$omics_class() == "proteomics") {
+  proto_de <- eds$de(eds$primary_contrast())
 
-  if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+  if ("nrPeptides" %in% colnames(proto_de)) {
     output$nrPeptidesVolcanoUI <- renderUI({
       sliderInput(inputId = "nrPeptideVolcano", label = "Minimum number of peptides", min = 0, max = 20, value = 0, step = 1, width = "85%")
     })
@@ -114,7 +113,7 @@ if (inputDataReactive()$dataType == "proteomics") {
     })
   }
 
-  if ("modelName" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
+  if ("modelName" %in% colnames(proto_de)) {
     output$showImputedVolcanoUI <- renderUI({
       checkboxInput(inputId = "showImputedVolcano", label = "Include imputed features?", value = TRUE)
     })
@@ -179,21 +178,21 @@ volcanoResultsList <- eventReactive(
   {
     # Volcano plots are only applicable for RNASeq and proteomics data with DE results
     # CountQC data does not have differential expression results
-    req(inputDataReactive()$dataType %in% c("RNASeq", "proteomics"))
+    req(eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics")
 
-    if (inputDataReactive()$dataType == "RNASeq") {
-      seqAnno <- inputDataReactive()$seqAnno
-      design <- inputDataReactive()$design
+    if (eds$data_type() == "RNASeq") {
+      contrast    <- eds$primary_contrast()
+      design      <- eds$contrast_label(contrast)
+      seqAnno     <- eds$de(contrast)
       output$volcanoDesign <- renderText({
         design
       })
       seqAnnoFilt <- seqAnno[which(seqAnno$usedInTest), ]
     }
-    if (inputDataReactive()$dataType == "proteomics") {
+    if (eds$omics_class() == "proteomics") {
       req(!is.null(input$contrastSelected))
-      req(!is.null(inputDataReactive()$seqAnnoList))
-      req(input$contrastSelected %in% names(inputDataReactive()$seqAnnoList))
-      seqAnnoFilt <- inputDataReactive()$seqAnnoList[[input$contrastSelected]]
+      req(input$contrastSelected %in% eds$contrasts())
+      seqAnnoFilt <- eds$de(input$contrastSelected)
       if (!is.null(input$nrPeptideVolcano)) {
         if (any(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano)) {
           seqAnnoFilt <- seqAnnoFilt[which(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano), ]
@@ -244,11 +243,10 @@ volcanoResultsList <- eventReactive(
     log10pToFilter <- -log10(as.numeric(input$pThresholdVolcano))
 
     # Get mean log2 count for MA plot
-    if (inputDataReactive()$dataType == "RNASeq") {
-      rMs <- rowMeans(inputDataReactive()$countList$`Normalised + Log2`)
+    if (eds$data_type() == "RNASeq") {
+      rMs <- rowMeans(eds$assay("normalised_log2"))
     } else {
-      rMs <- rowMeans(inputDataReactive()$countList[[2]])
-      names(rMs) <- names(rMs) %>% gsub("\\~.*", "", .)
+      rMs <- rowMeans(eds$assay("intensities"))
     }
     volcanoTable$Log2_Mean <- rMs[match(volcanoTable$feature_id, names(rMs))]
 

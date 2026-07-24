@@ -272,16 +272,17 @@ step_group_subset <- function(counts, dataset, factor_col, groups) {
   list(counts = counts, dataset = dataset)
 }
 
-step_peptide_filter <- function(counts, dataset, seqAnnoList, min_peptides) {
-  if (!is.null(seqAnnoList) && !is.null(min_peptides)) {
-    keep <- seqAnnoList[[1]]$feature_id[seqAnnoList[[1]]$nrPeptides >= min_peptides]
+step_peptide_filter <- function(counts, dataset, de_df, min_peptides) {
+  if (!is.null(de_df) && !is.null(min_peptides) && "nrPeptides" %in% colnames(de_df)) {
+    keep <- de_df$feature_id[de_df$nrPeptides >= min_peptides]
     counts <- counts[rownames(counts) %in% keep, , drop = FALSE]
   }
   list(counts = counts, dataset = dataset)
 }
 
 step_log2 <- function(counts, dataset, counts_type) {
-  if (counts_type %in% c("TPM", "FPKM", "Raw", "Normalised")) {
+  # Linear-scale assay keys that benefit from log2 transform
+  if (counts_type %in% c("tpm", "fpkm", "counts", "normalised")) {
     counts <- log2(counts + 1)
   }
   list(counts = counts, dataset = dataset)
@@ -487,26 +488,28 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
   return(p)
 }
 
+eds <- inputDataReactive()$.eds
+req(eds)
+
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
-  req(inputDataReactive())
-  if (inputDataReactive()$dataType == "RNASeq") {
-    return(inputDataReactive()$design)
-  } else if (inputDataReactive()$dataType == "proteomics") {
+  if (eds$data_type() == "RNASeq") {
+    return(eds$contrast_label(eds$primary_contrast()))
+  } else if (eds$omics_class() == "proteomics") {
     if (isTruthy(input$contrastSelected)) {
       return(input$contrastSelected)
     } else {
       return("No contrast selected")
     }
-  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
-    return(inputDataReactive()$design)
+  } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+    return(eds$data_type())
   }
   return("Unknown")
 })
 
 # Main reactive expression for ordination calculations
 ordinationResults <- reactive({
-  req(inputDataReactive()$dataset)
+  req(eds)
 
   # Comprehensive validation before proceeding
   req(
@@ -514,44 +517,44 @@ ordinationResults <- reactive({
     input$pcaFactor1 != "None",
     !is.null(input$pcaGroups),
     length(input$pcaGroups) > 0,
-    input$pcaCounts %in% names(inputDataReactive()$countList),
+    input$pcaCounts %in% eds$assay_names(),
     !is.null(input$ordinationMethod)
   )
 
   # Validate selected groups exist in the dataset
-  available_groups <- levels(as.factor(inputDataReactive()$dataset[[input$pcaFactor1]]))
+  datasetOrd <- eds$samples()
+  available_groups <- levels(as.factor(datasetOrd[[input$pcaFactor1]]))
   valid_groups <- input$pcaGroups[input$pcaGroups %in% available_groups]
   req(length(valid_groups) > 0)
 
   # Prepare data: start with full dataset and counts
   # GLM-PCA requires raw counts; other methods use the user-selected count type
-  datasetOrd <- inputDataReactive()$dataset
   if (input$ordinationMethod == "glmpca") {
-    countsOrd <- inputDataReactive()$countList[["Raw"]]
-    if (is.null(countsOrd)) {
+    if (!eds$has_assay("counts")) {
       showNotification("GLM-PCA requires raw count data which is not available", type = "error", duration = 5)
       return(NULL)
     }
+    countsOrd <- eds$assay("counts")
   } else {
-    countsOrd <- inputDataReactive()$countList[[input$pcaCounts]]
+    countsOrd <- eds$assay(input$pcaCounts)
   }
   # Collapse sgRNA guides to gene level if requested
-  if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$pcaCollapseGuides)) {
-    countsOrd <- collapse_guides_to_genes(countsOrd, inputDataReactive()$sgRNA_to_gene)
+  if (eds$data_type() == "CrisprCountQC" && isTRUE(input$pcaCollapseGuides)) {
+    countsOrd <- collapse_guides_to_genes(countsOrd, eds$sgrna_to_gene())
   }
 
   # Build cascade step map
   # Track whether counts are in log space (needed for batch correction)
   batch_col    <- if (input$pcaBatch != "None") input$pcaBatch else NULL
   design_col   <- input$pcaBatchDesign  # read here so ordinationResults() tracks it as a dep even if the cascade step short-circuits
-  is_logged <- input$pcaCounts %in% c("Normalised + Log2", "VST") ||
-    inputDataReactive()$dataType == "proteomics"
+  is_logged <- input$pcaCounts %in% c("normalised_log2", "vst") ||
+    eds$omics_class() == "proteomics"
 
   step_map <- list(
     "Group subsetting" = function(cd) step_group_subset(cd$counts, cd$dataset, input$pcaFactor1, valid_groups),
     "Peptide filter" = function(cd) {
-      if (inputDataReactive()$dataType == "proteomics") {
-        step_peptide_filter(cd$counts, cd$dataset, inputDataReactive()$seqAnnoList, input$nrPeptidePCA)
+      if (eds$omics_class() == "proteomics" && length(eds$contrasts())) {
+        step_peptide_filter(cd$counts, cd$dataset, eds$de(eds$contrasts()[[1]]), input$nrPeptidePCA)
       } else {
         cd
       }
@@ -716,39 +719,37 @@ ordinationResults <- reactive({
   return(ord_result)
 })
 
-observeEvent(inputDataReactive(), {
-  if (inputDataReactive()$dataType == "RNASeq") {
-    output$pcaDesign <- renderText({
-      designReactive()
-    })
-    updateSelectInput(session = session, inputId = "pcaCounts", choices = names(inputDataReactive()$countList), selected = "Normalised + Log2")
-  } else if (inputDataReactive()$dataType == "proteomics") {
-    output$pcaDesign <- renderText({
-      designReactive()
-    })
-    # Select "transformedData" if it exists, otherwise use the first available count type
-    count_choices <- names(inputDataReactive()$countList)
-    default_count <- if ("transformedData" %in% count_choices) "transformedData" else count_choices[1]
+observe({
+  # Build labelled choices for the count selector: key → human-readable label
+  assay_keys    <- eds$assay_names()
+  count_choices <- setNames(assay_keys,
+                            vapply(assay_keys, eds$assay_label, character(1)))
+
+  output$pcaDesign <- renderText({ designReactive() })
+
+  if (eds$data_type() == "RNASeq") {
+    default_count <- if ("normalised_log2" %in% assay_keys) "normalised_log2" else assay_keys[1]
     updateSelectInput(session = session, inputId = "pcaCounts", choices = count_choices, selected = default_count)
-  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
-    output$pcaDesign <- renderText({
-      designReactive()
-    })
-    updateSelectInput(session = session, inputId = "pcaCounts", choices = names(inputDataReactive()$countList), selected = "VST")
+  } else if (eds$omics_class() == "proteomics") {
+    default_count <- if ("intensities" %in% assay_keys) "intensities" else assay_keys[1]
+    updateSelectInput(session = session, inputId = "pcaCounts", choices = count_choices, selected = default_count)
+  } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+    default_count <- if ("vst" %in% assay_keys) "vst" else assay_keys[1]
+    updateSelectInput(session = session, inputId = "pcaCounts", choices = count_choices, selected = default_count)
   }
   # Batch + design dropdowns — see server-boxplot.R for the decision table.
   # NB: the design input is `pcaBatchDesign` because `pcaDesign` is already a
   # textOutput on this tab (the DE design-formula string).
-  .dt       <- inputDataReactive()$dataType
-  .factors  <- inputDataReactive()$factors
-  .grouping <- inputDataReactive()$groupingName
-  .param    <- inputDataReactive()$param
-  .twoFactor <- !is.null(.param$grouping2Name) && nzchar(.param$grouping2Name) &&
-                .param$grouping2Name %in% .factors
-  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", NA_character_)
+  .dt        <- eds$data_type()
+  .factors   <- eds$factor_names()
+  .grouping  <- eds$primary_grouping()
+  .secondary <- eds$secondary_grouping()
+  .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
+  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, NA_character_)
+  if (eds$omics_class() == "proteomics") .deDesignCol <- "G_"
 
   batchChoices <- c("None", .factors)
-  batchDefault <- if (.twoFactor) .param$grouping2Name else "None"
+  batchDefault <- if (.twoFactor) .secondary else "None"
   updateSelectInput(
     session = session,
     inputId = "pcaBatch",
@@ -776,11 +777,11 @@ observeEvent(inputDataReactive(), {
       return(helpText("Advanced preprocessing settings are available to FGCZ staff only."))
     }
     log2_checked <- !is.null(input$pcaLog2) && input$pcaLog2
-    is_linear <- !is.null(input$pcaCounts) && input$pcaCounts %in% c("TPM", "FPKM", "Raw", "Normalised")
+    is_linear <- !is.null(input$pcaCounts) && input$pcaCounts %in% c("tpm", "fpkm", "counts", "normalised")
     show_log2 <- log2_checked && is_linear
 
     steps <- c("Batch correction", "Group subsetting", "Top N features (SD)")
-    if (inputDataReactive()$dataType == "proteomics") {
+    if (eds$omics_class() == "proteomics") {
       steps <- c("Peptide filter", "Batch correction", "Group subsetting", "Top N features (SD)")
     }
     if (show_log2) {
@@ -799,13 +800,13 @@ observeEvent(inputDataReactive(), {
 
   lapply(c(1:2), function(i) {
     selected <- switch(i,
-      "1" = inputDataReactive()$groupingName,
+      "1" = eds$primary_grouping(),
       "2" = "None"
     )
     updateSelectInput(
       session = session,
       inputId = paste0("pcaFactor", i),
-      choices = c("None", inputDataReactive()$factors),
+      choices = c("None", eds$factor_names()),
       selected = selected
     )
   })
@@ -816,41 +817,38 @@ observeEvent(inputDataReactive(), {
     ignoreNULL = FALSE,
     ignoreInit = TRUE,
     {
+      levs <- levels(as.factor(eds$samples()[[input$pcaFactor1]]))
       updateCheckboxGroupInput(
         session = session,
         inputId = "pcaGroups",
-        choices = levels(as.factor(inputDataReactive()$dataset[[input$pcaFactor1]])),
-        selected = levels(as.factor(inputDataReactive()$dataset[[input$pcaFactor1]]))
+        choices = levs,
+        selected = levs
       )
     }
   )
-  if (inputDataReactive()$dataType == "proteomics") {
-    # Handle nrPeptides slider (only if seqAnnoList exists)
-    if (!is.null(inputDataReactive()$seqAnnoList)) {
-      if ("nrPeptides" %in% colnames(inputDataReactive()$seqAnnoList[[1]])) {
-        output$nrPeptidesPCAUI <- renderUI({
-          sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
-        })
-        outputOptions(output, "nrPeptidesPCAUI", suspendWhenHidden = FALSE)
-      } else {
-        output$nrPeptidesPCAUI <- renderUI({
-          NULL
-        })
-      }
+  if (eds$omics_class() == "proteomics") {
+    # Handle nrPeptides slider — check the primary contrast's DE table for nrPeptides column
+    if (length(eds$contrasts()) > 0 &&
+        "nrPeptides" %in% colnames(eds$de(eds$contrasts()[[1]]))) {
+      output$nrPeptidesPCAUI <- renderUI({
+        sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
+      })
+      outputOptions(output, "nrPeptidesPCAUI", suspendWhenHidden = FALSE)
+    } else {
+      output$nrPeptidesPCAUI <- renderUI({
+        NULL
+      })
     }
 
-    # Update pcaTopN for proteomics data
-    if (!is.null(inputDataReactive()$countList)) {
-      n_features <- nrow(inputDataReactive()$countList[[1]])
-      # Set to 500 or number of features, whichever is smaller
-      default_value <- min(500, n_features)
-      updateNumericInput(
-        session = session,
-        inputId = "pcaTopN",
-        value = default_value,
-        max = n_features
-      )
-    }
+    # Update pcaTopN for proteomics data — cap at number of features in dataset
+    n_features <- eds$n_features()
+    default_value <- min(500, n_features)
+    updateNumericInput(
+      session = session,
+      inputId = "pcaTopN",
+      value = default_value,
+      max = n_features
+    )
   }
 })
 
@@ -929,12 +927,11 @@ observeEvent(
     input$biplotArrowColourX
     input$biplotArrowColourY
     # Add all color picker inputs as dependencies so plot updates when colors change
-    lapply(seq_along(inputDataReactive()$factorLevels), function(i) {
-      lapply(seq_along(inputDataReactive()$factorLevels[[i]]), function(j) {
-        input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]], inputDataReactive()$factorLevels[[i]][[j]])]]
+    lapply(eds$factor_names(), function(fname) {
+      lapply(eds$factor_levels(fname), function(lev) {
+        input[[paste0("GroupColour", fname, lev)]]
       })
     })
-    inputDataReactive()
   },
   ignoreInit = TRUE,
   ignoreNULL = FALSE,
@@ -946,7 +943,7 @@ observeEvent(
     req(ord_res)
 
     # Get valid groups and colors
-    available_groups <- levels(as.factor(inputDataReactive()$dataset[[input$pcaFactor1]]))
+    available_groups <- levels(as.factor(eds$samples()[[input$pcaFactor1]]))
     valid_groups <- input$pcaGroups[input$pcaGroups %in% available_groups]
 
     coloursPCA <- setNames(lapply(valid_groups, function(k) {
@@ -997,7 +994,7 @@ observeEvent(
     figuresDataReactive$ord_method <- ord_res$method
     figuresDataReactive$x_selected <- x_selected
     figuresDataReactive$y_selected <- y_selected
-    figuresDataReactive$factors <- inputDataReactive()$factors
+    figuresDataReactive$factors <- eds$factor_names()
 
     # Update plot type choices based on whether biplot is available
     if (!is.null(pc_loadings)) {

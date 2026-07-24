@@ -1,8 +1,12 @@
+eds <- inputDataReactive()$.eds
+req(eds)
+.gsea_raw <- function() S4Vectors::metadata(eds$backend())$enrichResultGSEA
+
 # Check if GSEA tab is accessed without results
 observeEvent(input$tabs, {
   if (input$tabs == "gseaTab") {
-    if (is.null(inputDataReactive()$goObjects$gsea) ||
-      length(inputDataReactive()$goObjects$gsea) == 0) {
+    g <- .gsea_raw()
+    if (is.null(g) || length(g) == 0) {
       showModal(modalDialog(
         title = "No GSEA Results",
         "No pathway analysis was performed for this dataset, so this tab is empty.",
@@ -12,9 +16,8 @@ observeEvent(input$tabs, {
     }
 
     # Check if current selection has no results
-    if (!is.null(input$gseaType) &&
-      !is.null(inputDataReactive()$goObjects$gsea[[input$gseaType]])) {
-      er <- inputDataReactive()$goObjects$gsea[[input$gseaType]]
+    if (!is.null(input$gseaType) && !is.null(g[[input$gseaType]])) {
+      er <- g[[input$gseaType]]
       if (is.null(er) || nrow(er@result) == 0) {
         showModal(modalDialog(
           title = "No GSEA Results",
@@ -36,11 +39,11 @@ gseaPlotReactive <- reactiveValues(
 )
 
 
-# Get data objects
-gsea <- inputDataReactive()$goObjects$gsea
-se <- inputDataReactive()$se
-design <- inputDataReactive()$design
-param <- inputDataReactive()$param
+# Get data objects (GSEA visualisation is RNA-seq + SUSHI-only; uses SE escape hatch)
+gsea   <- .gsea_raw()
+se     <- eds$backend()
+design <- if (length(eds$contrasts()) > 0) eds$contrast_label(eds$primary_contrast()) else ""
+param  <- S4Vectors::metadata(se)$param
 
 # Update GSEA type choices
 updateSelectInput(

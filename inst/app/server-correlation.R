@@ -1,18 +1,23 @@
+# ---------------------------------------------------------------------------
+# Phase 2 migration — complete. All reads go through inputDataReactive()$.eds.
+# ---------------------------------------------------------------------------
+
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   req(inputDataReactive())
-  if (inputDataReactive()$dataType == "RNASeq") {
-    return(inputDataReactive()$design)
-  } else if (inputDataReactive()$dataType == "proteomics") {
-    if (isTruthy(input$contrastSelected)) {
-      return(input$contrastSelected)
+  eds <- inputDataReactive()$.eds
+  if (eds$has_de()) {
+    contrast <- if (eds$omics_class() == "proteomics" && isTruthy(input$contrastSelected)) {
+      input$contrastSelected
     } else {
-      return("No contrast selected")
+      eds$primary_contrast()
     }
-  } else if (inputDataReactive()$dataType %in% c("CountQC", "CrisprCountQC")) {
-    return(inputDataReactive()$design)
+    eds$contrast_label(contrast)
+  } else if (eds$omics_class() == "proteomics") {
+    "No contrast selected"
+  } else {
+    eds$data_type()   # QC fallback — no DE, use the data type name
   }
-  return("Unknown")
 })
 
 output$correlationStatic <- renderPlot({
@@ -20,50 +25,72 @@ output$correlationStatic <- renderPlot({
 })
 
 # Update some inputs
-updateSelectizeInput(session = session, inputId = "correlationGene1", label = "Feature X", choices = inputDataReactive()$genes, selected = "", server = TRUE)
-updateSelectizeInput(session = session, inputId = "correlationGene2", label = "Feature Y", choices = inputDataReactive()$genes, selected = "", server = TRUE)
+local({
+  eds <- inputDataReactive()$.eds
+  updateSelectizeInput(session = session, inputId = "correlationGene1", label = "Feature X", choices = eds$feature_ids(), selected = "", server = TRUE)
+  updateSelectizeInput(session = session, inputId = "correlationGene2", label = "Feature Y", choices = eds$feature_ids(), selected = "", server = TRUE)
+})
 
 # Update feature choices when collapse guides toggle changes
 observeEvent(input$correlationCollapseGuides, {
-  if (inputDataReactive()$dataType == "CrisprCountQC") {
+  eds <- inputDataReactive()$.eds
+  if (eds$data_type() == "CrisprCountQC") {
     if (isTRUE(input$correlationCollapseGuides)) {
-      gene_choices <- sort(unique(inputDataReactive()$sgRNA_to_gene))
+      gene_choices <- sort(unique(eds$sgrna_to_gene()))
     } else {
-      gene_choices <- inputDataReactive()$genes
+      gene_choices <- eds$feature_ids()
     }
     updateSelectizeInput(session, "correlationGene1", choices = gene_choices, selected = "", server = TRUE)
     updateSelectizeInput(session, "correlationGene2", choices = gene_choices, selected = "", server = TRUE)
     correlationPlot$plot <- NULL
   }
 }, ignoreInit = TRUE)
-updateSelectInput(session = session, inputId = "correlationColourBy", label = "Select column to colour by", choices = inputDataReactive()$factors, selected = inputDataReactive()$groupingName)
-updateSelectInput(session = session, inputId = "correlationShapeBy", label = "Select column to shape by", choices = c("None", inputDataReactive()$factors), selected = "None")
-count_choices <- names(inputDataReactive()$countList)
-default_count <- switch(inputDataReactive()$dataType,
-  "RNASeq" = "Normalised + Log2",
-  "proteomics" = if ("transformedData" %in% count_choices) "transformedData" else count_choices[1]
-)
-updateSelectInput(session = session, inputId = "correlationCounts", label = "Select count method to plot", choices = count_choices, selected = default_count)
+local({
+  eds <- inputDataReactive()$.eds
+  updateSelectInput(session = session, inputId = "correlationColourBy", label = "Select column to colour by", choices = eds$factor_names(), selected = eds$primary_grouping())
+  updateSelectInput(session = session, inputId = "correlationShapeBy", label = "Select column to shape by", choices = c("None", eds$factor_names()), selected = "None")
+})
+local({
+  eds <- inputDataReactive()$.eds
+  assay_keys <- eds$assay_names()
+  count_choices <- setNames(assay_keys,
+                            vapply(assay_keys, eds$assay_label, character(1)))
+  default_count <- if (eds$data_type() == "RNASeq" && "normalised_log2" %in% assay_keys) {
+    "normalised_log2"
+  } else if (eds$omics_class() == "proteomics" && "intensities" %in% assay_keys) {
+    "intensities"
+  } else {
+    assay_keys[1]
+  }
+  updateSelectInput(session = session, inputId = "correlationCounts",
+                    label = "Select count method to plot",
+                    choices = count_choices, selected = default_count)
+})
 # Batch + design dropdowns — see server-boxplot.R for the decision table.
 observeEvent(inputDataReactive(), {
-  .dt       <- inputDataReactive()$dataType
-  .factors  <- inputDataReactive()$factors
-  .grouping <- inputDataReactive()$groupingName
-  .param    <- inputDataReactive()$param
-  .twoFactor <- !is.null(.param$grouping2Name) && nzchar(.param$grouping2Name) &&
-                .param$grouping2Name %in% .factors
-  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", NA_character_)
+  eds <- inputDataReactive()$.eds
+  .dt       <- eds$data_type()
+  .oc       <- eds$omics_class()
+  .factors  <- eds$factor_names()
+  .grouping <- eds$primary_grouping()
+  .secondary <- eds$secondary_grouping()
+  .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
+  .deDesignCol <- if (.dt == "RNASeq") .grouping
+                  else if (.oc == "proteomics") "G_"
+                  else NA_character_
 
   batchChoices <- c("None", .factors)
-  batchDefault <- if (.twoFactor) .param$grouping2Name else "None"
+  batchDefault <- if (.twoFactor) .secondary else "None"
   updateSelectInput(session = session, inputId = "correlationBatch", label = "Apply a batch-correction to the counts?", choices = batchChoices, selected = batchDefault)
 
-  designChoices <- if (.dt %in% c("RNASeq", "proteomics") && .twoFactor) {
+  designChoices <- if ((.dt == "RNASeq" || .oc == "proteomics") && .twoFactor) {
     c("None", .deDesignCol)
   } else {
     c("None", .factors)
   }
-  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", "None")
+  designDefault <- if (.dt == "RNASeq") .grouping
+                   else if (.oc == "proteomics") "G_"
+                   else "None"
   updateSelectInput(session = session, inputId = "correlationDesign", label = "Design factor to preserve during batch correction", choices = designChoices, selected = designDefault)
 })
 updateSliderInput(session = session, inputId = "correlationCorPosX", label = "Label position x", min = 1, max = 100, value = 10, step = 1)
@@ -76,13 +103,14 @@ observeEvent(
   {
     output$correlationGroupBucket <- renderUI({
       req(input$tabs == "correlationsTab")
+      eds <- inputDataReactive()$.eds
       bucket_list(
         header = "Drag and drop groups in order to be plotted (Ctrl/Cmd to select multiple)",
         group_name = "correlation_bucket_list",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these groups",
-          labels = as.list(unique(levels(as.factor(inputDataReactive()$dataset[[input$correlationColourBy]])))),
+          labels = as.list(unique(levels(as.factor(eds$samples()[[input$correlationColourBy]])))),
           input_id = "correlationKeepBucket",
           options = sortable::sortable_options(multiDrag = TRUE)
         ),
@@ -102,13 +130,16 @@ correlationPlot <- reactiveValues(plot = NULL)
 
 # Update feature choices when search mode changes
 observeEvent(input$fb_search_by_correlation, ignoreInit = TRUE, {
+  eds <- inputDataReactive()$.eds
   mode <- input$fb_search_by_correlation
-  choices <- if (mode == "gene_name" && !is.null(inputDataReactive()$gene_choices)) {
-    inputDataReactive()$gene_choices
-  } else if (mode == "protein_Id" && !is.null(inputDataReactive()$protein_choices)) {
-    inputDataReactive()$protein_choices
+  pc_gene    <- eds$proteomics_choices("gene")$choices
+  pc_protein <- eds$proteomics_choices("protein")$choices
+  choices <- if (mode == "gene_name" && !is.null(pc_gene)) {
+    pc_gene
+  } else if (mode == "protein_Id" && !is.null(pc_protein)) {
+    pc_protein
   } else {
-    inputDataReactive()$genes
+    eds$feature_ids()
   }
   updateSelectizeInput(session, "correlationGene1", choices = choices, selected = "", server = TRUE)
   updateSelectizeInput(session, "correlationGene2", choices = choices, selected = "", server = TRUE)
@@ -138,9 +169,12 @@ observeEvent(
     input$correlationLabelPosX
     input$correlationLabelPosY
     # Add all color picker inputs as dependencies so plot updates when colors change
-    lapply(seq_along(inputDataReactive()$factorLevels), function(i) {
-      lapply(seq_along(inputDataReactive()$factorLevels[[i]]), function(j) {
-        input[[paste0("GroupColour", names(inputDataReactive()$factorLevels)[[i]], inputDataReactive()$factorLevels[[i]][[j]])]]
+    local({
+      eds_dep <- inputDataReactive()$.eds
+      lapply(eds_dep$factor_names(), function(fname) {
+        lapply(eds_dep$factor_levels(fname), function(lev) {
+          input[[paste0("GroupColour", fname, lev)]]
+        })
       })
     })
   },
@@ -150,24 +184,26 @@ observeEvent(
     req(input$correlationGene1 != input$correlationGene2)
     req(nchar(input$correlationGene1) > 1 & nchar(input$correlationGene2) > 1)
 
-    # prepare the metadat
-    datasetCorrelation <- inputDataReactive()$dataset %>% data.frame(check.names = F)
+    eds <- inputDataReactive()$.eds
+
+    # prepare the metadata
+    datasetCorrelation <- eds$samples() %>% data.frame(check.names = F)
     if (!"Name" %in% colnames(datasetCorrelation)) {
       datasetCorrelation <- datasetCorrelation %>% rownames_to_column("Name")
     }
     datasetCorrelation$Name <- factor(datasetCorrelation$Name, levels = datasetCorrelation$Name)
-    datasetCorrelation <- datasetCorrelation[, c("Name", grepv(paste0("^", inputDataReactive()$factors, "$", collapse = "|"), colnames(datasetCorrelation)))]
+    datasetCorrelation <- datasetCorrelation[, c("Name", grepv(paste0("^", eds$factor_names(), "$", collapse = "|"), colnames(datasetCorrelation)))]
 
-    # get the counts (full matrix — all genes, all samples)
-    countsCorrelation <- inputDataReactive()$countList[[input$correlationCounts]]
+    # get the counts (full matrix — all features, all samples)
+    countsCorrelation <- eds$assay(input$correlationCounts)
     # Collapse sgRNA guides to gene level if requested
-    if (inputDataReactive()$dataType == "CrisprCountQC" && isTRUE(input$correlationCollapseGuides)) {
-      countsCorrelation <- collapse_guides_to_genes(countsCorrelation, inputDataReactive()$sgRNA_to_gene)
+    if (eds$data_type() == "CrisprCountQC" && isTRUE(input$correlationCollapseGuides)) {
+      countsCorrelation <- collapse_guides_to_genes(countsCorrelation, eds$sgrna_to_gene())
     }
 
     # Log2 and batch correction on full matrix BEFORE extracting genes
-    is_logged <- input$correlationCounts %in% c("Normalised + Log2", "VST") ||
-      inputDataReactive()$dataType == "proteomics"
+    is_logged <- input$correlationCounts %in% c("normalised_log2", "vst") ||
+      eds$omics_class() == "proteomics"
     if (input$correlationCountsLog & !is_logged) {
       countsCorrelation <- log2(countsCorrelation + 1)
       is_logged <- TRUE
@@ -176,7 +212,7 @@ observeEvent(
       if (is_logged) {
         countsCorrelation <- apply_batch_correction(
           counts    = countsCorrelation,
-          dataset   = inputDataReactive()$dataset,
+          dataset   = eds$samples(),
           batchCol  = input$correlationBatch,
           designCol = input$correlationDesign
         )

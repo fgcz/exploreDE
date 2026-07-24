@@ -4,7 +4,8 @@
 # Conditional UI - Only show data selection box for genomics (not proteomics)
 output$multiDataSelectionBoxUI <- renderUI({
     # Check if we have proteomics data loaded
-    if (!is.null(inputDataReactive()) && inputDataReactive()$dataType == "proteomics") {
+    .eds <- inputDataReactive()$.eds
+    if (!is.null(.eds) && .eds$omics_class() == "proteomics") {
         # Don't show the data selection box for proteomics
         return(NULL)
     }
@@ -732,10 +733,16 @@ observeEvent(input$multiApplyOrder, {
 
 # 4. Proteomics Auto-Load (Triggered once)
 observeEvent(inputDataReactive(), {
-    req(inputDataReactive())
-    data <- inputDataReactive()
+    eds <- inputDataReactive()$.eds
+    req(eds)
 
-    if (data$dataType == "proteomics") {
+    if (eds$omics_class() == "proteomics") {
+        # Multi-* downstream modules still consume the legacy gStoreList shape
+        # (seqAnnoList, countList, factors, factorLevels, gene_lookup, etc.).
+        # Rebuild it on-demand via the package-level shim. Slated for proper
+        # eds-native migration in the multi-* subsystem rewrite.
+        data <- legacy_gStoreList_from_eds(eds, se = eds$backend())
+
         # Auto-populate multiDeReactive
         # The 'convert_proteomics_se' function returns 'seqAnnoList' which has per-contrast data.
         # We need to structure this as if they were separate datasets.
