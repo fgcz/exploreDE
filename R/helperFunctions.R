@@ -196,7 +196,17 @@ collapse_guides_to_genes <- function(counts, sgRNA_to_gene, exclude = NULL) {
 #' convert_genomics_se
 #' @export
 convert_genomics_se <- function(se, dataDir, param = NULL) {
-  # Load the parameters
+  # Phase 1 (2026-05-15): body delegates to the ExploreDataset hierarchy +
+  # legacy_gStoreList_from_eds() shim. Byte-equivalent output verified by
+  # tests/testthat/test-legacy_shim_equivalence.R. The shim is the
+  # migration scaffold; Phase 2 retires it one server module at a time.
+  eds <- new_explore_dataset(se)
+  return(legacy_gStoreList_from_eds(eds, se = se, dataDir = dataDir, param = param))
+}
+
+.convert_genomics_se_legacy <- function(se, dataDir, param = NULL) {
+  # Pre-Phase-1 implementation, retained for reference / regression bisecting.
+  # Not exported; not called by any package code. Delete once Phase 2 is done.
   if (is.null(param)) {
     param <- metadata(se)$param
   }
@@ -414,7 +424,15 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
 #' convert_proteomics_se
 #' @export
 convert_proteomics_se <- function(se) {
-  # Get the contrasts available
+  # Phase 1 (2026-05-15): body delegates to the ExploreDataset hierarchy +
+  # legacy_gStoreList_from_eds() shim. See convert_genomics_se() for context.
+  eds <- new_explore_dataset(se)
+  return(legacy_gStoreList_from_eds(eds, se = se))
+}
+
+.convert_proteomics_se_legacy <- function(se) {
+  # Pre-Phase-1 implementation, retained for reference / regression bisecting.
+  # Not exported; not called by any package code. Delete once Phase 2 is done.
   contrasts <- names(rowData(se))[grep("^constrast_", names(rowData(se)))] %>% gsub("constrast_", "", .)
 
   # Convert contrast DataFrames once, reuse for seqAnnoList and countList lookup
