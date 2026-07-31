@@ -108,7 +108,7 @@ deQcHighlightIds <- reactive({
   tokens <- c(input$deQcHighlightSelect, parse_gene_text(input$deQcHighlightText))
   tokens <- unique(tokens[nzchar(tokens)])
   if (!length(tokens)) return(character(0))
-  contr <- if (eds$omics_class() == "proteomics") input$contrastSelected else eds$primary_contrast()
+  contr <- if (eds$omics_class() == "proteomics") input$contrastSelected else selectedContrast()
   req(!is.null(contr), nzchar(contr))
   sa <- eds$de(contr)
   # Match on feature_id first, then gene_name
@@ -128,7 +128,7 @@ deQcScatterData <- reactive({
   dataset <- eds$samples()
 
   if (eds$data_type() == "RNASeq") {
-    contrast <- eds$primary_contrast()
+    contrast <- selectedContrast()
     cm       <- eds$contrast_meta(contrast)
     seqAnno  <- eds$de(contrast)
     grouping <- eds$primary_grouping()
@@ -245,7 +245,7 @@ deQcScatterData <- reactive({
 output$deQcScatterDesign <- renderText({
   req(deQcVisible())
   if (eds$data_type() == "RNASeq") {
-    eds$contrast_label(eds$primary_contrast()) %||% ""
+    eds$contrast_label(selectedContrast()) %||% ""
   } else {
     input$contrastSelected %||% ""
   }
@@ -354,7 +354,7 @@ deQcPhistDf <- reactive({
   req(deQcVisible())
   pcol <- input$deQcPhistType %||% "pValue"
   if (eds$data_type() == "RNASeq") {
-    sa <- eds$de(eds$primary_contrast())
+    sa <- eds$de(selectedContrast())
     req(pcol %in% colnames(sa))
     df <- tibble::tibble(
       pval = sa[[pcol]],
@@ -412,12 +412,12 @@ height = deQcH)
 # Which bias plots are supported depends on seqAnno columns.
 deQcHasGC <- reactive({
   if (eds$data_type() != "RNASeq") return(FALSE)
-  sa <- eds$de(eds$primary_contrast())
+  sa <- eds$de(selectedContrast())
   "gc" %in% colnames(sa) && !all(is.na(sa$gc))
 })
 deQcHasWidth <- reactive({
   if (eds$data_type() != "RNASeq") return(FALSE)
-  sa <- eds$de(eds$primary_contrast())
+  sa <- eds$de(selectedContrast())
   "featWidth" %in% colnames(sa) && !all(is.na(sa$featWidth))
 })
 
@@ -427,7 +427,7 @@ deQcHasWidth <- reactive({
 deQcBiasData <- reactive({
   validate(need(eds$data_type() == "RNASeq",
                 "LOESS bias plots are only available for RNASeq DE results."))
-  sa <- eds$de(eds$primary_contrast())
+  sa <- eds$de(selectedContrast())
   req("log2Ratio" %in% colnames(sa), "pValue" %in% colnames(sa))
   df <- sa[which(sa$usedInTest & !is.na(sa$pValue) & !is.na(sa$log2Ratio)), , drop = FALSE]
   req(nrow(df) > 0)

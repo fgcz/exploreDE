@@ -746,7 +746,9 @@ observe({
   .secondary <- eds$secondary_grouping()
   .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
   .deDesignCol <- switch(.dt, "RNASeq" = .grouping, NA_character_)
-  if (eds$omics_class() == "proteomics") .deDesignCol <- "G_"
+  # Proteomics grouping: SUSHI "G_" if present, else the primary grouping (h5ad).
+  .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
+  if (eds$omics_class() == "proteomics") .deDesignCol <- .protGroup
 
   batchChoices <- c("None", .factors)
   batchDefault <- if (.twoFactor) .secondary else "None"
@@ -762,7 +764,7 @@ observe({
   } else {
     c("None", .factors)
   }
-  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", "None")
+  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = .protGroup, "None")
   updateSelectInput(
     session = session,
     inputId = "pcaBatchDesign",
@@ -822,7 +824,9 @@ observe({
         session = session,
         inputId = "pcaGroups",
         choices = levs,
-        selected = levs
+        # save-state restore: seed the saved group subset (valid= drops levels
+        # that don't belong to the restored factor).
+        selected = restore_default("pcaGroups", levs, valid = levs)
       )
     }
   )

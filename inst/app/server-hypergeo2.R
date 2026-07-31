@@ -1,6 +1,24 @@
 eds <- inputDataReactive()$.eds
 req(eds)
-.ora_raw <- function() S4Vectors::metadata(eds$backend())$enrichResult
+# Enrichment reads go through the backend-agnostic accessors so an uploaded
+# .h5ad surfaces ORA like a SUSHI SE. eds$enrichment() returns a FLAT list keyed
+# BP/upGenes... (SE) or ora/BP/upGenes... (h5ad); strip the prefix and rebuild
+# the ontology x direction nesting this module indexes as ora[[type]][[dir]].
+contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
+.ora_raw <- function() {
+  if (is.null(contrast)) return(NULL)
+  flat <- eds$enrichment(contrast, "ora")
+  if (!length(flat)) return(NULL)
+  names(flat) <- sub("^ora/", "", names(flat))
+  nested <- list()
+  for (k in names(flat)) {
+    parts <- strsplit(k, "/", fixed = TRUE)[[1]]
+    if (length(parts) >= 2) { dom <- parts[1]; dir <- parts[length(parts)] }
+    else { dom <- "GO"; dir <- parts[1] }
+    nested[[dom]][[dir]] <- flat[[k]]
+  }
+  nested
+}
 
 observeEvent(input$tabs, {
   if (input$tabs == "oraTab") {
@@ -19,23 +37,57 @@ oraPlotReactive <- reactiveValues(
   "upset" = NULL
 )
 
+# Contrast-dependent state. (Re)built by the observeEvent(selectedContrast())
+# block below (higher priority than the oraType observer that reads it) and read
+# by the observers/outputs. Single-contrast data fires it once.
+ora     <- NULL
+ei      <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
+param   <- list()
+design  <- ""
+sel     <- list()
+.id2sym <- function(ids) ids
+
 if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
-  # Get data — ORA visualisation is RNA-seq + SUSHI-only; uses the SE escape hatch.
-  ora    <- .ora_raw()
-  se     <- eds$backend()
-  design <- eds$contrast_label(eds$primary_contrast())
-  param  <- S4Vectors::metadata(se)$param
+ observeEvent(selectedContrast(), {
+  # Get data through the accessor layer (backend-agnostic).
+  contrast <<- selectedContrast()
+  ora    <<- .ora_raw()
+  ei     <<- eds$enrichment_input(contrast)
+  design <<- if (!is.null(contrast)) eds$contrast_label(contrast) else ""
+  # ORA thresholds / featureLevel: SUSHI SE metadata$param, else defaults.
+  p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else list()
+  if (is.null(p)) p <- list()
+  if (is.null(p$featureLevel)) p$featureLevel <- eds$feature_id_kind()
+  if (is.null(p$fdrThreshORA)) p$fdrThreshORA <- 0.05
+  param <<- p
+
+  # Significant-gene selections, with bothGenes synthesised when the backend
+  # only provides up/down (uploaded h5ad).
+  s <- ei$selections %||% list()
+  if (is.null(s$bothGenes)) s$bothGenes <- union(s$upGenes, s$downGenes)
+  sel <<- s
+
+  # Backend-agnostic gene-id -> symbol remap (no-op when feature_ids are already
+  # symbols, e.g. an uploaded h5ad), so labels never blank out.
+  .id2sym <<- local({
+    sa <- ei$seq_anno
+    gid <- gsym <- NULL
+    if (!is.null(sa)) {
+      gid  <- if ("gene_id" %in% colnames(sa)) sa$gene_id else if ("label_gene_id" %in% colnames(sa)) sa$label_gene_id else NULL
+      gsym <- if ("gene_name" %in% colnames(sa)) sa$gene_name else if ("label_gene_symbol" %in% colnames(sa)) sa$label_gene_symbol else NULL
+    }
+    if (is.null(gid) || is.null(gsym)) {
+      function(ids) ids
+    } else {
+      map <- setNames(as.character(gsym), as.character(gid))
+      function(ids) { s <- unname(map[as.character(ids)]); ifelse(is.na(s) | !nzchar(s), ids, s) }
+    }
+  })
 
   output$oraDesign <- renderText({
     design
   })
 
-  # Some older datasets seem to be missing this parameter, so we will just assume it for now
-  if (is.null(param$fdrThreshORA)) {
-    param$fdrThreshORA <- 0.05
-  }
-
-  # Download full ORA results file
   # Download full ORA results file
   output$dlTable_ORA <- downloadHandler(
     filename = function() {
@@ -93,10 +145,10 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
   oraThresholds <- ezFrame(
     "ORA Cut-Offs" = character()
   )
-  oraThresholds["Input DEG P-value", "ORA Cut-Offs"] <- param$pValThreshGO
-  oraThresholds["Input DEG Log2 Ratio", "ORA Cut-Offs"] <- param$log2RatioThreshGO
-  oraThresholds["Input up-regulated DEG total", "ORA Cut-Offs"] <- length(metadata(se)$enrichInput$selections$upGenes)
-  oraThresholds["Input down-regulated DEG total", "ORA Cut-Offs"] <- length(metadata(se)$enrichInput$selections$downGenes)
+  oraThresholds["Input DEG P-value", "ORA Cut-Offs"] <- param$pValThreshGO %||% NA
+  oraThresholds["Input DEG Log2 Ratio", "ORA Cut-Offs"] <- param$log2RatioThreshGO %||% NA
+  oraThresholds["Input up-regulated DEG total", "ORA Cut-Offs"] <- length(sel$upGenes)
+  oraThresholds["Input down-regulated DEG total", "ORA Cut-Offs"] <- length(sel$downGenes)
   oraThresholds["Output ORA Term FDR", "ORA Cut-Offs"] <- param$fdrThreshORA
   output$oraThreshOverview <- function() {
     oraThresholds %>%
@@ -144,14 +196,30 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
     })
     outputOptions(output, "oraIsoformAggUI", suspendWhenHidden = FALSE)
   }
+ }, ignoreNULL = FALSE, priority = 10)
 
-  # Generate main ORA table ----
+  # Generate main ORA table (also refires on contrast switch, after the
+  # higher-priority setup block above refreshes ora/ei/sel/.id2sym).
   observeEvent(
     {
       input$oraType
       input$oraDirection
+      selectedContrast()
     },
     {
+      # Empty any stale figures and clear the row selection so a contrast /
+      # ontology / direction switch resets the plots (mirrors the GSEA tab),
+      # rather than leaving the previous pathway's network plot on screen until
+      # a new row is clicked. The plot observer below only refires on a fresh
+      # row selection, so without this the old plots linger.
+      for (x in names(oraPlotReactive)) {
+        oraPlotReactive[[x]] <- NULL
+      }
+      shinyjs::delay(100, {
+        proxy <- DT::dataTableProxy("selectedTable_ORA")
+        DT::selectRows(proxy, NULL)
+      })
+
       er <- ora[[input$oraType]][[input$oraDirection]]
       # if (input$tabs == "oraTab") {
       if (is.null(er) || nrow(er@result) == 0) {
@@ -168,12 +236,9 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
           }
           er@result$Label[i] <- label
         }
-        # Rebuild geneName from geneID with symbol lookup + fallback to gene ID
-        gene_id_to_name <- setNames(rowData(se)$gene_name, rowData(se)$gene_id)
+        # Rebuild geneName from geneID via the backend-agnostic remap.
         er@result$geneName <- sapply(strsplit(er@result$geneID, "/"), function(ids) {
-          symbols <- gene_id_to_name[ids]
-          symbols <- ifelse(is.na(symbols) | nchar(symbols) == 0, ids, symbols)
-          paste(symbols, collapse = "/")
+          paste(.id2sym(ids), collapse = "/")
         })
         output$selectedTable_ORA <- DT::renderDataTable({
           oraDfToShow <- as.data.frame(er)[, c("Label", "GeneRatio", "geneName")]
@@ -235,13 +300,11 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       }
 
       # Get log2FCs of genes for network plot
-      sigGeneIds <- metadata(se)$enrichInput$selections[[input$oraDirection]]
-      log2RatioORA <- metadata(se)$enrichInput$log2Ratio[names(metadata(se)$enrichInput$log2Ratio) %in% sigGeneIds]
+      sigGeneIds <- sel[[input$oraDirection]]
+      log2RatioORA <- ei$ranked_l2fc[names(ei$ranked_l2fc) %in% sigGeneIds]
       gene_ids_ora <- names(log2RatioORA)
-      gene_symbols_ora <- rowData(se)$gene_name[match(gene_ids_ora, rowData(se)$gene_id)]
-      # Fall back to gene ID where gene symbol is blank/NA (e.g., non-reference organisms)
-      gene_symbols_ora <- ifelse(is.na(gene_symbols_ora) | nchar(gene_symbols_ora) == 0, gene_ids_ora, gene_symbols_ora)
-      names(log2RatioORA) <- gene_symbols_ora
+      # Relabel to gene symbols where possible (no-op when already symbols).
+      names(log2RatioORA) <- .id2sym(gene_ids_ora)
       # For isoform data, aggregate multiple transcripts per gene
       if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
         agg_method <- if (!is.null(input$oraIsoformAgg)) input$oraIsoformAgg else "maxabs"
@@ -262,8 +325,9 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       genes_pass_filter <- names(log2RatioORA) # Default: all genes pass
 
       if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode != "none") {
-        # Get p-values for genes
-        seqAnno <- metadata(se)$enrichInput$seqAnno
+        # Per-gene p-values (from the enrichment input's annotation; absent for
+        # uploads -> filter degrades off).
+        seqAnno <- ei$seq_anno
 
         # Determine which p-value column to use
         pval_col <- if (!is.null(input$oraVisPType) && input$oraVisPType == "FDR") "fdr" else "pValue"
@@ -300,12 +364,9 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         # For "labels" mode, keep all genes in log2RatioORA but use genes_pass_filter for labeling
       }
 
-      # Rebuild geneName from geneID with symbol lookup + fallback to gene ID
-      gene_id_to_name <- setNames(rowData(se)$gene_name, rowData(se)$gene_id)
+      # Rebuild geneName from geneID via the backend-agnostic remap.
       er@result$geneName <- sapply(strsplit(er@result$geneID, "/"), function(ids) {
-        symbols <- gene_id_to_name[ids]
-        symbols <- ifelse(is.na(symbols) | nchar(symbols) == 0, ids, symbols)
-        paste(symbols, collapse = "/")
+        paste(.id2sym(ids), collapse = "/")
       })
 
       # In "genes" mode, also remove filtered genes from the enrichment result

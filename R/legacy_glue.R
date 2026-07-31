@@ -159,7 +159,7 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
     gStoreList$designLevels <- NULL
     if (dataTypeGStore == "CrisprCountQC") {
       gStoreList$sgRNA_to_gene <- setNames(
-        gsub("_(sgrna)?[0-9]+_[ACGT]+$", "", rd$feature_id, ignore.case = TRUE),
+        gsub("_((sgrna)?[0-9]+|[+-]_[^_]+)_[ACGTN]+$", "", rd$feature_id, ignore.case = TRUE),
         rd$feature_id
       )
     }
@@ -258,6 +258,163 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
     if (length(drop_these) > 0) ds <- ds[, -drop_these, drop = FALSE]
   }
   ds
+}
+
+# ---------------------------------------------------------------------------
+# Multi-DE per-contrast objects from an ExploreDataset (h5ad uploads)
+# ---------------------------------------------------------------------------
+#
+# The Multi-DE subsystem was built to compare several *separate* single-contrast
+# SUSHI deResult SEs, one gStoreList per contrast (see
+# `convert_genomics_se()` in server-multi-data-selection.R). An uploaded
+# multi-contrast `.h5ad` is a *single* ExploreDataset holding N contrasts, so
+# there is no per-contrast SE to convert. `legacy_multi_contrast_from_eds()`
+# reconstructs the same per-contrast gStoreList shape those modules consume,
+# but sourced entirely from `eds` accessors — one call per contrast. This is
+# the genomics analogue of the proteomics auto-load in
+# server-multi-data-selection.R (which already fans a single proteomics SE out
+# into one pseudo-object per contrast).
+
+# Reshape the flat enrichment accessor list — keys "ont/sig" (SE backend) or
+# "ora/ont/sig" / "gsea/ont" (h5ad backend) — back into the nested
+# ont -> sig (ORA) / ont (GSEA) shape the multi-DE modules read from legacy
+# SUSHI metadata (`metadata(se)$enrichResult` / `$enrichResultGSEA`).
+.reshape_enrichment_nested <- function(flat, kind = c("ora", "gsea")) {
+  kind <- match.arg(kind)
+  if (!length(flat)) return(list())
+  out <- list()
+  for (nm in names(flat)) {
+    key   <- sub("^(ora|gsea)/", "", nm)
+    parts <- strsplit(key, "/", fixed = TRUE)[[1]]
+    if (kind == "gsea") {
+      out[[parts[[1]]]] <- flat[[nm]]
+    } else {
+      ont <- parts[[1]]
+      sig <- if (length(parts) >= 2L) parts[[2]] else "bothGenes"
+      if (is.null(out[[ont]])) out[[ont]] <- list()
+      out[[ont]][[sig]] <- flat[[nm]]
+    }
+  }
+  out
+}
+
+# Append the `Label` column (ID + truncated Description) to each clusterProfiler
+# result's @result table — mirrors the inline loop the SUSHI genomics loader
+# runs, so the Upset / Tile / Pathway modules find the labels they plot.
+# Tolerant of the real S4 enrichResult/gseaResult (slot access) and the S3
+# stand-ins used in tests (list access); a no-op when there is no Description.
+.label_enrichment_results <- function(nested) {
+  add_label <- function(er) {
+    if (is.null(er)) return(er)
+    res   <- tryCatch(er@result, error = function(e) NULL)
+    is_s4 <- !is.null(res)
+    if (is.null(res)) res <- tryCatch(er[["result"]], error = function(e) NULL)
+    if (is.null(res) || is.null(res$Description) || nrow(res) < 2L) return(er)
+    res$Label <- vapply(seq_along(res$Description), function(j) {
+      desc <- res$Description[j]
+      if (nchar(desc) > 35) desc <- substr(desc, 1, 45)
+      paste0(res$ID[j], "\n", desc)
+    }, character(1))
+    if (is_s4) er@result <- res else er[["result"]] <- res
+    er
+  }
+  lapply(nested, function(x) if (methods::is(x, "list")) lapply(x, add_label) else add_label(x))
+}
+
+#' Build a legacy per-contrast Multi-DE object from an `ExploreDataset`
+#'
+#' Reconstructs the single-contrast gStoreList shape the Multi-DE modules
+#' consume (`seqAnno`, `dataset`, `countList`, `param`, `design`,
+#' `ora`/`gsea`, ...) for one contrast of a (possibly multi-contrast)
+#' genomics dataset — used to fan an uploaded `.h5ad` out into the Multi-DE
+#' data-selection list, the way the proteomics auto-load already does.
+#'
+#' @param eds An `ExploreDataset` instance (genomics).
+#' @param contrast A single contrast name (must be in `eds$contrasts()`).
+#' @return A named list with the legacy per-contrast Multi-DE shape.
+#' @export
+legacy_multi_contrast_from_eds <- function(eds, contrast) {
+  stopifnot(inherits(eds, "ExploreDataset"), contrast %in% eds$contrasts())
+  cm       <- eds$contrast_meta(contrast)
+  grouping <- eds$primary_grouping()
+  test     <- cm$test_group
+  ref      <- cm$reference_group
+
+  # ---- dataset (samples) --------------------------------------------------
+  dataset <- eds$samples()
+  if (!"Name" %in% colnames(dataset)) dataset$Name <- rownames(dataset)
+  # Order the grouping factor so the contrast's test/reference groups come
+  # first (legacy convention used by the boxplot bracket logic).
+  if (!is.na(grouping) && grouping %in% colnames(dataset)) {
+    lv      <- unique(as.character(dataset[[grouping]]))
+    ordered <- c(intersect(c(test, ref), lv), setdiff(lv, c(test, ref)))
+    dataset[[grouping]] <- factor(as.character(dataset[[grouping]]), levels = ordered)
+  }
+
+  factors      <- eds$factor_names()
+  factorLevels <- setNames(lapply(factors, function(f) eds$factor_levels(f)), factors)
+
+  # ---- seqAnno = feature annotation + this contrast's DE stats ------------
+  de    <- eds$de(contrast)          # feature_id, log2Ratio, pValue, fdr, gene_name, ...
+  feats <- eds$features()            # + GO BP/MF/CC, label_*, display_name
+  extra <- setdiff(colnames(feats), colnames(de))
+  seqAnno <- de
+  if (length(extra))
+    seqAnno <- cbind(seqAnno, feats[de$feature_id, extra, drop = FALSE])
+  if ("pValue" %in% colnames(seqAnno))
+    seqAnno <- seqAnno[order(seqAnno$pValue, na.last = TRUE), , drop = FALSE]
+  genes <- seqAnno$feature_id
+
+  # ---- countList (legacy display names) -----------------------------------
+  assay_alias <- c(counts = "Raw", normalised = "Normalised",
+                   normalised_log2 = "Normalised + Log2",
+                   vst = "VST", fpkm = "FPKM", tpm = "TPM")
+  countList <- list()
+  for (a in eds$assay_names()) {
+    countList[[assay_alias[[a]] %||% a]] <- eds$assay(a)
+  }
+
+  # ---- param --------------------------------------------------------------
+  grouping2 <- eds$secondary_grouping()
+  if (is.na(grouping2)) grouping2 <- ""
+  param <- list(
+    comparison           = paste0(test, "--over--", ref),
+    sampleGroup          = test,
+    refGroup             = ref,
+    groupingName         = grouping,
+    grouping2Name        = grouping2,
+    featureLevel         = if (identical(eds$feature_id_kind(), "isoform")) "isoform" else "gene",
+    runGO                = eds$has_enrichment(),
+    refBuild             = eds$ref_build(),
+    ezRef                = NULL,
+    backgroundExpression = eds$background_expression()
+  )
+
+  out <- list(
+    dataType     = eds$data_type(),
+    se           = NULL,
+    param        = param,
+    seqAnno      = seqAnno,
+    dataset      = dataset,
+    factors      = factors,
+    factorLevels = factorLevels,
+    groupingName = grouping,
+    countList    = countList,
+    genes        = genes,
+    allPathways  = eds$all_pathways(),
+    design       = paste0(test, "--over--", ref),
+    designLevels = c(test, ref)
+  )
+
+  # ---- enrichment (nested ont -> sig / ont, with Label) -------------------
+  if (eds$has_enrichment()) {
+    ora  <- .reshape_enrichment_nested(eds$enrichment(contrast, "ora"),  "ora")
+    gsea <- .reshape_enrichment_nested(eds$enrichment(contrast, "gsea"), "gsea")
+    if (length(ora))  out$ora  <- .label_enrichment_results(ora)
+    if (length(gsea)) out$gsea <- .label_enrichment_results(gsea)
+  }
+
+  out
 }
 
 # ---------------------------------------------------------------------------

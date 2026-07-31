@@ -70,9 +70,11 @@ observeEvent(replicabilityData(), {
     corr_max <- max(all_corr, na.rm = TRUE)
 
     # Update the numeric inputs
-    updateNumericInput(session, "replicabilityAtLow", value = round(corr_min, 2))
-    updateNumericInput(session, "replicabilityAtMid", value = round(corr_mean, 2))
-    updateNumericInput(session, "replicabilityAtHigh", value = round(corr_max, 2))
+    # save-state restore: yield the saved break while restoring (this observer
+    # fires on every data recompute, which a restore triggers).
+    updateNumericInput(session, "replicabilityAtLow",  value = restore_default("replicabilityAtLow",  round(corr_min, 2)))
+    updateNumericInput(session, "replicabilityAtMid",  value = restore_default("replicabilityAtMid",  round(corr_mean, 2)))
+    updateNumericInput(session, "replicabilityAtHigh", value = restore_default("replicabilityAtHigh", round(corr_max, 2)))
 })
 
 # Reactive for calculating correlation and clustering

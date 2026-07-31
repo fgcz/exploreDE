@@ -261,6 +261,7 @@ lapply(c(fb_input_tabs, "correlation"), function(tab) {
 
 lapply(fb_input_tabs, function(tab) {
   observeEvent(input[[paste0("fb_search_by_", tab)]], ignoreInit = TRUE, {
+    if (isTRUE(restoring())) return()  # save-state restore guard
     mode <- input[[paste0("fb_search_by_", tab)]]
 
     # Clear everything — search mode change invalidates bucket contents

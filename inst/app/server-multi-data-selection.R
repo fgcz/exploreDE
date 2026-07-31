@@ -5,8 +5,35 @@
 output$multiDataSelectionBoxUI <- renderUI({
     # Check if we have proteomics data loaded
     .eds <- inputDataReactive()$.eds
+    # Proteomics fans a single SE out into per-contrast objects; an uploaded
+    # .h5ad is a single self-contained dataset whose contrasts are auto-loaded
+    # below (section 5). In both cases the SUSHI project-browser / URL-import
+    # box is meaningless, so hide it and let the contrasts populate directly.
     if (!is.null(.eds) && .eds$omics_class() == "proteomics") {
-        # Don't show the data selection box for proteomics
+        return(NULL)
+    }
+    if (!is.null(.eds) && .eds$backend_kind() == "h5ad") {
+        # Multi-contrast DE needs at least two contrasts to compare. An upload
+        # with fewer can't populate the multi-analysis tabs, so say so plainly
+        # instead of showing an empty (and useless) data-selection box.
+        nCon <- length(.eds$contrasts())
+        if (nCon < 2) {
+            return(box(
+                title = "Data Selection",
+                width = NULL, solidHeader = TRUE, status = "warning",
+                helpText(
+                    if (nCon == 0)
+                        paste0("The uploaded dataset contains no differential-expression ",
+                               "contrasts, so multi-contrast DE analysis is unavailable.")
+                    else
+                        paste0("The uploaded dataset contains only one contrast",
+                               " (\"", .eds$contrasts()[[1]], "\"). Multi-contrast DE ",
+                               "analysis compares two or more contrasts, so these tabs ",
+                               "are unavailable for this dataset.")
+                )
+            ))
+        }
+        # >= 2 contrasts: auto-loaded below; the Selected Datasets list shows them.
         return(NULL)
     }
 
@@ -736,7 +763,7 @@ observeEvent(inputDataReactive(), {
     eds <- inputDataReactive()$.eds
     req(eds)
 
-    if (eds$omics_class() == "proteomics") {
+    if (eds$omics_class() == "proteomics" && eds$backend_kind() == "se") {
         # Multi-* downstream modules still consume the legacy gStoreList shape
         # (seqAnnoList, countList, factors, factorLevels, gene_lookup, etc.).
         # Rebuild it on-demand via the package-level shim. Slated for proper
@@ -842,6 +869,44 @@ observeEvent(inputDataReactive(), {
                 updateTextInput(session, paste0("multiContrastName", i), value = contrasts[i])
                 updateTextInput(session, paste0("multiContrastLink", i), value = "Internal (Proteomics)")
             }
+        })
+    }
+})
+
+# 5. Uploaded .h5ad Auto-Load (genomics, multi-contrast)
+# An uploaded canonical .h5ad is a single ExploreDataset carrying all of its
+# contrasts, so — unlike the SUSHI genomics path — there is no per-contrast SE
+# to browse for. Fan the dataset out into one Multi-DE object per contrast (the
+# genomics analogue of the proteomics auto-load above), so the Data Selection
+# tab offers exactly the contrasts stored in the uploaded file.
+observeEvent(inputDataReactive(), {
+    eds <- inputDataReactive()$.eds
+    req(eds)
+    req(eds$backend_kind() == "h5ad")
+    req(eds$omics_class() == "genomics")
+    req(length(eds$contrasts()) >= 2)            # multi-DE needs >=2 contrasts
+    req(length(multiDeReactive$results) == 0)   # one-shot; don't clobber user edits
+
+    contrasts <- eds$contrasts()
+
+    for (con in contrasts) {
+        obj <- tryCatch(
+            legacy_multi_contrast_from_eds(eds, con),
+            error = function(e) {
+                showNotification(paste0("Could not load contrast '", con, "': ", e$message),
+                                 type = "warning")
+                NULL
+            }
+        )
+        if (!is.null(obj)) multiDeReactive$results[[con]] <- obj
+    }
+
+    if (length(multiDeReactive$results) > 0) {
+        # Reveal the multi-analysis tabs, preserving the current tab selection.
+        currentTab <- isolate(input$tabs)
+        multiDeReactive$menuUpdateTrigger <- multiDeReactive$menuUpdateTrigger + 1
+        shinyjs::delay(100, {
+            if (!is.null(currentTab)) updateTabItems(session, "tabs", selected = currentTab)
         })
     }
 })

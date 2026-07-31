@@ -1,6 +1,17 @@
 eds <- inputDataReactive()$.eds
 req(eds)
-.gsea_raw <- function() S4Vectors::metadata(eds$backend())$enrichResultGSEA
+# Enrichment reads go through the backend-agnostic accessors so an uploaded
+# .h5ad surfaces GSEA just like a SUSHI SE. eds$enrichment() returns a FLAT list
+# whose keys are BP/MF/CC for the SE backend and gsea/BP... for h5ad — strip the
+# prefix so both normalise to the BP/MF/CC the rest of this module indexes by.
+contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
+.gsea_raw <- function() {
+  if (is.null(contrast)) return(NULL)
+  g <- eds$enrichment(contrast, "gsea")
+  if (!length(g)) return(NULL)
+  names(g) <- sub("^gsea/", "", names(g))
+  g
+}
 
 # Check if GSEA tab is accessed without results
 observeEvent(input$tabs, {
@@ -37,102 +48,115 @@ gseaPlotReactive <- reactiveValues(
   ridgeplot = NULL,
   upset = NULL
 )
-
-
-# Get data objects (GSEA visualisation is RNA-seq + SUSHI-only; uses SE escape hatch)
-gsea   <- .gsea_raw()
-se     <- eds$backend()
-design <- if (length(eds$contrasts()) > 0) eds$contrast_label(eds$primary_contrast()) else ""
-param  <- S4Vectors::metadata(se)$param
-
-# Update GSEA type choices
-updateSelectInput(
-  session = session,
-  inputId = "gseaType",
-  choices = names(gsea),
-  selected = names(gsea)[[1]]
-)
-
-# Render design output
-output$gseaDesign <- renderText({
-  design
-})
-
-# Set default FDR threshold if missing
-if (is.null(param$fdrThreshGSEA)) {
-  param$fdrThreshGSEA <- 0.05
-}
-
-# Create GSEA overview table
-gsea.overview <- ezFrame("Number of Significant Pathways" = numeric())
-for (i in seq_along(names(gsea))) {
-  testName <- names(gsea)[i]
-  gsea.overview[testName, "Number of Significant Pathways"] <- nrow(gsea[[i]]@result)
-}
-
-output$gseaOverview <- function() {
-  gsea.overview %>%
-    kable(format = "html", caption = "GSEA:") %>%
-    kable_styling(
-      bootstrap_options = "striped",
-      full_width = FALSE,
-      position = "left"
-    )
-}
-
-# Create GSEA thresholds table
-gseaThresholds <- ezFrame("GSEA Cut-Offs" = character())
-gseaThresholds["Output GSEA Term FDR", "GSEA Cut-Offs"] <- param$fdrThreshGSEA
-
-output$gseaThreshOverview <- function() {
-  gseaThresholds %>%
-    kable(format = "html", caption = "Cut-Offs:") %>%
-    kable_styling(
-      bootstrap_options = "striped",
-      full_width = FALSE,
-      position = "left"
-    )
-}
-
-# Isoform-level aggregation UI (only shown for isoform data)
-if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
-  output$gseaIsoformAggUI <- renderUI({
-    tagList(
-      box(
-        title = "Isoform Aggregation",
-        width = NULL,
-        solidHeader = TRUE,
-        status = "info",
-        collapsible = TRUE,
-        collapsed = FALSE,
-        tags$div(
-          class = "callout callout-info",
-          tags$p(
-            tags$b("Note:"), "This dataset is at isoform level. Multiple transcripts per gene
-            were passed to the enrichment analysis, each with their own log2 fold change. To
-            display a single fold change per gene in the network plot, values are aggregated
-            using the method selected below."
-          )
-        ),
-        selectInput(
-          inputId = "gseaIsoformAgg",
-          label = "Aggregation method",
-          choices = c("Max absolute" = "maxabs", "Mean" = "mean", "Median" = "median", "Max" = "max", "Min" = "min"),
-          selected = "maxabs",
-          width = "50%"
-        )
-      )
-    )
-  })
-  outputOptions(output, "gseaIsoformAggUI", suspendWhenHidden = FALSE)
-}
-
-# Reactive values for current GSEA selection
 gseaToUse <- reactiveValues(er = NULL)
 
-# Main observer for GSEA type changes
+# Contrast-dependent state. (Re)built by the observeEvent(selectedContrast())
+# block below and read by the observers/outputs. Kept as plain module vars so the
+# deep observers see the latest without being re-registered (no stacking). For a
+# single-contrast dataset selectedContrast() is constant, so this fires once.
+gsea    <- NULL
+ei      <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
+param   <- list()
+design  <- ""
+.id2sym <- function(ids) ids
+
+# Higher priority than the gseaType observer below so the module vars are fresh
+# before that observer reads them on a contrast switch.
+observeEvent(selectedContrast(), {
+  contrast <<- selectedContrast()
+  gsea     <<- .gsea_raw()
+  ei       <<- if (!is.null(contrast)) {
+    eds$enrichment_input(contrast)
+  } else {
+    list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
+  }
+  design   <<- if (!is.null(contrast)) eds$contrast_label(contrast) else ""
+
+  # GSEA thresholds / featureLevel: SUSHI SE metadata$param, else defaults.
+  p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else list()
+  if (is.null(p)) p <- list()
+  if (is.null(p$featureLevel))  p$featureLevel  <- eds$feature_id_kind()
+  if (is.null(p$fdrThreshGSEA)) p$fdrThreshGSEA <- 0.05
+  param <<- p
+
+  # Backend-agnostic gene-id -> symbol remap (no-op when feature_ids are already
+  # symbols, e.g. an uploaded h5ad), so labels never blank out.
+  .id2sym <<- local({
+    sa <- ei$seq_anno
+    gid <- gsym <- NULL
+    if (!is.null(sa)) {
+      gid  <- if ("gene_id" %in% colnames(sa)) sa$gene_id else if ("label_gene_id" %in% colnames(sa)) sa$label_gene_id else NULL
+      gsym <- if ("gene_name" %in% colnames(sa)) sa$gene_name else if ("label_gene_symbol" %in% colnames(sa)) sa$label_gene_symbol else NULL
+    }
+    if (is.null(gid) || is.null(gsym)) {
+      function(ids) ids
+    } else {
+      map <- setNames(as.character(gsym), as.character(gid))
+      function(ids) { s <- unname(map[as.character(ids)]); ifelse(is.na(s) | !nzchar(s), ids, s) }
+    }
+  })
+
+  # Update GSEA type choices for this contrast
+  updateSelectInput(session = session, inputId = "gseaType",
+                    choices = names(gsea),
+                    selected = if (length(gsea)) names(gsea)[[1]] else NULL)
+
+  output$gseaDesign <- renderText({ design })
+
+  # GSEA overview table
+  gsea.overview <- ezFrame("Number of Significant Pathways" = numeric())
+  for (i in seq_along(names(gsea))) {
+    testName <- names(gsea)[i]
+    gsea.overview[testName, "Number of Significant Pathways"] <- nrow(gsea[[i]]@result)
+  }
+  output$gseaOverview <- function() {
+    gsea.overview %>% kable(format = "html", caption = "GSEA:") %>%
+      kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
+  }
+
+  # GSEA thresholds table
+  gseaThresholds <- ezFrame("GSEA Cut-Offs" = character())
+  gseaThresholds["Output GSEA Term FDR", "GSEA Cut-Offs"] <- param$fdrThreshGSEA
+  output$gseaThreshOverview <- function() {
+    gseaThresholds %>% kable(format = "html", caption = "Cut-Offs:") %>%
+      kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
+  }
+
+  # Isoform-level aggregation UI (only shown for isoform data)
+  if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+    output$gseaIsoformAggUI <- renderUI({
+      tagList(
+        box(
+          title = "Isoform Aggregation", width = NULL, solidHeader = TRUE,
+          status = "info", collapsible = TRUE, collapsed = FALSE,
+          tags$div(
+            class = "callout callout-info",
+            tags$p(
+              tags$b("Note:"), "This dataset is at isoform level. Multiple transcripts per gene
+              were passed to the enrichment analysis, each with their own log2 fold change. To
+              display a single fold change per gene in the network plot, values are aggregated
+              using the method selected below."
+            )
+          ),
+          selectInput(
+            inputId = "gseaIsoformAgg", label = "Aggregation method",
+            choices = c("Max absolute" = "maxabs", "Mean" = "mean", "Median" = "median", "Max" = "max", "Min" = "min"),
+            selected = "maxabs", width = "50%"
+          )
+        )
+      )
+    })
+    outputOptions(output, "gseaIsoformAggUI", suspendWhenHidden = FALSE)
+  }
+}, ignoreNULL = FALSE, priority = 10)
+
+# Main observer for GSEA type changes (also refires on contrast switch, after the
+# higher-priority setup block above refreshes gsea/ei/.id2sym).
 observeEvent(
-  input$gseaType,
+  {
+    input$gseaType
+    selectedContrast()
+  },
   {
     gseaToUse$er <- NULL
     gseaToUse$er_symbol <- NULL
@@ -163,37 +187,16 @@ observeEvent(
           er@result$Label[i] <- label
         }
         colsToTable <- c("Label", "enrichmentScore", "NES", "qvalue", "geneName")
-        # Rebuild geneName from core_enrichment with symbol lookup + fallback to gene ID
-        gene_id_to_name <- setNames(
-          metadata(se)$enrichInput$seqAnno$gene_name,
-          metadata(se)$enrichInput$seqAnno$gene_id
-        )
+        # Rebuild geneName from core_enrichment via the backend-agnostic remap
+        # (falls back to the raw ID where no symbol is known).
         er@result$geneName <- sapply(strsplit(er@result$core_enrichment, "/"), function(ids) {
-          symbols <- gene_id_to_name[ids]
-          symbols <- ifelse(is.na(symbols) | nchar(symbols) == 0, ids, symbols)
-          paste(symbols, collapse = "/")
+          paste(.id2sym(ids), collapse = "/")
         })
-        # Convert gene IDs to gene names for core enrichment
-        # Split all core enrichment strings and collect unique gene IDs
-        all_core_genes <- er@result$core_enrichment %>%
-          strsplit("/") %>%
-          unlist() %>%
-          unique()
-        all_core_genes <- all_core_genes[nchar(all_core_genes) > 0]
-
-        # Create lookup table for gene ID to gene name conversion
-        gene_lookup <- setNames(
-          metadata(se)$enrichInput$seqAnno$gene_name,
-          metadata(se)$enrichInput$seqAnno$gene_id
-        )
         er_symbol <- er
         # Convert core enrichment from gene IDs to gene names
         er_symbol@result$core_enrichment <- vapply(er_symbol@result$core_enrichment, function(genes_string) {
           gene_ids <- strsplit(genes_string, "/")[[1]]
-          gene_names <- gene_lookup[gene_ids]
-          # Fall back to gene ID where gene symbol is blank/NA
-          gene_names <- ifelse(is.na(gene_names) | nchar(gene_names) == 0, gene_ids, gene_names)
-          paste(gene_names, collapse = "/")
+          paste(.id2sym(gene_ids), collapse = "/")
         }, character(1), USE.NAMES = FALSE)
       } else {
         # For other pathway databases (e.g., C2)
@@ -201,12 +204,10 @@ observeEvent(
         colsToTable <- c("Description", "enrichmentScore", "NES", "qvalue", "core_enrichment")
       }
       # Prepare log2 ratio data for plotting (store raw, aggregate in plot observer)
-      log2RatioGSEA <- metadata(se)$enrichInput$log2Ratio
+      log2RatioGSEA <- ei$ranked_l2fc
       gene_ids_gsea <- names(log2RatioGSEA)
-      gene_symbols_gsea <- rowData(se)$gene_name[match(gene_ids_gsea, rowData(se)$gene_id)]
-      # Fall back to gene ID where gene symbol is blank/NA (e.g., non-reference organisms)
-      gene_symbols_gsea <- ifelse(is.na(gene_symbols_gsea) | nchar(gene_symbols_gsea) == 0, gene_ids_gsea, gene_symbols_gsea)
-      names(log2RatioGSEA) <- gene_symbols_gsea
+      # Relabel to gene symbols where possible (no-op when already symbols).
+      names(log2RatioGSEA) <- .id2sym(gene_ids_gsea)
       log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
 
       # Update reactive values
@@ -353,11 +354,9 @@ observeEvent(
     genes_pass_filter <- names(log2RatioGSEA) # Default: all genes pass
 
     if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode != "none") {
-      # Get p-values for genes — try enrichInput path first, then fall back to direct path
-      seqAnno <- metadata(se)$enrichInput$seqAnno
-      if (is.null(seqAnno)) {
-        seqAnno <- metadata(se)$seqAnno
-      }
+      # Per-gene p-values for optional visualisation filtering, from the
+      # enrichment input's annotation; absent for uploads -> filter degrades off.
+      seqAnno <- ei$seq_anno
 
       # Determine which p-value column to use
       pval_col <- if (!is.null(input$gseaVisPType) && input$gseaVisPType == "FDR") "fdr" else "pValue"

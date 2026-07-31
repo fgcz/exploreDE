@@ -58,7 +58,7 @@ observeEvent(
     req(eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics")
 
     if (eds$data_type() == "RNASeq") {
-      contrast    <- eds$primary_contrast()
+      contrast    <- selectedContrast()
       design      <- eds$contrast_label(contrast)
       seqAnno     <- eds$de(contrast)
       output$volcanoDesign <- renderText({
@@ -181,7 +181,7 @@ volcanoResultsList <- eventReactive(
     req(eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics")
 
     if (eds$data_type() == "RNASeq") {
-      contrast    <- eds$primary_contrast()
+      contrast    <- selectedContrast()
       design      <- eds$contrast_label(contrast)
       seqAnno     <- eds$de(contrast)
       output$volcanoDesign <- renderText({

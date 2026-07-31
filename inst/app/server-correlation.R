@@ -33,6 +33,7 @@ local({
 
 # Update feature choices when collapse guides toggle changes
 observeEvent(input$correlationCollapseGuides, {
+  if (isTRUE(restoring())) return()  # save-state restore guard
   eds <- inputDataReactive()$.eds
   if (eds$data_type() == "CrisprCountQC") {
     if (isTRUE(input$correlationCollapseGuides)) {
@@ -75,8 +76,10 @@ observeEvent(inputDataReactive(), {
   .grouping <- eds$primary_grouping()
   .secondary <- eds$secondary_grouping()
   .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
+  # Proteomics grouping: SUSHI "G_" if present, else the primary grouping (h5ad).
+  .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
   .deDesignCol <- if (.dt == "RNASeq") .grouping
-                  else if (.oc == "proteomics") "G_"
+                  else if (.oc == "proteomics") .protGroup
                   else NA_character_
 
   batchChoices <- c("None", .factors)
@@ -89,7 +92,7 @@ observeEvent(inputDataReactive(), {
     c("None", .factors)
   }
   designDefault <- if (.dt == "RNASeq") .grouping
-                   else if (.oc == "proteomics") "G_"
+                   else if (.oc == "proteomics") .protGroup
                    else "None"
   updateSelectInput(session = session, inputId = "correlationDesign", label = "Design factor to preserve during batch correction", choices = designChoices, selected = designDefault)
 })
@@ -104,19 +107,24 @@ observeEvent(
     output$correlationGroupBucket <- renderUI({
       req(input$tabs == "correlationsTab")
       eds <- inputDataReactive()$.eds
+      .lvls <- unique(levels(as.factor(eds$samples()[[input$correlationColourBy]])))
+      # save-state restore: seed include/exclude split + order from a saved session.
+      .keep <- restore_default("correlationKeepBucket", .lvls, valid = .lvls)
+      .excl <- restore_default("correlationExcludeBucket", character(0), valid = .lvls)
+      .keep <- setdiff(.keep, .excl)
       bucket_list(
         header = "Drag and drop groups in order to be plotted (Ctrl/Cmd to select multiple)",
         group_name = "correlation_bucket_list",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these groups",
-          labels = as.list(unique(levels(as.factor(eds$samples()[[input$correlationColourBy]])))),
+          labels = as.list(.keep),
           input_id = "correlationKeepBucket",
           options = sortable::sortable_options(multiDrag = TRUE)
         ),
         add_rank_list(
           text = "Exclude these groups",
-          labels = NULL,
+          labels = as.list(.excl),
           input_id = "correlationExcludeBucket",
           options = sortable::sortable_options(multiDrag = TRUE)
         )
@@ -130,6 +138,7 @@ correlationPlot <- reactiveValues(plot = NULL)
 
 # Update feature choices when search mode changes
 observeEvent(input$fb_search_by_correlation, ignoreInit = TRUE, {
+  if (isTRUE(restoring())) return()  # save-state restore guard
   eds <- inputDataReactive()$.eds
   mode <- input$fb_search_by_correlation
   pc_gene    <- eds$proteomics_choices("gene")$choices

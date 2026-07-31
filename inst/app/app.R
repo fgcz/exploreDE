@@ -18,6 +18,8 @@ cat("... packages loaded!")
 # Ensure shiny::validate is not masked by jsonlite::validate
 validate <- shiny::validate
 reactiveConsole(TRUE)
+# Allow larger uploads for user-supplied .h5ad datasets (BYO data, M2).
+options(shiny.maxRequestSize = 1000 * 1024^2)
 if (file.exists("/srv/shiny-server/fgcz_apps/telemetry_module.R")) source("/srv/shiny-server/fgcz_apps/telemetry_module.R")
 
 # Source package R/ helpers at startup (dev mode — no install required).
@@ -200,7 +202,14 @@ ui <- dashboardPage(
       )
     ),
     use_waiter(),
+    # Hide the full-page loading spinner the instant the summary page's primary
+    # table (settingsTable) actually renders on the client. This is a UI helper:
+    # it injects a document-level `shiny:value` listener that calls
+    # waiter.hide() when that output paints — event-driven, no fixed delay.
+    # (Must live in the UI; called server-side it only builds an unused tag.)
+    waiter::waiter_hide_on_render("settingsTable"),
     tabItems(
+      source("ui-tab-landing.R", local = TRUE)$value,
       source("ui-tab-summary.R", local = TRUE)$value,
       source("ui-tab-boxplot.R", local = TRUE)$value,
       source("ui-tab-heatmap.R", local = TRUE)$value,
@@ -224,7 +233,8 @@ ui <- dashboardPage(
       source("ui-tab-multi-bubble.R", local = TRUE)$value,
       source("ui-tab-multi-pathway-select.R", local = TRUE)$value,
       source("ui-tab-multi-heatmap.R", local = TRUE)$value,
-      source("ui-tab-multi-kegg.R", local = TRUE)$value
+      source("ui-tab-multi-kegg.R", local = TRUE)$value,
+      source("ui-tab-saveState.R", local = TRUE)$value
     ),
     tags$footer(
       style = "text-align: center; padding: 20px; color: #999; font-size: 16px; border-top: 1px solid #eee; margin-top: 20px;",
@@ -234,10 +244,27 @@ ui <- dashboardPage(
 )
 
 server <- function(input, output, session) {
+  # ── Session save/restore primitives ────────────────────────────────────────
+  # `restoring` is TRUE only while a saved-state bundle is being applied (set in
+  # server-saveState.R). `restore_seed` holds the saved input snapshot so widgets
+  # rebuilt mid-restore can seed their saved value. `restore_default()` is the
+  # single convention: during a restore it returns the saved value for `id`
+  # (optionally intersected with `valid` = the widget's current choices), else the
+  # computed default — a no-op outside restore, so live behaviour is unchanged.
+  # isolate() so reading the store never adds a reactive dependency to the caller.
+  restoring    <- reactiveVal(FALSE)
+  restore_seed <- reactiveValues()
+  # Thin closure over this session's reactives; logic lives in the exported,
+  # unit-tested restore_default_value() (R/utils_savestate.R).
+  restore_default <- function(id, computed_default, valid = NULL) {
+    restore_default_value(id, computed_default, valid, restoring, restore_seed)
+  }
+
   # Multi DE Reactive (defined early so it's available to server-initInputData.R)
   multiProjectInfo <- reactiveValues(projectDir = NULL)
 
   source("server-initInputData.R", local = TRUE)
+  source("server-landing.R", local = TRUE)
 
   # Telemetry (skipped when DB directory is unavailable, e.g. local dev)
   telemetry_app_name <- "exploreDE_genomics"
@@ -257,30 +284,55 @@ server <- function(input, output, session) {
   } else if (file.exists("R/downloadHelpers.R")) {
      source("R/downloadHelpers.R")
   }
-  source("server-featureBucket.R", local = TRUE)
-  source("server-summary.R", local = TRUE)
-  source("server-DEGTable.R", local = TRUE)
-  source("server-volcano2.R", local = TRUE)
-  source("server-deQc.R", local = TRUE)
-  source("server-heatmap2.R", local = TRUE)
-  source("server-ordination.R", local = TRUE)
-  source("server-boxplot.R", local = TRUE)
-  source("server-correlation.R", local = TRUE)
-  source("server-hypergeo2.R", local = TRUE)
-  source("server-gsea2.R", local = TRUE)
-  source("server-goTile.R", local = TRUE)
-  source("server-kegg.R", local = TRUE)
-  source("server-replicability.R", local = TRUE)
-  source("server-countQc.R", local = TRUE)
-  source("server-multi-data-selection.R", local = TRUE)
-  source("server-multi-de-table.R", local = TRUE)
-  source("server-multi-upset.R", local = TRUE)
-  source("server-multi-bubble.R", local = TRUE)
-  source("server-multi-pathway-select.R", local = TRUE)
-  source("server-multi-heatmap.R", local = TRUE)
-  source("server-multi-boxplot.R", local = TRUE)
-  source("server-multi-tile.R", local = TRUE)
-  source("server-multi-kegg.R", local = TRUE)
+  # Data-dependent server modules run `eds <- inputDataReactive()$.eds; req(eds)`
+  # at source time, so they can only be sourced once a dataset exists (otherwise
+  # req() aborts the whole server function and the app never starts). Defer them
+  # to the first moment edsState is populated — a ?data= URL fires this on the
+  # first flush; an upload/demo fires it later. Sourced ONCE, all into the same
+  # handler environment so cross-module references resolve, and into a scope that
+  # still sees the server's output/input/session and the reactives below.
+  .dataModulesSourced <- FALSE
+  observeEvent(edsState(), {
+    if (.dataModulesSourced || is.null(edsState())) return()
+    .dataModulesSourced <<- TRUE
+    # Keep the loading spinner up across module sourcing (the landing observers
+    # show it on click; a ?data= URL has no click, so ensure it's shown here).
+    waiter::waiter_show(
+      html  = tagList(waiter::spin_fading_circles(),
+                      tags$h4("Preparing your dataset…", style = "color:#fff; margin-top:1em;")),
+      color = "#527085"
+    )
+    # NB: the spinner is hidden client-side by the waiter_hide_on_render() helper
+    # wired into the UI (see dashboardBody) — it fires when settingsTable paints,
+    # which is exactly "summary is ready". Nothing to hide here: hiding on exit
+    # would drop the overlay the instant module-sourcing finishes (several
+    # flushes before any output renders), flashing the landing screen through.
+    source("server-featureBucket.R", local = TRUE)
+    source("server-summary.R", local = TRUE)
+    source("server-DEGTable.R", local = TRUE)
+    source("server-volcano2.R", local = TRUE)
+    source("server-deQc.R", local = TRUE)
+    source("server-heatmap2.R", local = TRUE)
+    source("server-ordination.R", local = TRUE)
+    source("server-boxplot.R", local = TRUE)
+    source("server-correlation.R", local = TRUE)
+    source("server-hypergeo2.R", local = TRUE)
+    source("server-gsea2.R", local = TRUE)
+    source("server-goTile.R", local = TRUE)
+    source("server-kegg.R", local = TRUE)
+    source("server-replicability.R", local = TRUE)
+    source("server-countQc.R", local = TRUE)
+    source("server-multi-data-selection.R", local = TRUE)
+    source("server-multi-de-table.R", local = TRUE)
+    source("server-multi-upset.R", local = TRUE)
+    source("server-multi-bubble.R", local = TRUE)
+    source("server-multi-pathway-select.R", local = TRUE)
+    source("server-multi-heatmap.R", local = TRUE)
+    source("server-multi-boxplot.R", local = TRUE)
+    source("server-multi-tile.R", local = TRUE)
+    source("server-multi-kegg.R", local = TRUE)
+    source("server-saveState.R", local = TRUE)
+  }, ignoreNULL = TRUE)
 
   # Multi DE Reactive
   multiDeReactive <- reactiveValues(
@@ -295,7 +347,13 @@ server <- function(input, output, session) {
   })
 
   output$sidebarMenu <- renderMenu({
-    req(inputDataReactive())
+    # No data yet (opened without ?data=): show only the landing/upload entry.
+    if (is.null(edsState())) {
+      return(sidebarMenu(
+        id = "tabs",
+        menuItem(text = "Load data", tabName = "landingTab", icon = icon("upload"))
+      ))
+    }
     eds      <- inputDataReactive()$.eds
     dataType <- eds$data_type()
     # Column-presence check: cheap, no DB lookup. goTile tab is only shown when
@@ -308,8 +366,12 @@ server <- function(input, output, session) {
 
     # 0. Tabs
     menuItems <- list(
+
+      # 0. Session (always shown, all data types)
+      tags$li(class = "header", "Session"),
       menuItem(text = "Results Summary", tabName = "summaryTab", icon = icon("list")),
       menuItem(text = "Colours", tabName = "colourTab", icon = icon("palette")),
+      menuItem(text = "Save / Load Session (beta)", tabName = "saveStateTab", icon = icon("floppy-disk")),
 
       # 1. Count tabs (Always shown)
       tags$li(class = "header", "Counts"),
@@ -416,8 +478,10 @@ server <- function(input, output, session) {
       }
     }
 
-    # Use isolate(input$tabs) to preserve selection without creating a dependency loop
+    # Use isolate(input$tabs) to preserve selection without creating a dependency loop.
+    # Arriving from the landing screen (or first load): land on the summary tab.
     currentTab <- isolate(input$tabs)
+    if (is.null(currentTab) || currentTab == "landingTab") currentTab <- "summaryTab"
     sidebarMenu(id = "tabs", .list = menuItems, selected = currentTab)
   })
 }

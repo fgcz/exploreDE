@@ -4,7 +4,10 @@ req(eds)
 # Bucket render removed — now in server-featureBucket.R
 
 if (eds$data_type() == "RNASeq") {
-  contrast <- eds$primary_contrast()
+ observeEvent(selectedContrast(), {
+  # Rebuild for whichever contrast is selected. Single-contrast data fires this
+  # once (primary contrast); multi-contrast data refires on selector change.
+  contrast <- selectedContrast()
   cm       <- eds$contrast_meta(contrast)
   de_df    <- eds$de(contrast)
   design   <- eds$contrast_label(contrast)
@@ -84,6 +87,15 @@ if (eds$data_type() == "RNASeq") {
     "Ensembl ID", "Feature", "Description", "Type", "Log2 Ratio", "Raw p-value", "FDR", "Mean TPM",
     paste0(cm$test_group, " Mean TPM"), paste0(cm$reference_group, " Mean TPM")
   )
+  # Keep only columns actually present (uploaded h5ad DE tables may lack e.g.
+  # `type`); keep the display names aligned to the surviving columns.
+  .keep <- colsToPlotR %in% colnames(de_df)
+  colsToPlotR <- colsToPlotR[.keep]
+  colNamesToPlotR <- colNamesToPlotR[.keep]
+  .sig3 <- intersect(c("pValue", "fdr", "TPM_mean",
+                       paste0("TPM_", cm$test_group, "_Mean"),
+                       paste0("TPM_", cm$reference_group, "_Mean")), colsToPlotR)
+  .pf   <- intersect(c("pValue", "fdr"), colsToPlotR)
   # Output the interactive data table
   dt1 <- DT::datatable(
     data = de_df %>% dplyr::select(all_of(colsToPlotR)),
@@ -92,11 +104,14 @@ if (eds$data_type() == "RNASeq") {
     rownames = FALSE,
     colnames = colNamesToPlotR
   ) %>%
-    DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
-    DT::formatSignif(columns = c("pValue", "fdr", "TPM_mean", paste0("TPM_", cm$test_group, "_Mean"), paste0("TPM_", cm$reference_group, "_Mean")), digits = 3) %>%
-    DT::formatSignif(columns = "log2Ratio", digits = 5) %>%
-    DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
-    DT::formatStyle(columns = c("pValue", "fdr"), color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")
+    DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px")
+  if (length(.sig3)) dt1 <- dt1 %>% DT::formatSignif(columns = .sig3, digits = 3)
+  if ("log2Ratio" %in% colsToPlotR) {
+    dt1 <- dt1 %>%
+      DT::formatSignif(columns = "log2Ratio", digits = 5) %>%
+      DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold")
+  }
+  if (length(.pf)) dt1 <- dt1 %>% DT::formatStyle(columns = .pf, color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")
   output$degTable <- DT::renderDataTable(dt1, server = TRUE, selection = list(target = "row"))
   proxy <- dataTableProxy("degTable")
   observeEvent(input$resetDEGTableSelectRows, {
@@ -176,6 +191,7 @@ if (eds$data_type() == "RNASeq") {
       )
     }
   )
+ }, ignoreNULL = FALSE)
 }
 
 

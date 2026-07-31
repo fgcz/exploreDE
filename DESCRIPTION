@@ -51,6 +51,7 @@ Imports:
   officer,
   R6,
   anndataR,
+  jsonlite,
   SummarizedExperiment,
   S4Vectors
 Suggests:

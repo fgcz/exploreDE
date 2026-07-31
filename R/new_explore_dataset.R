@@ -27,7 +27,11 @@ detect_se_shape <- function(se) {
   if (has_real_comparison) return("rna_seq")
 
   rn <- rownames(se) %||% character()
-  if (any(grepl("_(sgrna)?[0-9]+_[ACGTN]+$", rn, ignore.case = TRUE))) {
+  # Guide feature IDs, two known conventions, both ending in the protospacer:
+  #   GENE_<n>_<SEQ>                       (Mageck: GENE_1_ACGT… / GENE_sgrna1_ACGT…)
+  #   GENE_<strand>_<locus>_<SEQ>          (e.g. Ptplad2_-_88439147.23-P1P2_GATCC…)
+  if (any(grepl("_(sgrna)?[0-9]+_[ACGTN]+$", rn, ignore.case = TRUE)) ||
+      any(grepl("_[+-]_[^_]+_[ACGTN]+$", rn, ignore.case = TRUE))) {
     return("crispr_count_qc")
   }
   "count_qc"
@@ -52,6 +56,14 @@ detect_se_shape <- function(se) {
 #' @return An object inheriting from [ExploreDataset].
 #' @export
 new_explore_dataset <- function(input, config = NULL) {
+  # Canonical AnnData input (a live anndataR object or a `.h5ad` path) routes
+  # straight to the H5AD backend — the "bring your own data" path.
+  if (inherits(input, "AbstractAnnData") ||
+      (is.character(input) && length(input) == 1L &&
+       grepl("\\.h5ad$", input, ignore.case = TRUE))) {
+    return(ExploreDatasetH5AD$new(input, config = config))
+  }
+
   se <- if (inherits(input, "SummarizedExperiment")) {
     input
   } else if (is.character(input) && length(input) == 1L) {

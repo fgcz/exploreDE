@@ -63,6 +63,7 @@ updateSelectizeInput(
 
 # Update feature choices when collapse guides toggle changes
 observeEvent(input$boxplotCollapseGuides, {
+  if (isTRUE(restoring())) return()  # save-state restore guard
   if (eds$data_type() == "CrisprCountQC") {
     if (isTRUE(input$boxplotCollapseGuides)) {
       gene_choices <- sort(unique(eds$sgrna_to_gene()))
@@ -104,8 +105,11 @@ observe({
   .grouping  <- eds$primary_grouping()
   .secondary <- eds$secondary_grouping()
   .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
+  # Proteomics grouping: SUSHI data carries the prolfqua "G_" column; an uploaded
+  # h5ad won't, so fall back to the dataset's primary grouping factor.
+  .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
   .deDesignCol <- if (.dt == "RNASeq") .grouping
-                  else if (eds$omics_class() == "proteomics") "G_"
+                  else if (eds$omics_class() == "proteomics") .protGroup
                   else NA_character_
 
   batchChoices <- c("None", .factors)
@@ -123,7 +127,7 @@ observe({
     c("None", .factors)
   }
   designDefault <- if (.dt == "RNASeq") .grouping
-                   else if (eds$omics_class() == "proteomics") "G_"
+                   else if (eds$omics_class() == "proteomics") .protGroup
                    else "None"
   updateSelectInput(
     session = session,
@@ -139,19 +143,25 @@ observeEvent(
   },
   {
     output$bucket <- renderUI({
+      .lvls <- unique(levels(as.factor(eds$samples()[[input$boxplotFactor1]])))
+      # save-state restore: seed the include/exclude split + order from a saved
+      # session (valid= drops levels that don't belong to the current factor).
+      .keep <- restore_default("boxKeepBucket", .lvls, valid = .lvls)
+      .excl <- restore_default("boxExcludeBucket", character(0), valid = .lvls)
+      .keep <- setdiff(.keep, .excl)
       bucket_list(
         header = "Drag and drop groups in order to be plotted (Ctrl/Cmd to select multiple)",
         group_name = "bucket_list_group",
         orientation = "horizontal",
         add_rank_list(
           text = "Include these groups",
-          labels = as.list(unique(levels(as.factor(eds$samples()[[input$boxplotFactor1]])))),
+          labels = as.list(.keep),
           input_id = "boxKeepBucket",
           options = sortable::sortable_options(multiDrag = TRUE)
         ),
         add_rank_list(
           text = "Exclude these groups",
-          labels = NULL,
+          labels = as.list(.excl),
           input_id = "boxExcludeBucket",
           options = sortable::sortable_options(multiDrag = TRUE)
         )

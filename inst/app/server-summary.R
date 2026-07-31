@@ -2,6 +2,24 @@ eds <- inputDataReactive()$.eds
 req(eds)
 se <- eds$backend()   # SE-only escape hatch for legacy ezRun helpers below
 
+# Contrast selector for multi-contrast NON-proteomics data (proteomics renders
+# its own in server-initInputData.R). Reuses the summary-tab
+# `proteomicsContrastSelectorUI` slot + the shared `contrastSelected` input id,
+# which the DE + enrichment tabs read via selectedContrast(). Single-contrast
+# datasets get no selector (and selectedContrast() == primary_contrast()).
+if (eds$omics_class() != "proteomics" && length(eds$contrasts()) > 1) {
+  output$proteomicsContrastSelectorUI <- renderUI({
+    selectInput(
+      inputId  = "contrastSelected",
+      label    = "Select contrast to view",
+      choices  = eds$contrasts(),
+      selected = eds$primary_contrast(),
+      multiple = FALSE, selectize = TRUE
+    )
+  })
+  outputOptions(output, "proteomicsContrastSelectorUI", suspendWhenHidden = FALSE)
+}
+
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   if (eds$data_type() == "RNASeq") {
@@ -66,7 +84,12 @@ observeEvent(input$colourPalette, {
         colourpicker::colourInput(
           inputId = paste0("GroupColour", fname, levs[[j]]),
           label = paste0(fname, ": ", levs[[j]]),
-          value = rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j],
+          # save-state restore: seed the saved colour (the picker is rebuilt on
+          # colourPalette change, so this is where a restored colour lands).
+          value = restore_default(
+            paste0("GroupColour", fname, levs[[j]]),
+            rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j]
+          ),
           palette = "square",
           closeOnClick = TRUE,
           returnName = TRUE,
@@ -723,8 +746,14 @@ observe({
         # Only proceed if RNASeq data
         req(eds$data_type() == "RNASeq")
 
-        # Methods generation is SUSHI/ezRun-only; reach for the SE + param
-        # via the backend escape hatch.
+        # Methods generation is SUSHI/ezRun-only.
+        if (eds$backend_kind() != "se") {
+          showNotification("Methods text is only available for SUSHI-processed datasets.",
+                           type = "message", duration = 8)
+          return(NULL)
+        }
+
+        # Reach for the SE + param via the backend escape hatch.
         se    <- eds$backend()
         param <- S4Vectors::metadata(se)$param
 
@@ -928,6 +957,16 @@ observe({
   # Proteomics: Create metadata table
   if (eds$omics_class() == "proteomics") {
     output$settingsTable <- function() {
+      if (eds$backend_kind() != "se") {
+        settings <- character()
+        settings["Data type:"] <- eds$data_type()
+        settings["Number of features:"] <- eds$n_features()
+        settings["Number of samples:"] <- eds$n_samples()
+        return(
+          kable(as.data.frame(settings), row.names = TRUE, col.names = "Setting", format = "html") %>%
+            kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
+        )
+      }
       md <- S4Vectors::metadata(eds$backend())
       if ("contrasts" %in% names(md)) {
         contrastSummary <- as.data.frame(md$contrasts)
@@ -949,6 +988,20 @@ observe({
   # RNA Seq: Create settings and thresholds table
   if (eds$data_type() == "RNASeq") {
     output$settingsTable <- function() {
+      # Uploaded (non-SUSHI) dataset has no ezRun param object — show an
+      # accessor-derived summary instead of the SUSHI settings block.
+      if (eds$backend_kind() != "se") {
+        settings <- character()
+        settings["Data type:"] <- eds$data_type()
+        settings["Organism:"] <- as.character(eds$organism())
+        settings["Reference build:"] <- as.character(eds$ref_build())
+        settings["Number of features:"] <- eds$n_features()
+        settings["Number of samples:"] <- eds$n_samples()
+        return(
+          kable(as.data.frame(settings), row.names = TRUE, col.names = "Setting", format = "html") %>%
+            kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
+        )
+      }
       kable(makeCountResultSummary(S4Vectors::metadata(se)$param, se),
         row.names = TRUE,
         col.names = "Setting", format = "html"
@@ -977,6 +1030,16 @@ observe({
     }
   } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
     output$settingsTable <- function() {
+      if (eds$backend_kind() != "se") {
+        settings <- character()
+        settings["Data type:"] <- eds$data_type()
+        settings["Reference:"] <- as.character(eds$ref_build())
+        settings["Number of features:"] <- eds$n_features()
+        return(
+          kable(as.data.frame(settings), row.names = TRUE, col.names = "Setting", format = "html") %>%
+            kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
+        )
+      }
       param <- S4Vectors::metadata(se)$param
       settings <- character()
 

@@ -71,7 +71,9 @@ observe({
     # Batch + design dropdowns — see server-boxplot.R for the decision table.
     .twoFactor <- !is.null(d$param$grouping2Name) && nzchar(d$param$grouping2Name) &&
                   !is.null(d$factors) && d$param$grouping2Name %in% d$factors
-    .deDesignCol <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = "G_", NA_character_)
+    # Proteomics grouping: SUSHI "G_" if present, else the dataset's grouping.
+    .protGroup <- if ("G_" %in% d$factors) "G_" else d$groupingName
+    .deDesignCol <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = .protGroup, NA_character_)
 
     batchChoices <- c("None", d$factors)
     batchDefault <- if (.twoFactor) d$param$grouping2Name else "None"
@@ -87,7 +89,7 @@ observe({
     } else {
       c("None", d$factors)
     }
-    designDefault <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = "G_", "None")
+    designDefault <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = .protGroup, "None")
     updateSelectInput(
       session = session,
       inputId = "multiBoxplotDesign",
@@ -328,6 +330,21 @@ multiBoxplotCountsReactive <- eventReactive(
     # NEW MULTI-CONTRAST P-VALUE LOGIC
     # Replaces single-contrast logic from boxplot.R
     pvalueDF <- list()
+
+    # Resolve a parsed contrast group label to an actual plotted factor level.
+    # Contrast names sometimes use a shorthand that differs from the factor
+    # level (e.g. a contrast named "KO-inf--over--WT-inf" over a `condition`
+    # factor whose level is "cKO-inf"). Exact match wins; otherwise fall back to
+    # a level the label is a prefix/suffix of (either direction) ONLY when that
+    # is unambiguous — so a well-labelled contrast is untouched and an ambiguous
+    # one is skipped rather than mis-bracketed.
+    .resolveLevel <- function(g, levels) {
+        if (g %in% levels) return(g)
+        hit <- unique(levels[endsWith(levels, g) | startsWith(levels, g) |
+                             endsWith(g, levels) | startsWith(g, levels)])
+        if (length(hit) == 1L) hit else NA_character_
+    }
+
     for (nm in names(multiDeReactive$results)) {
         res <- multiDeReactive$results[[nm]]
         if (!is.null(res$seqAnno)) {
@@ -355,9 +372,14 @@ multiBoxplotCountsReactive <- eventReactive(
             # If we successfully parsed groups, and genes match
             if (!is.null(group1) && !is.null(group2)) {
 
-                 # Filtering Step: Only show P-values if the contrast groups exist in the currently plotted factor
-                 currentFactorLevels <- unique(datasetBoxplot[[input$multiBoxplotFactor1]])
-                 if (!all(c(group1, group2) %in% currentFactorLevels)) {
+                 # Filtering Step: only show P-values if BOTH contrast groups
+                 # map to a level in the currently plotted factor. Resolve the
+                 # parsed labels to real levels first (handles shorthand names);
+                 # an unresolved / off-plot group skips this contrast's bracket.
+                 currentFactorLevels <- unique(as.character(datasetBoxplot[[input$multiBoxplotFactor1]]))
+                 group1 <- .resolveLevel(group1, currentFactorLevels)
+                 group2 <- .resolveLevel(group2, currentFactorLevels)
+                 if (is.na(group1) || is.na(group2)) {
                      next
                  }
 

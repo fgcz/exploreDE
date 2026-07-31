@@ -61,19 +61,23 @@ observeEvent(input$countQcBarColourBy, ignoreInit = FALSE, {
   req(fc %in% colnames(dataset))
   lvls <- levels(as.factor(dataset[[fc]]))
   output$countQcBarBucketUI <- renderUI({
+    # save-state restore: seed include/exclude split + order from a saved session.
+    .keep <- restore_default("countQcBarKeepBucket", lvls, valid = lvls)
+    .excl <- restore_default("countQcBarExcludeBucket", character(0), valid = lvls)
+    .keep <- setdiff(.keep, .excl)
     sortable::bucket_list(
       header = "Drag levels to include / exclude / reorder (Ctrl/Cmd for multi-select)",
       group_name = "countQcBarBucket",
       orientation = "horizontal",
       sortable::add_rank_list(
         text = "Include these groups",
-        labels = as.list(lvls),
+        labels = as.list(.keep),
         input_id = "countQcBarKeepBucket",
         options = sortable::sortable_options(multiDrag = TRUE)
       ),
       sortable::add_rank_list(
         text = "Exclude these groups",
-        labels = NULL,
+        labels = as.list(.excl),
         input_id = "countQcBarExcludeBucket",
         options = sortable::sortable_options(multiDrag = TRUE)
       )
@@ -102,19 +106,23 @@ observeEvent(input$countQcBarFacetBy, ignoreInit = FALSE, {
   req(fc %in% colnames(dataset))
   lvls <- levels(as.factor(dataset[[fc]]))
   output$countQcBarFacetBucketUI <- renderUI({
+    # save-state restore: seed include/exclude split + order from a saved session.
+    .keep <- restore_default("countQcBarFacetKeepBucket", lvls, valid = lvls)
+    .excl <- restore_default("countQcBarFacetExcludeBucket", character(0), valid = lvls)
+    .keep <- setdiff(.keep, .excl)
     sortable::bucket_list(
       header = "Facet levels to include / exclude / reorder",
       group_name = "countQcBarFacetBucket",
       orientation = "horizontal",
       sortable::add_rank_list(
         text = "Include these facets",
-        labels = as.list(lvls),
+        labels = as.list(.keep),
         input_id = "countQcBarFacetKeepBucket",
         options = sortable::sortable_options(multiDrag = TRUE)
       ),
       sortable::add_rank_list(
         text = "Exclude these facets",
-        labels = NULL,
+        labels = as.list(.excl),
         input_id = "countQcBarFacetExcludeBucket",
         options = sortable::sortable_options(multiDrag = TRUE)
       )
@@ -157,7 +165,8 @@ output$countQcIntraGroupUI <- renderUI({
   req(input$countQcIntraFactor %in% colnames(dataset))
   levels_avail <- unique(as.character(dataset[[input$countQcIntraFactor]]))
   selectInput("countQcIntraGroup", "Group level to display",
-              choices = levels_avail, selected = levels_avail[[1]])
+              choices = levels_avail,
+              selected = restore_default("countQcIntraGroup", levels_avail[[1]], valid = levels_avail))
 })
 
 # ==============================================================================
@@ -185,11 +194,25 @@ countQcBarData <- reactive({
   # CountQC/CrisprCountQC outputs that don't ship rawData.rds.
   # seUnfiltered is still attached as a legacy gStoreList field by initInputData;
   # falls back to eds$backend() (the filtered SE) when absent.
-  se <- inputDataReactive()$seUnfiltered %||% eds$backend()
-  req("counts" %in% assayNames(se))
-  raw_counts <- assay(se, "counts")
-  has_pf <- "presentFlag" %in% assayNames(se)
-  present_flag <- if (has_pf) assay(se, "presentFlag") else (raw_counts > 0) * 1L
+  seU <- inputDataReactive()$seUnfiltered
+  if (!is.null(seU)) {
+    req("counts" %in% assayNames(seU))
+    raw_counts   <- assay(seU, "counts")
+    present_flag <- if ("presentFlag" %in% assayNames(seU)) assay(seU, "presentFlag") else (raw_counts > 0) * 1L
+  } else if (eds$backend_kind() == "se") {
+    # SUSHI SE without a separate rawData.rds (e.g. RNASeq deResult): use the
+    # filtered SE directly, exactly as before.
+    se <- eds$backend()
+    req("counts" %in% assayNames(se))
+    raw_counts   <- assay(se, "counts")
+    present_flag <- if ("presentFlag" %in% assayNames(se)) assay(se, "presentFlag") else (raw_counts > 0) * 1L
+  } else {
+    # Uploaded h5ad: no unfiltered SE and no presentFlag assay — use the
+    # dataset's own counts via the accessor.
+    req(eds$has_assay("counts"))
+    raw_counts   <- eds$assay("counts")
+    present_flag <- (raw_counts > 0) * 1L
+  }
 
   dataset <- eds$samples()
   factorCol <- input$countQcBarColourBy %||% eds$primary_grouping()
@@ -331,10 +354,10 @@ countQcDomVisible <- reactive(countQcBarVisible())
 
 countQcDominantData <- reactive({
   req(countQcDomVisible())
-  se <- eds$backend()
-  req("counts" %in% assayNames(se))
-  counts <- assay(se, "counts")
-  rd <- rowData(se)
+  req(eds$has_assay("counts"))
+  counts <- eds$assay("counts")
+  # Keep rowData row-aligned to counts (features() is p-value sorted).
+  rd <- eds$features()[rownames(counts), , drop = FALSE]
   labels <- if ("gene_name" %in% colnames(rd) && any(nzchar(rd$gene_name))) {
     ifelse(is.na(rd$gene_name) | !nzchar(rd$gene_name),
            rownames(counts), rd$gene_name)
@@ -544,7 +567,8 @@ countQcIntraData <- reactive({
   req(input$countQcIntraGroup)
   req(input$countQcIntraCountType)
   dataset  <- eds$samples()
-  se       <- eds$backend()
+  # SE-only escape hatch (presentFlag/isPresent assays); NULL for uploads.
+  se       <- if (eds$backend_kind() == "se") eds$backend() else NULL
   dataType <- eds$data_type()
   # Proteomics: use the currently selected contrast's DE table
   seqAnno <- if (eds$omics_class() == "proteomics") {
@@ -585,12 +609,12 @@ countQcIntraData <- reactive({
   mode <- input$countQcScatterColourBy %||% "Standard"
   present_mask <- if (dataType == "RNASeq" && "usedInTest" %in% colnames(rd)) {
     rd$usedInTest
-  } else if ("presentFlag" %in% assayNames(se)) {
+  } else if (!is.null(se) && "presentFlag" %in% assayNames(se)) {
     pf <- rowMeans(assay(se, "presentFlag")) >= 0.5
     if (!is.null(names(pf))) pf <- pf[match(rd$feature_id, names(pf))]
     pf[is.na(pf)] <- FALSE
     pf
-  } else if ("isPresent" %in% assayNames(se)) {
+  } else if (!is.null(se) && "isPresent" %in% assayNames(se)) {
     ip <- rowMeans(assay(se, "isPresent")) >= 0.5
     if (!is.null(names(ip))) ip <- ip[match(rd$feature_id, names(ip))]
     ip[is.na(ip)] <- FALSE

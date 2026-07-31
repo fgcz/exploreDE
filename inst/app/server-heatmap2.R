@@ -139,6 +139,7 @@ observe({
 
   # Update feature choices when collapse guides toggle changes
   observeEvent(input$heatmapCollapseGuides, {
+    if (isTRUE(restoring())) return()  # save-state restore guard
     if (eds$data_type() == "CrisprCountQC" && isTRUE(input$heatmapCollapseGuides)) {
       gene_choices <- sort(unique(eds$sgrna_to_gene()))
     } else {
@@ -155,7 +156,9 @@ observe({
   .secondary <- eds$secondary_grouping()
   .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
   .deDesignCol <- switch(.dt, "RNASeq" = .grouping, NA_character_)
-  if (eds$omics_class() == "proteomics") .deDesignCol <- "G_"
+  # Proteomics grouping: SUSHI "G_" if present, else the primary grouping (h5ad).
+  .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
+  if (eds$omics_class() == "proteomics") .deDesignCol <- .protGroup
 
   batchChoices <- c("None", .factors)
   batchDefault <- if (.twoFactor) .secondary else "None"
@@ -166,7 +169,7 @@ observe({
   } else {
     c("None", .factors)
   }
-  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = "G_", "None")
+  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = .protGroup, "None")
   updateSelectInput(session = session, inputId = "heatmapDesign", choices = designChoices, selected = designDefault)
 
   # Update p-value type based on data type
@@ -285,19 +288,24 @@ observeEvent(
       !all(input$heatmapColumnSelect == "")) {
       lapply(seq_along(input$heatmapColumnSelect), function(i) {
         output[[paste0("heatmapBucket", i)]] <- renderUI({
+          .lvls <- unique(levels(as.factor(eds$samples()[[input$heatmapColumnSelect[[i]]]])))
+          # save-state restore: seed include/exclude split + order per factor.
+          .keep <- restore_default(paste0("hmKeepBucket", i), .lvls, valid = .lvls)
+          .excl <- restore_default(paste0("hmExcludeBucket", i), character(0), valid = .lvls)
+          .keep <- setdiff(.keep, .excl)
           bucket_list(
             header = paste(input$heatmapColumnSelect[[i]], "(Drag/Drop levels - Ctrl/Cmd to select multiple)"),
             group_name = paste0("hmBucket", i),
             orientation = "horizontal",
             add_rank_list(
               text = "Include these groups",
-              labels = as.list(unique(levels(as.factor(eds$samples()[[input$heatmapColumnSelect[[i]]]])))),
+              labels = as.list(.keep),
               input_id = paste0("hmKeepBucket", i),
               options = sortable::sortable_options(multiDrag = TRUE)
             ),
             add_rank_list(
               text = "Exclude these groups",
-              labels = NULL,
+              labels = as.list(.excl),
               input_id = paste0("hmExcludeBucket", i),
               options = sortable::sortable_options(multiDrag = TRUE)
             )
@@ -310,18 +318,20 @@ observeEvent(
 )
 
 observeEvent(input$heatmapZScore, {
+  # save-state restore: restore_default yields the saved break during a restore
+  # (this fires on Z-score/Log2 change, which a restore triggers).
   if (input$heatmapZScore %in% c("Z-Score", "Centred")) {
-    updateNumericInput(session = session, inputId = "heatmapAtLow", value = -2, min = -10, max = 10, step = 0.1)
-    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 0, min = -10, max = 10, step = 0.1)
-    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 2, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtLow",  value = restore_default("heatmapAtLow", -2), min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtMid",  value = restore_default("heatmapAtMid",  0), min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = restore_default("heatmapAtHigh", 2), min = -10, max = 10, step = 0.1)
   } else if (input$heatmapLog2 & input$heatmapZScore == "None") {
-    updateNumericInput(session = session, inputId = "heatmapAtLow", value = 0, min = -10, max = 10, step = 0.1)
-    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 6, min = -10, max = 10, step = 0.1)
-    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 12, min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtLow",  value = restore_default("heatmapAtLow",  0), min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtMid",  value = restore_default("heatmapAtMid",  6), min = -10, max = 10, step = 0.1)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = restore_default("heatmapAtHigh", 12), min = -10, max = 10, step = 0.1)
   } else if (!input$heatmapLog2 & input$heatmapZScore == "None") {
-    updateNumericInput(session = session, inputId = "heatmapAtLow", value = 0, min = 0, max = 1e6, step = 100)
-    updateNumericInput(session = session, inputId = "heatmapAtMid", value = 1000, min = 0, max = 1e6, step = 100)
-    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = 10000, min = 0, max = 1e6, step = 100)
+    updateNumericInput(session = session, inputId = "heatmapAtLow",  value = restore_default("heatmapAtLow",  0), min = 0, max = 1e6, step = 100)
+    updateNumericInput(session = session, inputId = "heatmapAtMid",  value = restore_default("heatmapAtMid",  1000), min = 0, max = 1e6, step = 100)
+    updateNumericInput(session = session, inputId = "heatmapAtHigh", value = restore_default("heatmapAtHigh", 10000), min = 0, max = 1e6, step = 100)
   }
 })
 
