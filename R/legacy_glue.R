@@ -436,8 +436,11 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
 
   seqAnnoList <- setNames(
     lapply(contrasts, function(con) {
-      sa <- standardise_columns(contrast_dfs[[con]])
-      sa <- sa[order(sa$pValue), ]
+      # .saint_standardise_de maps SAINT's log2_EFCs/BFDR -> log2Ratio/fdr and
+      # adds an all-NA pValue (no-op for standard prolfqua frames); .de_order_idx
+      # sorts by pValue when usable, else fdr — guarding order(NULL) for SAINT.
+      sa <- .saint_standardise_de(standardise_columns(contrast_dfs[[con]]))
+      sa <- sa[.de_order_idx(sa), ]
       sa$feature_id <- build_feature_id(sa)
       if ("protein_Id" %in% colnames(sa) && identical(sa$feature_id, sa$protein_Id)) {
         sa$protein_Id <- NULL

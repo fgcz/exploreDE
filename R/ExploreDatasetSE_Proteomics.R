@@ -25,6 +25,32 @@
 .SAINT_DE_COLS <- c("log2_EFCs", "SaintScore", "BFDR")
 .se_is_saint <- function(contrast_df) all(.SAINT_DE_COLS %in% colnames(contrast_df))
 
+# Map a SAINT contrast frame's stat columns onto the canonical legacy names the
+# rest of the app expects (log2Ratio / fdr) and synthesise an all-NA pValue so
+# p-value-driven code (order(sa$pValue), select(pValue), ...) neither errors on a
+# missing column nor mis-thresholds. Idempotent + only touches SAINT frames, so
+# it is safe to call after standardise_columns() on any proteomics frame. Shared
+# by the ExploreDataset backend and the legacy gStoreList glue so they can't
+# drift. Delete alongside the rest of the SAINT hack once h5ad is universal.
+.saint_standardise_de <- function(d) {
+  if (!.se_is_saint(d)) return(d)
+  if ("log2_EFCs" %in% colnames(d) && !"log2Ratio" %in% colnames(d))
+    d$log2Ratio <- suppressWarnings(as.numeric(d$log2_EFCs))
+  if ("BFDR" %in% colnames(d) && !"fdr" %in% colnames(d))
+    d$fdr <- suppressWarnings(as.numeric(d$BFDR))
+  if (!"pValue" %in% colnames(d)) d$pValue <- NA_real_
+  d
+}
+
+# A p-value-safe ordering index for a DE/seqAnno frame: by raw p-value when it
+# carries usable values, else by fdr, else the identity order. Guards against
+# order(NULL) (missing column) and all-NA p-value producers (SAINTexpress).
+.de_order_idx <- function(d) {
+  col <- if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) "pValue"
+    else if ("fdr" %in% colnames(d)) "fdr" else NULL
+  if (is.null(col)) seq_len(nrow(d)) else order(d[[col]], na.last = TRUE)
+}
+
 ExploreDatasetSE_Proteomics <- R6::R6Class(
   classname = "ExploreDatasetSE_Proteomics",
   inherit   = ExploreDatasetSE,
@@ -192,16 +218,7 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       # modules that `select(pValue)` don't error (and has_pvalue() reports
       # FALSE, driving the FDR-only degradation), and leave SaintScore in place
       # as a display-only extra. Transitional; drops out for the h5ad path.
-      if (length(std_dfs) && .se_is_saint(std_dfs[[1]])) {
-        std_dfs <- lapply(std_dfs, function(d) {
-          if ("log2_EFCs" %in% colnames(d) && !"log2Ratio" %in% colnames(d))
-            d$log2Ratio <- suppressWarnings(as.numeric(d$log2_EFCs))
-          if ("BFDR" %in% colnames(d) && !"fdr" %in% colnames(d))
-            d$fdr <- suppressWarnings(as.numeric(d$BFDR))
-          if (!"pValue" %in% colnames(d)) d$pValue <- NA_real_
-          d
-        })
-      }
+      std_dfs <- lapply(std_dfs, .saint_standardise_de)
 
       # Reference DataFrame (first contrast, NOT yet sorted by p-value) so
       # feature_id ↔ rownames(se) alignment is preserved for the fid_lookup.
