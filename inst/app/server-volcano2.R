@@ -1,6 +1,12 @@
 eds <- inputDataReactive()$.eds
 req(eds)
 
+# FDR-only producers (no raw p-value, e.g. SAINTexpress) lock the volcano
+# significance axis to FDR rather than plotting an all-NA -log10(pValue).
+if (!isTRUE(eds$has_pvalue())) {
+  updateSelectInput(session = session, inputId = "pTypeVolcano", choices = c("FDR"), selected = "FDR")
+}
+
 if (eds$omics_class() == "proteomics") {
   updateNumericInput(session = session, inputId = "xLimVolcano", value = 2)
 }

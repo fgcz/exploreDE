@@ -281,6 +281,12 @@ ExploreDatasetH5AD <- R6::R6Class(
       grouping <- .h5ad_strip_factor(
         uns$design$grouping %||% (if (length(factor_cols)) factor_cols[[1]] else NA_character_))
 
+      # Declared significance-semantics mapping (uns$exploreDE$mapping): the
+      # display label + direction of an optional extra score, and the fdr
+      # direction. Resolved per-contrast as default (+) per-contrast override.
+      de_map     <- ((uns$exploreDE %||% list())$mapping %||% list())$de %||% list()
+      de_default <- de_map$default %||% list()
+
       # Contrasts: one per uns$de entry, keyed test_vs_reference to match the
       # SE subclass; remember which varm slot each maps to.
       cm <- list(); slot_map <- list()
@@ -293,13 +299,22 @@ ExploreDatasetH5AD <- R6::R6Class(
         # key matches what they typed; else rebuild an identifier from groups.
         key <- d$contrast_formula %||% (if (!is.na(test) && !is.na(ref))
           paste0(.h5ad_safe(test), "_vs_", .h5ad_safe(ref)) else slot)
+        sem <- utils::modifyList(de_default, de_map$contrasts[[slot]] %||% list())
         cm[[key]] <- list(
           test_group = test, reference_group = ref,
           factor_name = grouping, method = d$model %||% "DESeq2",
-          thresholds = list(fdr = 0.05, log2fc = 0, go_p = 0.01))
+          thresholds = list(fdr = 0.05, log2fc = 0, go_p = 0.01),
+          # Display-only extra score (e.g. SAINTexpress SaintScore): its column
+          # label + kind, and the fdr direction. NULL when the file declares none.
+          score_label = sem$score_label,
+          score_kind  = sem$score_kind,
+          fdr_kind    = sem$fdr_kind %||% "fdr_low_sig")
         slot_map[[key]] <- paste0("de_", slot)
       }
       private$.contrast_slot <- slot_map
+      # Union of extra-score display labels across contrasts (for the DE table).
+      de_display_extras <- unique(Filter(nzchar,
+        vapply(cm, function(x) x$score_label %||% "", character(1))))
 
       # Assays are driven by whichever canonical layers are present (raw is not
       # privileged). A NULL map value = computed on the fly in assay(); built
@@ -377,6 +392,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         description_field  = "description",
         primary_contrast = if (length(cm)) names(cm)[[1]] else NA_character_,
         contrast_meta    = cm,
+        de_display_extras = de_display_extras,
         enrichment_kinds = enrich_kinds,
         enrichment_locator = list(),
         sgrna_to_gene    = NULL,
@@ -450,13 +466,25 @@ ExploreDatasetH5AD <- R6::R6Class(
         if ("effect_log2fc" %in% colnames(d)) d$log2Ratio <- d$effect_log2fc
         if ("score_pvalue"  %in% colnames(d)) d$pValue    <- d$score_pvalue
         if ("score_fdr"     %in% colnames(d)) d$fdr       <- d$score_fdr
+        # Optional extra score -> its declared display label (e.g. SaintScore),
+        # so the DE table can surface it (display-only, like nrPeptides).
+        if ("score" %in% colnames(d)) {
+          sl <- cfg$contrast_meta[[key]]$score_label %||% "score"
+          colnames(d)[colnames(d) == "score"] <- sl
+        }
         fv <- private$.features_df
         d$gene_name <- fv[d$feature_id, "display_name"]
         # Columns several app modules (DE table, volcano, DE QC) expect from a
         # SUSHI seqAnno; supply equivalents so those tabs work for uploaded data.
-        # usedInTest: which features entered the test (proxy: has a p-value).
-        if (!"usedInTest" %in% colnames(d))
-          d$usedInTest <- if ("pValue" %in% colnames(d)) !is.na(d$pValue) else TRUE
+        # usedInTest: which features entered the test. Proxy: a usable p-value;
+        # when the producer carries no raw p-value (e.g. SAINTexpress, FDR only)
+        # fall back to the fdr column so the DE views are not silently emptied.
+        if (!"usedInTest" %in% colnames(d)) {
+          has_p <- "pValue" %in% colnames(d) && any(!is.na(d$pValue))
+          d$usedInTest <- if (has_p) !is.na(d$pValue)
+            else if ("fdr" %in% colnames(d)) !is.na(d$fdr)
+            else TRUE
+        }
         for (src in c("label_gene_id", "gene_id")) if (src %in% colnames(fv) && !"gene_id" %in% colnames(d)) d$gene_id <- fv[d$feature_id, src]
         if ("description" %in% colnames(fv) && !"description" %in% colnames(d)) d$description <- fv[d$feature_id, "description"]
         for (col in c("gc", "featWidth")) if (col %in% colnames(fv) && !col %in% colnames(d)) d[[col]] <- fv[d$feature_id, col]

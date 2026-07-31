@@ -1,6 +1,12 @@
 eds <- inputDataReactive()$.eds
 req(eds)
 
+# FDR-only producers (no raw p-value, e.g. SAINTexpress) lock the significance
+# calculator's p-value type to FDR rather than filtering on an all-NA Raw axis.
+if (!isTRUE(eds$has_pvalue())) {
+  updateSelectInput(session = session, inputId = "featureCalcPType", choices = c("FDR"), selected = "FDR")
+}
+
 # Bucket render removed — now in server-featureBucket.R
 
 if (eds$data_type() == "RNASeq" && eds$has_de()) {
@@ -232,27 +238,29 @@ if (eds$omics_class() == "proteomics") {
 
       seqAnnoDEG <- eds$de(input$contrastSelected)
 
+      # The significance-counts table thresholds on the raw p-value; a p-value-
+      # less producer (e.g. SAINTexpress) has an all-NA pValue, so fall back to
+      # the fdr column and relabel the rows. `< f` on an all-NA column would
+      # otherwise yield NA row indices and meaningless counts.
+      .scol      <- if (isTRUE(eds$has_pvalue())) "pValue" else "fdr"
+      .row_prefix <- if (.scol == "pValue") "p < " else "FDR < "
+      .scol_vals  <- seqAnnoDEG[[.scol]]
+
       # Output the results summary table
       signifCountsTable <- data.frame(
         check.names = F,
-        row.names = c("p < 0.1", "p < 0.05", "p < 0.01", "p < 0.001", "p < 1e-04", "p < 1e-05")
+        row.names = paste0(.row_prefix, c("0.1", "0.05", "0.01", "0.001", "1e-04", "1e-05"))
       )
       significants <- unlist(setNames(lapply(c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), function(f) {
-        isSig <- seqAnnoDEG$feature_id[seqAnnoDEG$pValue < f]
-        length(isSig)
-      }), paste0("p < ", c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))))
+        length(seqAnnoDEG$feature_id[which(.scol_vals < f)])
+      }), paste0(.row_prefix, c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))))
       FDR <- unlist(lapply(c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), function(f) {
-        isSig <- seqAnnoDEG$feature_id[seqAnnoDEG$pValue < f]
-        if (length(isSig) >= 1) {
-          max(seqAnnoDEG$fdr[seqAnnoDEG$pValue < f])
-        } else {
-          1
-        }
+        hits <- which(.scol_vals < f)
+        if (length(hits) >= 1) max(seqAnnoDEG$fdr[hits], na.rm = TRUE) else 1
       }))
       log2s <- setNames(lapply(c(0.5, 1, 1.5, 2, 3, 4, 8, 10), function(f) {
         unlist(lapply(c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), function(g) {
-          isSig <- seqAnnoDEG$feature_id[which(seqAnnoDEG$pValue < g & abs(seqAnnoDEG$log2Ratio) >= f)]
-          length(isSig)
+          length(seqAnnoDEG$feature_id[which(.scol_vals < g & abs(seqAnnoDEG$log2Ratio) >= f)])
         }))
       }), paste0("Log2 FC >= ", c(0.5, 1, 1.5, 2, 3, 4, 8, 10)))
       signifCountsTable <- cbind(signifCountsTable, significants, FDR, log2s)
@@ -264,17 +272,22 @@ if (eds$omics_class() == "proteomics") {
         )
       })
 
-      # Predefined columns and labels (canonical names from standardise_columns)
+      # Predefined columns and labels (canonical names from standardise_columns).
+      # eds$de_display_extras() appends any declared display-only extra score
+      # (e.g. SAINTexpress SaintScore), labelled by its own column name.
+      extra_cols <- intersect(eds$de_display_extras(), colnames(seqAnnoDEG))
       colsToPlot1 <- colnames(seqAnnoDEG %>% dplyr::select(any_of(c(
         "feature_id", "protein_Id", "peptide_Id", "site", "gene_name",
-        "description", "nrPeptides", "modelName", "log2Ratio", "pValue", "fdr"
+        "description", "nrPeptides", "modelName", "log2Ratio", "pValue", "fdr",
+        extra_cols
       ))))
       col_labels <- c(
         "feature_id" = "Feature ID", "protein_Id" = "Protein ID",
         "peptide_Id" = "Peptide", "site" = "Site",
         "gene_name" = "Gene Symbol", "description" = "Description",
         "nrPeptides" = "Nr Peptides", "modelName" = "Imputed Model",
-        "log2Ratio" = "Log2 Ratio", "pValue" = "Raw p-value", "fdr" = "FDR"
+        "log2Ratio" = "Log2 Ratio", "pValue" = "Raw p-value", "fdr" = "FDR",
+        setNames(extra_cols, extra_cols)
       )
       colNamesToPlot1 <- unname(col_labels[colsToPlot1])
 

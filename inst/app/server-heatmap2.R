@@ -172,8 +172,12 @@ observe({
   designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = .protGroup, "None")
   updateSelectInput(session = session, inputId = "heatmapDesign", choices = designChoices, selected = designDefault)
 
-  # Update p-value type based on data type
-  if (eds$omics_class() == "proteomics") {
+  # Update p-value type based on data type. FDR-only producers (no raw p-value,
+  # e.g. SAINTexpress) are locked to FDR so the significance filter is not an
+  # all-NA Raw axis; otherwise proteomics defaults to Raw, genomics to FDR.
+  if (!isTRUE(eds$has_pvalue())) {
+    updateSelectInput(session = session, inputId = "pTypeHeatmap", choices = c("FDR"), selected = "FDR")
+  } else if (eds$omics_class() == "proteomics") {
     updateSelectInput(session = session, inputId = "pTypeHeatmap", selected = "Raw")
   } else {
     updateSelectInput(session = session, inputId = "pTypeHeatmap", selected = "FDR")

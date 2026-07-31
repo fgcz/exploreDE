@@ -13,6 +13,18 @@
 #' [ExploreDatasetSE]; overrides `.build_config()` and `.prep()`.
 #'
 #' @export
+
+# --- SAINTexpress transitional support --------------------------------------
+# SAINTexpress AP-MS SEs reach the app via the legacy ?data=<.rds> URL path,
+# but break the standard prolfqua assumptions: metadata$param is NULL and the
+# per-contrast DE columns are log2_EFCs / SaintScore / BFDR with NO raw p-value
+# (SaintScore is a probability where high = significant; BFDR is the FDR). This
+# is a deliberately localised hack so those existing .rds files work from URL;
+# it should be deleted once producers emit canonical h5ad across the board (the
+# h5ad path already handles this shape declaratively via uns$exploreDE$mapping).
+.SAINT_DE_COLS <- c("log2_EFCs", "SaintScore", "BFDR")
+.se_is_saint <- function(contrast_df) all(.SAINT_DE_COLS %in% colnames(contrast_df))
+
 ExploreDatasetSE_Proteomics <- R6::R6Class(
   classname = "ExploreDatasetSE_Proteomics",
   inherit   = ExploreDatasetSE,
@@ -46,7 +58,7 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       # Inspect first contrast to determine flavour (protein/phospho/peptide).
       # Uses the package-level standardise_columns() which renames both
       # rowdata-annotation columns and DE-stat columns in a single pass.
-      feature_id_kind <- "protein"
+      feature_id_kind <- "protein"; saint <- FALSE
       if (length(contrasts)) {
         df1 <- standardise_columns(
           data.frame(SummarizedExperiment::rowData(se)[[paste0("constrast_", contrasts[1])]],
@@ -54,6 +66,17 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
         )
         if      ("site"       %in% colnames(df1)) feature_id_kind <- "phospho"
         else if ("peptide_Id" %in% colnames(df1)) feature_id_kind <- "peptide"
+        saint <- .se_is_saint(df1)   # standardise_columns leaves SAINT names as-is
+      }
+
+      # SAINTexpress reference = the grouping level flagged as control
+      # (colData CONTROL == "C", e.g. eGFP); the contrast names carry no `_vs_`.
+      reference_default <- NA_character_
+      if (saint && "CONTROL" %in% colnames(cd) &&
+          (factor_names[1] %||% "") %in% colnames(cd)) {
+        ctrl_lvls <- unique(as.character(cd[[factor_names[1]]])[
+          toupper(trimws(as.character(cd$CONTROL))) == "C"])
+        if (length(ctrl_lvls) == 1L) reference_default <- ctrl_lvls
       }
 
       cm <- setNames(
@@ -61,10 +84,15 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
           grp <- strsplit(cn, "_vs_|--over--")[[1]]
           list(
             test_group      = grp[1] %||% NA_character_,
-            reference_group = grp[2] %||% NA_character_,
+            reference_group = if (saint) reference_default else (grp[2] %||% NA_character_),
             factor_name     = factor_names[1] %||% NA_character_,
-            method          = "prolfqua",
-            thresholds      = list(fdr = 0.05, log2fc = 1)
+            method          = if (saint) "SAINTexpress" else "prolfqua",
+            thresholds      = list(fdr = 0.05, log2fc = 1),
+            # SAINT carries a second, display-only significance axis (SaintScore,
+            # high = significant); mirrors the h5ad backend's mapping semantics.
+            score_label     = if (saint) "SaintScore" else NULL,
+            score_kind      = if (saint) "probability_high_sig" else NULL,
+            fdr_kind        = "fdr_low_sig"
           )
         }),
         contrasts
@@ -120,6 +148,7 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
         description_field     = "description",
         primary_contrast      = if (length(contrasts)) contrasts[1] else NA_character_,
         contrast_meta         = cm,
+        de_display_extras     = if (saint) "SaintScore" else character(),
         enrichment_kinds      = character(),
         enrichment_locator    = list(),
         sgrna_to_gene         = NULL,
@@ -157,6 +186,22 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
         contrasts
       )
       std_dfs <- lapply(raw_dfs, standardise_columns)
+
+      # SAINTexpress: its DE columns aren't in the standardise_columns schema —
+      # map log2_EFCs -> log2Ratio and BFDR -> fdr, add an all-NA pValue so the
+      # modules that `select(pValue)` don't error (and has_pvalue() reports
+      # FALSE, driving the FDR-only degradation), and leave SaintScore in place
+      # as a display-only extra. Transitional; drops out for the h5ad path.
+      if (length(std_dfs) && .se_is_saint(std_dfs[[1]])) {
+        std_dfs <- lapply(std_dfs, function(d) {
+          if ("log2_EFCs" %in% colnames(d) && !"log2Ratio" %in% colnames(d))
+            d$log2Ratio <- suppressWarnings(as.numeric(d$log2_EFCs))
+          if ("BFDR" %in% colnames(d) && !"fdr" %in% colnames(d))
+            d$fdr <- suppressWarnings(as.numeric(d$BFDR))
+          if (!"pValue" %in% colnames(d)) d$pValue <- NA_real_
+          d
+        })
+      }
 
       # Reference DataFrame (first contrast, NOT yet sorted by p-value) so
       # feature_id ↔ rownames(se) alignment is preserved for the fid_lookup.
@@ -212,8 +257,20 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
             d$protein_Id <- NULL
           }
           d <- eds_standardise_de_columns(d)
-          if ("pValue" %in% colnames(d)) {
+          # usedInTest: which features entered the test. Proxy: a usable raw
+          # p-value; fall back to fdr for p-value-less producers (SAINTexpress)
+          # so DE views are not silently emptied. Only added when absent, so
+          # frames that already carry it (standard prolfqua) are untouched.
+          if (!"usedInTest" %in% colnames(d)) {
+            has_p <- "pValue" %in% colnames(d) && any(!is.na(d$pValue))
+            d$usedInTest <- if (has_p) !is.na(d$pValue)
+              else if ("fdr" %in% colnames(d)) !is.na(d$fdr)
+              else TRUE
+          }
+          if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) {
             d <- d[order(d$pValue, na.last = TRUE), , drop = FALSE]
+          } else if ("fdr" %in% colnames(d)) {
+            d <- d[order(d$fdr, na.last = TRUE), , drop = FALSE]
           }
           rownames(d) <- d$feature_id
           d

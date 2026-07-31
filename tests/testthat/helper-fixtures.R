@@ -54,6 +54,12 @@ fixture_specs <- list(
   proteomics_phospho = list(
     kind = "proteomics",
     url  = "https://fgcz-ms.uzh.ch/public/pStore/p39819/bfabric/Proteomics/exploreDE/2025/2025-10/2025-10-22/workunit_335485/2997996.rds"
+  ),
+  # SAINTexpress AP-MS: metadata$param NULL, DE cols log2_EFCs/SaintScore/BFDR,
+  # no raw p-value. Exercises the transitional SE-backend SAINT support.
+  proteomics_saint = list(
+    kind = "proteomics",
+    url  = "https://fgcz-ms.uzh.ch/public/pStore/p42111/bfabric/Proteomics/exploreDE/2026/2026-07/2026-07-28/workunit_349205/3206509.rds"
   )
 )
 
@@ -93,3 +99,4 @@ fx_crispr_countqc     <- function() load_fixture("crispr_countqc")
 fx_proteomics_protein <- function() load_fixture("proteomics_protein")
 fx_proteomics_peptide <- function() load_fixture("proteomics_peptide")
 fx_proteomics_phospho <- function() load_fixture("proteomics_phospho")
+fx_proteomics_saint   <- function() load_fixture("proteomics_saint")

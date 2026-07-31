@@ -74,16 +74,36 @@
   df
 }
 
+# A DE column map mixes name->column entries (effect_log2fc, score_pvalue,
+# score_fdr, score) with SEMANTIC tokens (score_kind, fdr_kind) that describe a
+# significance axis's direction rather than naming a column. These are the
+# canonical column targets .canon_de_columns() may copy into.
+.DE_COLUMN_TARGETS <- c("effect_log2fc", "score_pvalue", "score_fdr", "score")
+
 # Copy explicit-mapping columns to canonical names, then fill the rest by guess.
+# Only genuine column targets are copied; semantic tokens are ignored here (they
+# describe direction, not location) and surface via .de_semantics() instead.
 .canon_de_columns <- function(df, mapping = NULL) {
   df <- as.data.frame(df, check.names = FALSE, stringsAsFactors = FALSE)
   if (!is.null(mapping)) {
-    for (canon in names(mapping)) {
+    for (canon in intersect(names(mapping), .DE_COLUMN_TARGETS)) {
       src <- mapping[[canon]]
       if (!is.null(src) && src %in% colnames(df)) df[[canon]] <- df[[src]]
     }
   }
   eds_standardise_de_columns(df)   # only adds a canon col if absent -> mapping wins
+}
+
+# Pull the significance-semantics (non-column) entries out of a DE column map,
+# for the declared uns$exploreDE$mapping block. `score` -> its display label
+# (the source column name); score_kind / fdr_kind carried verbatim. NULLs drop.
+.de_semantics <- function(mapping) {
+  if (is.null(mapping)) return(list())
+  keep <- list()
+  if (!is.null(mapping$score))      keep$score_label <- mapping$score
+  if (!is.null(mapping$score_kind)) keep$score_kind  <- mapping$score_kind
+  if (!is.null(mapping$fdr_kind))   keep$fdr_kind     <- mapping$fdr_kind
+  keep
 }
 
 # ---- feature_level: detection-with-override --------------------------------
@@ -118,10 +138,19 @@
 # (count-matrix rownames); gid/sym = id/symbol; rd = rowData (may be NULL).
 .build_fid_for_level <- function(level, base_ids, gid, sym, rd) {
   scu <- requireNamespace("scuttle", quietly = TRUE)
+  # A source id column can carry NA / empty entries (e.g. SAINT's protein_Id has
+  # gaps where the clean rowname does not) — coalesce those to the join key so we
+  # never build an NA feature_id (which would blow up data.frame(row.names = .)).
+  coalesce_ids <- function(ids) {
+    ids <- as.character(ids)
+    bad <- is.na(ids) | !nzchar(ids)
+    if (any(bad)) ids[bad] <- base_ids[bad]
+    ids
+  }
   prot_plus <- function(sub_pat) {                 # protein_Id [+ site/peptide]
     pcol <- .first_col(rd, "^protein[._ ]?id$")
     if (is.null(pcol)) return(make.unique(base_ids))
-    pid  <- as.character(rd[[pcol]])
+    pid  <- coalesce_ids(rd[[pcol]])
     scol <- .first_col(rd, sub_pat)
     if (is.null(scol)) return(make.unique(pid))
     make.unique(paste(pid, gsub("~", "_", as.character(rd[[scol]])), sep = "_"))
@@ -134,11 +163,16 @@
       if (scu) scuttle::uniquifyFeatureNames(tid, sym) else make.unique(as.character(tid))
     },
     protein = { pcol <- .first_col(rd, "^protein[._ ]?id$")
-                if (!is.null(pcol)) make.unique(as.character(rd[[pcol]])) else make.unique(base_ids) },
+                make.unique(coalesce_ids(if (!is.null(pcol)) rd[[pcol]] else base_ids)) },
     peptide = prot_plus("^peptide[._ ]?id$"),
     phospho = prot_plus("^site$"),
     sgrna   = make.unique(base_ids),
     make.unique(as.character(gid)))
+  # Final safety net: any residual NA / empty id -> its join key, re-uniquified.
+  fid <- as.character(fid)
+  bad <- is.na(fid) | !nzchar(fid)
+  if (any(bad)) fid[bad] <- base_ids[bad]
+  fid <- make.unique(fid)
   fid[grep("^_", fid)] <- gsub("_", "", fid[grep("^_", fid)])
   as.character(fid)
 }
@@ -276,6 +310,11 @@
   X <- layers[["counts"]] %||% layers[[1]]
 
   # -- DE : per contrast, canonicalise columns, index to full fid space -------
+  # Beyond the three canonical stat columns, a contrast may carry an OPTIONAL
+  # extra `score` (a second thresholdable/displayable significance axis, e.g.
+  # SAINTexpress's SaintScore) — see the declared-mapping block below. It is
+  # display-only this milestone (like nrPeptides), so it rides in varm but is
+  # never wired into the FDR threshold path.
   per_contrast_map <- !is.null(de_columns) &&
     length(intersect(names(de_columns), names(de))) > 0
   varm <- list(); uns_de <- list(); de_slot <- list()
@@ -292,8 +331,12 @@
     if (any(!ok)) warning(sprintf("DE '%s': %d feature(s) not in counts/rowData — dropped",
                                   cn, sum(!ok)))
     pos <- match(tgt[ok], fid)
-    for (col in c("effect_log2fc", "score_pvalue", "score_fdr"))
+    stat_cols <- c("effect_log2fc", "score_pvalue", "score_fdr",
+                   if ("score" %in% colnames(d)) "score")
+    for (col in stat_cols) {
+      if (!col %in% colnames(can)) can[[col]] <- rep(NA_real_, length(fid))
       if (col %in% colnames(d)) can[[col]][pos] <- suppressWarnings(as.numeric(d[[col]]))[ok]
+    }
     varm[[paste0("de_", slot)]] <- can
     grp <- strsplit(cn, "_vs_|--over--")[[1]]
     uns_de[[slot]] <- list(assay_used = "counts",
@@ -301,6 +344,25 @@
                            test_group = grp[1] %||% NA_character_,
                            reference_group = grp[2] %||% NA_character_,
                            contrast_formula = cn, model = "DESeq2")
+  }
+
+  # -- declared significance-semantics mapping (uns$exploreDE$mapping) ---------
+  # Carries what the canonical stat arrays cannot: the display LABEL + direction
+  # of the optional extra score, and the direction of the fdr axis. A shared
+  # de_columns map => one `de$default`; per-contrast maps => `de$contrasts`.
+  map_de <- list()
+  if (!is.null(de_columns)) {
+    if (per_contrast_map) {
+      ctr <- list()
+      for (cn in names(de)) {
+        s <- .de_semantics(de_columns[[cn]])
+        if (length(s)) ctr[[de_slot[[cn]]]] <- s
+      }
+      if (length(ctr)) map_de$contrasts <- ctr
+    } else {
+      d0 <- .de_semantics(de_columns)
+      if (length(d0)) map_de$default <- d0
+    }
   }
 
   # -- Pathway STATISTICS (B) : contrast-bound; keys must be a subset of DE.
@@ -336,15 +398,20 @@
     }
   }
 
-  list(X = X, layers = layers, obs = obs, var = var, varm = varm,
-       uns = list(schema_version = "exploreDE/1.0", omics_type = omics_type,
-                  feature_id_kind = level,
-                  hierarchy = .hierarchy_for_level(level),
-                  design = list(factors = factor_prefixed,
-                                grouping = factor_prefixed[1] %||% NA_character_),
-                  de = uns_de, enrichment = enr_tidy, enrichment_native = enr_native,
-                  reference_genome = as.character(ref_build),
-                  provenance = list(source_format = "build_explore_h5ad")))
+  uns_list <- list(schema_version = "exploreDE/1.0", omics_type = omics_type,
+                   feature_id_kind = level,
+                   hierarchy = .hierarchy_for_level(level),
+                   design = list(factors = factor_prefixed,
+                                 grouping = factor_prefixed[1] %||% NA_character_),
+                   de = uns_de, enrichment = enr_tidy, enrichment_native = enr_native,
+                   reference_genome = as.character(ref_build),
+                   provenance = list(source_format = "build_explore_h5ad"))
+  # `mapping` stays a DISTINCT key from `design` (design = what the experiment
+  # is; mapping = where to find things / how to read the stats). Written only
+  # when a declared mapping actually exists, so canonical files stay lean.
+  if (length(map_de)) uns_list$exploreDE <- list(mapping = list(de = map_de))
+
+  list(X = X, layers = layers, obs = obs, var = var, varm = varm, uns = uns_list)
 }
 
 # ---- rich-object extraction (PREFERRED starting point, never required) ------
@@ -389,6 +456,13 @@
 #' @param de_columns Optional explicit DE column mapping — a list like
 #'   `list(effect_log2fc="log2FoldChange", score_pvalue="pvalue",
 #'   score_fdr="padj")`, applied to all contrasts, or a per-contrast named list.
+#'   May also declare an OPTIONAL extra significance axis: `score` names a second
+#'   scored column (e.g. `score="SaintScore"`), carried through for display only
+#'   (like `nrPeptides`), never wired into the FDR threshold. Two semantic tokens
+#'   describe direction for display / future filtering: `score_kind` (one of
+#'   `"p_value_low_sig"`, `"fdr_low_sig"`, `"probability_high_sig"`) and
+#'   `fdr_kind` (default `"fdr_low_sig"`). A producer with no raw p-value (e.g.
+#'   SAINTexpress) simply omits `score_pvalue`; the app degrades to FDR-only.
 #' @param pathways Optional pathway statistics: a named list keyed by contrast
 #'   (keys a subset of `de`); each entry a named list of clusterProfiler objects
 #'   and/or `data.frame`s.

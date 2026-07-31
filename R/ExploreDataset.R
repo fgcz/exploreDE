@@ -106,6 +106,24 @@ ExploreDataset <- R6::R6Class(
       contrast
     },
 
+    # Extra DE columns to surface for display only (beyond log2Ratio/pValue/fdr)
+    # — e.g. SAINTexpress's SaintScore. Default none; backends declaring a
+    # mapping (H5AD) override via config. Names are also the DE-table labels.
+    de_display_extras = function() private$.config$de_display_extras %||% character(),
+
+    # Does any contrast carry a usable RAW p-value? FALSE for FDR-only producers
+    # (SAINTexpress), which the p-value-type selectors use to degrade to
+    # FDR-only rather than plotting all-NA -log10(pValue).
+    has_pvalue       = function() {
+      if (!self$has_de()) return(FALSE)
+      for (cc in self$contrasts()) {
+        d <- tryCatch(self$de(cc), error = function(e) NULL)
+        if (!is.null(d) && "pValue" %in% colnames(d) && any(!is.na(d$pValue)))
+          return(TRUE)
+      }
+      FALSE
+    },
+
     # ---- enrichment (all virtual except enrichment_kinds) -----------------
     enrichment_kinds = function() {
       private$.config$enrichment_kinds %||% character()

@@ -450,3 +450,92 @@ test_that("no gene-length column -> FPKM/TPM gracefully absent (no ezRun needed)
   eds <- new_explore_dataset(out)
   expect_false(any(c("tpm", "fpkm") %in% eds$assay_names()))
 })
+
+# --- SAINTexpress-shaped producer (the p42111 / wu_349205 case) --------------
+# Novel DE stats (log2_EFCs / SaintScore / BFDR), NO raw p-value, and a
+# protein_Id column with a gap. Exercises the declared uns$exploreDE$mapping
+# block, the display-only extra score, FDR-only degradation, and NA-id safety.
+make_saint_like <- function() {
+  n <- 20L; ns <- 6L
+  m <- matrix(seq_len(n * ns) + 0.5, nrow = n, ncol = ns)
+  rownames(m) <- sprintf("ACC%03d", seq_len(n)); colnames(m) <- sprintf("S%02d", seq_len(ns))
+  pid <- sprintf("ACC%03d", seq_len(n)); pid[5] <- NA   # SAINT-style gap in protein_Id
+  rowdata <- data.frame(row.names = rownames(m), protein_Id = pid,
+                        gene_name = sprintf("Gene%03d", seq_len(n)), stringsAsFactors = FALSE)
+  coldata <- data.frame(row.names = colnames(m),
+                        Bait_ = rep(c("baitA", "baitB", "eGFP"), each = ns / 3L),
+                        isotopeLabel = "light")   # constant — must NOT become a factor
+  mk_de <- function(seed) {
+    bfdr <- seq(0, 0.99, length.out = n)                # two features < 0.05
+    data.frame(row.names = rownames(m),
+               log2_EFCs  = seq(-2, 3, length.out = n) + seed,
+               SaintScore = rev(seq(0, 1, length.out = n)),  # high = significant
+               BFDR       = bfdr,
+               nrPeptides = rep(3L, n),
+               stringsAsFactors = FALSE)
+  }
+  de <- list(baitA_vs_eGFP = mk_de(0), baitB_vs_eGFP = mk_de(0.1))
+  list(intensities = m, coldata = coldata, rowdata = rowdata, de = de)
+}
+
+build_saint <- function(env = parent.frame()) {
+  s <- make_saint_like()
+  out <- withr::local_tempfile(fileext = ".h5ad", .local_envir = env)
+  build_explore_h5ad(list(intensities = s$intensities), out = out, omics = "proteomics",
+                     feature_level = "protein", coldata = s$coldata, rowdata = s$rowdata,
+                     de = s$de,
+                     de_columns = list(effect_log2fc = "log2_EFCs", score_fdr = "BFDR",
+                                       fdr_kind = "fdr_low_sig", score = "SaintScore",
+                                       score_kind = "probability_high_sig"))
+  new_explore_dataset(out)
+}
+
+test_that("SAINT-shaped producer: NA protein_Id never yields an NA feature_id", {
+  skip_if_no_anndataR()
+  eds <- build_saint()
+  expect_false(anyNA(eds$feature_ids()))
+  expect_false(any(!nzchar(eds$feature_ids())))
+  expect_equal(length(eds$feature_ids()), 20L)
+})
+
+test_that("SAINT-shaped producer: FDR-only, no raw p-value", {
+  skip_if_no_anndataR()
+  eds <- build_saint()
+  expect_false(eds$has_pvalue())
+  d <- eds$de(eds$primary_contrast())
+  expect_true(all(is.na(d$pValue)))
+  # usedInTest must fall back to fdr — NOT be emptied to all-FALSE.
+  expect_true(any(d$usedInTest))
+  expect_equal(d$usedInTest, !is.na(d$fdr))
+})
+
+test_that("SAINT-shaped producer: SaintScore surfaces as a display-only extra", {
+  skip_if_no_anndataR()
+  eds <- build_saint()
+  expect_identical(eds$de_display_extras(), "SaintScore")
+  d <- eds$de(eds$primary_contrast())
+  expect_true("SaintScore" %in% colnames(d))
+  # It is display-only: never mapped onto the fdr/threshold columns.
+  expect_false(isTRUE(all.equal(d$SaintScore, d$fdr)))
+})
+
+test_that("SAINT-shaped producer: declared mapping semantics round-trip", {
+  skip_if_no_anndataR()
+  eds <- build_saint()
+  cm <- eds$contrast_meta(eds$primary_contrast())
+  expect_identical(cm$score_kind, "probability_high_sig")
+  expect_identical(cm$fdr_kind,   "fdr_low_sig")
+  # The mapping lives under the distinct uns$exploreDE$mapping key.
+  mp <- eds$backend()$uns$exploreDE$mapping$de$default
+  expect_identical(mp$score_label, "SaintScore")
+  expect_identical(mp$score_kind,  "probability_high_sig")
+})
+
+test_that("SAINT-shaped producer: enrichment selections threshold on FDR", {
+  skip_if_no_anndataR()
+  eds <- build_saint()
+  ei <- eds$enrichment_input(eds$primary_contrast())
+  d  <- eds$de(eds$primary_contrast())
+  sig_up <- d$feature_id[!is.na(d$fdr) & d$fdr < 0.05 & d$log2Ratio > 0]
+  expect_setequal(ei$selections$upGenes, sig_up)
+})

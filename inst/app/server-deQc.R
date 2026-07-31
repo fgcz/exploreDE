@@ -6,6 +6,14 @@
 
 eds <- inputDataReactive()$.eds
 req(eds)
+
+# FDR-only producers (no raw p-value, e.g. SAINTexpress) lock the p-value
+# histogram to FDR rather than defaulting to an all-NA Raw histogram.
+if (!isTRUE(eds$has_pvalue())) {
+  updateSelectInput(session = session, inputId = "deQcPhistType",
+                    choices = c("FDR" = "fdr"), selected = "fdr")
+}
+
 deQcVisible <- reactive({
   eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics"
 })
