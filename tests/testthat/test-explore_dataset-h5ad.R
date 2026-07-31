@@ -305,6 +305,60 @@ test_that("proteomics flavour: protein & phospho detected, peptide via override"
   expect_true(e_prot$primary_grouping() %in% colnames(e_prot$samples()))
 })
 
+# Build an eds for a proteomics flavour (peptide needs the level override).
+prot_eds <- function(flavour, coldata = NULL, ...) {
+  pr  <- make_toy_prot(flavour)
+  lvl <- if (flavour == "peptide") "peptide" else NULL
+  out <- withr::local_tempfile(fileext = ".h5ad", .local_envir = parent.frame())
+  build_explore_h5ad(pr$intensities, out = out, omics = "proteomics",
+                     coldata = coldata %||% pr$coldata, rowdata = pr$rowdata,
+                     feature_level = lvl, ...)
+  new_explore_dataset(out)
+}
+
+test_that("proteomics samples() always carries a Name column (ordination join)", {
+  skip_if_no_anndataR()
+  # server-ordination.R left_joins scores against samples() by "Name"; the H5AD
+  # backend previously only added Name for genomics, hard-crashing proteomics.
+  for (flav in c("protein", "phospho", "peptide")) {
+    sm <- prot_eds(flav)$samples()
+    expect_true("Name" %in% colnames(sm), info = paste("Name missing for", flav))
+    expect_identical(as.character(sm$Name), rownames(sm))
+  }
+})
+
+test_that("every proteomics flavour is a proteomics data_type, never an SD-based one", {
+  skip_if_no_anndataR()
+  # The heatmap feature-selection panel and DE gating rely on this contract:
+  # proteomics subtypes report omics_class == "proteomics" and must never
+  # collide with the CountQC/CrisprCountQC types that gate the SD-based UI
+  # branch (ui-tab-heatmap.R). A subtype leaking into that set silently hides
+  # the feature-selection UI, as peptidomics/phosphoproteomics once did.
+  for (flav in c("protein", "phospho", "peptide")) {
+    dt <- prot_eds(flav)$data_type()
+    eds <- prot_eds(flav)
+    expect_identical(eds$omics_class(), "proteomics", info = flav)
+    expect_true(eds$data_type() %in%
+                  c("proteomics", "peptidomics", "phosphoproteomics"), info = flav)
+    expect_false(eds$data_type() %in% c("CountQC", "CrisprCountQC"), info = flav)
+  }
+})
+
+test_that("constant / identifier colData columns are not treated as factors (batch)", {
+  skip_if_no_anndataR()
+  # isotope.label = "light" (constant) must not surface as an experimental
+  # factor — it was wrongly auto-selected as the heatmap batch correction.
+  # Per-sample-unique columns are identifiers, likewise excluded. The genuine
+  # two-level grouping factor must survive.
+  cd <- make_toy_prot("protein")$coldata
+  cd$isotope_label <- "light"           # constant across all samples
+  cd$replicate     <- rownames(cd)      # unique per sample (identifier-like)
+  fn <- prot_eds("protein", coldata = cd)$factor_names()
+  expect_false("isotope_label" %in% fn)
+  expect_false("replicate" %in% fn)
+  expect_true("group" %in% fn)
+})
+
 test_that("an invalid feature_level for the omics errors", {
   skip_if_no_anndataR()
   pr <- make_toy_prot("protein")

@@ -673,8 +673,10 @@ observeEvent(
       }
 
       # DE Heatmaps ----
-      # Select genes based on data type
-      if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+      # Select genes based on data type. Counts-only uploads (RNASeq/proteomics
+      # with no DE) have no seqAnno to threshold on, so fall back to SD ranking
+      # exactly like CountQC.
+      if (eds$data_type() %in% c("CountQC", "CrisprCountQC") || !eds$has_de()) {
         # For CountQC: select by standard deviation
         top_n_countqc <- if (!is.null(input$heatmapGeneNumberCountQC)) input$heatmapGeneNumberCountQC else 2000
         top_genes <- select_genes_by_sd(
@@ -810,7 +812,7 @@ observeEvent(
                 !is.null(input$includeDEStatsHeatmap) &&
                 input$includeDEStatsHeatmap) {
 
-              if (eds$data_type() == "RNASeq") {
+              if (eds$data_type() == "RNASeq" && eds$has_de()) {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
                 valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
                 if (length(valid_de_cols) > 1) {
@@ -926,7 +928,7 @@ observeEvent(
               !is.null(input$includeDEStatsHeatmap) &&
               input$includeDEStatsHeatmap) {
 
-            if (eds$data_type() == "RNASeq") {
+            if (eds$data_type() == "RNASeq" && eds$has_de()) {
               de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
               valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
               if (length(valid_de_cols) > 1) {
@@ -1033,7 +1035,7 @@ observeEvent(
                 !is.null(input$includeDEStatsHeatmap) &&
                 input$includeDEStatsHeatmap) {
 
-              if (eds$data_type() == "RNASeq") {
+              if (eds$data_type() == "RNASeq" && eds$has_de()) {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
                 valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
                 if (length(valid_de_cols) > 1) {
@@ -1147,7 +1149,7 @@ observeEvent(
                 if (eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics" &&
                     !is.null(input$includeDEStatsHeatmap) &&
                     input$includeDEStatsHeatmap) {
-                  if (eds$data_type() == "RNASeq") {
+                  if (eds$data_type() == "RNASeq" && eds$has_de()) {
                     de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
                     valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
                     if (length(valid_de_cols) > 1) {

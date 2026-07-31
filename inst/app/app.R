@@ -388,8 +388,9 @@ server <- function(input, output, session) {
       ))
     }
 
-    # 2. DE tabs (Shown if NOT CountQC)
-    if (!dataType %in% c("CountQC", "CrisprCountQC")) {
+    # 2. DE tabs (Shown if NOT CountQC, and only when DE results exist —
+    #    a counts-only BYO upload carries no contrasts)
+    if (!dataType %in% c("CountQC", "CrisprCountQC") && eds$has_de()) {
       deMenuItems <- list(
         tags$li(class = "header", "DE Results"),
         menuItem(text = "DE Table", tabName = "degTableTab", icon = icon("table")),
@@ -399,8 +400,8 @@ server <- function(input, output, session) {
       menuItems <- c(menuItems, deMenuItems)
     }
 
-    # 3. Pathway tabs (Shown ONLY if RNASeq)
-    if (dataType == "RNASeq") {
+    # 3. Pathway tabs (Shown ONLY if RNASeq with DE results)
+    if (dataType == "RNASeq" && eds$has_de()) {
       # Check if species is supported for KEGG (human, mouse, rat)
       keggSpeciesSupported <- tryCatch({
         ref <- eds$ref_build()

@@ -132,9 +132,16 @@ ExploreDatasetH5AD <- R6::R6Class(
     samples = function() {
       cd <- private$.obs
       colnames(cd) <- .h5ad_strip_factor(colnames(cd))
-      if (identical(private$.config$omics_class, "genomics") &&
-          !"Name" %in% colnames(cd)) {
-        cd$Name <- factor(rownames(cd), levels = rownames(cd))
+      # Mirror the SE backend: a `Name` column must always exist — ordination
+      # and other modules left_join on it. Genomics gets a factor-ordered Name;
+      # every other omics (proteomics, crispr) a plain-character Name from the
+      # sample ids (rownames).
+      if (!"Name" %in% colnames(cd)) {
+        cd$Name <- if (identical(private$.config$omics_class, "genomics")) {
+          factor(rownames(cd), levels = rownames(cd))
+        } else {
+          rownames(cd)
+        }
       }
       cd
     },

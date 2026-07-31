@@ -24,7 +24,13 @@ featureBucket <- reactiveValues(
 # --- API functions ---
 
 bucket_add <- function(new_features, source = "unknown") {
-  valid_ids <- seqAnnoReactive$sa$feature_id
+  # Counts-only uploads have no DE table (sa is NULL); the valid feature
+  # universe is then simply every feature in the dataset.
+  valid_ids <- if (!is.null(seqAnnoReactive$sa)) {
+    seqAnnoReactive$sa$feature_id
+  } else {
+    eds$feature_ids()
+  }
   # Also accept gene-level names for CrisprCountQC collapsed mode
   sg <- eds$sgrna_to_gene()
   if (!is.null(sg)) {

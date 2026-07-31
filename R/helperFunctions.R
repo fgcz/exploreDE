@@ -1783,7 +1783,14 @@ make_qc_scatter <- function(x, y, types_vec, types_colours,
                             guide_colour = "blue",
                             guide_fold = 2,
                             show_identity = TRUE,
-                            show_fold_bands = TRUE) {
+                            show_fold_bands = TRUE,
+                            log_scale = TRUE) {
+  # log_scale = TRUE: x/y are LINEAR values (e.g. RNA-seq group-mean counts)
+  #   plotted on log10 axes; a `guide_fold`-fold band is log10(guide_fold) apart.
+  # log_scale = FALSE: x/y are ALREADY in log space (e.g. proteomics log2
+  #   intensities, centred near 0, can be negative) — plot on linear axes and
+  #   space the fold band by log2(guide_fold). Applying log10 to already-log
+  #   data drops negatives and mislocates the identity/fold guides.
   if (is.null(draw_order)) draw_order <- names(types_colours)
   df <- tibble::tibble(x = x, y = y, types = types_vec)
   df$types <- factor(df$types, levels = draw_order)
@@ -1791,14 +1798,16 @@ make_qc_scatter <- function(x, y, types_vec, types_colours,
 
   p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, colour = types)) +
     ggplot2::geom_point(size = point_size, alpha = alpha) +
-    ggplot2::scale_color_manual(values = types_colours) +
-    ggplot2::scale_x_log10() + ggplot2::scale_y_log10()
+    ggplot2::scale_color_manual(values = types_colours)
+  if (isTRUE(log_scale)) {
+    p <- p + ggplot2::scale_x_log10() + ggplot2::scale_y_log10()
+  }
 
   if (isTRUE(show_identity)) {
     p <- p + ggplot2::geom_abline(intercept = 0, colour = guide_colour)
   }
   if (isTRUE(show_fold_bands) && is.numeric(guide_fold) && guide_fold > 1) {
-    off <- log10(guide_fold)
+    off <- if (isTRUE(log_scale)) log10(guide_fold) else log2(guide_fold)
     p <- p +
       ggplot2::geom_abline(intercept =  off, colour = guide_colour, linetype = "dashed") +
       ggplot2::geom_abline(intercept = -off, colour = guide_colour, linetype = "dashed")

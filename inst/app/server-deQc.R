@@ -175,7 +175,7 @@ deQcScatterData <- reactive({
   ref_mean    <- rowMeans(signal[, ref_idx, drop = FALSE])
 
   # Present mask: RNASeq = usedInTest; proteomics has no such flag
-  present_mask <- if (dataType == "RNASeq" && "usedInTest" %in% colnames(rd)) {
+  present_mask <- if (eds$data_type() == "RNASeq" && "usedInTest" %in% colnames(rd)) {
     rd$usedInTest
   } else rep(TRUE, nrow(rd))
 
@@ -298,7 +298,11 @@ build_between_group_plot <- function() {
     guide_colour    = input$deQcColGuide       %||% "blue",
     guide_fold      = input$deQcGuideFold      %||% 2,
     show_identity   = input$deQcShowIdentity   %||% TRUE,
-    show_fold_bands = input$deQcShowFoldBands  %||% TRUE
+    show_fold_bands = input$deQcShowFoldBands  %||% TRUE,
+    # Proteomics intensities are already log2 (centred ~0, can be negative) —
+    # plot on linear axes with log2-spaced fold bands. RNA-seq uses linear
+    # counts on log10 axes.
+    log_scale       = eds$data_type() == "RNASeq"
   )
   lookup <- data.frame(
     feature_id = d$feature_id, x = d$x, y = d$y,

@@ -184,6 +184,9 @@ inputDataReactive <- reactive({
 # data it is a constant (== primary_contrast), so behaviour is unchanged.
 selectedContrast <- reactive({
   eds <- inputDataReactive()$.eds
+  # Counts-only datasets carry no contrasts; return NULL so DE-family
+  # observeEvent(selectedContrast()) blocks (ignoreNULL = TRUE) never fire.
+  if (!eds$has_de()) return(NULL)
   cs  <- eds$contrasts()
   sel <- input$contrastSelected
   if (!is.null(sel) && nzchar(sel) && sel %in% cs) sel else eds$primary_contrast()
@@ -199,6 +202,20 @@ set_eds <- function(eds, seUnfiltered = NULL, dataDir = NULL) {
   if (!is.null(seUnfiltered)) res$seUnfiltered <- seUnfiltered
   attr(res, "dataDir") <- dataDir
   edsState(res)
+
+  # Proteomics carries no primary contrast — DE + heatmap modules follow the
+  # `contrastSelected` picker. load_sushi_se() renders this for the SUSHI URL
+  # path; render it here from the eds too so ANY load path (h5ad upload
+  # included) populates the selector. Without it input$contrastSelected stays
+  # NULL and every DE tab / heatmap feature picker starves.
+  if (identical(eds$omics_class(), "proteomics") && length(eds$contrasts())) {
+    contrasts <- eds$contrasts()
+    output$proteomicsContrastSelectorUI <- renderUI({
+      selectInput(inputId = "contrastSelected", label = "Select contrast to view",
+                  choices = contrasts, selected = contrasts[1], multiple = FALSE, selectize = TRUE)
+    })
+    outputOptions(output, "proteomicsContrastSelectorUI", suspendWhenHidden = FALSE)
+  }
 }
 
 # Wrap a loaded SE into an eds and publish it. The full-screen spinner is managed

@@ -209,13 +209,18 @@
     obs <- obs[sample_ids, , drop = FALSE]
   if (is.null(factors)) {
     is_cat <- vapply(obs, function(x) is.character(x) || is.factor(x), logical(1))
-    # Drop identifier-like columns (one distinct value per sample: sample names,
-    # raw-file paths, channels) — they are labels, not experimental factors, and
-    # would otherwise become the default grouping. Mirrors the proteomics
-    # Name/raw.file exclusion without hardcoding names. Keep all categoricals if
-    # this would leave none (degenerate all-unique case).
-    not_id <- vapply(obs, function(x) length(unique(as.character(x))) < length(x), logical(1))
-    factors <- colnames(obs)[is_cat & not_id]
+    # Keep only INFORMATIVE categoricals as experimental factors. Exclude:
+    #  * identifier-like columns (one distinct value per sample: sample names,
+    #    raw-file paths, channels) — labels, not factors; and
+    #  * constant columns (a single distinct value, e.g. proteomics
+    #    isotope.label = "light") — no contrast, and would otherwise surface as
+    #    a spurious grouping/batch factor.
+    # Mirrors the proteomics Name/raw.file exclusion without hardcoding names.
+    # Fall back to all categoricals only if this leaves none (degenerate case).
+    n      <- nrow(obs)
+    nuniq  <- vapply(obs, function(x) length(unique(as.character(x))), integer(1))
+    informative <- nuniq > 1L & nuniq < n
+    factors <- colnames(obs)[is_cat & informative]
     if (!length(factors)) factors <- colnames(obs)[is_cat]
   }
   new_names <- colnames(obs)

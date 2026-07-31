@@ -20,7 +20,8 @@ req(eds)
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   if (eds$data_type() == "RNASeq") {
-    return(eds$contrast_label(eds$primary_contrast()))
+    if (eds$has_de()) return(eds$contrast_label(eds$primary_contrast()))
+    return("")   # counts-only upload: no contrast to label
   } else if (eds$omics_class() == "proteomics") {
     if (isTruthy(input$contrastSelected)) {
       return(input$contrastSelected)
@@ -172,13 +173,13 @@ observeEvent(
 )
 
 # Extract the appropriate data ----
-if (eds$data_type() == "RNASeq") {
+if (eds$data_type() == "RNASeq" && eds$has_de()) {
   .contrast <- eds$primary_contrast()
   seqAnnoReactive <- reactiveValues("sa" = eds$de(.contrast), "saF" = NULL)
   output$boxplotDesign <- renderText({
     eds$contrast_label(.contrast)
   })
-} else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+} else if (eds$data_type() == "RNASeq" || eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
   # CountQC has no DE results — leave seqAnno NULL; every downstream consumer
   # gates on dataType, so this is never queried.
   seqAnnoReactive <- reactiveValues("sa" = NULL, "saF" = NULL)
@@ -255,7 +256,7 @@ boxplotCountsReactive <- eventReactive(
     # brackets below). RNA-seq uses primary contrast; proteomics tracks the picker.
     designLevels <- NULL
     if (eds$omics_class() == "proteomics") {
-      if (input$contrastSelected %in% eds$contrasts()) {
+      if (isTRUE(input$contrastSelected %in% eds$contrasts())) {
         cm <- eds$contrast_meta(input$contrastSelected)
         designLevels <- c(cm$test_group, cm$reference_group)
       }
@@ -457,7 +458,7 @@ observeEvent(
       paste0(col2hex(input[[paste0("GroupColour", input$boxplotFactor1, k)]]), "FF")
     }), input$boxKeepBucket)
 
-    if (eds$omics_class() == "proteomics" && input$contrastSelected %in% eds$contrasts()) {
+    if (eds$omics_class() == "proteomics" && isTRUE(input$contrastSelected %in% eds$contrasts())) {
       cm <- eds$contrast_meta(input$contrastSelected)
       designLevels <- c(cm$test_group, cm$reference_group)
     }

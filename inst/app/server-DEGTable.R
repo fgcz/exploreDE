@@ -3,7 +3,7 @@ req(eds)
 
 # Bucket render removed — now in server-featureBucket.R
 
-if (eds$data_type() == "RNASeq") {
+if (eds$data_type() == "RNASeq" && eds$has_de()) {
  observeEvent(selectedContrast(), {
   # Rebuild for whichever contrast is selected. Single-contrast data fires this
   # once (primary contrast); multi-contrast data refires on selector change.

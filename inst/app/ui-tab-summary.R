@@ -35,29 +35,68 @@ tabItem(
           width = NULL,
           solidHeader = TRUE,
           status = "primary",
-          h4("Download App Data"),
-          helpText("App data will download as a qs file, which can be imported into R with `qs::qread()`"),
-          downloadButton("dlData_summary", "Download app data"),
-          hr(style = "border-top: 1px solid #000000;"), h4("Download App Settings"),
-          helpText("Download all the app settings as either an Excel sheet, or as a qs file of the settings as a list."),
-          downloadButton("dlInputsExcel_summary", "Download settings (Excel)"), downloadButton("dlInputsQS_summary", "Download settings (qs)"),
-          uiOutput("methodsDownloadUI"),
-          uiOutput("countsDownloadUI")
+          tabsetPanel(
+            # tabPanel(
+            #   title = "Settings",
+            #   br(),
+            #   downloadButton("dlInputsQS_summary", "Download settings (qs)")
+            # ),
+            tabPanel(
+              title = "Counts",
+              br(),
+              uiOutput("countsDownloadUI")
+            ),
+            tabPanel(
+              title = "Methods",
+              br(),
+              uiOutput("methodsDownloadUI")
+            ),
+            tabPanel(
+              title = "App Data",
+              br(),
+              h4("App data"),
+              helpText("Deprecated, please use the 'Save/Load' tab."),
+              downloadButton("dlData_summary", "Download app data"),
+              helpText("Download all the app settings as either an Excel sheet, or as a qs file of the settings as a list."),
+              downloadButton("dlInputsExcel_summary", "Download settings (Excel)"),
+            )
+          )
         ),
         uiOutput(outputId = "referencesText"),
         box(
-          title = "Updates, April 2026",
+          title = "Updates, August 2026",
           width = NULL,
           solidHeader = TRUE,
           status = "primary",
-          tags$b("Your favourite shiny app continues to get new features, how fab!"),
-          br(), br(),
-          tags$p("Say hello to explodeDE v 3.6.0! What treats have we added for you this time?"),
-          tags$p("- The app now supports Mageck counts from Crispr screens! So now you can boxplot your favourite guides, and hope they expanded."),
-          tags$p("- Batch correction has been modified to include the ability to pass the design. In DE tests, this will be defaulted to the column tested. If you applied a batch correction, this will be passed as default. It'll help make batch correction that bit more accurate."),
-          tags$p("- Proteomics: You can now select features using the gene symbol. So, if you have peptide level data and select geneA, you'll see all the peptides for that gene."),
-          tags$p("- Genomics: A whole bunch of QC plots have been brough over the CountQC and DE static reports, with two new tabs. Play around!"),
-          tags$p("As always, feedback on the app (good and bad), feature requests, and bug reports are greatly appreciated!")
+          tags$b("More new features? Surely you can't be serious?!"),
+          br(),
+          tags$p("I am serious, and don't call me Shirley. ExploreDE v3.7.0 has crash landed! Otto himself got this down."),
+          tags$ul(
+            tags$li(
+              "The main new feature is a ", tags$b("save-state function"), ". Now you can save all the settings you have carefully tweaked as a single .rds file, and then upload that again next time.",
+              tags$ul(
+                tags$li("It's very much a beta, and possibly quite buggy — please report any issues (and send links and .rds files too, please). One .rds file works for one exploreDE URL only — no crossing the streams here."),
+                tags$li("It lives in its own tab under the now-labelled 'Session' section, called 'Save/Load Session (beta)'. Try it out!"),
+                tags$li("It also doesn't save anything for the multiDE section yet; that will hopefully come shortly.")
+              )
+            ),
+            tags$li(
+              "We've also rejigged the ", tags$b("main landing page"), " of the app (i.e. just ",
+              tags$a(href = "https://fgcz-shiny.uzh.ch/exploreDE", "https://fgcz-shiny.uzh.ch/exploreDE"),
+              ") as we're starting to build out support for custom datasets.",
+              tags$ul(
+                tags$li("The spec isn't finalised yet, so documentation will follow. But very soon you'll be able to easily make an exploreDE object of your own data, wherever it's from. Exciting!")
+              )
+            ),
+            tags$li(
+              "Lastly, some KEGG/GO pathway plots have been expanded.",
+              tags$ul(
+                tags$li("Specifically to heatmaps and multiDE, you can now select pathways independent of statistics. Might be useful to target specific pathways.")
+              )
+            )
+          ),
+          tags$p(tags$em("As always, feedback on the app (good and bad), feature requests, and bug reports are greatly appreciated!")),
+          tags$p(tags$em("P.S., if you got the film reference, then the app will run better for you."))
         )
       )
     )

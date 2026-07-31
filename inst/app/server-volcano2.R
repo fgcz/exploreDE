@@ -16,7 +16,7 @@ volcanoColoursDefault <- c(
   "FoldChangeSignificantDown" = "deepskyblue4"
 )
 
-if (eds$omics_class() == "proteomics") {
+if (eds$omics_class() == "proteomics" && eds$has_de()) {
   if ("modelName" %in% colnames(eds$de(eds$primary_contrast()))) {
     volcanoColoursDefault <- c(volcanoColoursDefault, "Imputed" = "burlywood3")
   }
@@ -56,6 +56,7 @@ observeEvent(
     # Volcano plots are only applicable for RNASeq and proteomics data with DE results
     # CountQC data does not have differential expression results
     req(eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics")
+    req(eds$has_de())   # counts-only uploads carry no contrasts
 
     if (eds$data_type() == "RNASeq") {
       contrast    <- selectedContrast()
@@ -99,7 +100,7 @@ observeEvent(
   }
 )
 
-if (eds$omics_class() == "proteomics") {
+if (eds$omics_class() == "proteomics" && eds$has_de()) {
   proto_de <- eds$de(eds$primary_contrast())
 
   if ("nrPeptides" %in% colnames(proto_de)) {
@@ -179,6 +180,7 @@ volcanoResultsList <- eventReactive(
     # Volcano plots are only applicable for RNASeq and proteomics data with DE results
     # CountQC data does not have differential expression results
     req(eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics")
+    req(eds$has_de())   # counts-only uploads carry no contrasts
 
     if (eds$data_type() == "RNASeq") {
       contrast    <- selectedContrast()

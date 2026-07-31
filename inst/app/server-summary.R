@@ -23,7 +23,8 @@ if (eds$omics_class() != "proteomics" && length(eds$contrasts()) > 1) {
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   if (eds$data_type() == "RNASeq") {
-    return(eds$contrast_label(eds$primary_contrast()))
+    if (eds$has_de()) return(eds$contrast_label(eds$primary_contrast()))
+    return("")   # counts-only upload: no contrast to label
   } else if (eds$omics_class() == "proteomics") {
     if (isTruthy(input$contrastSelected)) {
       return(input$contrastSelected)
@@ -145,7 +146,7 @@ observeEvent(input$importColourFile, {
 })
 
 observeEvent(eds$data_type(), {
-  if (eds$data_type() == "RNASeq") {
+  if (eds$data_type() == "RNASeq" && eds$has_de()) {
     output$linkToMultiDEG <- renderUI({
       box(
         title = "Compare Multiple DE Tests!",
@@ -173,7 +174,7 @@ observeEvent(eds$data_type(), {
     # Methods download UI - show for RNASeq (validation happens in download handler)
     output$methodsDownloadUI <- renderUI({
       tagList(
-        hr(style = "border-top: 1px solid #000000;"),
+        # hr(style = "border-top: 1px solid #000000;"),
         h4("Download Methods Section"),
         tags$div(
           style = "background-color: #fff3cd; border: 2px solid #ffc107; padding: 10px; margin-bottom: 10px; border-radius: 5px;",
@@ -191,7 +192,7 @@ observeEvent(eds$data_type(), {
 
     output$countsDownloadUI <- renderUI({
       tagList(
-        hr(style = "border-top: 1px solid #000000;"),
+        # hr(style = "border-top: 1px solid #000000;"),
         h4("Download Count Files"),
         helpText("Select the type of count data you wish to download for all samples in the dataset."),
         selectizeInput(inputId = "downloadCount", "Select Count Table", choices = eds$assay_names(), selected = eds$assay_names()[1], width = "33%"),
@@ -244,7 +245,7 @@ observeEvent(eds$data_type(), {
 
     output$countsDownloadUI <- renderUI({
       tagList(
-        hr(style = "border-top: 1px solid #000000;"),
+        # hr(style = "border-top: 1px solid #000000;"),
         h4("Download Count Files"),
         helpText("Select the type of count data you wish to download for all samples in the dataset."),
         selectizeInput(inputId = "downloadCount", "Select Count Table", choices = eds$assay_names(), selected = eds$assay_names()[1], width = "33%"),
@@ -638,7 +639,7 @@ observe({
         ctdl <- as.data.frame(ctdl) %>% rownames_to_column("feature_id")
 
         # Try to add annotation columns if they exist (RNA-seq has DE; CountQC does not)
-        if (eds$data_type() == "RNASeq") {
+        if (eds$data_type() == "RNASeq" && eds$has_de()) {
           seqAnno <- eds$de(eds$primary_contrast())
           anno_cols <- c("gene_id", "transcript_id", "feature_id")
           valid_cols <- intersect(anno_cols, colnames(seqAnno))
@@ -1014,7 +1015,7 @@ observe({
     output$summaryTable <- function() {
       settings <- character()
       settings["Number of features:"] <- eds$n_features()
-      seqAnno <- eds$de(eds$primary_contrast())
+      seqAnno <- if (eds$has_de()) eds$de(eds$primary_contrast()) else NULL
       if (!is.null(seqAnno$isPresentProbe)) {
         settings["Number of features with counts above threshold:"] <-
           sum(seqAnno$isPresentProbe)

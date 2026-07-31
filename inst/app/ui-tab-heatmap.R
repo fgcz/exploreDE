@@ -76,7 +76,11 @@ tabItem(
             title = "Feature settings",
             h4("Feature selection"),
             conditionalPanel(
-              condition = "output.test == 'RNASeq' || output.test == 'proteomics'",
+              # DE-based feature selection applies to RNA-seq AND every proteomics
+              # flavour (proteomics / peptidomics / phosphoproteomics). Gate as the
+              # complement of the SD-based CountQC/CrisprCountQC panel below so new
+              # proteomics subtypes never silently lose this UI.
+              condition = "output.test != 'CountQC' && output.test != 'CrisprCountQC'",
               helpText("Plot the feature expression per sample of DE features, based on thresholds. If you don't see a plot, start by turning the p-value to raw."),
               numericInput(inputId = "heatmapGeneNumber", label = "Number of Features on Heatmap", min = 5, max = 2000, value = 50, step = 1),
               numericInput(inputId = "lfcHeatmap", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),

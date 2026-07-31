@@ -1,6 +1,6 @@
 eds <- inputDataReactive()$.eds
 
-if (eds$data_type() == "RNASeq") {
+if (eds$data_type() == "RNASeq" && eds$has_de()) {
 
   design      <- eds$contrast_label(eds$primary_contrast())
   allPathways <- eds$all_pathways()
