@@ -54,6 +54,16 @@ tabItem(
         )
       ),
       box(
+        title = "Results Summary",
+        width = NULL,
+        solidHeader = TRUE,
+        status = "primary",
+        collapsible = TRUE,
+        collapsed = TRUE,
+        tableOutput(outputId = "oraThreshOverview"),
+        tableOutput(outputId = "oraOverview")
+      ),
+      box(
         title = "ORA Tables",
         width = NULL,
         solidHeader = TRUE,
@@ -74,16 +84,6 @@ tabItem(
     column(
       width = 7,
       box(
-        title = "Results Summary",
-        width = NULL,
-        solidHeader = TRUE,
-        status = "primary",
-        collapsible = TRUE,
-        collapsed = TRUE,
-        tableOutput(outputId = "oraThreshOverview"),
-        tableOutput(outputId = "oraOverview")
-      ),
-      box(
         title = "ORA Plots",
         width = NULL,
         solidHeader = TRUE,
@@ -92,35 +92,58 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Network plot",
-            downloadButton(outputId = "dlPlot_cnetORA", label = paste("Download Network Plot")),
-            br(), br(),
             withSpinner(plotOutput(outputId = "cnetPlot_ORA", inline = TRUE), color = "#6E8D9E"),
+            br(),
+            downloadButton(outputId = "dlPlot_cnetORA", label = paste("Download Network Plot")),
             br(), 
-            checkboxInput(inputId = "showGeneLabelsORA", label = "Show gene names?", value = TRUE)
+            checkboxInput(inputId = "showGeneLabelsORA", label = "Show gene names?", value = TRUE),
+            column(
+              width = 6,
+              h4("Network Plot Settings"),
+              sliderInput(inputId = "scaleLimORA", label = "Scale colour limit (+/-)", min = 1, max = 10, value = 5, step = 0.5, width = "85%"),
+              sliderInput(inputId = "nodeSizeORA", label = "Network Plot Node Size", min = 1, max = 30, value = 9, step = 0.5, width = "85%"),
+              sliderInput(inputId = "nodeBorderORA", label = "Node border", min = 0, max = 2, value = 0.3, step = 0.1, width = "80%"),
+            ),
+            column(
+              width = 6,
+              h4("Label Settings"),
+              sliderInput(inputId = "oraMaxOver", label = "Label max overlaps", min = 0, max = 100, value = 10, step = 1, width = "85%"),
+              sliderInput(inputId = "oraDodgeY", label = "Label dodge y", min = -10, max = 10, value = 0, step = 1, width = "85%"),
+              sliderInput(inputId = "oraDodgeX", label = "Label dodge x", min = -10, max = 10, value = 0, step = 1, width = "85%"),
+              sliderInput(inputId = "oraLabelAlpha", label = "Label alpha", min = 0, max = 1, value = 0.7, step = 0.1, width = "85%")
+            ),
           ),
           tabPanel(
             title = "Bar plot",
-            downloadButton(outputId = "dlPlot_barORA", label = paste("Download Bar Plot")),
-            br(), br(),
-            withSpinner(plotOutput(outputId = "barPlot_ORA", inline = TRUE), color = "#6E8D9E")
+            withSpinner(plotOutput(outputId = "barPlot_ORA", inline = TRUE), color = "#6E8D9E"),
+            br(),
+            downloadButton(outputId = "dlPlot_barORA", label = paste("Download Bar Plot"))
           ),
           tabPanel(
             title = "Dot plot",
-            downloadButton(outputId = "dlPlot_dotORA", label = paste("Download Dot Plot")),
-            br(), br(),
-            withSpinner(plotOutput(outputId = "dotPlot_ORA", inline = TRUE), color = "#6E8D9E")
+            withSpinner(plotOutput(outputId = "dotPlot_ORA", inline = TRUE), color = "#6E8D9E"),
+            br(),
+            downloadButton(outputId = "dlPlot_dotORA", label = paste("Download Dot Plot"))
           ),
           tabPanel(
             title = "Heatmap",
-            downloadButton(outputId = "dlPlot_heatmapORA", label = paste("Download Heatmap")),
-            br(), br(),
-            withSpinner(plotOutput(outputId = "heatmap_ORA", inline = TRUE), color = "#6E8D9E")
+            withSpinner(plotOutput(outputId = "heatmap_ORA", inline = TRUE), color = "#6E8D9E"),
+            br(),
+            downloadButton(outputId = "dlPlot_heatmapORA", label = paste("Download Heatmap"))
           ),
           tabPanel(
             title = "Upset plot",
-            downloadButton(outputId = "dlPlot_upsetORA", label = paste("Download Upset Plot")),
-            br(), br(),
-            withSpinner(plotOutput(outputId = "upset_ORA", inline = TRUE), color = "#6E8D9E")
+            withSpinner(plotOutput(outputId = "upset_ORA", inline = TRUE), color = "#6E8D9E"),
+            br(),
+            downloadButton(outputId = "dlPlot_upsetORA", label = paste("Download Upset Plot"))
+          ),
+          tabPanel(
+            title = "Lollipop plot",
+            withSpinner(plotOutput(outputId = "lollipopPlot_ORA", inline = TRUE), color = "#6E8D9E"),
+            downloadButton(outputId = "dlPlot_lollipopORA", label = paste("Download Lollipop Plot")),
+            br(),
+            colourpicker::colourInput(inputId = "oraLollipopColour", label = "Dot/stem colour", value = "steelblue4", closeOnClick = TRUE, returnName = TRUE, width = "35%"),
+            sliderInput(inputId = "oraLollipopScale", label = "Lollipop scale", min = 0.25, max = 5, value = 1, step = 0.25, width = "35%", ticks = FALSE)
           )
         )
       ),
@@ -134,25 +157,14 @@ tabItem(
         status = "primary",
         column(
           width = 4,
-          h4("Network Plot Settings"),
-          sliderInput(inputId = "scaleLimORA", label = "Scale colour limit (+/-)", min = 1, max = 10, value = 5, step = 0.5, width = "85%"),
-          sliderInput(inputId = "nodeSizeORA", label = "Network Plot Node Size", min = 1, max = 30, value = 9, step = 0.5, width = "85%"),
-          sliderInput(inputId = "nodeBorderORA", label = "Node border", min = 0, max = 2, value = 0.3, step = 0.1, width = "80%"),
-        ),
-        column(
-          width = 4,
-          h4("Label Settings"),
-          sliderInput(inputId = "oraMaxOver", label = "Label max overlaps", min = 0, max = 100, value = 10, step = 1, width = "85%"),
-          sliderInput(inputId = "oraDodgeY", label = "Label dodge y", min = -10, max = 10, value = 0, step = 1, width = "85%"),
-          sliderInput(inputId = "oraDodgeX", label = "Label dodge x", min = -10, max = 10, value = 0, step = 1, width = "85%"),
-          sliderInput(inputId = "oraLabelAlpha", label = "Label alpha", min = 0, max = 1, value = 0.7, step = 0.1, width = "85%")
-        ),
-        column(
-          width = 4,
-          h4("Size & Download Settings"),
+          h4("Plot sizes"),
           sliderInput(inputId = "textSizeORA", label = "Figure Font Size", min = 4, max = 30, value = 10, step = 0.5, width = "85%"),
           sliderInput(inputId = "figHeightORA", label = "Figure Height", min = 100, max = 2000, value = 400, step = 10, width = "85%"),
           sliderInput(inputId = "figWidthORA", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
+        ),
+        column(
+          width = 4,
+          h4("Download settings"),
           selectInput(inputId = "downloadFormatORA", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF", width = "85%"),
           selectInput(inputId = "dpiORA", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600, width = "85%"),
           textInput(inputId = "filename_ORA", label = "Enter filename", value = "ORA", width = "85%")

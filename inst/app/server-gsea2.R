@@ -46,7 +46,8 @@ gseaPlotReactive <- reactiveValues(
   heatmap = NULL,
   runningscore = NULL,
   ridgeplot = NULL,
-  upset = NULL
+  upset = NULL,
+  lollipop = NULL
 )
 gseaToUse <- reactiveValues(er = NULL)
 
@@ -320,6 +321,7 @@ observeEvent(
     input$gseaVisLFC
     input$gseaVisFilterMode
     input$gseaIsoformAgg
+    input$gseaLollipopScale
   },
   ignoreNULL = FALSE,
   ignoreInit = TRUE,
@@ -495,6 +497,22 @@ observeEvent(
       )
 
     gseaPlotReactive$ridgeplot <- rp
+
+    # Lollipop plot (-log10 FDR, coloured by NES)
+    lolli_df <- erRP@result
+    lolli_df$negLogP <- -log10(lolli_df$p.adjust)
+    lolli_df[[labelColumn]] <- factor(lolli_df[[labelColumn]], levels = lolli_df[[labelColumn]][order(lolli_df$negLogP)])
+    scl <- input$gseaLollipopScale
+    ts <- input$textSizeGSEA
+    lp <- ggplot(lolli_df, aes(y = .data[[labelColumn]], x = negLogP)) +
+      geom_segment(aes(x = 0, xend = negLogP, y = .data[[labelColumn]], yend = .data[[labelColumn]]), linewidth = scl) +
+      geom_point(aes(size = setSize, colour = NES)) +
+      scale_colour_gradient2(low = "royalblue4", mid = "white", high = "firebrick4", midpoint = 0) +
+      scale_size(range = c(ts / 3, ts) * scl, name = "Gene Set Size") +
+      scale_x_continuous(expand = expansion(mult = c(0, 0.05))) +
+      labs(x = "-log10(FDR)", y = NULL, title = input$gseaType) +
+      theme_prism(base_size = ts)
+    gseaPlotReactive$lollipop <- lp
 
     # Heatmap - use filtered genes when filtering is active
     # Prepare matrix for ComplexHeatmap
@@ -750,6 +768,36 @@ output$dlPlot_upsetGSEA <- downloadHandler(
       format = tolower(input$downloadFormatGSEA),
       width = as.numeric(input$figWidthGSEA) / 70,
       height = as.numeric(input$figHeightGSEA) / 90,
+      dpi = as.numeric(input$dpiGSEA)
+    )
+  }
+)
+
+output$lollipopPlot_GSEA <- renderPlot(
+  {
+    req(!is.null(gseaPlotReactive[["lollipop"]]))
+    gseaPlotReactive[["lollipop"]]
+  },
+  width = function() as.numeric(input$figWidthGSEA),
+  height = function() as.numeric(input$figHeightGSEA)
+)
+
+output$dlPlot_lollipopGSEA <- downloadHandler(
+  filename = function() {
+    generate_filename(
+      base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_lollipop"),
+      design_name = design,
+      extension = tolower(input$downloadFormatGSEA)
+    )
+  },
+  content = function(file) {
+    req(gseaPlotReactive[["lollipop"]])
+    export_plot_standard(
+      plot_object = gseaPlotReactive[["lollipop"]],
+      filename = file,
+      format = tolower(input$downloadFormatGSEA),
+      width = as.numeric(input$figWidthGSEA) / 50,
+      height = as.numeric(input$figHeightGSEA) / 50,
       dpi = as.numeric(input$dpiGSEA)
     )
   }

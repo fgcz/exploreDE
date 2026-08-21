@@ -55,8 +55,9 @@ Imports:
   SummarizedExperiment,
   S4Vectors
 Suggests:
-  testthat (>= 3.0.0)
+  testthat (>= 3.0.0),
+  jsonvalidate
 Config/testthat/edition: 3
 Remotes:
   fgcz/exploreDE
-RoxygenNote: 7.3.2
+Config/roxygen2/version: 8.0.0

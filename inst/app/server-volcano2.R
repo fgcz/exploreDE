@@ -347,6 +347,8 @@ observeEvent(
     input$geneLabelNudgeVolcanoX
     input$geneLabelNudgeVolcanoY
     input$volcanoPointBorder
+    input$volcanoHaloStyle
+    input$volcanoHaloMult
     volcanoResultsList()
   },
   ignoreInit = TRUE,
@@ -381,7 +383,13 @@ observeEvent(
     maplot <- maplot +
       theme_prism(base_size = input$textSizeVolcano) +
       xlab("Log2 Normalised Mean") + ylab("Log2 Ratio")
-    maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status), stroke = input$volcanoPointBorder)
+    if (input$volcanoHaloStyle) {
+      maplot <- maplot +
+        geom_point(colour = "black", size = as.numeric(input$dotSizeVolcano) * as.numeric(input$volcanoHaloMult)) +
+        geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21, stroke = 0)
+    } else {
+      maplot <- maplot + geom_point(pch = 21, size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), aes(fill = Status), stroke = input$volcanoPointBorder)
+    }
     maplot <- maplot + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
     if (input$volcanoShowGenes == TRUE) {
       maplot <- maplot +
@@ -408,7 +416,13 @@ observeEvent(
     volcanoStatic <- volcanoStatic + theme_prism(base_size = input$textSizeVolcano, border = input$borderVolcano)
     volcanoStatic <- volcanoStatic + geom_vline(xintercept = c(-as.numeric(input$lfcVolcano), as.numeric(input$lfcVolcano)), col = "black", linetype = "dashed")
     volcanoStatic <- volcanoStatic + geom_hline(yintercept = -log10(as.numeric(input$pThresholdVolcano)), col = "black", linetype = "dashed")
-    if (input$volcanoPointBorder > 0) {
+    if (input$volcanoHaloStyle) {
+      volcanoStatic <- volcanoStatic +
+        geom_point(colour = "black", size = as.numeric(input$dotSizeVolcano) * as.numeric(input$volcanoHaloMult)) +
+        geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21, stroke = 0) +
+        scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours)) +
+        guides(fill = guide_legend(override.aes = list(shape = 21, size = 4, colour = "black")))
+    } else if (input$volcanoPointBorder > 0) {
       volcanoStatic <- volcanoStatic + geom_point(aes(fill = Status), size = as.numeric(input$dotSizeVolcano), alpha = as.numeric(input$alphaVolcano), pch = 21, stroke = input$volcanoPointBorder)
       volcanoStatic <- volcanoStatic + scale_fill_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
       volcanoStatic <- volcanoStatic + guides(fill = guide_legend(override.aes = list(shape = 21, size = 4, stroke = input$volcanoPointBorder)))

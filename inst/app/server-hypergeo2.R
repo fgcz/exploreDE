@@ -34,7 +34,8 @@ oraPlotReactive <- reactiveValues(
   "barplot" = NULL,
   "dotplot" = NULL,
   "heatmap" = NULL,
-  "upset" = NULL
+  "upset" = NULL,
+  "lollipop" = NULL
 )
 
 # Contrast-dependent state. (Re)built by the observeEvent(selectedContrast())
@@ -280,6 +281,8 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       input$oraVisLFC
       input$oraVisFilterMode
       input$oraIsoformAgg
+      input$oraLollipopScale
+      input$oraLollipopColour
     },
     ignoreNULL = FALSE,
     ignoreInit = TRUE,
@@ -536,6 +539,20 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         )
       oraPlotReactive$dotplot <- dp
 
+      lolli_df <- er@result[input$selectedTable_ORA_rows_selected, , drop = FALSE]
+      lolli_df$negLogP <- -log10(lolli_df$p.adjust)
+      lolli_df$Label <- factor(lolli_df$Label, levels = lolli_df$Label[order(lolli_df$negLogP)])
+      scl <- input$oraLollipopScale
+      ts <- input$textSizeORA
+      lp <- ggplot(lolli_df, aes(y = Label, x = negLogP)) +
+        geom_segment(aes(x = 0, xend = negLogP, y = Label, yend = Label), linewidth = scl) +
+        geom_point(aes(size = Count), colour = input$oraLollipopColour) +
+        scale_size(range = c(ts / 3, ts) * scl, name = "Gene Count") +
+        scale_x_continuous(expand = expansion(mult = c(0, 0.05))) +
+        labs(x = "-log10(FDR)", y = NULL, title = paste(input$oraType, input$oraDirection)) +
+        theme_prism(base_size = ts)
+      oraPlotReactive$lollipop <- lp
+
       geneSetsUpset <- setNames(lapply(input$selectedTable_ORA_rows_selected, function(i) {
         g <- er@result$geneName[i] %>%
           strsplit("/") %>%
@@ -699,6 +716,36 @@ output$dlPlot_upsetORA <- downloadHandler(
       format = tolower(input$downloadFormatORA),
       width = (as.numeric(input$figWidthORA) / 70),
       height = (as.numeric(input$figHeightORA) / 90),
+      dpi = as.numeric(input$dpiORA)
+    )
+  }
+)
+
+# Lollipop plot
+output$lollipopPlot_ORA <- renderPlot(
+  {
+    req(!is.null(oraPlotReactive[["lollipop"]]))
+    oraPlotReactive[["lollipop"]]
+  },
+  width = function() as.numeric(input$figWidthORA),
+  height = function() as.numeric(input$figHeightORA)
+)
+output$dlPlot_lollipopORA <- downloadHandler(
+  filename = function() {
+    generate_filename(
+      base_name = paste0(input$filename_ORA, "_", input$oraType, "_lollipop"),
+      design_name = design,
+      extension = tolower(input$downloadFormatORA)
+    )
+  },
+  content = function(file) {
+    req(oraPlotReactive[["lollipop"]])
+    export_plot_standard(
+      plot_object = oraPlotReactive[["lollipop"]],
+      filename = file,
+      format = tolower(input$downloadFormatORA),
+      width = (as.numeric(input$figWidthORA) / 50),
+      height = (as.numeric(input$figHeightORA) / 50),
       dpi = as.numeric(input$dpiORA)
     )
   }

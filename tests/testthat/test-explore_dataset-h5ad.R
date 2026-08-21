@@ -539,3 +539,61 @@ test_that("SAINT-shaped producer: enrichment selections threshold on FDR", {
   sig_up <- d$feature_id[!is.na(d$fdr) & d$fdr < 0.05 & d$log2Ratio > 0]
   expect_setequal(ei$selections$upGenes, sig_up)
 })
+
+test_that("SAINT-shaped producer with a correct explicit de_columns mapping: no unresolved-column warning", {
+  skip_if_no_anndataR()
+  warnings_seen <- character()
+  withCallingHandlers(
+    build_saint(),
+    warning = function(w) {
+      warnings_seen <<- c(warnings_seen, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_false(any(grepl("could not resolve", warnings_seen, fixed = TRUE)))
+})
+
+test_that("SAINT-shaped producer with NO de_columns at all now auto-resolves via the broadened pattern dictionary", {
+  # The flagship motivating case: log2_EFCs/BFDR/SaintScore all carry their
+  # concept as a SUBSTRING ("log2", "fdr", "score"), which the broadened
+  # patterns in column_patterns.json now catch with zero explicit mapping.
+  skip_if_no_anndataR()
+  s <- make_saint_like()
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  warnings_seen <- character()
+  withCallingHandlers(
+    build_explore_h5ad(list(intensities = s$intensities), out = out, omics = "proteomics",
+                       feature_level = "protein", coldata = s$coldata, rowdata = s$rowdata,
+                       de = s$de),   # NO de_columns
+    warning = function(w) {
+      warnings_seen <<- c(warnings_seen, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_false(any(grepl("could not resolve", warnings_seen, fixed = TRUE)))
+  eds <- new_explore_dataset(out)
+  d <- eds$de(eds$primary_contrast())
+  expect_false(all(is.na(d$effect_log2fc)))
+  expect_false(all(is.na(d$score_fdr)))
+  expect_false(all(is.na(d$score)))
+  expect_false(eds$has_pvalue())   # SAINT genuinely has no p-value column
+})
+
+test_that("a DE table whose columns carry NO textual signal at all still warns loudly instead of going silently all-NA", {
+  skip_if_no_anndataR()
+  s <- make_saint_like()
+  opaque_de <- lapply(s$de, function(d) {
+    setNames(d, c("xq7_metric", "zzflag", "weird_col", "nrPeptides"))
+  })
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_warning(
+    build_explore_h5ad(list(intensities = s$intensities), out = out, omics = "proteomics",
+                       feature_level = "protein", coldata = s$coldata, rowdata = s$rowdata,
+                       de = opaque_de),   # NO de_columns, and NO recognisable names
+    regexp = "could not resolve effect_log2fc and score_fdr"
+  )
+  eds <- new_explore_dataset(out)
+  d <- eds$de(eds$primary_contrast())
+  expect_true(all(is.na(d$effect_log2fc)))
+  expect_true(all(is.na(d$score_fdr)))
+})

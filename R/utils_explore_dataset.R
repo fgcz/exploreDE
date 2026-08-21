@@ -9,26 +9,68 @@
 
 `%||%` <- function(a, b) if (is.null(a) || length(a) == 0L) b else a
 
+# The AUTOMATIC half of exploreDE's dictionary (plans/anndata_manifest_design.md):
+# when no explicit de_columns/rowdata_columns mapping is given, THIS is what
+# figures out which column is which for an arbitrary incoming data.frame. Lives
+# as data (inst/dictionaries/column_patterns.json, validated by
+# inst/schema/exploreDE_column_patterns.schema.json), not hardcoded in R, so
+# covering a new pipeline's spelling of "log2 ratio" is a JSON edit, not a
+# code change. Loaded once per session; each concept's pattern array is
+# collapsed to one alternation regex for eds_standardise_*_columns() below.
+eds_load_column_patterns <- function() {
+  path <- system.file("dictionaries", "column_patterns.json", package = "exploreDE")
+  if (!nzchar(path)) {
+    # exploreDE is not always installed as a package -- it's routinely
+    # source()'d directly from an arbitrary working directory: app.R's own
+    # "dev mode -- no install required" startup, or an ad hoc test script
+    # that does `source(file.path(PKG, "R", "utils_explore_dataset.R"))`
+    # with PKG an absolute path and getwd() somewhere else entirely. Anchor
+    # to THIS FILE'S OWN LOCATION rather than guessing from getwd(): source()
+    # records the path it was given as `ofile` in its own evaluation frame,
+    # which is still on the call stack right now (this call happens at the
+    # top level of this very file, i.e. during that source() call).
+    ofile <- NULL
+    for (fr in sys.frames()) {
+      cand <- fr$ofile
+      if (!is.null(cand) && grepl("utils_explore_dataset\\.R$", cand)) { ofile <- cand; break }
+    }
+    if (!is.null(ofile)) {
+      pkg_root <- dirname(dirname(normalizePath(ofile, mustWork = FALSE)))
+      cand_path <- file.path(pkg_root, "inst", "dictionaries", "column_patterns.json")
+      if (file.exists(cand_path)) path <- cand_path
+    }
+  }
+  if (!nzchar(path)) {
+    # Last resort: a few plausible getwd()-relative locations (devtools::
+    # load_all()/testthat with cwd == package root or tests/testthat/, or
+    # app.R's own inst/app runtime cwd) for the rare case source() left no
+    # `ofile` on the stack (e.g. code pasted directly into the console).
+    candidates <- c(
+      file.path("inst", "dictionaries", "column_patterns.json"),
+      file.path("..", "dictionaries", "column_patterns.json"),
+      file.path("..", "..", "inst", "dictionaries", "column_patterns.json")
+    )
+    hit <- candidates[file.exists(candidates)]
+    if (length(hit)) path <- hit[[1]]
+  }
+  if (!nzchar(path) || !file.exists(path))
+    stop("exploreDE: inst/dictionaries/column_patterns.json not found ",
+        "(checked the installed package location, this file's own directory, ",
+        "and dev-mode relative paths)")
+  raw <- jsonlite::fromJSON(path, simplifyVector = FALSE)
+  collapse <- function(group) lapply(group, function(pats) paste(unlist(pats), collapse = "|"))
+  list(de = collapse(raw$de %||% list()), rowdata = collapse(raw$rowdata %||% list()))
+}
+
+.eds_column_patterns <- eds_load_column_patterns()
+
 # Column-name regexes for DE tables. Map any upstream tool's column to a
 # canonical AnnData-spec name (`effect_log2fc`, `score_pvalue`, `score_fdr`).
-eds_de_column_patterns <- list(
-  effect_log2fc = "^diff$|^log2[._]?(fold)?[._]?(change|ratio|fc)?$|^logfc$|^estimate$",
-  score_pvalue  = "^p[._]?value$",
-  score_fdr     = "^fdr$|^adj[._]?p[._]?value$|^padj$|^q[._]?value$|^p[._]?adjusted$"
-)
+eds_de_column_patterns <- .eds_column_patterns$de
 
 # Column-name regexes for proteomics rowData / contrast DataFrames. Renames
 # (not copies) the matched column to the canonical name.
-eds_rowdata_column_patterns <- list(
-  protein_Id  = "^protein[._]?id$",
-  peptide_Id  = "^peptide[._]?id$|^peptide$",
-  site        = "^site$",
-  gene_name   = "^gene[._]?name$|^gene[._]?symbol$",
-  description = "^description$|^desc$",
-  fasta.id    = "^fasta[._]?id$",
-  modelName   = "^model[._]?name$",
-  nrPeptides  = "^nr[._]?peptides$|^n[._]?peptides$|^num[._]?peptides$"
-)
+eds_rowdata_column_patterns <- .eds_column_patterns$rowdata
 
 # Add canonical DE columns to `df` (copy, not rename), so the upstream tool's
 # native column names are preserved alongside. Only adds if the canonical

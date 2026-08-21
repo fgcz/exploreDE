@@ -1,0 +1,57 @@
+{
+  "de": {
+    "effect_log2fc": [
+      "^diff$",
+      "^log2[._ ]?(fold)?[._ ]?(change|ratio|fc)?$",
+      "^logfc$",
+      "^estimate$",
+      "log2"
+    ],
+    "score_pvalue": [
+      "^p[._ ]?value$"
+    ],
+    "score_fdr": [
+      "^adj[._ ]?p[._ ]?val(ue)?$",
+      "^padj$",
+      "^q[._ ]?val(ue)?$",
+      "^p[._ ]?adjusted$",
+      "fdr"
+    ],
+    "score": [
+      "score"
+    ]
+  },
+  "rowdata": {
+    "protein_Id": [
+      "^protein[._ ]?id$",
+      "^uniprot([._ ]?(id|accession))?$",
+      "^accession$"
+    ],
+    "peptide_Id": [
+      "^peptide[._ ]?id$",
+      "^peptide$"
+    ],
+    "site": [
+      "^site$"
+    ],
+    "gene_name": [
+      "^gene[._ ]?name$",
+      "^gene[._ ]?symbol$"
+    ],
+    "description": [
+      "^description$",
+      "^desc$"
+    ],
+    "fasta.id": [
+      "^fasta[._ ]?id$"
+    ],
+    "modelName": [
+      "^model[._ ]?name$"
+    ],
+    "nrPeptides": [
+      "^nr[._ ]?peptides$",
+      "^n[._ ]?peptides$",
+      "^num[._ ]?peptides$"
+    ]
+  }
+}

@@ -81,11 +81,22 @@ tabItem(
               sliderInput(inputId = "figHeightVolcano", label = "Height", min = 100, max = 2000, value = 480, step = 10, width = "85%", ticks = FALSE),
               sliderInput(inputId = "textSizeVolcano", label = "Font Size", min = 4, max = 30, value = 14, step = 0.5, width = "85%", ticks = FALSE)
             ),
+            checkboxInput(inputId = "volcanoHaloStyle", label = "Halo-style dot border (new)?", value = TRUE),
             splitLayout(
-              sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 3, step = 0.5, width = "85%", ticks = FALSE),
-              sliderInput(inputId = "alphaVolcano", label = "Dot alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "85%", ticks = FALSE),
-              sliderInput(inputId = "volcanoPointBorder", label = "Dot border", min = 0, max = 1, value = 0.2, step = 0.1, width = "85%", ticks = FALSE)
+              sliderInput(inputId = "dotSizeVolcano", label = "Dot size", min = 1, max = 10, value = 1.5, step = 0.5, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "alphaVolcano", label = "Dot alpha", min = 0.1, max = 1, value = 1.0, step = 0.1, width = "85%", ticks = FALSE),
+              tagList(
+                conditionalPanel(
+                  condition = "input.volcanoHaloStyle == true",
+                  sliderInput(inputId = "volcanoHaloMult", label = "Halo thickness (× dot size)", min = 0, max = 3, value = 1, step = 0.1, width = "85%", ticks = FALSE)
+                ),
+                conditionalPanel(
+                  condition = "input.volcanoHaloStyle == false",
+                  sliderInput(inputId = "volcanoPointBorder", label = "Dot border", min = 0, max = 1, value = 0.2, step = 0.1, width = "85%", ticks = FALSE)
+                )
+              )
             ),
+            helpText("Halo style draws a black dot underneath each point, larger by this multiplier, so only the rim shows through — keeps the plot clean even where points pile up densely. Works best with Dot alpha near 1."),
             br(),
             splitLayout(
               checkboxInput(inputId = "showAxesVolcano", label = "Axes lines?", value = TRUE),

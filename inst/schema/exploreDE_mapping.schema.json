@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/fgcz/exploreDE/schema/exploreDE_mapping.schema.json",
+  "title": "exploreDE declared mapping (uns['exploreDE']['mapping'])",
+  "description": "Validates the declared-mapping block a canonical exploreDE/1.0 .h5ad may carry at uns['exploreDE']['mapping'] -- WEW's 'dictionary' (see plans/anndata_manifest_design.md): for THIS dataset, which raw column/matrix supplies each concept exploreDE cares about (p-value, fdr, log2fc/ratio, feature id/symbol, domain-specific extras like nrPeptides or SaintScore), kept in the file instead of re-guessed from a growing list of hardcoded column-name regexes. Written by build_explore_h5ad()'s `de_columns` / `rowdata_columns` arguments; consumed by ExploreDatasetH5AD (the `de` block) and otherwise kept for self-description/provenance. Two groups exist today: `de` (DE stat + optional extra-score columns, per contrast or shared default) and `feature` (feature id/symbol/description column, dataset-wide). Count-matrix naming needs no separate block -- the names given in build_explore_h5ad()'s `counts` argument ARE that dictionary entry already. Extend this schema in lockstep with new mapping keys in the R code, never ahead of it.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "de": { "$ref": "#/definitions/deMapping" },
+    "feature": { "$ref": "#/definitions/featureMapping" }
+  },
+  "definitions": {
+    "significanceKind": {
+      "type": "string",
+      "description": "Direction of a significance axis: which side of a threshold counts as significant.",
+      "enum": ["p_value_low_sig", "fdr_low_sig", "probability_high_sig"]
+    },
+    "deSemantics": {
+      "type": "object",
+      "description": "For one contrast (or the shared default): which source column fed each canonical DE target, plus the display-only semantics for the optional extra score and the fdr axis's direction.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "effect_log2fc_col": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source column that supplied the log2 fold-change/ratio."
+        },
+        "score_pvalue_col": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source column that supplied the raw p-value."
+        },
+        "score_fdr_col": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source column that supplied the FDR/adjusted p-value."
+        },
+        "score_col": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source column that supplied the optional extra score (e.g. SaintScore)."
+        },
+        "score_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display label for the optional extra scored column (e.g. 'SaintScore', 'nrPeptides')."
+        },
+        "score_kind": { "$ref": "#/definitions/significanceKind" },
+        "fdr_kind": { "$ref": "#/definitions/significanceKind" }
+      }
+    },
+    "deMapping": {
+      "type": "object",
+      "description": "Global default plus optional per-contrast overrides, merged at read time. Resolution order everywhere in exploreDE: explicit mapping > canonical slot > heuristic detection.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "default": { "$ref": "#/definitions/deSemantics" },
+        "contrasts": {
+          "type": "object",
+          "description": "Keyed by the same contrast identifiers as uns['de']. Only contrasts that need an override are present.",
+          "additionalProperties": { "$ref": "#/definitions/deSemantics" }
+        }
+      }
+    },
+    "featureMapping": {
+      "type": "object",
+      "description": "Explicit override of which rowData column supplies the feature id / symbol / description, for producers whose column names don't match built-in auto-detection. Declared via build_explore_h5ad()'s `rowdata_columns` argument; only entries actually consulted are recorded (auto-detected columns stay implicit).",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "id_col": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source column supplying the feature identifier (gene/protein/etc. id)."
+        },
+        "symbol_col": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source column supplying the feature's display symbol/name."
+        },
+        "description_col": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source column supplying the feature's free-text description."
+        }
+      }
+    }
+  }
+}

@@ -94,16 +94,33 @@
   eds_standardise_de_columns(df)   # only adds a canon col if absent -> mapping wins
 }
 
-# Pull the significance-semantics (non-column) entries out of a DE column map,
-# for the declared uns$exploreDE$mapping block. `score` -> its display label
-# (the source column name); score_kind / fdr_kind carried verbatim. NULLs drop.
+# Turn a DE column map into the declared uns$exploreDE$mapping$de entry: WHICH
+# source column fed each canonical target (effect_log2fc_col/score_pvalue_col/
+# score_fdr_col/score_col), plus the display-only semantics (score's label,
+# and score_kind/fdr_kind direction). This is the dictionary itself, kept in
+# the file so a reader (human or code) never has to re-guess "log2fc vs log2
+# ratio vs log2FoldChange" for THIS dataset — see plans/anndata_manifest_design.md.
+# NULL entries drop.
 .de_semantics <- function(mapping) {
   if (is.null(mapping)) return(list())
   keep <- list()
+  for (canon in .DE_COLUMN_TARGETS) {
+    src <- mapping[[canon]]
+    if (!is.null(src)) keep[[paste0(canon, "_col")]] <- src
+  }
   if (!is.null(mapping$score))      keep$score_label <- mapping$score
   if (!is.null(mapping$score_kind)) keep$score_kind  <- mapping$score_kind
   if (!is.null(mapping$fdr_kind))   keep$fdr_kind     <- mapping$fdr_kind
   keep
+}
+
+# Explicit rowdata_columns override wins (if the named column actually exists
+# in rd); else fall back to regex auto-detection. Same resolution order as DE
+# columns: explicit mapping > heuristic detection.
+.rowdata_col <- function(rd, explicit, patterns) {
+  if (!is.null(explicit) && !is.null(rd) && explicit %in% colnames(rd)) return(explicit)
+  if (!is.null(rd)) return(.first_col(rd, patterns))
+  NULL
 }
 
 # ---- feature_level: detection-with-override --------------------------------
@@ -135,8 +152,11 @@
 }
 
 # Build the canonical feature_id for a resolved level. base_ids = the join key
-# (count-matrix rownames); gid/sym = id/symbol; rd = rowData (may be NULL).
-.build_fid_for_level <- function(level, base_ids, gid, sym, rd) {
+# (count-matrix rownames); gid/sym = id/symbol; rd = rowData (may be NULL);
+# id_col = the resolved (explicit-override-or-detected) protein/feature id
+# column for the protein/peptide/phospho levels — an explicit rowdata_columns
+# override wins here too, same resolution order as everywhere else.
+.build_fid_for_level <- function(level, base_ids, gid, sym, rd, id_col = NULL) {
   scu <- requireNamespace("scuttle", quietly = TRUE)
   # A source id column can carry NA / empty entries (e.g. SAINT's protein_Id has
   # gaps where the clean rowname does not) — coalesce those to the join key so we
@@ -148,7 +168,7 @@
     ids
   }
   prot_plus <- function(sub_pat) {                 # protein_Id [+ site/peptide]
-    pcol <- .first_col(rd, "^protein[._ ]?id$")
+    pcol <- id_col %||% .first_col(rd, "^protein[._ ]?id$")
     if (is.null(pcol)) return(make.unique(base_ids))
     pid  <- coalesce_ids(rd[[pcol]])
     scol <- .first_col(rd, sub_pat)
@@ -162,7 +182,7 @@
       tid  <- if (!is.null(tcol)) as.character(rd[[tcol]]) else base_ids
       if (scu) scuttle::uniquifyFeatureNames(tid, sym) else make.unique(as.character(tid))
     },
-    protein = { pcol <- .first_col(rd, "^protein[._ ]?id$")
+    protein = { pcol <- id_col %||% .first_col(rd, "^protein[._ ]?id$")
                 make.unique(coalesce_ids(if (!is.null(pcol)) rd[[pcol]] else base_ids)) },
     peptide = prot_plus("^peptide[._ ]?id$"),
     phospho = prot_plus("^site$"),
@@ -204,6 +224,7 @@
                             rowdata = NULL, de = list(), de_columns = NULL,
                             pathways = list(), factors = NULL,
                             gene_symbol = NULL, feature_id = NULL,
+                            rowdata_columns = NULL,
                             organism = NA_character_, ref_build = NA_character_) {
   omics_type <- .omics_type_of(omics)
 
@@ -226,15 +247,23 @@
     rn <- rownames(rd)
     if (!is.null(rn) && all(base_ids %in% rn)) rd <- rd[base_ids, , drop = FALSE]
   }
-  sym_col <- if (!is.null(rd)) .first_col(rd, c("^gene[._ ]?name$", "^gene[._ ]?symbol$", "^symbol$")) else NULL
-  id_col  <- if (!is.null(rd)) .first_col(rd, c("^gene[._ ]?id$", "^ensembl", "^feature[._ ]?id$")) else NULL
+  sym_col <- .rowdata_col(rd, rowdata_columns$symbol_col,
+                          c("^gene[._ ]?name$", "^gene[._ ]?symbol$", "^symbol$"))
+  id_col  <- .rowdata_col(rd, rowdata_columns$id_col,
+                          c("^gene[._ ]?id$", "^ensembl", "^feature[._ ]?id$"))
+  # An EXPLICIT id_col override (not merely auto-detected via the gene-id-like
+  # patterns above) also drives protein/peptide/phospho feature-id construction
+  # below — e.g. a foreign proteomics producer's "UniProt_Accession" column
+  # standing in for the built-in "protein_Id" detection.
+  explicit_id_col <- if (!is.null(rd) && !is.null(rowdata_columns$id_col) &&
+                        rowdata_columns$id_col %in% colnames(rd)) rowdata_columns$id_col
 
   gid <- feature_id  %||% (if (!is.null(id_col))  as.character(rd[[id_col]])  else base_ids)
   sym <- gene_symbol %||% (if (!is.null(sym_col)) as.character(rd[[sym_col]]) else gid)
 
   # feature_level: detection-with-override, then level-aware feature_id.
   level <- .resolve_feature_level(omics_type, rd, feature_level)
-  fid <- .build_fid_for_level(level, base_ids, gid, sym, rd)
+  fid <- .build_fid_for_level(level, base_ids, gid, sym, rd, id_col = explicit_id_col)
   id2fid <- setNames(fid, base_ids)          # user identifiers -> canonical fid
 
   # -- obs (samples) : factors get "factor_" prefix; others carried plain -----
@@ -276,8 +305,9 @@
   # -- var (features) : ids/symbols + pathway ANNOTATION columns from rowData --
   var <- data.frame(row.names = fid, label_gene_id = gid, label_gene_symbol = sym,
                     stringsAsFactors = FALSE)
+  desc_col <- NULL
   if (!is.null(rd)) {
-    desc_col <- .first_col(rd, c("^description$", "^desc$"))
+    desc_col <- .rowdata_col(rd, rowdata_columns$description_col, c("^description$", "^desc$"))
     if (!is.null(desc_col)) var$description <- sub(" \\[.*", "", as.character(rd[[desc_col]]))
     # Pathway annotation -> canonical label_go_* (reader renames to "GO BP" etc.)
     go_src <- c("bp" = "^go[._ ]?bp$|^go_bp$", "mf" = "^go[._ ]?mf$", "cc" = "^go[._ ]?cc$")
@@ -320,7 +350,20 @@
   varm <- list(); uns_de <- list(); de_slot <- list()
   for (cn in names(de)) {
     mapping <- if (per_contrast_map) de_columns[[cn]] else de_columns
+    orig_cols <- colnames(de[[cn]])
     d <- .canon_de_columns(de[[cn]], mapping)
+    # effect_log2fc (magnitude) and score_fdr (the primary significance axis,
+    # §6 of the design doc) are the two columns the app actually depends on.
+    # score_pvalue is legitimately optional (SAINTexpress has none) and
+    # degrades gracefully via has_pvalue() -- never warn on that alone. If
+    # NEITHER the mapping NOR the pattern dictionary resolved one of the two
+    # required columns, this contrast would otherwise go all-NA with no
+    # signal anywhere that anything was wrong.
+    missing_stats <- setdiff(c("effect_log2fc", "score_fdr"), colnames(d))
+    if (length(missing_stats))
+      warning(sprintf(
+        "DE '%s': could not resolve %s from columns (%s) — values will be NA. Pass de_columns= for this file, or add a pattern to inst/dictionaries/column_patterns.json if this naming will recur.",
+        cn, paste(missing_stats, collapse = " and "), paste(orig_cols, collapse = ", ")))
     slot <- gsub("[^a-z0-9]+", "_", tolower(cn)); de_slot[[cn]] <- slot
     can <- data.frame(effect_log2fc = rep(NA_real_, length(fid)),
                       score_pvalue  = rep(NA_real_, length(fid)),
@@ -346,10 +389,12 @@
                            contrast_formula = cn, model = "DESeq2")
   }
 
-  # -- declared significance-semantics mapping (uns$exploreDE$mapping) ---------
-  # Carries what the canonical stat arrays cannot: the display LABEL + direction
-  # of the optional extra score, and the direction of the fdr axis. A shared
-  # de_columns map => one `de$default`; per-contrast maps => `de$contrasts`.
+  # -- declared DE mapping (uns$exploreDE$mapping$de) --------------------------
+  # The dictionary itself: which source column fed each canonical target
+  # (effect_log2fc/score_pvalue/score_fdr/score), plus what the canonical stat
+  # arrays alone can't express (the extra score's display label, and which
+  # direction is significant for it / for fdr). A shared de_columns map =>
+  # one `de$default`; per-contrast maps => `de$contrasts`.
   map_de <- list()
   if (!is.null(de_columns)) {
     if (per_contrast_map) {
@@ -363,6 +408,20 @@
       d0 <- .de_semantics(de_columns)
       if (length(d0)) map_de$default <- d0
     }
+  }
+
+  # -- declared feature-identity mapping (uns$exploreDE$mapping$feature) ------
+  # Only recorded when rowdata_columns explicitly named a column AND it was
+  # actually used (i.e. it existed in rd) — auto-detected columns stay
+  # implicit, same "written only when declared" lean-file principle as `de`.
+  map_feature <- list()
+  if (!is.null(rowdata_columns)) {
+    if (!is.null(rowdata_columns$id_col) && identical(id_col, rowdata_columns$id_col))
+      map_feature$id_col <- id_col
+    if (!is.null(rowdata_columns$symbol_col) && identical(sym_col, rowdata_columns$symbol_col))
+      map_feature$symbol_col <- sym_col
+    if (!is.null(rowdata_columns$description_col) && identical(desc_col, rowdata_columns$description_col))
+      map_feature$description_col <- desc_col
   }
 
   # -- Pathway STATISTICS (B) : contrast-bound; keys must be a subset of DE.
@@ -407,9 +466,15 @@
                    reference_genome = as.character(ref_build),
                    provenance = list(source_format = "build_explore_h5ad"))
   # `mapping` stays a DISTINCT key from `design` (design = what the experiment
-  # is; mapping = where to find things / how to read the stats). Written only
-  # when a declared mapping actually exists, so canonical files stay lean.
-  if (length(map_de)) uns_list$exploreDE <- list(mapping = list(de = map_de))
+  # is; mapping = where to find things / how to read the stats) -- this is the
+  # declared dictionary itself (plans/anndata_manifest_design.md): which raw
+  # column/matrix supplies each concept exploreDE cares about, kept in the file
+  # rather than discarded once used at build time. Written only when a
+  # declared mapping actually exists, so canonical files stay lean.
+  mapping <- list()
+  if (length(map_de))      mapping$de      <- map_de
+  if (length(map_feature)) mapping$feature <- map_feature
+  if (length(mapping)) uns_list$exploreDE <- list(mapping = mapping)
 
   list(X = X, layers = layers, obs = obs, var = var, varm = varm, uns = uns_list)
 }
@@ -463,6 +528,17 @@
 #'   `"p_value_low_sig"`, `"fdr_low_sig"`, `"probability_high_sig"`) and
 #'   `fdr_kind` (default `"fdr_low_sig"`). A producer with no raw p-value (e.g.
 #'   SAINTexpress) simply omits `score_pvalue`; the app degrades to FDR-only.
+#'   Unlike `de_columns`' one-shot use to canonicalise columns at write time,
+#'   the whole mapping (which source column fed each target, plus the
+#'   semantics) is also persisted at `uns$exploreDE$mapping$de`, so the file
+#'   stays self-describing — see `plans/anndata_manifest_design.md`.
+#' @param rowdata_columns Optional explicit override of which `rowdata` column
+#'   supplies the feature id / symbol / description, for producers whose
+#'   column names don't match the built-in detection (e.g.
+#'   `list(id_col="Protein_Id", symbol_col="GeneName")`). Only consulted when
+#'   auto-detection would otherwise be ambiguous or wrong; anything not named
+#'   here is still auto-detected. Declared entries are persisted at
+#'   `uns$exploreDE$mapping$feature`.
 #' @param pathways Optional pathway statistics: a named list keyed by contrast
 #'   (keys a subset of `de`); each entry a named list of clusterProfiler objects
 #'   and/or `data.frame`s.
@@ -473,7 +549,8 @@
 #' @export
 build_explore_h5ad <- function(x, out, omics, feature_level = NULL,
                                coldata = NULL, rowdata = NULL,
-                               de = list(), de_columns = NULL, pathways = list(),
+                               de = list(), de_columns = NULL,
+                               rowdata_columns = NULL, pathways = list(),
                                factors = NULL, gene_symbol = NULL,
                                organism = NA_character_, ref_build = NA_character_) {
   if (missing(omics))
@@ -503,6 +580,7 @@ build_explore_h5ad <- function(x, out, omics, feature_level = NULL,
 
   parts <- .assemble_parts(counts, coldata, omics = omics, feature_level = feature_level,
                            rowdata = rowdata, de = de, de_columns = de_columns,
+                           rowdata_columns = rowdata_columns,
                            pathways = pathways, factors = factors, gene_symbol = gene_symbol,
                            organism = organism, ref_build = ref_build)
   adata <- anndataR::AnnData(X = parts$X, obs = parts$obs, var = parts$var,
