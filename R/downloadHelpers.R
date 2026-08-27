@@ -14,8 +14,6 @@
 #'
 #' @export
 export_excel_standard <- function(df, filename, sheet_name = "Data", table_name = "DataTable") {
-  require(openxlsx)
-  
   # Create workbook and add sheet
   wb <- openxlsx::createWorkbook()
   openxlsx::addWorksheet(wb, sheet_name)

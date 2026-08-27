@@ -4,7 +4,10 @@ Title: exploreDE
 Version: 3.7.0
 Author: Peter Leary [aut, cre]
 Maintainer: Peter Leary <you@example.com>
-Description: exploreDE
+Description: A Shiny application for interactively exploring differential
+    expression, proteomics, and CRISPR screen results, including tools to
+    build exploreDE-compatible AnnData (.h5ad) files from arbitrary source
+    data.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
@@ -53,11 +56,21 @@ Imports:
   anndataR,
   jsonlite,
   SummarizedExperiment,
-  S4Vectors
+  S4Vectors,
+  BiocManager,
+  dplyr,
+  ggplot2,
+  gtools,
+  matrixStats,
+  methods,
+  openxlsx,
+  readr,
+  tibble
 Suggests:
   testthat (>= 3.0.0),
   jsonvalidate
 Config/testthat/edition: 3
 Remotes:
-  fgcz/exploreDE
+  github::uzh/ezRun,
+  github::scverse/anndataR
 Config/roxygen2/version: 8.0.0
