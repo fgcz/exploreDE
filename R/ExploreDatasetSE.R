@@ -121,8 +121,8 @@ ExploreDatasetSE <- R6::R6Class(
           # vst / fpkm / tpm operate on the raw SE — output has SE rownames,
           # so apply fid_lookup remap before returning.
           vst  = .eds_remap_rownames(eds_compute_vst(private$.se),       private$.fid_lookup),
-          fpkm = .eds_remap_rownames(ezRun::getRpkm(private$.se),        private$.fid_lookup),
-          tpm  = .eds_remap_rownames(ezRun::getTpm(private$.se),         private$.fid_lookup),
+          fpkm = .eds_remap_rownames(eds_compute_rpkm(private$.se),      private$.fid_lookup),
+          tpm  = .eds_remap_rownames(eds_compute_tpm(private$.se),       private$.fid_lookup),
           stop("Unknown computed assay: ", name)
         )
       }

@@ -85,8 +85,8 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
     countList[["Normalised + Log2"]]   <- log2(SummarizedExperiment::assay(se, normCounts) + (param$backgroundExpression %||% 10))
   }
   if (!is.null(param$refBuild)) {
-    countList[["FPKM"]] <- ezRun::getRpkm(se)
-    countList[["TPM"]]  <- ezRun::getTpm(se)
+    countList[["FPKM"]] <- eds_compute_rpkm(se)
+    countList[["TPM"]]  <- eds_compute_tpm(se)
   }
   forVST <- as.matrix(SummarizedExperiment::assay(se, "counts"))
   mode(forVST) <- "integer"

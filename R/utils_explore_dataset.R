@@ -169,6 +169,28 @@ eds_compute_vst <- function(se) {
   })
 }
 
+# Compute RPKM/TPM on a genomics SE from raw counts + rowData()$featWidth.
+# Self-contained (bulk-data formula only) so exploreDE doesn't need to depend
+# on ezRun just for these two functions -- mirrors ezRun::getRpkm()/getTpm()'s
+# bulk-data path exactly (ezRun's own single-cell/10x TPM branch is irrelevant
+# here: exploreDE never sets metadata(se)$param$scProtocol). Also mirrors
+# ExploreDatasetH5AD.R's private$.compute_fpkm()/.compute_tpm(), which do the
+# same sweep on a plain matrix + featWidth vector instead of an SE.
+eds_compute_rpkm <- function(se) {
+  counts <- SummarizedExperiment::assay(se, "counts")
+  featWidth <- SummarizedExperiment::rowData(se)$featWidth
+  libSize <- Matrix::colSums(counts)
+  rpkm <- sweep(counts * 1e9, MARGIN = 1, STATS = featWidth, FUN = "/")
+  sweep(rpkm, MARGIN = 2, STATS = libSize, FUN = "/")
+}
+
+eds_compute_tpm <- function(se) {
+  counts <- SummarizedExperiment::assay(se, "counts")
+  featWidth <- SummarizedExperiment::rowData(se)$featWidth
+  tpm <- sweep(counts, MARGIN = 1, STATS = featWidth, FUN = "/")
+  sweep(tpm * 1e6, MARGIN = 2, STATS = Matrix::colSums(tpm), FUN = "/")
+}
+
 # Apply fid_lookup remap to a matrix's rownames. Drops rows whose source
 # rowname isn't in the lookup.
 .eds_remap_rownames <- function(m, lk) {

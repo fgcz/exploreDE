@@ -25,7 +25,6 @@ Imports:
   colourpicker,
   writexl,
   circlize,
-  ezRun,
   kableExtra,
   ggrepel,
   gplots,
@@ -68,7 +67,8 @@ Imports:
   tibble
 Suggests:
   testthat (>= 3.0.0),
-  jsonvalidate
+  jsonvalidate,
+  ezRun
 Config/testthat/edition: 3
 Remotes:
   github::uzh/ezRun,

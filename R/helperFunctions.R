@@ -293,8 +293,8 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   countList[["Normalised"]] <- assay(se, normCounts)
   countList[["Normalised + Log2"]] <- log2(assay(se, normCounts) + param$backgroundExpression)
   if (!is.null(param$refBuild)) {
-    countList[["FPKM"]] <- getRpkm(se)
-    countList[["TPM"]] <- getTpm(se)
+    countList[["FPKM"]] <- eds_compute_rpkm(se)
+    countList[["TPM"]] <- eds_compute_tpm(se)
   }
   forVST <- as.matrix(assay(se, "counts"))
   mode(forVST) <- "integer"
