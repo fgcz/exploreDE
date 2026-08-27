@@ -347,7 +347,7 @@ boxplotCountsReactive <- eventReactive(
     }
 
     # add the DE results
-    if (!eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+    if (!is.null(seqAnnoReactive$sa)) {
       countsBoxplotMelt$fdr <- seqAnnoReactive$sa$fdr[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
       countsBoxplotMelt$fdr[is.na(countsBoxplotMelt$fdr)] <- 1
       countsBoxplotMelt$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
@@ -377,7 +377,7 @@ boxplotCountsReactive <- eventReactive(
     )
     countsBarplot[[input$boxplotFactor1]] <- factor(countsBarplot[[input$boxplotFactor1]], levels = input$boxKeepBucket)
     countsBarplot$Feature <- factor(countsBarplot$Feature, genesToPlot)
-    if (!eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+    if (!is.null(seqAnnoReactive$sa)) {
       for (f in c("fdr", "log2Ratio", "stars", "group1", "group2", "y.position")) {
         countsBarplot[[f]] <- countsBoxplotMelt[match(countsBarplot$Feature, countsBoxplotMelt$Feature), f]
       }
@@ -605,7 +605,7 @@ output$boxplotTable <- renderDataTable({
     xvar = input$boxplotFactor1,
     yvar = "Counts"
   )
-  if (!eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
+  if (!is.null(seqAnnoReactive$sa)) {
     colsToShowHere <- c("Name", input$boxplotFactor1, "Feature", "Counts", "log2Ratio", "fdr")
     colsToFormat <- c("Counts", "fdr", "log2Ratio")
   } else {
