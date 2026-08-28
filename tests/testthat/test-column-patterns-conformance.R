@@ -96,3 +96,49 @@ test_that("schema requires both de and rowdata groups", {
   v <- .patterns_validator()
   expect_false(v('{"de":{"score_fdr":["^fdr$"]}}'))
 })
+
+# ---- laziness (exploreDElight / wasm) ---------------------------------------
+
+test_that("sourcing utils_explore_dataset.R does not require the dictionary", {
+  # Regression: the pattern objects used to be assigned eagerly, so merely
+  # source()ing this file demanded the JSON on disk -- and when it was absent
+  # the whole file failed to load, taking eds_flatten_cp_results() and
+  # .enr_tidy_from_native() with it. exploreDElight sources these files into
+  # webR, where there is no installed package and no inst/ tree, so enrichment
+  # broke over a dictionary Light never consults.
+  #
+  # Simulated by shadowing system.file() inside the evaluation environment, so
+  # the loader cannot find the JSON by any route.
+  src <- testthat::test_path("..", "..", "R", "utils_explore_dataset.R")
+  skip_if_not(file.exists(src))
+  # Resolve BEFORE with_dir(): arguments are lazy, so a relative path would be
+  # normalised against the temp dir and fail to resolve.
+  src <- normalizePath(src)
+
+  e <- new.env(parent = globalenv())
+  e$system.file <- function(...) ""
+  tmp <- withr::local_tempdir()
+
+  # Both the source AND the force happen in the temp dir. Not tidiness: the
+  # promise is forced later than it is created, and the loader's last-resort
+  # fallback is getwd()-relative -- so forcing back in the package root would
+  # find the real inst/dictionaries and the test would pass vacuously. (That
+  # this matters at all is itself evidence the load really is deferred.)
+  withr::with_dir(tmp, {
+    sys.source(src, envir = e, keep.source = FALSE)
+
+    # Guard: if sourcing silently failed, force(NULL) would not error and the
+    # dictionary assertion below would pass for the wrong reason.
+    expect_true(exists("eds_de_column_patterns", envir = e, inherits = FALSE))
+
+    # The helpers that used to go down with the file are present ...
+    expect_true(is.function(e$eds_flatten_cp_results))
+    expect_true(is.function(e$.enr_tidy_from_native))
+    expect_identical(e$eds_safe("a b/c"), "a_b_c")
+
+    # ... and the dictionary still fails LOUDLY when something actually asks,
+    # rather than degrading to an empty pattern set that would silently stop
+    # recognising column names.
+    expect_error(force(e$eds_de_column_patterns), "column_patterns")
+  })
+})

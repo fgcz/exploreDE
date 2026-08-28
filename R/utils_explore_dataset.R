@@ -56,21 +56,39 @@ eds_load_column_patterns <- function() {
   if (!nzchar(path) || !file.exists(path))
     stop("exploreDE: inst/dictionaries/column_patterns.json not found ",
         "(checked the installed package location, this file's own directory, ",
-        "and dev-mode relative paths)")
+        "and dev-mode relative paths). Only the column-standardising helpers ",
+        "need it; if you are running a cut-down build that does not import ",
+        "arbitrary column names, nothing should be reaching this.")
   raw <- jsonlite::fromJSON(path, simplifyVector = FALSE)
   collapse <- function(group) lapply(group, function(pats) paste(unlist(pats), collapse = "|"))
   list(de = collapse(raw$de %||% list()), rowdata = collapse(raw$rowdata %||% list()))
 }
 
-.eds_column_patterns <- eds_load_column_patterns()
+# LAZY on purpose (delayedAssign, not plain assignment). These used to be
+# evaluated at source() time, which made merely LOADING this file depend on
+# finding the JSON on disk -- and eds_flatten_cp_results() and friends live in
+# the same file. exploreDElight sources these four R files into webR, where
+# there is no installed package and no inst/ tree, so the whole file failed to
+# load and took the enrichment helpers down with it, for a dictionary Light
+# never consults.
+#
+# Deliberately still an ERROR rather than a silent empty default: the loader
+# keeps its stop(), it just fires when something actually asks for a pattern
+# instead of when the file is read. Loud where it matters, absent where it does
+# not.
+#
+# Note for the installed package: R CMD INSTALL forces these while building the
+# lazy-load DB, so an installed exploreDE behaves exactly as before -- the
+# laziness only shows up in source() mode, which is the mode that needed it.
+delayedAssign(".eds_column_patterns", eds_load_column_patterns())
 
 # Column-name regexes for DE tables. Map any upstream tool's column to a
 # canonical AnnData-spec name (`effect_log2fc`, `score_pvalue`, `score_fdr`).
-eds_de_column_patterns <- .eds_column_patterns$de
+delayedAssign("eds_de_column_patterns", .eds_column_patterns$de)
 
 # Column-name regexes for proteomics rowData / contrast DataFrames. Renames
 # (not copies) the matched column to the canonical name.
-eds_rowdata_column_patterns <- .eds_column_patterns$rowdata
+delayedAssign("eds_rowdata_column_patterns", .eds_column_patterns$rowdata)
 
 # Add canonical DE columns to `df` (copy, not rename), so the upstream tool's
 # native column names are preserved alongside. Only adds if the canonical
