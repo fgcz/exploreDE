@@ -158,18 +158,28 @@ dGRhdGU6bW9kaWZ5ADIwMjYtMDgtMjhUMTA6NDY6NTcrMDA6MDAMMUSaAAAAAElFTkSuQmCC
 
 .banana_env <- new.env(parent = emptyenv())
 
+# Banana mode is a hidden easter egg — it must NEVER take down the app. Every
+# function below is failure-tolerant: on any error it returns the benign "no
+# banana" value (NULL / "" / invisible(NULL)), and `banana_on()` gates the
+# whole feature on the optional deps actually being present. The plot-builder
+# call sites run inside observeEvent()s where an uncaught error would kill the
+# session, so this is load-bearing, not just tidiness.
+.banana_safe <- function(expr, fallback) tryCatch(expr, error = function(e) fallback)
+
 #' Absolute path to the decoded marker PNG (written to the session tempdir on
-#' first call, cached thereafter).
-#' @return length-1 character path
+#' first call, cached thereafter). Returns "" if it can't be written.
+#' @return length-1 character path ("" on failure)
 #' @export
 banana_png_path <- function() {
-  p <- .banana_env$path
-  if (is.null(p) || !file.exists(p)) {
-    p <- file.path(tempdir(), "exploreDE-mk.png")
-    writeBin(jsonlite::base64_dec(.banana_b64), p)
-    .banana_env$path <- p
-  }
-  p
+  .banana_safe({
+    p <- .banana_env$path
+    if (is.null(p) || !file.exists(p)) {
+      p <- file.path(tempdir(), "exploreDE-mk.png")
+      writeBin(jsonlite::base64_dec(.banana_b64), p)
+      .banana_env$path <- p
+    }
+    p
+  }, fallback = "")
 }
 
 #' Significance tier (0-4) for a p-value / FDR. Shared cutpoints with the
@@ -181,50 +191,65 @@ banana_tier <- function(p) {
   if (p <= 1e-04) 4L else if (p <= 1e-03) 3L else if (p <= 1e-02) 2L else if (p <= 5e-02) 1L else 0L
 }
 
-#' Is banana mode active? The asset is always embedded, so this is just the
-#' toggle state.
+#' Is banana mode active AND safe to render? Requires the toggle on, the
+#' embedded asset decodable, and the optional deps (ggtext, png) installed.
+#' If any of that is missing, banana mode is simply off everywhere and no
+#' banana code path is entered.
 #' @param toggle The raw bananaMode() reactive value.
 #' @return logical scalar
 #' @export
-banana_on <- function(toggle) isTRUE(toggle) && nzchar(.banana_b64)
+banana_on <- function(toggle) {
+  isTRUE(toggle) && nzchar(.banana_b64) &&
+    .banana_safe(requireNamespace("ggtext", quietly = TRUE), FALSE) &&
+    .banana_safe(requireNamespace("png", quietly = TRUE), FALSE) &&
+    nzchar(banana_png_path())
+}
 
-#' Decoded marker raster (RGBA array), cached.
+#' Decoded marker raster (RGBA array), cached. NULL on any failure.
 #' @export
 banana_raster <- function() {
-  src <- banana_png_path()
-  if (!identical(.banana_env$img_src, src)) {
-    .banana_env$img     <- png::readPNG(src)
-    .banana_env$img_src <- src
-  }
-  .banana_env$img
+  .banana_safe({
+    src <- banana_png_path()
+    if (!nzchar(src)) return(NULL)
+    if (!identical(.banana_env$img_src, src)) {
+      .banana_env$img     <- png::readPNG(src)
+      .banana_env$img_src <- src
+    }
+    .banana_env$img
+  }, fallback = NULL)
 }
 
 #' <img> markdown for n markers -- for ggtext::geom_richtext labels.
 #' @param n integer count; px display height in pixels.
-#' @return length-1 character ("" when n < 1)
+#' @return length-1 character ("" when n < 1 or the asset is unavailable)
 #' @export
 banana_md <- function(n, px = 16L) {
   n <- as.integer(n)
   if (is.na(n) || n < 1L) return("")
+  src <- banana_png_path()
+  if (!nzchar(src)) return("")
   q <- "'"
-  strrep(paste0("<img src=", q, banana_png_path(), q,
+  strrep(paste0("<img src=", q, src, q,
                 " height=", q, max(6L, as.integer(px)), q, "/>"), n)
 }
 
 #' Draw n markers in a centred horizontal row at (x, y) -- for a ComplexHeatmap
-#' cell_fun (call inside the cell viewport).
+#' cell_fun (call inside the cell viewport). Never throws.
 #' @param n integer count; h glyph size (a grid unit).
 #' @export
 banana_grid <- function(n, x, y, h = grid::unit(4.2, "mm")) {
-  n <- as.integer(n)
-  img <- banana_raster()
-  if (is.na(n) || n < 1L || is.null(img)) return(invisible(NULL))
-  gap <- grid::unit(0.5, "mm")
-  for (k in seq_len(n)) {
-    off <- k - (n + 1) / 2
-    grid::grid.raster(img, x = x + off * (h + gap), y = y,
-                      width = h, height = h, interpolate = TRUE)
-  }
+  .banana_safe({
+    n <- as.integer(n)
+    img <- banana_raster()
+    if (is.na(n) || n < 1L || is.null(img)) return(invisible(NULL))
+    gap <- grid::unit(0.5, "mm")
+    for (k in seq_len(n)) {
+      off <- k - (n + 1) / 2
+      grid::grid.raster(img, x = x + off * (h + gap), y = y,
+                        width = h, height = h, interpolate = TRUE)
+    }
+    invisible(NULL)
+  }, fallback = invisible(NULL))
 }
 
 #' A ggtext::geom_richtext layer: a row of marker images at (x, y) per facet,
@@ -237,19 +262,22 @@ banana_grid <- function(n, x, y, h = grid::unit(4.2, "mm")) {
 #' @param px marker display height in px.
 #' @export
 banana_layer <- function(data, x, y, fdr_col, facet_col = "Feature", px = 16L) {
-  if (is.null(data) || !all(c(fdr_col, facet_col) %in% names(data))) return(NULL)
-  keep <- !duplicated(data[[facet_col]])
-  d <- data[keep, c(facet_col, fdr_col), drop = FALSE]
-  names(d) <- c(facet_col, "fdr")
-  d$by <- if (length(y) == 1L) rep(y, nrow(d)) else y[keep]
-  d$n  <- vapply(d$fdr, banana_tier, integer(1))
-  d <- d[d$n >= 1L & is.finite(d$by), , drop = FALSE]
-  if (!nrow(d)) return(NULL)
-  d$md <- vapply(d$n, banana_md, character(1), px = px)
-  d$bx <- x
-  ggtext::geom_richtext(
-    data = d, mapping = ggplot2::aes(x = bx, y = by, label = md),
-    vjust = -0.1, inherit.aes = FALSE, fill = NA, label.colour = NA,
-    label.padding = grid::unit(c(0, 0, 0, 0), "pt")
-  )
+  .banana_safe({
+    if (is.null(data) || !all(c(fdr_col, facet_col) %in% names(data))) return(NULL)
+    keep <- !duplicated(data[[facet_col]])
+    d <- data[keep, c(facet_col, fdr_col), drop = FALSE]
+    names(d) <- c(facet_col, "fdr")
+    d$by <- if (length(y) == 1L) rep(y, nrow(d)) else y[keep]
+    d$n  <- vapply(d$fdr, banana_tier, integer(1))
+    d <- d[d$n >= 1L & is.finite(d$by), , drop = FALSE]
+    if (!nrow(d)) return(NULL)
+    d$md <- vapply(d$n, banana_md, character(1), px = px)
+    if (!any(nzchar(d$md))) return(NULL)
+    d$bx <- x
+    ggtext::geom_richtext(
+      data = d, mapping = ggplot2::aes(x = bx, y = by, label = md),
+      vjust = -0.1, inherit.aes = FALSE, fill = NA, label.colour = NA,
+      label.padding = grid::unit(c(0, 0, 0, 0), "pt")
+    )
+  }, fallback = NULL)
 }
