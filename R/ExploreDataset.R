@@ -131,6 +131,39 @@ ExploreDataset <- R6::R6Class(
     enrichment       = function(contrast, kind) stop("not implemented"),
     enrichment_input = function(contrast)        stop("not implemented"),
 
+    # Tidy enrichment as a plain data.frame — the form that does NOT require
+    # clusterProfiler/DOSE to read, and the one exploreDElight uses (DOSE has
+    # no wasm build). Every column the app displays lives here; only the three
+    # set-level plots (cnetplot/gseaplot2/ridgeplot) still need enrichment().
+    #
+    # Default implementation derives it from enrichment() so it works on EVERY
+    # file ever written, including those with no uns$enrichment block. Backends
+    # holding a stored tidy mirror should override and prefer it.
+    # See plans/enrichment_detach_plan.md.
+    enrichment_table = function(contrast, kind) {
+      objs <- self$enrichment(contrast, kind)
+      if (!length(objs)) return(data.frame())
+      # enrichment() names its leaves with the kind already prefixed
+      # ("ora/BP/upGenes"); the writer's stored mirror does not ("BP/upGenes").
+      # Strip it so both paths agree -- otherwise the same dataset yields
+      # different `ontology` values depending on whether it happens to carry a
+      # tidy block. `method` already says which kind it is.
+      tabs <- lapply(names(objs), function(nm)
+        .enr_tidy_from_native(objs[[nm]], method = kind,
+                              prefix = sub(paste0("^", kind, "/"), "", nm)))
+      tabs <- Filter(Negate(is.null), tabs)
+      if (!length(tabs)) return(data.frame())
+      plyr::rbind.fill(tabs)
+    },
+
+    # The p.adjust cut applied to the stored tidy mirror, or NA when the tables
+    # were derived live and nothing was filtered. Callers that let a user raise
+    # a GO threshold need this: without it an absent row is ambiguous between
+    # "cut by the writer", "not significant" and "never run".
+    enrichment_filter = function() {
+      private$.config$enrichment_filter %||% NA_real_
+    },
+
     # ---- domain extras (config-only) --------------------------------------
     sgrna_to_gene    = function() private$.config$sgrna_to_gene,
     proteomics_choices = function(kind = c("gene", "protein")) {

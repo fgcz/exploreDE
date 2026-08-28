@@ -197,6 +197,17 @@ ExploreDatasetH5AD <- R6::R6Class(
       out
     },
 
+    # Prefer the stored tidy mirror; fall back to the base class, which derives
+    # it from the native objects. So a new file costs no decode at all, and an
+    # old one still works.
+    enrichment_table = function(contrast, kind) {
+      stopifnot(kind %in% c("ora", "gsea"))
+      slot   <- sub("^de_", "", private$.contrast_slot[[contrast]] %||% contrast)
+      stored <- ((private$.uns$enrichment %||% list())[[slot]] %||% list())[[kind]]
+      if (is.data.frame(stored) && nrow(stored)) return(stored)
+      super$enrichment_table(contrast, kind)
+    },
+
     # Canonical spec drops enrichInput; reconstruct on demand from varm + var
     # so the (accessor-migrated) pathway modules have what they need.
     enrichment_input = function(contrast) {
@@ -394,6 +405,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         contrast_meta    = cm,
         de_display_extras = de_display_extras,
         enrichment_kinds = enrich_kinds,
+        enrichment_filter = (uns$enrichment_filter %||% list())$padj_max %||% NA_real_,
         enrichment_locator = list(),
         sgrna_to_gene    = NULL,
         proteomics       = NULL,

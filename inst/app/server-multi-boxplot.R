@@ -233,6 +233,7 @@ debouncedMultiBoxplotFactor1 <- reactive({
 multiBoxplotCountsReactive <- eventReactive(
   {
     debouncedMultiBoxplotFactor1()
+    bananaMode()  # rebuild significance markers when banana mode toggles
     input$multiBoxplotFactor1
     input$multiBoxKeepBucket
     input$multiBoxplotFactor2
@@ -451,6 +452,7 @@ multiBoxplotCountsReactive <- eventReactive(
 observeEvent(
   {
     multiBoxplotCountsReactive()
+    bananaMode()  # redraw with bananas / asterisks when banana mode toggles
     input$multiBoxplotYScaleFree
     input$textSizeMultiBoxplot
     input$multiBoxplotNCol
@@ -634,16 +636,20 @@ observeEvent(
             # New Width = Original Width * (1 - shorten_fraction)
             # xmin = Center - (New Width / 2)
             # xmax = Center + (New Width / 2)
+            bananaOK <- banana_on(bananaMode())
+            datB <- dat
+            if (bananaOK) datB$stars <- ""   # keep the bracket, blank its label
+
             if (input$multiBoxplotShowPBracketShorten > 0) {
-                center <- (dat$x1 + dat$x2) / 2
-                width <- abs(dat$x1 - dat$x2)
+                center <- (datB$x1 + datB$x2) / 2
+                width <- abs(datB$x1 - datB$x2)
                 new_width <- width * (1 - input$multiBoxplotShowPBracketShorten)
-                dat$xmin <- center - (new_width / 2)
-                dat$xmax <- center + (new_width / 2)
+                datB$xmin <- center - (new_width / 2)
+                datB$xmax <- center + (new_width / 2)
 
                 # Use xmin/xmax mapping
                 boxplot <- boxplot + stat_pvalue_manual(
-                    data = dat,
+                    data = datB,
                     y.position = "y.position",
                     xmin = "xmin",
                     xmax = "xmax",
@@ -658,7 +664,7 @@ observeEvent(
             } else {
                 # Standard plotting if shortening is 0 (to stay safe)
                 boxplot <- boxplot + stat_pvalue_manual(
-                    data = dat,
+                    data = datB,
                     y.position = "y.position",
                     label = "stars",
                     size = input$multiBoxplotShowPLabelSize * 2,
@@ -669,6 +675,23 @@ observeEvent(
                     bracket.nudge.y = input$multiBoxplotShowPJust
                 )
             }
+
+            if (bananaOK) {
+                # Bananas bottom-anchored just above this contrast's bracket line
+                # (vjust = 0 in banana_layer), so they can't fall under it
+                # regardless of the gene's count scale or the stacking offset.
+                boxplot <- boxplot + banana_layer(
+                    dat, x = (dat$x1[1] + dat$x2[1]) / 2,
+                    y = dat$y.position + input$multiBoxplotShowPJust, fdr_col = "fdr",
+                    px = max(12L, round(input$multiBoxplotShowPLabelSize * 8))
+                )
+            }
+        }
+
+        if (banana_on(bananaMode())) {
+            boxplot <- boxplot +
+                scale_y_continuous(expand = expansion(mult = c(0.05, 0.18))) +
+                coord_cartesian(clip = "off")
         }
     }
 

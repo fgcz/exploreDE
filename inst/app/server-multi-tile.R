@@ -323,6 +323,7 @@ output$tileKeggInfo <- renderUI({
 
 observeEvent(
     {
+        bananaMode()  # rebuild with bananas / asterisks when banana mode toggles
         input$tileSortBy
         input$tileDEGNumber
         input$lfcTile
@@ -515,9 +516,16 @@ observeEvent(
 
         colLabels <- colnames(mat1)
 
+        bnTile <- banana_on(bananaMode())
+
         hm <- Heatmap(
             matrix = mat1,
             cell_fun = function(j, i, x, y, width, height, fill) {
+                if (bnTile) {
+                    banana_grid(banana_tier(mat2[i, j]), x, y,
+                                h = grid::unit(input$textSizeTile * 3, "pt"))
+                    return(invisible(NULL))
+                }
                 gb <- textGrob("*")
                 gb_w <- convertWidth(grobWidth(gb), "mm")
                 gb_h <- convertHeight(grobHeight(gb), "mm")
@@ -678,6 +686,7 @@ output$dlTable_tileTop <- downloadHandler(
 
 observeEvent(
     {
+        bananaMode()  # rebuild with bananas / asterisks when banana mode toggles
         input$tileGenes
         input$tileGenesText
         input$tileGenesPathway
@@ -836,9 +845,16 @@ observeEvent(
                     # If a rowAnno is desired, it would need to be constructed here based on customList[[plotty]][["highlightersC"]]
                     # For now, setting rowAnno to NULL or omitting it will show row names if show_row_names = TRUE
 
+                    bnTile <- banana_on(bananaMode())
+
                     hm <- Heatmap(
                         matrix = mat1,
                         cell_fun = function(j, i, x, y, width, height, fill) {
+                            if (bnTile) {
+                                banana_grid(banana_tier(mat2[i, j]), x, y,
+                                            h = grid::unit(input$textSizeTile * 3, "pt"))
+                                return(invisible(NULL))
+                            }
                             if (mat2[i, j] <= 0.0001) {
                                 grid.text("****", x, y)
                             } else if (mat2[i, j] <= 0.001) {

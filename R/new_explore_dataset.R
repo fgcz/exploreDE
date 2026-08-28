@@ -49,6 +49,8 @@ detect_se_shape <- function(se) {
 #' - A character path to a `.RData` file (Mageck EzResult convention).
 #' - A character path to a directory containing one of the standard
 #'   SUSHI artefacts (`deResult.rds`, `rawData_final.rds`, etc.).
+#' - A character path to a parquet directory written by
+#'   [export_h5ad_to_parquet()] (the exploreDElight bridge format).
 #' - An `http(s)://` URL pointing at an `.rds` file.
 #'
 #' @param input See above.
@@ -62,6 +64,16 @@ new_explore_dataset <- function(input, config = NULL) {
       (is.character(input) && length(input) == 1L &&
        grepl("\\.h5ad$", input, ignore.case = TRUE))) {
     return(ExploreDatasetH5AD$new(input, config = config))
+  }
+
+  # A parquet directory written by export_h5ad_to_parquet() (or by the Rust
+  # bridge in exploreDElight). Checked BEFORE the SE branch, because that one
+  # also accepts a directory — eds_load_se() would go looking for deResult.rds
+  # and report a confusing "no SUSHI artefact" rather than the real shape.
+  if (is.character(input) && length(input) == 1L && dir.exists(input) &&
+      file.exists(file.path(input, "manifest.json")) &&
+      file.exists(file.path(input, "obs.parquet"))) {
+    return(ExploreDatasetParquet$new(input, config = config))
   }
 
   se <- if (inherits(input, "SummarizedExperiment")) {

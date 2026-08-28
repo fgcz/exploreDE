@@ -125,6 +125,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
   # --- Tile plot builder (GO terms + optional KEGG pathway) ----------------
   observeEvent(
     {
+      bananaMode()  # rebuild with bananas / asterisks when banana mode toggles
       input$figHeightGoTile
       input$figWidthGoTile
       input$textSizeGoTile
@@ -192,6 +193,8 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
         )
       )
 
+      bnGoTile <- banana_on(bananaMode())
+
       hmList <- lapply(titles, function(ttl) {
         d1 <- dfToPlotList[[ttl]]
         m1 <- as.matrix(d1$log2Ratio); colnames(m1) <- ttl; rownames(m1) <- d1$feature_id
@@ -200,6 +203,11 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
         Heatmap(
           matrix = m1,
           cell_fun = function(j, i, x, y, width, height, fill) {
+            if (bnGoTile) {
+              banana_grid(banana_tier(m2[i, j]), x, y,
+                          h = grid::unit(input$textSizeGoTile * 3, "pt"))
+              return(invisible(NULL))
+            }
             if (m2[i, j] <= 0.0001) {
               grid.text("****", x, y)
             } else if (m2[i, j] <= 0.001) {

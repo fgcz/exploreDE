@@ -597,3 +597,181 @@ test_that("a DE table whose columns carry NO textual signal at all still warns l
   expect_true(all(is.na(d$effect_log2fc)))
   expect_true(all(is.na(d$score_fdr)))
 })
+
+# ---- factor level ORDER (regression) ----------------------------------------
+
+test_that("an explicit factor level order is not alphabetised by the constructor", {
+  skip_if_no_anndataR()
+  # Regression: the constructor used to do factor(as.character(x)), which
+  # discards the levels of a column that is ALREADY a factor and re-derives
+  # them alphabetically. Level order drives boxplot x-axis order, legend order
+  # and group colours, so a "0h, 6h, 24h" time course silently plotted as
+  # "0h, 24h, 6h" -- no error, just a wrong picture.
+  for (lv in list(c("0h", "6h", "24h"),      # alphabetical != intended
+                  c("low", "mid", "high"),   # semantic: no sort can recover it
+                  c("WT", "KO"))) {
+    n  <- 2L * length(lv)
+    cd <- data.frame(g = factor(rep(lv, each = 2), levels = lv))
+    m  <- matrix(stats::rpois(50 * n, 100), nrow = 50,
+                 dimnames = list(sprintf("G%02d", 1:50), sprintf("S%d", seq_len(n))))
+    rownames(cd) <- colnames(m)
+    out <- withr::local_tempfile(fileext = ".h5ad")
+    build_explore_h5ad(m, out = out, omics = "rnaseq", coldata = cd,
+                       organism = "Homo sapiens")
+    expect_identical(new_explore_dataset(out)$factor_levels("g"), lv,
+                     info = paste(lv, collapse = ","))
+  }
+})
+
+test_that("levels derived from a character column use mixedsort, not sort", {
+  skip_if_no_anndataR()
+  # No explicit levels to honour, so the order has to be derived. mixedsort
+  # reads the embedded numbers the way a human does; sort() would give
+  # "0h, 24h, 6h". Matches ExploreDatasetSE.R and helperFunctions.R, so the
+  # h5ad and SE backends agree rather than diverge.
+  cd <- data.frame(g = rep(c("0h", "6h", "24h"), each = 2), stringsAsFactors = FALSE)
+  m  <- matrix(stats::rpois(300, 100), nrow = 50,
+               dimnames = list(sprintf("G%02d", 1:50), sprintf("S%d", 1:6)))
+  rownames(cd) <- colnames(m)
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(m, out = out, omics = "rnaseq", coldata = cd,
+                     organism = "Homo sapiens")
+  expect_identical(new_explore_dataset(out)$factor_levels("g"),
+                   c("0h", "6h", "24h"))
+})
+
+test_that("unused levels are dropped even when the order is honoured", {
+  skip_if_no_anndataR()
+  # Keeping the declared order must not resurrect levels no sample uses, or
+  # plots gain empty groups.
+  cd <- data.frame(g = factor(rep(c("zeta", "beta"), each = 3),
+                              levels = c("zeta", "beta", "never_used")))
+  m  <- matrix(stats::rpois(300, 100), nrow = 50,
+               dimnames = list(sprintf("G%02d", 1:50), sprintf("S%d", 1:6)))
+  rownames(cd) <- colnames(m)
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(m, out = out, omics = "rnaseq", coldata = cd,
+                     organism = "Homo sapiens")
+  expect_identical(new_explore_dataset(out)$factor_levels("g"), c("zeta", "beta"))
+})
+
+# ---- tidy enrichment mirror (plans/enrichment_detach_plan.md) ---------------
+
+# Minimal real clusterProfiler S4 objects. Constructed rather than fixtured
+# because the point under test is the S4 -> tidy derivation, not the contents.
+.fake_enrich <- function(cls = "enrichResult", padj = c(.001, .09, .6)) {
+  methods::new(cls, result = data.frame(
+    ID = sprintf("GO:%04d", seq_along(padj)),
+    Description = sprintf("term %d", seq_along(padj)),
+    pvalue = padj / 10, p.adjust = padj, Count = seq_along(padj),
+    stringsAsFactors = FALSE))
+}
+
+.toy_with_pathways <- function(pathways, env = parent.frame(), ...) {
+  dds <- make_toy_dds(n_genes = 80)
+  res <- DESeq2::results(dds, contrast = c("condition", "treated", "control"))
+  out <- withr::local_tempfile(fileext = ".h5ad", .local_envir = env)
+  build_explore_h5ad(dds, out = out, omics = "rnaseq",
+                     de = list(treated_vs_control = res),
+                     pathways = list(treated_vs_control = pathways),
+                     organism = "Homo sapiens", ...)
+  out
+}
+
+test_that("S4 enrichment is mirrored to a tidy table, native kept alongside", {
+  skip_if_no_anndataR()
+  out <- .toy_with_pathways(list(ora = .fake_enrich()))
+  e <- new_explore_dataset(out)
+
+  d <- e$enrichment_table("treated_vs_control", "ora")
+  expect_s3_class(d, "data.frame")
+  expect_true(all(c("ID", "Description", "pvalue", "p.adjust",
+                    "method", "ontology") %in% colnames(d)))
+  # enrichment() must be untouched -- consumers still on the S4 path keep working
+  # while the migration proceeds tab by tab.
+  expect_length(e$enrichment("treated_vs_control", "ora"), 1L)
+})
+
+test_that("column names stay clusterProfiler's, not the spec's snake_case", {
+  skip_if_no_anndataR()
+  # DECISION (2026-08-28): the 2026-04-17 AnnData spec proposed p_adjust /
+  # gene_ratio; we keep p.adjust / GeneRatio because every consuming module
+  # already reads those and the goal is dropping the dependency, not renaming
+  # the vocabulary. Pinned here so a future "tidy-up" cannot silently break the
+  # four tabs that read them.
+  out <- .toy_with_pathways(list(ora = .fake_enrich()))
+  d <- new_explore_dataset(out)$enrichment_table("treated_vs_control", "ora")
+  expect_true("p.adjust" %in% colnames(d))
+  expect_false("p_adjust" %in% colnames(d))
+})
+
+test_that("the tidy mirror is filtered at p.adjust <= 0.1 and says so", {
+  skip_if_no_anndataR()
+  out <- .toy_with_pathways(list(ora = .fake_enrich(padj = c(.001, .09, .6))))
+  e <- new_explore_dataset(out)
+  d <- e$enrichment_table("treated_vs_control", "ora")
+  expect_equal(nrow(d), 2L)                       # 0.6 dropped
+  expect_lte(max(d$p.adjust), 0.1)
+  # Recording the threshold is not decoration: without it an absent row is
+  # ambiguous between "cut by the writer", "not significant" and "never run".
+  expect_equal(e$enrichment_filter(), 0.1)
+})
+
+test_that("the filter threshold is caller-controllable", {
+  skip_if_no_anndataR()
+  out <- .toy_with_pathways(list(ora = .fake_enrich(padj = c(.001, .09, .6))),
+                            enrichment_padj_max = 1)
+  e <- new_explore_dataset(out)
+  expect_equal(nrow(e$enrichment_table("treated_vs_control", "ora")), 3L)
+  expect_equal(e$enrichment_filter(), 1)
+})
+
+test_that("nested ORA/GSEA structure survives as an `ontology` column", {
+  skip_if_no_anndataR()
+  # The SUSHI shape is BP/MF/CC x up/down/both. That nesting used to live in
+  # the list structure eds_flatten_cp_results() walked; in the tidy form it has
+  # to become data or it is lost.
+  out <- .toy_with_pathways(list(ora = list(
+    BP = list(upGenes = .fake_enrich(), downGenes = .fake_enrich()),
+    MF = list(upGenes = .fake_enrich()))))
+  d <- new_explore_dataset(out)$enrichment_table("treated_vs_control", "ora")
+  # No "ora/" prefix: `method` already carries the kind, and the stored and
+  # derived paths must agree on this string or the same dataset would report
+  # different ontologies depending on whether it has a tidy block.
+  expect_setequal(unique(d$ontology),
+                  c("BP/upGenes", "BP/downGenes", "MF/upGenes"))
+  expect_identical(unique(d$method), "ora")
+})
+
+test_that("enrichment_table() works on a file with no tidy block at all", {
+  skip_if_no_anndataR()
+  # Backwards compatibility: every .h5ad written before this change has only
+  # enrichment_native. The base-class implementation derives the table from it,
+  # so no file needs rewriting for the new accessor to work.
+  out <- .toy_with_pathways(list(ora = .fake_enrich(padj = c(.001, .09, .6))))
+  ad  <- anndataR::read_h5ad(out, as = "InMemoryAnnData")
+  # Strip BOTH, because that is what a pre-change file looks like: the writer
+  # records enrichment_filter only when it actually emits a tidy block, so a
+  # file with one and not the other cannot arise in practice.
+  ad$uns$enrichment <- list()
+  ad$uns$enrichment_filter <- NULL
+  stripped <- withr::local_tempfile(fileext = ".h5ad")
+  anndataR::write_h5ad(ad, stripped, mode = "w")
+
+  e <- new_explore_dataset(stripped)
+  d <- e$enrichment_table("treated_vs_control", "ora")
+  expect_equal(nrow(d), 3L)                       # derived live, so unfiltered
+  expect_true(is.na(e$enrichment_filter()))       # and it says it was not filtered
+})
+
+test_that("enrichment_table() is empty, not an error, when nothing was run", {
+  skip_if_no_anndataR()
+  dds <- make_toy_dds(n_genes = 60)
+  res <- DESeq2::results(dds, contrast = c("condition", "treated", "control"))
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(dds, out = out, omics = "rnaseq",
+                     de = list(treated_vs_control = res), organism = "Homo sapiens")
+  e <- new_explore_dataset(out)
+  expect_false(e$has_enrichment())
+  expect_equal(nrow(e$enrichment_table("treated_vs_control", "ora")), 0L)
+})

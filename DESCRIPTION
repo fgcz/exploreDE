@@ -59,7 +59,9 @@ Imports:
   BiocManager,
   dplyr,
   ggplot2,
+  ggtext,
   gtools,
+  png,
   matrixStats,
   methods,
   openxlsx,
@@ -68,7 +70,10 @@ Imports:
 Suggests:
   testthat (>= 3.0.0),
   jsonvalidate,
-  ezRun
+  ezRun,
+  systemfonts,
+  nanoparquet,
+  arrow
 Config/testthat/edition: 3
 Remotes:
   github::uzh/ezRun,

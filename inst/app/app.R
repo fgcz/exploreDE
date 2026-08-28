@@ -198,6 +198,18 @@ ui <- dashboardPage(
               }
             }
           });
+
+          // Hidden easter egg: triple-click the footer heart (#bananaHeart)
+          // within 1.2s to toggle banana mode (server: input$bananaToggle).
+          (function () {
+            var n = 0, t = null;
+            $(document).on('click', '#bananaHeart', function () {
+              clearTimeout(t);
+              if (++n >= 3) { n = 0; Shiny.setInputValue('bananaToggle', Date.now()); }
+              t = setTimeout(function () { n = 0; }, 1200);
+            });
+            console.log('%c🍌  …there is a banana in here somewhere', 'font-size:13px');
+          })();
         "))
       )
     ),
@@ -238,7 +250,21 @@ ui <- dashboardPage(
     ),
     tags$footer(
       style = "text-align: center; padding: 20px; color: #999; font-size: 16px; border-top: 1px solid #eee; margin-top: 20px;",
-      HTML("Made with &hearts; in Switzerland 🇨🇭")
+      HTML("Made with "),
+      # Bigger click target via padding cancelled by an equal negative margin,
+      # so the footer text doesn't shift; no :hover styling, so nothing moves.
+      tags$span(
+        id = "bananaHeart",
+        style = paste(
+          "display:inline-block;",
+          "padding:.35em .7em;",
+          "margin:-.35em -.7em;",
+          "cursor:pointer;",
+          "user-select:none; -webkit-user-select:none;"
+        ),
+        HTML("&hearts;")
+      ),
+      HTML(" in Switzerland 🇨🇭")
     )
   )
 )
@@ -259,6 +285,24 @@ server <- function(input, output, session) {
   restore_default <- function(id, computed_default, valid = NULL) {
     restore_default_value(id, computed_default, valid, restoring, restore_seed)
   }
+
+  # ── Banana mode (hidden easter egg) ────────────────────────────────────────
+  # Swaps p-value significance markers for a pile of banana images across
+  # boxplots and tile/GO-tile heatmaps. Triple-click the footer heart (JS in
+  # dashboardBody) or append ?banana=1. Defined here so it's in scope for every
+  # lazily-source()d server-*.R module. Rendering logic: R/banana_mode.R.
+  bananaMode <- reactiveVal(FALSE)
+  observeEvent(input$bananaToggle, {
+    on <- !bananaMode(); bananaMode(on)
+    showNotification(
+      if (on) "\U0001F34C Banana mode engaged" else "Banana mode off",
+      duration = 2, type = "message"
+    )
+  }, ignoreInit = TRUE)
+  observe({
+    q <- parseQueryString(session$clientData$url_search)
+    if (identical(q[["banana"]], "1")) bananaMode(TRUE)
+  })
 
   # Multi DE Reactive (defined early so it's available to server-initInputData.R)
   multiProjectInfo <- reactiveValues(projectDir = NULL)

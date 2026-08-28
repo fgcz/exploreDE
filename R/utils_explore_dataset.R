@@ -237,3 +237,49 @@ eds_load_se <- function(input) {
   }
   stop("Cannot interpret input: ", input)
 }
+
+# Flatten a (possibly nested) clusterProfiler result into ONE tidy data.frame.
+#
+# The tidy mirror of uns$enrichment_native. Needed because the serialised S4
+# objects are unreadable without DOSE, which has no wasm build, and because
+# they are ~16x larger than the tables they carry: measured on a real dataset,
+# >90% of the payload is geneSets/geneList that the app never displays.
+# See plans/enrichment_detach_plan.md.
+#
+# Column names are kept EXACTLY as clusterProfiler emits them (`p.adjust`,
+# `GeneRatio`, `enrichmentScore`) rather than the snake_case the 2026-04-17
+# AnnData spec proposed. Deliberate deviation: the goal is dropping the
+# dependency, not renaming the vocabulary, and every consuming module already
+# reads these names.
+#
+# `ontology` carries the leaf name eds_flatten_cp_results() synthesises
+# ("BP", "MF", "BP/upGenes", ...), so the nesting survives as a column.
+#
+# Reads the result table via attributes(), never `@` or as.data.frame(): both
+# of those are fine on the cluster but as.data.frame() is S4 dispatch and dies
+# where DOSE is absent, and this helper must work in both places.
+.enr_tidy_from_native <- function(obj, method = NA_character_, padj_max = NULL,
+                                  prefix = "") {
+  # `prefix` matters when the caller already flattened: eds_flatten_cp_results()
+  # on a bare leaf names it "default", which would throw away the ontology the
+  # caller knows (e.g. "BP/upGenes"). Pass it back in.
+  leaves <- eds_flatten_cp_results(obj, prefix)
+  if (!length(leaves)) return(NULL)
+  tabs <- lapply(names(leaves), function(nm) {
+    r <- attributes(leaves[[nm]])[["result"]]
+    if (is.null(r) || !is.data.frame(r) || !nrow(r)) return(NULL)
+    r$method   <- method
+    r$ontology <- nm
+    r
+  })
+  tabs <- Filter(Negate(is.null), tabs)
+  if (!length(tabs)) return(NULL)
+  # rbind.fill, not rbind: ORA and GSEA result frames carry different columns
+  # (GeneRatio/Count vs NES/enrichmentScore) and both must survive.
+  out <- plyr::rbind.fill(tabs)
+  if (!is.null(padj_max) && "p.adjust" %in% colnames(out))
+    out <- out[!is.na(out$p.adjust) & out$p.adjust <= padj_max, , drop = FALSE]
+  if (!nrow(out)) return(NULL)
+  rownames(out) <- NULL
+  out
+}

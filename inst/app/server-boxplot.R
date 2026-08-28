@@ -234,6 +234,7 @@ debouncedFeatures <- reactive({ input$fb_keep_boxplot }) %>% debounce(200)
 boxplotCountsReactive <- eventReactive(
   {
     debouncedFeatures()
+    bananaMode()  # rebuild significance markers when banana mode toggles
     input$boxplotFactor1
     input$boxKeepBucket
     input$boxplotFactor2
@@ -395,6 +396,7 @@ boxplotCountsReactive <- eventReactive(
 observeEvent(
   {
     boxplotCountsReactive()
+    bananaMode()  # redraw with bananas / asterisks when banana mode toggles
     input$boxplotYLimLFC
     input$textSizeBoxplot
     input$boxplotNCol
@@ -535,17 +537,35 @@ observeEvent(
     if (input$boxplotVertLines) {
       boxplot <- boxplot + geom_vline(xintercept = seq_along(input$boxKeepBucket)[-length(seq_along(input$boxKeepBucket))] + 0.5, linetype = "dashed", alpha = 0.7)
     }
+    # Banana mode: keep the p-value bracket (blank its text label) and float a
+    # row of banana images just above it. Bracket groups live in the melt data
+    # (group1/group2, from designLevels upstream); present only with DE results.
+    bananaGrp <- if (!is.null(countsBoxplotMelt$group1))
+      c(countsBoxplotMelt$group1[1], countsBoxplotMelt$group2[1]) else NULL
+    bananaOK <- banana_on(bananaMode()) && !is.null(bananaGrp) &&
+      all(!is.na(bananaGrp)) && all(bananaGrp %in% input$boxKeepBucket)
     if (input$boxplotShowP) {
+      bmelt <- countsBoxplotMelt
+      if (bananaOK) bmelt$stars <- ""
       boxplot <- boxplot + stat_pvalue_manual(
-        data = countsBoxplotMelt,
-        y.position = countsBoxplotMelt$y.position * 1.03,
+        data = bmelt,
+        y.position = bmelt$y.position * 1.03,
         label = "stars",
         size = input$boxplotShowPLabelSize * 2,
         label.size = input$boxplotShowPLabelSize * 2,
         bracket.size = input$boxplotShowPBracketSize / 6,
         tip.length = c(input$boxplotShowPTipSizeA / 50, input$boxplotShowPTipSizeB / 50),
         bracket.nudge.y = input$boxplotShowPJust / 3
-      ) + coord_cartesian(clip = "off")
+      )
+      if (bananaOK) {
+        bnY <- countsBoxplotMelt$y.position * 1.03 + input$boxplotShowPJust / 3
+        boxplot <- boxplot +
+          banana_layer(countsBoxplotMelt, x = mean(match(bananaGrp, input$boxKeepBucket)),
+                       y = bnY, fdr_col = "fdr",
+                       px = max(12L, round(input$boxplotShowPLabelSize * 8))) +
+          scale_y_continuous(expand = expansion(mult = c(0.05, 0.18)))
+      }
+      boxplot <- boxplot + coord_cartesian(clip = "off")
     }
     boxplot <- boxplot + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle, base_family = input$boxplotFont, border = input$boxplotPlotBorder)
     if (!input$boxplotShowConditions) {
@@ -559,7 +579,7 @@ observeEvent(
     barplot <- ggplot(data = countsBarplot, aes(x = .data[[input$boxplotFactor1]], y = Counts, fill = .data[[input$boxplotFactor1]]))
     barplot <- barplot + facet_wrap(~Feature, scales = "free", ncol = input$boxplotNCol, labeller = facet_labeller)
     barplot <- barplot + geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = input$boxplotBoxAlpha, show.legend = FALSE)
-    barplot <- barplot + scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
+    barplot <- barplot + scale_y_continuous(expand = expansion(mult = c(0, if (isTRUE(bananaOK)) 0.2 else 0.1)))
     if (input$barplotSDorSE %in% c("SE", "SD")) {
       barplot <- barplot + geom_errorbar(aes(ymin = Counts - .data[[tolower(input$barplotSDorSE)]], ymax = Counts + .data[[tolower(input$barplotSDorSE)]]), width = .2, position = position_dodge(.9))
     }
@@ -581,16 +601,27 @@ observeEvent(
       barplot <- barplot + theme(axis.text.x = element_blank())
     }
     if (input$boxplotShowP) {
+      bbar <- countsBarplot
+      if (bananaOK) bbar$stars <- ""
       barplot <- barplot + stat_pvalue_manual(
-        data = countsBarplot,
-        y.position = countsBarplot$y.position * 1.03,
+        data = bbar,
+        y.position = bbar$y.position * 1.03,
         label = "stars",
         size = input$boxplotShowPLabelSize * 2,
         label.size = input$boxplotShowPLabelSize * 2,
         bracket.size = input$boxplotShowPBracketSize / 6,
         tip.length = c(input$boxplotShowPTipSizeA / 50, input$boxplotShowPTipSizeB / 50),
         bracket.nudge.y = input$boxplotShowPJust / 3
-      ) + coord_cartesian(clip = "off")
+      )
+      if (bananaOK) {
+        bnYb <- countsBarplot$y.position * 1.03 + input$boxplotShowPJust / 3
+        barplot <- barplot + banana_layer(
+          countsBarplot, x = mean(match(bananaGrp, input$boxKeepBucket)),
+          y = bnYb, fdr_col = "fdr",
+          px = max(12L, round(input$boxplotShowPLabelSize * 8))
+        )
+      }
+      barplot <- barplot + coord_cartesian(clip = "off")
     }
     figuresDataReactive$barplot <- barplot
   }

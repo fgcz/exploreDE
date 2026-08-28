@@ -222,7 +222,8 @@
 #            character/factor-typed columns).
 .assemble_parts <- function(counts, coldata, omics = "rnaseq", feature_level = NULL,
                             rowdata = NULL, de = list(), de_columns = NULL,
-                            pathways = list(), factors = NULL,
+                            pathways = list(), enrichment_padj_max = 0.1,
+                            factors = NULL,
                             gene_symbol = NULL, feature_id = NULL,
                             rowdata_columns = NULL,
                             organism = NA_character_, ref_build = NA_character_) {
@@ -293,7 +294,23 @@
       # "Condition [Factor]" -> factor_condition (not factor_condition_factor_).
       clean <- sub("[ _]*\\[factor\\]$", "", colnames(obs)[i], ignore.case = TRUE)
       new_names[i] <- paste0("factor_", gsub("[^A-Za-z0-9]+", "_", tolower(clean)))
-      obs[[i]] <- factor(as.character(obs[[i]]))
+      # Level ORDER is not cosmetic: it drives boxplot x-axis order, legend
+      # order and group colours. A bare factor(as.character(x)) sorts levels
+      # alphabetically, which turns a "0h, 6h, 24h" time course into
+      # "0h, 24h, 6h" without erroring — the plot just quietly misrepresents
+      # the design.
+      v <- as.character(obs[[i]])
+      obs[[i]] <- if (is.factor(obs[[i]])) {
+        # An explicit level order is the user's stated design; keep it, but
+        # drop levels no sample uses so empty groups don't appear.
+        factor(v, levels = intersect(levels(obs[[i]]), unique(v)))
+      } else {
+        # Derived from plain character: mixedsort, not sort, so "0h/6h/24h"
+        # and "S1/S2/S10" come out the way a human means them. Matches
+        # ExploreDatasetSE.R:80 and helperFunctions.R:484, so the h5ad and SE
+        # backends agree on level order rather than diverging.
+        factor(v, levels = unique(gtools::mixedsort(v)))
+      }
     }
   }
   colnames(obs) <- new_names
@@ -453,6 +470,15 @@
         # detects the gzip magic and decompresses.
         enr_native[[slot]] <- c(enr_native[[slot]], setNames(
           list(jsonlite::base64_enc(memCompress(serialize(obj, NULL), "gzip"))), rn))
+        # ALSO derive the tidy mirror. Measured on a real dataset: the S4
+        # objects are 106 MB to carry 6.6 MB of tables, because >90% of them is
+        # geneSets/geneList that nothing displays. The tidy form is what lets
+        # readers (Python, and exploreDElight under wasm, where DOSE has no
+        # build) get at the results without clusterProfiler. See
+        # plans/enrichment_detach_plan.md.
+        tidy <- .enr_tidy_from_native(obj, method = rn, padj_max = enrichment_padj_max)
+        if (!is.null(tidy))
+          enr_tidy[[slot]] <- c(enr_tidy[[slot]], setNames(list(tidy), rn))
       }
     }
   }
@@ -463,6 +489,13 @@
                    design = list(factors = factor_prefixed,
                                  grouping = factor_prefixed[1] %||% NA_character_),
                    de = uns_de, enrichment = enr_tidy, enrichment_native = enr_native,
+                   # The tidy mirror is FILTERED. Record the threshold, or a
+                   # consumer cannot tell "cut by this filter" from "not
+                   # significant" from "enrichment was never run" — three very
+                   # different things that all look like an absent row.
+                   enrichment_filter = list(
+                     padj_max = if (length(enr_tidy)) enrichment_padj_max else NULL,
+                     column   = "p.adjust"),
                    reference_genome = as.character(ref_build),
                    provenance = list(source_format = "build_explore_h5ad"))
   # `mapping` stays a DISTINCT key from `design` (design = what the experiment
@@ -551,6 +584,7 @@ build_explore_h5ad <- function(x, out, omics, feature_level = NULL,
                                coldata = NULL, rowdata = NULL,
                                de = list(), de_columns = NULL,
                                rowdata_columns = NULL, pathways = list(),
+                               enrichment_padj_max = 0.1,
                                factors = NULL, gene_symbol = NULL,
                                organism = NA_character_, ref_build = NA_character_) {
   if (missing(omics))
@@ -581,7 +615,8 @@ build_explore_h5ad <- function(x, out, omics, feature_level = NULL,
   parts <- .assemble_parts(counts, coldata, omics = omics, feature_level = feature_level,
                            rowdata = rowdata, de = de, de_columns = de_columns,
                            rowdata_columns = rowdata_columns,
-                           pathways = pathways, factors = factors, gene_symbol = gene_symbol,
+                           pathways = pathways, enrichment_padj_max = enrichment_padj_max,
+                           factors = factors, gene_symbol = gene_symbol,
                            organism = organism, ref_build = ref_build)
   adata <- anndataR::AnnData(X = parts$X, obs = parts$obs, var = parts$var,
                              layers = parts$layers, varm = parts$varm, uns = parts$uns)
