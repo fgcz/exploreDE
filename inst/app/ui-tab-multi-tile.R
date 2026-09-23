@@ -78,6 +78,7 @@ tabItem(
                         checkboxInput(inputId = "clusterColsTile", label = "Cluster contrasts?", value = TRUE),
                         tags$b("Turn off/on names of rows/columns"),
                         checkboxInput(inputId = "colnamesTile", label = "Show contrast names?", value = FALSE),
+                        uiOutput("fb_label_mode_multiTile"),
                         # checkboxInput(inputId = "geneNamesTile", label = "Show gene names?", value = TRUE),
 
                         hr(style = "border-top: 1px solid #000000;"), h4("Tile Plot Colours"),
@@ -146,6 +147,7 @@ tabItem(
                         column(
                             width = 3,
                             helpText("Plot the DE results of any feature detected, irrespective of ranking."),
+                            uiOutput("fb_search_mode_multiTile"),
                             selectizeInput(
                                 inputId = "tileGenes", label = "Features for custom tile:", multiple = TRUE, choices = NULL, selected = NULL,
                                 options = list(placeholder = "Select features", plugins = list("remove_button", "drag_drop", "restore_on_backspace", "clear_button"))

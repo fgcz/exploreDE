@@ -47,6 +47,7 @@ tabItem(
           id = "multiBoxplotSettingsTabs",
           tabPanel(
             title = "Main settings",
+            uiOutput("fb_search_mode_multiBoxplot"),
             selectizeInput(
               inputId = "multiBoxplotGenes", label = "Features for Boxplots:", multiple = TRUE, choices = NULL, selected = NULL,
               options = list(placeholder = "Select features", plugins = list("remove_button", "drag_drop", "restore_on_backspace", "clear_button"))

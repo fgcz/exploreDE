@@ -196,9 +196,20 @@ multiMatReactive <- eventReactive(multiDeReactive$results, {
 
 # 3. Tile Plot Logic
 
+# "Search by" radio (proteomics): swap the custom-tile selectize choices
+observeEvent(input$fb_search_by_multiTile, ignoreInit = TRUE, {
+    req(multiMatReactive()$df2)
+    updateSelectizeInput(session, "tileGenes",
+                         choices = search_mode_choices(input$fb_search_by_multiTile, multiMatReactive()$df2$Gene),
+                         selected = NULL, server = TRUE)
+    updateTextAreaInput(session, "tileGenesText", value = "")
+})
+
 observe({
     req(multiMatReactive()$matList)
-    updateSelectizeInput(session = session, inputId = "tileGenes", choices = multiMatReactive()$df2$Gene, selected = "", server = T)
+    updateSelectizeInput(session = session, inputId = "tileGenes",
+                         choices = search_mode_choices(isolate(input$fb_search_by_multiTile), multiMatReactive()$df2$Gene),
+                         selected = "", server = T)
     updateSelectizeInput(session = session, inputId = "tileGenesPathway", choices = multiMatReactive()$allPathways, selected = "", server = T)
 
     # Hide GO Pathway tab if no pathways available
@@ -337,6 +348,7 @@ observeEvent(
 
         input$tileGenes
         input$tileGenesText
+        input$fb_label_by_multiTile
 
         input$tileColourBlue
         input$tileColourWhite
@@ -481,7 +493,7 @@ observeEvent(
         # Ensure valid colors
         fontcolors[is.na(fontcolors)] <- "#000000"
 
-        rowAnno <- ComplexHeatmap::rowAnnotation(rows = anno_text(as.character(highlightCols), gp = gpar(fontsize = fontsizes, fontface = fontfaces, col = fontcolors)))
+        rowAnno <- ComplexHeatmap::rowAnnotation(rows = anno_text(label_features(as.character(highlightCols), input$fb_label_by_multiTile), gp = gpar(fontsize = fontsizes, fontface = fontfaces, col = fontcolors)))
 
         # Get some colours for the tiles
         at <- c(input$tileAtLow, input$tileAtMid, input$tileAtHigh)
@@ -689,6 +701,7 @@ observeEvent(
         bananaMode()  # rebuild with bananas / asterisks when banana mode toggles
         input$tileGenes
         input$tileGenesText
+        input$fb_label_by_multiTile
         input$tileGenesPathway
         input$GOTooMany
         input$GOTooManyN
@@ -696,7 +709,13 @@ observeEvent(
         input$KEGGTooManyN
         multiTileKegg$currentGenes
     },
+    # ignoreNULL = FALSE: the block's value is multiTileKegg$currentGenes, which
+    # stays NULL until KEGG genes are fetched; with the default ignoreNULL = TRUE
+    # the whole observer (Custom + GO tiles too) was silently skipped.
+    ignoreNULL = FALSE,
+    ignoreInit = TRUE,
     {
+        req(multiMatReactive()$df2)
         customList <- list(
             "Custom" = list(),
             "GO" = list(),
@@ -707,10 +726,12 @@ observeEvent(
         if (!is.null(input$tileGenesText)) {
             hGT <- strsplit(input$tileGenesText, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
         }
-        customList[["Custom"]][["highlightersC"]] <- c(input$tileGenes, hGT)
+        # Proteomics: map gene symbols / protein IDs back to feature_ids
+        customList[["Custom"]][["highlightersC"]] <- resolve_features(
+            c(input$tileGenes, hGT[hGT != ""]), input$fb_search_by_multiTile %||% "feature_id")
         customList[["Custom"]][["plotTitle"]] <- paste0("Custom Gene Tile Plot")
 
-        if (nchar(input$tileGenesPathway) >= 1) {
+        if (isTRUE(nzchar(input$tileGenesPathway %||% ""))) {
             # PROTEOMICS FIX: Check if GO columns exist before grep
             # Get the first available data table
             firstTable <- NULL
@@ -848,7 +869,7 @@ observeEvent(
                     bnTile <- banana_on(bananaMode())
 
                     hm <- Heatmap(
-                        matrix = mat1,
+                        matrix = label_rows(mat1, input$fb_label_by_multiTile),
                         cell_fun = function(j, i, x, y, width, height, fill) {
                             if (bnTile) {
                                 banana_grid(banana_tier(mat2[i, j]), x, y,

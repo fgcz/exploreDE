@@ -146,6 +146,17 @@ observe({
 # The main part of the gene bucket lives here ----
 multiGenesReactive <- reactiveValues(genes = NULL)
 
+# "Search by" radio (proteomics): swap the selectize choices, clear the picks
+observeEvent(input$fb_search_by_multiBoxplot, ignoreInit = TRUE, {
+    d <- multiBoxplotDataReactive()
+    req(d)
+    updateSelectizeInput(session, "multiBoxplotGenes",
+                         choices = search_mode_choices(input$fb_search_by_multiBoxplot, d$genes),
+                         selected = NULL, server = TRUE)
+    updateTextAreaInput(session, "multiBoxplotGenesText", value = "")
+    multiGenesReactive$genes <- NULL
+})
+
 observeEvent(
   {
     input$multiBoxplotGenes
@@ -169,6 +180,8 @@ observeEvent(
 
     genesUnlist <- unique(c(genesList1, genesList2))
     genesUnlist <- genesUnlist[genesUnlist != ""]
+    # Proteomics: map gene symbols / protein IDs back to feature_ids
+    genesUnlist <- resolve_features(genesUnlist, input$fb_search_by_multiBoxplot %||% "feature_id")
     # Verify against first contrast genes
     genesUnlist <- genesUnlist[genesUnlist %in% d$genes]
     
@@ -579,12 +592,19 @@ observeEvent(
       boxplot <- boxplot + scale_x_discrete(labels = xlabs)
     }
 
+    # Facet labels: "gene symbol\nfeature_id" for proteomics, as in the single
+    # boxplot; plain feature_id otherwise.
+    facetLabeller <- labeller(Feature = function(fids) {
+      gnames <- label_features(fids, "gene_name")
+      ifelse(gnames != fids, paste0(gnames, "\n", fids), fids)
+    })
+
     ylabToPlot <- paste(input$multiBoxplotCounts, "Counts")
     if (input$multiBoxplotCountsLog) ylabToPlot <- paste(ylabToPlot, "(Log2)")
     if (input$multiBoxplotZScore) ylabToPlot <- paste(ylabToPlot, "[Z-score]")
     boxplot <- boxplot + labs(y = ylabToPlot)
 
-    boxplot <- boxplot + facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol)
+    boxplot <- boxplot + facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol, labeller = facetLabeller)
 
     if (input$multiBoxplotVertLines) {
       boxplot <- boxplot + geom_vline(xintercept = seq_along(input$multiBoxKeepBucket)[-length(seq_along(input$multiBoxKeepBucket))] + 0.5, linetype = "dashed", alpha = 0.7)
@@ -708,7 +728,7 @@ observeEvent(
     # Just copying minimal barplot
     countsBarplot <- countsBarplot %>% tidyr::complete(!!sym(input$multiBoxplotFactor1), Feature, fill = list(Counts = 0))
     barplot <- ggplot(data = countsBarplot, aes(x = .data[[input$multiBoxplotFactor1]], y = Counts, fill = .data[[input$multiBoxplotFactor1]]))
-    barplot <- barplot + facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol)
+    barplot <- barplot + facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol, labeller = facetLabeller)
     barplot <- barplot + geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = input$multiBoxplotBoxAlpha, show.legend = FALSE)
     barplot <- barplot + theme_prism(base_size = input$textSizeMultiBoxplot)
 

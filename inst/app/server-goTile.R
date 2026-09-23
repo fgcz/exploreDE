@@ -142,7 +142,11 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
       input$lfcGoTile
       input$pThresholdGoTile
       goTileKeggReactive$currentGenes
-    }, ignoreInit = TRUE, {
+    },
+    # ignoreNULL = FALSE: the block's value is goTileKeggReactive$currentGenes,
+    # NULL until a KEGG pathway is fetched; with the default ignoreNULL = TRUE
+    # selecting GO terms alone never drew a tile.
+    ignoreNULL = FALSE, ignoreInit = TRUE, {
 
       figuresDataReactive$goTilePlot <- NULL
 

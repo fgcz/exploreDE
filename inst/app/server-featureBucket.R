@@ -274,7 +274,7 @@ label_rows <- function(mat, mode = "feature_id", width = NULL) {
   mat
 }
 
-lapply(c("heatmap", "ordination"), function(tab) {
+lapply(c("heatmap", "ordination", "multiTile"), function(tab) {
   output[[paste0("fb_label_mode_", tab)]] <- renderUI({
     has_gene    <- !is.null(eds$proteomics_choices("gene")$lookup)
     has_protein <- !is.null(eds$proteomics_choices("protein")$lookup)
@@ -298,7 +298,18 @@ lapply(c("heatmap", "ordination"), function(tab) {
 # Phase 8: Gene Symbol Search (sub-protein proteomics)
 # =============================================================================
 
-lapply(c(fb_input_tabs, "correlation"), function(tab) {
+# Selectize choices for a "Search by" mode; `default` is used in feature_id mode
+# (or when the chosen lookup is absent).
+search_mode_choices <- function(mode, default) {
+  gene_ch    <- eds$proteomics_choices("gene")$choices
+  protein_ch <- eds$proteomics_choices("protein")$choices
+  if (identical(mode, "gene_name") && !is.null(gene_ch)) return(gene_ch)
+  if (identical(mode, "protein_Id") && !is.null(protein_ch)) return(protein_ch)
+  default
+}
+
+# Multi DE tabs manage their own selectize / clearing (see server-multi-*.R).
+lapply(c(fb_input_tabs, "correlation", "multiBoxplot", "multiTile"), function(tab) {
   output[[paste0("fb_search_mode_", tab)]] <- renderUI({
     # Only show radio when at least one alternative lookup exists
     has_gene    <- !is.null(eds$proteomics_choices("gene")$lookup)
