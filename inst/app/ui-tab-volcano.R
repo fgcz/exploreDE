@@ -51,6 +51,7 @@ tabItem(
             uiOutput(outputId = "highlightImputedVolcanoUI"),
             h5("Use this checkbox to turn on/off all annotations:"),
             checkboxInput(inputId = "volcanoShowGenes", label = "Annotate volcano?", value = TRUE),
+            uiOutput("fb_label_mode_volcano"),
             h5("Label all up and/or down regulated features (based on current settings)?"),
             checkboxInput(inputId = "volcanoLabelAllUp", label = "Label all Up", value = FALSE),
             checkboxInput(inputId = "volcanoLabelAllDown", label = "Label all Down", value = FALSE),

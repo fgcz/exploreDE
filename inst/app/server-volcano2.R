@@ -338,6 +338,7 @@ observeEvent(
     input$volcanoShowGenes
     featureBucket$features
     volcanoStagedGenes$brushGenes
+    input$fb_label_by_volcano
     input$volcanoLabelAllUp
     input$volcanoLabelAllDown
     input$volcanoAnnotationHighlightColour
@@ -361,16 +362,18 @@ observeEvent(
 
     volcanoTableFull <- volcanoTable
     volcanoTableFull$Label <- NA
+    # Point labels follow the "Label features by" radio (proteomics)
+    volcanoTableFull$display_label <- label_features(volcanoTableFull$feature_id, input$fb_label_by_volcano)
     if (input$volcanoShowGenes & input$volcanoLabelAllUp) {
-      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantUp")] <- volcanoTableFull$feature_id[which(volcanoTableFull$Status == "FoldChangeSignificantUp")]
+      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantUp")] <- volcanoTableFull$display_label[which(volcanoTableFull$Status == "FoldChangeSignificantUp")]
     }
     if (input$volcanoShowGenes & input$volcanoLabelAllDown) {
-      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantDown")] <- volcanoTableFull$feature_id[which(volcanoTableFull$Status == "FoldChangeSignificantDown")]
+      volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantDown")] <- volcanoTableFull$display_label[which(volcanoTableFull$Status == "FoldChangeSignificantDown")]
     }
     # Annotate bucket genes AND staged (brushed but not yet added) genes
     allAnnotated <- unique(c(featureBucket$features, volcanoStagedGenes$brushGenes))
     if (input$volcanoShowGenes & length(allAnnotated) >= 1) {
-      volcanoTableFull$Label[which(volcanoTableFull$feature_id %in% allAnnotated)] <- volcanoTableFull$feature_id[which(volcanoTableFull$feature_id %in% allAnnotated)]
+      volcanoTableFull$Label[which(volcanoTableFull$feature_id %in% allAnnotated)] <- volcanoTableFull$display_label[which(volcanoTableFull$feature_id %in% allAnnotated)]
       if (input$volcanoAnnotationHighlightColour) {
         volcanoTableFull$Status[which(volcanoTableFull$feature_id %in% featureBucket$features)] <- "Highlight"
       }
@@ -481,7 +484,7 @@ observeEvent(
       mode = "markers",
       color = ~Status,
       colors = volcanoColours,
-      text = ~feature_id,
+      text = ~display_label,
       hovertemplate = paste(
         "Gene: %{text}<br>",
         "log2FC: %{x:.2f}<br>",
@@ -519,14 +522,25 @@ observeEvent(
   }
 )
 
+# Insert a gene-symbol column after feature_id when the dataset has a gene
+# lookup (proteomics); returns the table plus its display colname (or NULL).
+volcano_brush_gene_col <- function(df) {
+  if (is.null(feature_label_map("gene_name"))) return(list(df = df, colname = NULL))
+  df <- tibble::add_column(df, gene_name = label_features(df$feature_id, "gene_name"), .after = "feature_id")
+  list(df = df, colname = "Gene symbol")
+}
+
 output$volcanoBrushTable <- renderDataTable({
   req(figuresDataReactive$volcanoTableFull)
   volcanoTableFull <- figuresDataReactive$volcanoTableFull
   volcanoTableFull2 <- volcanoTableFull %>% dplyr::select(feature_id, description, log2Ratio, log2Ratio_full, log10p, log10p_full, Status)
+  # Proteomics: gene symbol next to the feature_id
+  gene_cols <- volcano_brush_gene_col(volcanoTableFull2)
+  volcanoTableFull2 <- gene_cols$df
 
   DT::datatable(
     data = brushedPoints(volcanoTableFull2, input$volcanoBrush),
-    colnames = c("Feature name", "Description", "Log2 Ratio (plot)", "Log2 Ratio (full)", "-Log10p (plot)", "-Log10p (full)", "Status"),
+    colnames = c("Feature name", gene_cols$colname, "Description", "Log2 Ratio (plot)", "Log2 Ratio (full)", "-Log10p (plot)", "-Log10p (full)", "Status"),
     filter = "top",
     caption = "Click and drag over dots on the volcano plot to see those features in this table.",
     rownames = F
@@ -542,10 +556,12 @@ output$MABrushTable <- renderDataTable({
   req(figuresDataReactive$volcanoTableFull)
   volcanoTableFull <- figuresDataReactive$volcanoTableFull
   volcanoTableFullMA <- volcanoTableFull %>% dplyr::select(feature_id, description, log2Ratio_full, Log2_Mean, log10p_full, Status)
+  gene_cols <- volcano_brush_gene_col(volcanoTableFullMA)
+  volcanoTableFullMA <- gene_cols$df
 
   DT::datatable(
     data = brushedPoints(volcanoTableFullMA, input$MABrush),
-    colnames = c("Feature name", "Description", "Log2 Ratio", "Log2 Mean", "-Log10p", "Status"),
+    colnames = c("Feature name", gene_cols$colname, "Description", "Log2 Ratio", "Log2 Mean", "-Log10p", "Status"),
     filter = "top",
     caption = "Click and drag over dots on the volcano plot to see those features in this table.",
     rownames = F

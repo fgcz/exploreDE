@@ -274,7 +274,7 @@ label_rows <- function(mat, mode = "feature_id", width = NULL) {
   mat
 }
 
-lapply(c("heatmap", "ordination", "multiTile"), function(tab) {
+lapply(c("heatmap", "ordination", "volcano", "multiTile"), function(tab) {
   output[[paste0("fb_label_mode_", tab)]] <- renderUI({
     has_gene    <- !is.null(eds$proteomics_choices("gene")$lookup)
     has_protein <- !is.null(eds$proteomics_choices("protein")$lookup)
