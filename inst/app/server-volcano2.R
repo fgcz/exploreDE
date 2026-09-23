@@ -1,10 +1,54 @@
 eds <- inputDataReactive()$.eds
 req(eds)
 
+# Display-only extra score (e.g. SAINTexpress SaintScore: probability, high =
+# significant). When present it is offered as an alternative volcano y-axis,
+# plotted on its own 0-1 scale (no -log10), and shown in hover + tables.
+volcanoScoreCol <- if (eds$has_de()) {
+  intersect(eds$de_display_extras(), colnames(eds$de(eds$primary_contrast())))[1]
+} else {
+  NA_character_
+}
+volcanoHasScore <- !is.na(volcanoScoreCol)
+volcanoScoreSel <- if (volcanoHasScore) volcanoScoreCol else character(0)  # for any_of()
+volcanoScoreThresholds <- c(0.5, 0.8, 0.9, 0.95, 0.99)
+volcanoPThresholds     <- c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001, 1e-6)
+
+volcano_score_mode <- function() volcanoHasScore && identical(input$pTypeVolcano, volcanoScoreCol)
+# Threshold on the plotted y scale: the score itself, or -log10(p)
+volcano_y_threshold <- function() {
+  t <- as.numeric(input$pThresholdVolcano)
+  if (volcano_score_mode()) t else -log10(t)
+}
+volcano_y_label <- function() if (volcano_score_mode()) volcanoScoreCol else "-log10 p-value"
+
 # FDR-only producers (no raw p-value, e.g. SAINTexpress) lock the volcano
 # significance axis to FDR rather than plotting an all-NA -log10(pValue).
+# With a score column, the score is offered (and preferred) as the y-axis.
 if (!isTRUE(eds$has_pvalue())) {
-  updateSelectInput(session = session, inputId = "pTypeVolcano", choices = c("FDR"), selected = "FDR")
+  if (volcanoHasScore) {
+    updateSelectInput(session = session, inputId = "pTypeVolcano",
+                      choices = c(volcanoScoreCol, "FDR"), selected = volcanoScoreCol)
+  } else {
+    updateSelectInput(session = session, inputId = "pTypeVolcano", choices = c("FDR"), selected = "FDR")
+  }
+} else if (volcanoHasScore) {
+  updateSelectInput(session = session, inputId = "pTypeVolcano",
+                    choices = c("FDR", "Raw", volcanoScoreCol), selected = "FDR")
+}
+
+# Swap the threshold choices between score (>=) and p-value (<=) scales
+if (volcanoHasScore) {
+  observeEvent(input$pTypeVolcano, {
+    if (isTRUE(restoring())) return()  # save-state restore guard
+    if (volcano_score_mode()) {
+      updateSelectInput(session, "pThresholdVolcano", label = paste(volcanoScoreCol, "threshold (>=)"),
+                        choices = volcanoScoreThresholds, selected = 0.8)
+    } else {
+      updateSelectInput(session, "pThresholdVolcano", label = "P-value Threshold",
+                        choices = volcanoPThresholds, selected = 0.05)
+    }
+  })
 }
 
 if (eds$omics_class() == "proteomics") {
@@ -93,11 +137,18 @@ observeEvent(
       pTypeVolcano <- "fdr"
     }
 
-    updateNumericInput(
-      session = session,
-      inputId = "yLimVolcano",
-      value = ceiling(max(-log10(seqAnnoFilt[[pTypeVolcano]])) * 1.1)
-    )
+    # y limit is only used on the -log10 scale; skip Inf (p/BFDR == 0) and NA
+    if (!volcano_score_mode()) {
+      y <- -log10(seqAnnoFilt[[pTypeVolcano]])
+      y <- y[is.finite(y)]
+      if (length(y)) {
+        updateNumericInput(
+          session = session,
+          inputId = "yLimVolcano",
+          value = ceiling(max(y) * 1.1)
+        )
+      }
+    }
     updateNumericInput(
       session = session,
       inputId = "xLimVolcano",
@@ -215,10 +266,10 @@ volcanoResultsList <- eventReactive(
       }
       if (!is.null(input$highlightImputedVolcano)) {
         if (input$highlightImputedVolcano) {
-          seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, description, log2Ratio, pValue, fdr, modelName)
+          seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, description, log2Ratio, pValue, fdr, modelName, dplyr::any_of(volcanoScoreSel))
         }
       } else {
-        seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, description, log2Ratio, pValue, fdr)
+        seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, description, log2Ratio, pValue, fdr, dplyr::any_of(volcanoScoreSel))
       }
 
       output$volcanoDesign <- renderText({
@@ -230,7 +281,10 @@ volcanoResultsList <- eventReactive(
       seqAnnoFilt <- seqAnnoFilt[!seqAnnoFilt$feature_id %in% input$fb_exclude_volcano, ]
     }
 
-    if (input$pTypeVolcano == "Raw") {
+    scoreMode <- volcano_score_mode()
+    if (scoreMode) {
+      pTypeVolcano <- volcanoScoreCol
+    } else if (input$pTypeVolcano == "Raw") {
       pTypeVolcano <- "pValue"
     } else {
       pTypeVolcano <- "fdr"
@@ -242,13 +296,21 @@ volcanoResultsList <- eventReactive(
     }), names(volcanoColoursDefault)))
 
     # Create table of gene names, LFC, and p-value selected by user:
-    volcanoTable <- seqAnnoFilt[, c("feature_id", "description", "log2Ratio", pTypeVolcano)]
+    # (plus FDR alongside a score axis, and the score alongside a p-value axis)
+    volcanoTable <- seqAnnoFilt[, unique(c("feature_id", "description", "log2Ratio", pTypeVolcano,
+                                           if (scoreMode) "fdr" else intersect(volcanoScoreSel, colnames(seqAnnoFilt))))]
 
-    # Get the -log10 of the p-value:
-    volcanoTable["log10p"] <- -log10(as.numeric(volcanoTable[[pTypeVolcano]]))
+    # The plotted y value (column name kept as "log10p" for the brush/plot
+    # plumbing): -log10 of the p-value, or the score itself (0-1, high =
+    # significant) on the score axis.
+    volcanoTable["log10p"] <- if (scoreMode) {
+      as.numeric(volcanoTable[[pTypeVolcano]])
+    } else {
+      -log10(as.numeric(volcanoTable[[pTypeVolcano]]))
+    }
 
-    # Get the -log10p of p-value threshold as a single value:
-    log10pToFilter <- -log10(as.numeric(input$pThresholdVolcano))
+    # Significance threshold on the same y scale as a single value:
+    log10pToFilter <- volcano_y_threshold()
 
     # Get mean log2 count for MA plot
     if (eds$data_type() == "RNASeq") {
@@ -283,7 +345,9 @@ volcanoResultsList <- eventReactive(
     # Set limits of data frame to x/y-axes limits
     volcanoTable$log10p_full <- volcanoTable$log10p
     volcanoTable$log2Ratio_full <- volcanoTable$log2Ratio
-    volcanoTable$log10p[volcanoTable$log10p > as.numeric(input$yLimVolcano)] <- as.numeric(input$yLimVolcano)
+    if (!scoreMode) {
+      volcanoTable$log10p[volcanoTable$log10p > as.numeric(input$yLimVolcano)] <- as.numeric(input$yLimVolcano)
+    }
     volcanoTable$log2Ratio <- shrinkToRange(volcanoTable$log2Ratio,
       theRange = c(-as.numeric(input$xLimVolcano), as.numeric(input$xLimVolcano))
     )
@@ -304,18 +368,33 @@ volcanoResultsList <- eventReactive(
 
     # Results table
     output$volcanoOverviewTable <- DT::renderDataTable({
-      DT::datatable(
-        data = volcanoTable[, c("feature_id", "description", "log2Ratio", pTypeVolcano, "log10p", "Status")],
-        filter = "top",
-        class = "cell-border stripe",
-        rownames = FALSE,
-        colnames = c("Feature Symbol", "Description", "Log2 Ratio", pTypeVolcano, paste("-log10", pTypeVolcano), "Significance")
-      ) %>%
-        DT::formatSignif(columns = c("log10p", pTypeVolcano, "log2Ratio"), digits = 3) %>%
+      if (scoreMode) {
+        # Score axis: the score is the plotted value (no -log10 column); FDR alongside
+        dt <- DT::datatable(
+          data = volcanoTable[, c("feature_id", "description", "log2Ratio", pTypeVolcano, "fdr", "Status")],
+          filter = "top",
+          class = "cell-border stripe",
+          rownames = FALSE,
+          colnames = c("Feature Symbol", "Description", "Log2 Ratio", pTypeVolcano, "fdr", "Significance")
+        ) %>%
+          DT::formatSignif(columns = c(pTypeVolcano, "fdr", "log2Ratio"), digits = 3) %>%
+          DT::formatStyle(columns = pTypeVolcano, color = styleInterval(cuts = log10pToFilter, values = c("black", "green")), fontWeight = "bold")
+      } else {
+        scoreCols <- intersect(volcanoScoreSel, colnames(volcanoTable))
+        dt <- DT::datatable(
+          data = volcanoTable[, c("feature_id", "description", "log2Ratio", pTypeVolcano, "log10p", scoreCols, "Status")],
+          filter = "top",
+          class = "cell-border stripe",
+          rownames = FALSE,
+          colnames = c("Feature Symbol", "Description", "Log2 Ratio", pTypeVolcano, paste("-log10", pTypeVolcano), scoreCols, "Significance")
+        ) %>%
+          DT::formatSignif(columns = c("log10p", pTypeVolcano, "log2Ratio", scoreCols), digits = 3) %>%
+          DT::formatStyle(columns = "log10p", color = styleInterval(cuts = log10pToFilter, values = c("black", "green")), fontWeight = "bold") %>%
+          DT::formatStyle(columns = "fdr", color = styleInterval(cuts = input$pThresholdVolcano, values = c("green", "black")), fontWeight = "bold")
+      }
+      dt %>%
         DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
         DT::formatStyle(columns = "log2Ratio", color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
-        DT::formatStyle(columns = "log10p", color = styleInterval(cuts = log10pToFilter, values = c("black", "green")), fontWeight = "bold") %>%
-        DT::formatStyle(columns = "fdr", color = styleInterval(cuts = input$pThresholdVolcano, values = c("green", "black")), fontWeight = "bold") %>%
         DT::formatStyle(columns = "Status", color = styleEqual(levels = names(volcanoColours), values = as.character(volcanoColours)), fontWeight = "bold")
     })
 
@@ -339,6 +418,7 @@ observeEvent(
     featureBucket$features
     volcanoStagedGenes$brushGenes
     input$fb_label_by_volcano
+    input$pTypeVolcano
     input$volcanoLabelAllUp
     input$volcanoLabelAllDown
     input$volcanoAnnotationHighlightColour
@@ -364,6 +444,12 @@ observeEvent(
     volcanoTableFull$Label <- NA
     # Point labels follow the "Label features by" radio (proteomics)
     volcanoTableFull$display_label <- label_features(volcanoTableFull$feature_id, input$fb_label_by_volcano)
+    # Plotly hover: label, plus the score when it is not already the y-axis
+    volcanoTableFull$hover_text <- volcanoTableFull$display_label
+    if (volcanoHasScore && !volcano_score_mode() && volcanoScoreCol %in% colnames(volcanoTableFull)) {
+      volcanoTableFull$hover_text <- paste0(volcanoTableFull$display_label, "<br>", volcanoScoreCol, ": ",
+                                            signif(volcanoTableFull[[volcanoScoreCol]], 3))
+    }
     if (input$volcanoShowGenes & input$volcanoLabelAllUp) {
       volcanoTableFull$Label[which(volcanoTableFull$Status == "FoldChangeSignificantUp")] <- volcanoTableFull$display_label[which(volcanoTableFull$Status == "FoldChangeSignificantUp")]
     }
@@ -415,10 +501,12 @@ observeEvent(
     volcanoStatic <- ggplot(
       data = volcanoTableFull, aes(x = log2Ratio, y = log10p, text = feature_id)
     )
-    volcanoStatic <- volcanoStatic + ylim(0, input$yLimVolcano) + xlim(-input$xLimVolcano, input$xLimVolcano)
+    # Score axis is a probability: fixed 0-1 (yLimVolcano applies to -log10 only)
+    yMaxVolcano <- if (volcano_score_mode()) 1 else input$yLimVolcano
+    volcanoStatic <- volcanoStatic + ylim(0, yMaxVolcano) + xlim(-input$xLimVolcano, input$xLimVolcano)
     volcanoStatic <- volcanoStatic + theme_prism(base_size = input$textSizeVolcano, border = input$borderVolcano)
     volcanoStatic <- volcanoStatic + geom_vline(xintercept = c(-as.numeric(input$lfcVolcano), as.numeric(input$lfcVolcano)), col = "black", linetype = "dashed")
-    volcanoStatic <- volcanoStatic + geom_hline(yintercept = -log10(as.numeric(input$pThresholdVolcano)), col = "black", linetype = "dashed")
+    volcanoStatic <- volcanoStatic + geom_hline(yintercept = volcano_y_threshold(), col = "black", linetype = "dashed")
     if (input$volcanoHaloStyle) {
       volcanoStatic <- volcanoStatic +
         geom_point(colour = "black", size = as.numeric(input$dotSizeVolcano) * as.numeric(input$volcanoHaloMult)) +
@@ -449,7 +537,7 @@ observeEvent(
     }
     volcanoStatic <- volcanoStatic + labs(
       x = "Log2 Fold Change",
-      y = "-log10 p-value",
+      y = volcano_y_label(),
       fill = "Significance"
     )
 
@@ -484,11 +572,11 @@ observeEvent(
       mode = "markers",
       color = ~Status,
       colors = volcanoColours,
-      text = ~display_label,
+      text = ~hover_text,
       hovertemplate = paste(
         "Gene: %{text}<br>",
         "log2FC: %{x:.2f}<br>",
-        "-log10(p): %{y:.2f}<br>",
+        paste0(if (volcano_score_mode()) volcanoScoreCol else "-log10(p)", ": %{y:.2f}<br>"),
         "<extra></extra>"
       ),
       marker = list(
@@ -533,43 +621,49 @@ volcano_brush_gene_col <- function(df) {
 output$volcanoBrushTable <- renderDataTable({
   req(figuresDataReactive$volcanoTableFull)
   volcanoTableFull <- figuresDataReactive$volcanoTableFull
-  volcanoTableFull2 <- volcanoTableFull %>% dplyr::select(feature_id, description, log2Ratio, log2Ratio_full, log10p, log10p_full, Status)
+  # Score column alongside a p-value axis (on the score axis log10p IS the score)
+  scoreCols <- if (volcano_score_mode()) character(0) else intersect(volcanoScoreSel, colnames(volcanoTableFull))
+  volcanoTableFull2 <- volcanoTableFull %>% dplyr::select(feature_id, description, log2Ratio, log2Ratio_full, log10p, log10p_full, dplyr::all_of(scoreCols), Status)
   # Proteomics: gene symbol next to the feature_id
   gene_cols <- volcano_brush_gene_col(volcanoTableFull2)
   volcanoTableFull2 <- gene_cols$df
+  yName <- if (volcano_score_mode()) volcanoScoreCol else "-Log10p"
 
   DT::datatable(
     data = brushedPoints(volcanoTableFull2, input$volcanoBrush),
-    colnames = c("Feature name", gene_cols$colname, "Description", "Log2 Ratio (plot)", "Log2 Ratio (full)", "-Log10p (plot)", "-Log10p (full)", "Status"),
+    colnames = c("Feature name", gene_cols$colname, "Description", "Log2 Ratio (plot)", "Log2 Ratio (full)",
+                 paste(yName, "(plot)"), paste(yName, "(full)"), scoreCols, "Status"),
     filter = "top",
     caption = "Click and drag over dots on the volcano plot to see those features in this table.",
     rownames = F
   ) %>%
-    DT::formatSignif(c("log2Ratio", "log2Ratio_full", "log10p", "log10p_full"), digits = 3) %>%
+    DT::formatSignif(c("log2Ratio", "log2Ratio_full", "log10p", "log10p_full", scoreCols), digits = 3) %>%
     DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
     DT::formatStyle(columns = c("log2Ratio", "log2Ratio_full"), color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
-    DT::formatStyle(columns = c("log10p", "log10p_full"), color = styleInterval(cuts = -log10(as.numeric(input$pThresholdVolcano)), values = c("black", "green")), fontWeight = "bold") %>%
+    DT::formatStyle(columns = c("log10p", "log10p_full"), color = styleInterval(cuts = volcano_y_threshold(), values = c("black", "green")), fontWeight = "bold") %>%
     DT::formatStyle(columns = "Status", color = styleEqual(levels = names(volcanoResultsList()$volcanoColours), values = as.character(volcanoResultsList()$volcanoColours)), fontWeight = "bold")
 })
 
 output$MABrushTable <- renderDataTable({
   req(figuresDataReactive$volcanoTableFull)
   volcanoTableFull <- figuresDataReactive$volcanoTableFull
-  volcanoTableFullMA <- volcanoTableFull %>% dplyr::select(feature_id, description, log2Ratio_full, Log2_Mean, log10p_full, Status)
+  scoreCols <- if (volcano_score_mode()) character(0) else intersect(volcanoScoreSel, colnames(volcanoTableFull))
+  volcanoTableFullMA <- volcanoTableFull %>% dplyr::select(feature_id, description, log2Ratio_full, Log2_Mean, log10p_full, dplyr::all_of(scoreCols), Status)
   gene_cols <- volcano_brush_gene_col(volcanoTableFullMA)
   volcanoTableFullMA <- gene_cols$df
+  yName <- if (volcano_score_mode()) volcanoScoreCol else "-Log10p"
 
   DT::datatable(
     data = brushedPoints(volcanoTableFullMA, input$MABrush),
-    colnames = c("Feature name", gene_cols$colname, "Description", "Log2 Ratio", "Log2 Mean", "-Log10p", "Status"),
+    colnames = c("Feature name", gene_cols$colname, "Description", "Log2 Ratio", "Log2 Mean", yName, scoreCols, "Status"),
     filter = "top",
     caption = "Click and drag over dots on the volcano plot to see those features in this table.",
     rownames = F
   ) %>%
-    DT::formatSignif(c("log2Ratio_full", "log10p_full", "Log2_Mean"), digits = 3) %>%
+    DT::formatSignif(c("log2Ratio_full", "log10p_full", "Log2_Mean", scoreCols), digits = 3) %>%
     DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
     DT::formatStyle(columns = c("log2Ratio_full"), color = styleInterval(cuts = 0, values = c("blue", "darkorange")), fontWeight = "bold") %>%
-    DT::formatStyle(columns = c("log10p_full"), color = styleInterval(cuts = -log10(as.numeric(input$pThresholdVolcano)), values = c("black", "green")), fontWeight = "bold") %>%
+    DT::formatStyle(columns = c("log10p_full"), color = styleInterval(cuts = volcano_y_threshold(), values = c("black", "green")), fontWeight = "bold") %>%
     DT::formatStyle(columns = "Status", color = styleEqual(levels = names(volcanoResultsList()$volcanoColours), values = as.character(volcanoResultsList()$volcanoColours)), fontWeight = "bold")
 })
 output$volcanoStatic <- renderPlot(
