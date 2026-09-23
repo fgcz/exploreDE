@@ -760,9 +760,6 @@ observeEvent(
             countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
           }
         }
-        # Row labels follow the "Label features by" radio (proteomics); the
-        # matrix rownames stay feature_ids for the download table.
-        sigRowLabels <- substr(label_features(rownames(countsHeatmapSig), input$fb_label_by_heatmap), 1, 15)
         rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
 
         # Determine heatmap title based on data type
@@ -776,8 +773,9 @@ observeEvent(
         cell_border_size <- if (nrow(countsHeatmapSig) > 200) 0 else input$cellBorderSizeHeatmap2
 
         heatmap <- ComplexHeatmap::Heatmap(
-          matrix = countsHeatmapSig,
-          row_labels = sigRowLabels,
+          # Row labels follow the "Label features by" radio (proteomics); the
+          # matrix itself keeps feature_ids for the download table.
+          matrix = label_rows(countsHeatmapSig, input$fb_label_by_heatmap, width = 15),
           top_annotation = ha,
           name = hmName,
           cluster_columns = input$clusterColsHeatmap,
@@ -895,8 +893,7 @@ observeEvent(
         countsHeatmapCustom <- countsHeatmap[input$fb_keep_heatmap, ]
       }
       ch <- ComplexHeatmap::Heatmap(
-        matrix = countsHeatmapCustom,
-        row_labels = label_features(rownames(countsHeatmapCustom), input$fb_label_by_heatmap),
+        matrix = label_rows(countsHeatmapCustom, input$fb_label_by_heatmap),
         top_annotation = ha,
         name = hmName,
         cluster_columns = input$clusterColsHeatmap,

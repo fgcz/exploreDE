@@ -263,6 +263,17 @@ label_features <- function(ids, mode = "feature_id") {
   ifelse(is.na(labs) | !nzchar(labs), ids, labs)
 }
 
+# Plotting copy of a matrix with rownames swapped for display labels. Relabels
+# rownames rather than passing Heatmap(row_labels = ...) because ComplexHeatmap
+# errors on any explicit row_labels for a 0-row matrix (e.g. empty custom bucket).
+label_rows <- function(mat, mode = "feature_id", width = NULL) {
+  if (!NROW(mat)) return(mat)
+  labs <- label_features(rownames(mat), mode)
+  if (!is.null(width)) labs <- substr(labs, 1, width)
+  rownames(mat) <- labs
+  mat
+}
+
 lapply(c("heatmap", "ordination"), function(tab) {
   output[[paste0("fb_label_mode_", tab)]] <- renderUI({
     has_gene    <- !is.null(eds$proteomics_choices("gene")$lookup)
