@@ -758,6 +758,29 @@ observeEvent(input$multiApplyOrder, {
     })
 })
 
+# TRUE when at least one loaded contrast carries a usable raw p-value. FDR-only
+# producers (SAINTexpress: pValue all NA, fdr = BFDR) fall back to FDR in the
+# multi Tile / Upset tabs, mirroring eds$has_pvalue() in the single-contrast tabs.
+multiHasPvalue <- reactive({
+    any(vapply(multiDeReactive$results, function(x) {
+        p <- x$seqAnno$pValue
+        !is.null(p) && any(!is.na(p))
+    }, logical(1)))
+})
+
+observeEvent(multiHasPvalue(), {
+    req(length(multiDeReactive$results) > 0)
+    if (multiHasPvalue()) {
+        updateSelectInput(session, "pTypeTile", choices = c("FDR", "Raw"),
+                          selected = isolate(input$pTypeTile) %||% "Raw")
+        updateRadioButtons(session, "pTypeUpset", choices = c("FDR", "Raw"),
+                           selected = isolate(input$pTypeUpset) %||% "FDR", inline = TRUE)
+    } else {
+        updateSelectInput(session, "pTypeTile", choices = c("FDR"), selected = "FDR")
+        updateRadioButtons(session, "pTypeUpset", choices = c("FDR"), selected = "FDR", inline = TRUE)
+    }
+})
+
 # 4. Proteomics Auto-Load (Triggered once)
 observeEvent(inputDataReactive(), {
     eds <- inputDataReactive()$.eds
@@ -856,6 +879,17 @@ observeEvent(inputDataReactive(), {
             )
 
             multiDeReactive$results[[con]] <- pseudoObj
+        }
+
+        # Reveal the multi-analysis tabs, preserving the current tab selection.
+        # The sidebar reads hasMultiData() under isolate(), so without this bump
+        # it stays on "Data Selection" only (mirrors the h5ad auto-load below).
+        if (length(multiDeReactive$results) > 0) {
+            currentTab <- isolate(input$tabs)
+            multiDeReactive$menuUpdateTrigger <- multiDeReactive$menuUpdateTrigger + 1
+            shinyjs::delay(100, {
+                if (!is.null(currentTab)) updateTabItems(session, "tabs", selected = currentTab)
+            })
         }
 
         # Also populate the Manual Import text boxes so user can see them?

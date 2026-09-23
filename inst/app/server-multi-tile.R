@@ -396,7 +396,7 @@ observeEvent(
         coloursToUse <- unlist(contrastColours)
 
         # Determine whether the user wants to display raw or adjusted p-values
-        if (input$pTypeTile == "Raw") {
+        if (input$pTypeTile == "Raw" && isTRUE(multiHasPvalue())) {
             pTypeTile <- "pValue"
         } else {
             pTypeTile <- "fdr"
@@ -746,7 +746,7 @@ observeEvent(
         lapply(c("Custom", "GO", "KEGG"), function(plotty) {
             if (length(customList[[plotty]][["highlightersC"]]) >= 1) { # Changed from 3 to 1 to allow smaller selections
                 # Determine p-value type
-                if (input$pTypeTile == "Raw") {
+                if (input$pTypeTile == "Raw" && isTRUE(multiHasPvalue())) {
                     pTypeTile <- "pValue"
                 } else {
                     pTypeTile <- "fdr"

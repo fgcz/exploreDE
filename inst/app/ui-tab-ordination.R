@@ -71,6 +71,7 @@ tabItem(
             # Biplot-specific controls (conditionally shown)
             conditionalPanel(
               condition = "input.ordinationPlotType == 'biplot'",
+              uiOutput("fb_label_mode_ordination"),
               radioButtons(
                 inputId = "biplotGeneSelectionMethod",
                 label = "Gene selection method",

@@ -436,8 +436,10 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
     data = biplot_data$gene_data, aes(x = 0, y = 0, xend = pc_x_scaled, yend = pc_y_scaled, colour = arrow_color),
     arrow = arrow(length = unit(0.2, "cm"), type = "closed"), linewidth = 0.5, alpha = 0.7
   )
+  # Arrow labels: optional display label (e.g. gene symbol), else the feature_id
+  if (!"label" %in% names(biplot_data$gene_data)) biplot_data$gene_data$label <- biplot_data$gene_data$gene
   p <- p + geom_text_repel(
-    data = biplot_data$gene_data, aes(x = pc_x_scaled, y = pc_y_scaled, label = gene, colour = arrow_color),
+    data = biplot_data$gene_data, aes(x = pc_x_scaled, y = pc_y_scaled, label = label, colour = arrow_color),
     size = input$textSizePCA / 4, fontface = "bold", max.overlaps = 20
   )
   p <- p + scale_colour_identity() # Use the actual color values
@@ -871,14 +873,17 @@ observeEvent(input$ordinationMethod, {
 
 # Separate observer to update biplot gene choices only when ordination results change
 # This prevents resetting the selection when user picks genes
-observeEvent(ordinationResults(),
+observeEvent(list(ordinationResults(), input$fb_label_by_ordination),
   {
     ord_res <- ordinationResults()
     if (!is.null(ord_res) && !is.null(ord_res$loadings)) {
+      # Values stay feature_ids; displayed names follow "Label features by"
+      fids <- ord_res$loadings$gene
       updateSelectizeInput(
         session = session,
         inputId = "biplotCustomGenes",
-        choices = ord_res$loadings$gene,
+        choices = setNames(fids, label_features(fids, input$fb_label_by_ordination)),
+        selected = isolate(input$biplotCustomGenes),
         server = TRUE
       )
     }
@@ -927,6 +932,7 @@ observeEvent(
     input$biplotNGenesPerPC
     input$biplotCustomGenes
     input$biplotCustomGenesText
+    input$fb_label_by_ordination
     input$biplotArrowScale
     input$biplotArrowColour
     input$biplotArrowColourX
@@ -1032,6 +1038,10 @@ observeEvent(
       if (!is.null(input$biplotCustomGenesText) && nchar(input$biplotCustomGenesText) > 0) {
         genes_from_text <- strsplit(input$biplotCustomGenesText, "\\s+|/+|,+|\n+|\r+|\t+")[[1]]
         genes_from_text <- genes_from_text[genes_from_text != ""]
+        # Proteomics: also accept pasted gene symbols / protein IDs
+        genes_from_text <- unique(c(genes_from_text,
+                                    resolve_features(genes_from_text, "gene_name"),
+                                    resolve_features(genes_from_text, "protein_Id")))
       }
 
       # Combine and deduplicate
@@ -1168,6 +1178,10 @@ observeEvent(
         custom_genes = biplot_custom_genes,
         selection_method = input$biplotGeneSelectionMethod
       )
+
+      if (!is.null(biplot_data)) {
+        biplot_data$gene_data$label <- label_features(biplot_data$gene_data$gene, input$fb_label_by_ordination)
+      }
 
       # If biplot_data is NULL (no loadings available), fall back to samples-only plot
       if (is.null(biplot_data)) {

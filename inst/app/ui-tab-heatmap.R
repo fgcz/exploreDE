@@ -139,6 +139,7 @@ tabItem(
               checkboxInput(inputId = "colnamesHeatmap", label = "Show sample names?", value = TRUE),
               checkboxInput(inputId = "geneNamesHeatmap", label = "Show feature names?", value = TRUE)
             ),
+            uiOutput("fb_label_mode_heatmap"),
             
             hr(style = "border-top: 1px solid #000000;"), h4("Groups to plot"),
             helpText("Drag and drop groups in order to be plotted"),

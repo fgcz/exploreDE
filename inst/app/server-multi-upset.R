@@ -44,7 +44,7 @@ observeEvent(
         req(length(multiDeReactive$results) > 0)
 
         req(input$pTypeUpset)
-        if (input$pTypeUpset == "Raw") {
+        if (input$pTypeUpset == "Raw" && isTRUE(multiHasPvalue())) {
             pTypeUpset <- "pValue"
             pTypeUpset2 <- "pvalue"
         } else {

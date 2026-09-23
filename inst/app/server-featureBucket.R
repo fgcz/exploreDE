@@ -241,6 +241,49 @@ lapply(fb_reset_tabs, function(tab) {
 })
 
 # =============================================================================
+# Feature label mode (proteomics): which ID to print on heatmap rows / biplot
+# arrows. Inverts the proteomics_choices lookups (label -> feature_ids) into a
+# feature_id -> label map, so it works for both the SE and h5ad backends.
+# =============================================================================
+
+feature_label_map <- function(mode = "feature_id") {
+  kind <- switch(mode, gene_name = "gene", protein_Id = "protein", NULL)
+  if (is.null(kind)) return(NULL)
+  lookup <- eds$proteomics_choices(kind)$lookup
+  if (is.null(lookup)) return(NULL)
+  setNames(rep(names(lookup), lengths(lookup)), unlist(lookup, use.names = FALSE))
+}
+
+# Map feature_ids to display labels; falls back to the feature_id when a
+# feature has no label in the chosen mode.
+label_features <- function(ids, mode = "feature_id") {
+  map <- feature_label_map(mode %||% "feature_id")
+  if (is.null(map)) return(ids)
+  labs <- unname(map[ids])
+  ifelse(is.na(labs) | !nzchar(labs), ids, labs)
+}
+
+lapply(c("heatmap", "ordination"), function(tab) {
+  output[[paste0("fb_label_mode_", tab)]] <- renderUI({
+    has_gene    <- !is.null(eds$proteomics_choices("gene")$lookup)
+    has_protein <- !is.null(eds$proteomics_choices("protein")$lookup)
+    req(has_gene || has_protein)
+
+    choices <- c("Feature ID" = "feature_id")
+    if (has_protein) choices <- c(choices, "Protein ID" = "protein_Id")
+    if (has_gene) choices <- c(choices, "Gene Symbol" = "gene_name")
+
+    radioButtons(
+      inputId = paste0("fb_label_by_", tab),
+      label = "Label features by:",
+      choices = choices,
+      selected = if (has_gene) "gene_name" else "feature_id",
+      inline = TRUE
+    )
+  })
+})
+
+# =============================================================================
 # Phase 8: Gene Symbol Search (sub-protein proteomics)
 # =============================================================================
 
