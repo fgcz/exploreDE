@@ -28,9 +28,9 @@ tabItem(
             LFC direction. 
             Instead, direction of the pathway is represented by the enrichment
             score, where a positive enrichment score implies the pathway is 
-            comprised principally of genes with positive log fold change DEGs, 
+            comprised principally of DE features with a positive log fold change, 
             and a negative enrichment score implies the pathway is mostly 
-            negative DEGs."
+            negative DE features."
         ),
         tags$p(
           "Again, similarly to the ORA, all figures are absent by default until
@@ -47,7 +47,7 @@ tabItem(
           increase/decrease gretaer than genes in the middle. 
           The black lines directly underneath denote each gene in the pathway. 
           The position of the black line on the x-axis denotes the gene's rank.
-          The histogram underneath shows how the distribution of the DEGs and
+          The histogram underneath shows how the distribution of the DE features and
           their ranks.
           When multiple pathways are selected, the running score and gene rank
           lines become coloured by pathway."
@@ -62,15 +62,15 @@ tabItem(
         h4("Upset plot"),
         tags$p(
           "These are like venn diagrams, that show the overlap 
-          between the DEGs in the pathways selected. 
+          between the DE features in the pathways selected. 
           The plot is split into two parts, a violin plot at the top, and a 
           dot and line plot at the bottom.
           The dots and lines at the bottom show which group/s are being 
           presented in the violin plot at the top. So, for example, where we see
           a line between two groups, known as a set, the violin plot above shows
-          the LFCs of the overlapping DEGs between these two groups. 
+          the LFCs of the overlapping DE features between these two groups. 
           The equivalent would be the overlapping section of a venn diagram.
-          Where there is a dot and no line, then the DEGs are unique to that 
+          Where there is a dot and no line, then the DE features are unique to that 
           group. This is the same as the section of a venn that doesn't 
           overlap. The sets are in size order, so largest sets on the left. It 
           is hopefully a useful way to visualise the amount of overlap in genes
@@ -180,6 +180,7 @@ tabItem(
           sliderInput(inputId = "textSizeGSEA", label = "Figure Font Size", min = 4, max = 30, value = 10, step = 0.5, width = "85%"),
           sliderInput(inputId = "figHeightGSEA", label = "Figure Height", min = 100, max = 2000, value = 400, step = 10, width = "85%"),
           sliderInput(inputId = "figWidthGSEA", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
+          legend_offset_ui("GSEA"),
           selectInput(inputId = "downloadFormatGSEA", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF", width = "85%"),
           selectInput(inputId = "dpiGSEA", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600, width = "85%"),
           textInput(inputId = "filename_GSEA", label = "Enter filename", value = "GSEA", width = "85%")

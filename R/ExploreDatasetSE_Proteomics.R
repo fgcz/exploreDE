@@ -1,19 +1,3 @@
-#' Concrete subclass for FGCZ proteomics `SummarizedExperiment` outputs
-#'
-#' Reads from a prolfqua-derived SE. Top-level `rowData(se)` is sparse;
-#' feature metadata and per-contrast DE statistics live nested inside
-#' `rowData(se)$constrast_<name>` DataFrames (note the SUSHI typo is
-#' preserved). The first contrast is the source of truth for feature
-#' metadata. `feature_id` is **built** from `protein_Id` (+ `site` /
-#' `peptide_Id` to disambiguate), and the assay matrices' rownames are
-#' remapped via `.fid_lookup` since SE rownames do not match the built
-#' `feature_id`s.
-#'
-#' Inherits the accessor contract from [ExploreDataset] via
-#' [ExploreDatasetSE]; overrides `.build_config()` and `.prep()`.
-#'
-#' @export
-
 # --- SAINTexpress transitional support --------------------------------------
 # SAINTexpress AP-MS SEs reach the app via the legacy ?data=<.rds> URL path,
 # but break the standard prolfqua assumptions: metadata$param is NULL and the
@@ -22,8 +6,10 @@
 # is a deliberately localised hack so those existing .rds files work from URL;
 # it should be deleted once producers emit canonical h5ad across the board (the
 # h5ad path already handles this shape declaratively via uns$exploreDE$mapping).
-.SAINT_DE_COLS <- c("log2_EFCs", "SaintScore", "BFDR")
-.se_is_saint <- function(contrast_df) all(.SAINT_DE_COLS %in% colnames(contrast_df))
+# Keyed on SaintScore alone: standardise_columns() (via the column dictionary's
+# "log2" / "fdr" substring patterns) may already have renamed log2_EFCs/BFDR to
+# log2Ratio/fdr by the time this runs, but it never touches SaintScore.
+.se_is_saint <- function(contrast_df) "SaintScore" %in% colnames(contrast_df)
 
 # Map a SAINT contrast frame's stat columns onto the canonical legacy names the
 # rest of the app expects (log2Ratio / fdr) and synthesise an all-NA pValue so
@@ -51,6 +37,21 @@
   if (is.null(col)) seq_len(nrow(d)) else order(d[[col]], na.last = TRUE)
 }
 
+#' Concrete subclass for FGCZ proteomics `SummarizedExperiment` outputs
+#'
+#' Reads from a prolfqua-derived SE. Top-level `rowData(se)` is sparse;
+#' feature metadata and per-contrast DE statistics live nested inside
+#' `rowData(se)$constrast_<name>` DataFrames (note the SUSHI typo is
+#' preserved). The first contrast is the source of truth for feature
+#' metadata. `feature_id` is **built** from `protein_Id` (+ `site` /
+#' `peptide_Id` to disambiguate), and the assay matrices' rownames are
+#' remapped via `.fid_lookup` since SE rownames do not match the built
+#' `feature_id`s.
+#'
+#' Inherits the accessor contract from [ExploreDataset] via
+#' [ExploreDatasetSE]; overrides `.build_config()` and `.prep()`.
+#'
+#' @export
 ExploreDatasetSE_Proteomics <- R6::R6Class(
   classname = "ExploreDatasetSE_Proteomics",
   inherit   = ExploreDatasetSE,
@@ -92,7 +93,7 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
         )
         if      ("site"       %in% colnames(df1)) feature_id_kind <- "phospho"
         else if ("peptide_Id" %in% colnames(df1)) feature_id_kind <- "peptide"
-        saint <- .se_is_saint(df1)   # standardise_columns leaves SAINT names as-is
+        saint <- .se_is_saint(df1)   # standardise_columns leaves SaintScore as-is
       }
 
       # SAINTexpress reference = the grouping level flagged as control
@@ -115,10 +116,8 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
             method          = if (saint) "SAINTexpress" else "prolfqua",
             thresholds      = list(fdr = 0.05, log2fc = 1),
             # SAINT carries a second, display-only significance axis (SaintScore,
-            # high = significant); mirrors the h5ad backend's mapping semantics.
-            score_label     = if (saint) "SaintScore" else NULL,
-            score_kind      = if (saint) "probability_high_sig" else NULL,
-            fdr_kind        = "fdr_low_sig"
+            # high = significant); mirrors the h5ad backend's score label.
+            score_label     = if (saint) "SaintScore" else NULL
           )
         }),
         contrasts
@@ -213,8 +212,8 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       )
       std_dfs <- lapply(raw_dfs, standardise_columns)
 
-      # SAINTexpress: its DE columns aren't in the standardise_columns schema —
-      # map log2_EFCs -> log2Ratio and BFDR -> fdr, add an all-NA pValue so the
+      # SAINTexpress: map log2_EFCs -> log2Ratio and BFDR -> fdr wherever
+      # standardise_columns() hasn't already, add an all-NA pValue so the
       # modules that `select(pValue)` don't error (and has_pvalue() reports
       # FALSE, driving the FDR-only degradation), and leave SaintScore in place
       # as a display-only extra. Transitional; drops out for the h5ad path.

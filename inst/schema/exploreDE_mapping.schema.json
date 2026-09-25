@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/fgcz/exploreDE/schema/exploreDE_mapping.schema.json",
   "title": "exploreDE declared mapping (uns['exploreDE']['mapping'])",
-  "description": "Validates the declared-mapping block a canonical exploreDE/1.0 .h5ad may carry at uns['exploreDE']['mapping'] -- WEW's 'dictionary' (see plans/anndata_manifest_design.md): for THIS dataset, which raw column/matrix supplies each concept exploreDE cares about (p-value, fdr, log2fc/ratio, feature id/symbol, domain-specific extras like nrPeptides or SaintScore), kept in the file instead of re-guessed from a growing list of hardcoded column-name regexes. Written by build_explore_h5ad()'s `de_columns` / `rowdata_columns` arguments; consumed by ExploreDatasetH5AD (the `de` block) and otherwise kept for self-description/provenance. Two groups exist today: `de` (DE stat + optional extra-score columns, per contrast or shared default) and `feature` (feature id/symbol/description column, dataset-wide). Count-matrix naming needs no separate block -- the names given in build_explore_h5ad()'s `counts` argument ARE that dictionary entry already. Extend this schema in lockstep with new mapping keys in the R code, never ahead of it.",
+  "description": "Validates the declared-mapping block a canonical exploreDE/1.0 .h5ad may carry at uns['exploreDE']['mapping'] -- WEW's 'dictionary' (see plans/jambon/anndata_manifest_design.md): for THIS dataset, which raw column/matrix supplies each concept exploreDE cares about (p-value, fdr, log2fc/ratio, feature id/symbol, domain-specific extras like nrPeptides or SaintScore), kept in the file instead of re-guessed from a growing list of hardcoded column-name regexes. Written by build_explore_h5ad()'s `de_columns` / `rowdata_columns` arguments; consumed by ExploreDatasetH5AD (the `de` block) and otherwise kept for self-description/provenance. Two groups exist today: `de` (DE stat + optional extra-score columns, per contrast or shared default) and `feature` (feature id/symbol column, dataset-wide). Count-matrix naming needs no separate block -- the names given in build_explore_h5ad()'s `counts` argument ARE that dictionary entry already. Extend this schema in lockstep with new mapping keys in the R code, never ahead of it.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -10,14 +10,9 @@
     "feature": { "$ref": "#/definitions/featureMapping" }
   },
   "definitions": {
-    "significanceKind": {
-      "type": "string",
-      "description": "Direction of a significance axis: which side of a threshold counts as significant.",
-      "enum": ["p_value_low_sig", "fdr_low_sig", "probability_high_sig"]
-    },
     "deSemantics": {
       "type": "object",
-      "description": "For one contrast (or the shared default): which source column fed each canonical DE target, plus the display-only semantics for the optional extra score and the fdr axis's direction.",
+      "description": "For one contrast (or the shared default): which source column fed each overridden DE target, plus the source column and display label of the optional extra score.",
       "additionalProperties": false,
       "minProperties": 1,
       "properties": {
@@ -44,10 +39,8 @@
         "score_label": {
           "type": "string",
           "minLength": 1,
-          "description": "Display label for the optional extra scored column (e.g. 'SaintScore', 'nrPeptides')."
-        },
-        "score_kind": { "$ref": "#/definitions/significanceKind" },
-        "fdr_kind": { "$ref": "#/definitions/significanceKind" }
+          "description": "Display label for the optional extra score column (e.g. 'SaintScore'); the source column name, as recognised by the column dictionary."
+        }
       }
     },
     "deMapping": {
@@ -66,7 +59,7 @@
     },
     "featureMapping": {
       "type": "object",
-      "description": "Explicit override of which rowData column supplies the feature id / symbol / description, for producers whose column names don't match built-in auto-detection. Declared via build_explore_h5ad()'s `rowdata_columns` argument; only entries actually consulted are recorded (auto-detected columns stay implicit).",
+      "description": "Explicit override of which rowData column supplies the feature id / symbol, for producers whose column names don't match built-in auto-detection. Declared via build_explore_h5ad()'s `rowdata_columns` argument; only entries actually consulted are recorded (auto-detected columns stay implicit).",
       "additionalProperties": false,
       "minProperties": 1,
       "properties": {
@@ -79,11 +72,6 @@
           "type": "string",
           "minLength": 1,
           "description": "Source column supplying the feature's display symbol/name."
-        },
-        "description_col": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Source column supplying the feature's free-text description."
         }
       }
     }

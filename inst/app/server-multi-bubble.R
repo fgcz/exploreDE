@@ -135,7 +135,7 @@ observeEvent(
         }), names(dfListBubble))
 
         # make that list a single df for plotting
-        plotDFBubble <- rbindlist(plotDFBubbleListBubble)
+        plotDFBubble <- dplyr::bind_rows(plotDFBubbleListBubble)
         plotDFBubble$Contrast <- factor(plotDFBubble$Contrast, levels = names(multiDeReactive$results))
         plotDFBubble$Colours <- names(highlightColsBubble)[match(plotDFBubble$Label, as.character(highlightColsBubble))]
 

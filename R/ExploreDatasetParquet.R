@@ -4,7 +4,7 @@
 #  The exploreDElight (Tauri) backend. A native Rust process reads the user's
 #  canonical .h5ad and writes the slices exploreDE needs as parquet into a temp
 #  directory; this class reads that directory. See
-#  plans/exploredelight_tauri_plan.md §2 for why the bridge exists at all
+#  plans/exploredelight/exploredelight_tauri_plan.md §2 for why the bridge exists at all
 #  (hdf5r's read path is broken under wasm, so R cannot open the .h5ad itself).
 #
 #  It deliberately INHERITS FROM ExploreDatasetH5AD rather than from
@@ -17,7 +17,7 @@
 #  would fork logic that has no business being forked.
 #
 #  Directory layout consumed here — this is the CONTRACT the Rust writer must
-#  satisfy, and `plans/spike_h5ad_bridge/h5ad_to_parquet_dir.R` is its
+#  satisfy, and `plans/exploredelight/spike_h5ad_bridge/h5ad_to_parquet_dir.R` is its
 #  executable specification:
 #
 #    manifest.json               schema, source identity, orientation, factor levels
@@ -39,7 +39,7 @@
 # testing this class against a real dataset without a browser — it must never
 # be the only thing that works, or the tests would be grading a reader we do
 # not ship. Proven interoperable with arrow-rs-written parquet 2026-08-28
-# (plans/spike_h5ad_bridge/README.md).
+# (plans/exploredelight/spike_h5ad_bridge/README.md).
 .pq_read <- function(path) {
   if (!file.exists(path)) stop("ExploreDatasetParquet: missing file: ", path)
   if (requireNamespace("nanoparquet", quietly = TRUE)) {
@@ -110,7 +110,7 @@
 #' @param config Optional pre-built config list; derived from `uns.json` when
 #'   omitted.
 #'
-#' @export
+#' @keywords internal
 ExploreDatasetParquet <- R6::R6Class(
   classname = "ExploreDatasetParquet",
   inherit   = ExploreDatasetH5AD,

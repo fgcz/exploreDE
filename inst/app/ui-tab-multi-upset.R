@@ -19,7 +19,7 @@ tabItem(
                     "Upset plots are a way of visualising overlaps and intersections
           between or across multiple groups. They are similar to Venn diagrams,
           but condense much more information into a single figure. Here, we use
-          upset plots to visualise overlapping DEGs and pathways between
+          upset plots to visualise overlapping DE features and pathways between
           multiple SUSHI-generated differential expression results."
                 ),
                 tags$p("Upset plots have three modes. Please refer to the image at the
@@ -37,7 +37,7 @@ tabItem(
            between two or more groups. Furthermore, when you click groups to see
            the genes/spanathways that overlap for one group, you will not see the
            results if the 'Show single-group sets?' button is unticked."),
-                tags$p("Individual parameters for the overlapping DEGs and pathways is
+                tags$p("Individual parameters for the overlapping DE features and pathways is
            possible. Not all settings affect all figures. For example, log fold
            change doesn't affect the pathway results, while GSEA does not use
            the raw p-values.")
@@ -54,7 +54,7 @@ tabItem(
                         selectInput(inputId = "subdataToUpset", label = "Select the direction/ontology to plot", choices = c(), width = "50%"),
                         radioButtons(inputId = "upsetOrVenn", label = "Upset or Venn?", choices = c("Upset", "Venn"), selected = "Upset", inline = TRUE),
                         helpText("You can only make a Venn if you have loaded 4 contrasts or fewer."),
-                        hr(style = "border-top: 1px solid #000000;"), h4("DEG Settings"),
+                        hr(style = "border-top: 1px solid #000000;"), h4("DE Settings"),
                         numericInput(inputId = "lfcUpset", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
                         radioButtons(inputId = "pTypeUpset", choices = c("FDR", "Raw"), label = "P-Value:", selected = "FDR", inline = TRUE),
                         selectInput(inputId = "pThresholdUpset", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)

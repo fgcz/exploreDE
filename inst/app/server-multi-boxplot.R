@@ -513,8 +513,14 @@ observeEvent(
         d_melt <- multiBoxplotCountsReactive()$datasetBoxplot
         levels_to_watch <- unique(d_melt[[input$multiBoxplotFactor1]])
         lapply(levels_to_watch, function(lvl) {
-            input[[paste0("GroupColour", input$multiBoxplotFactor1, lvl)]]
+            list(input[[paste0("GroupColour", input$multiBoxplotFactor1, lvl)]],
+                 input[[paste0("GroupLabel", input$multiBoxplotFactor1, lvl)]])
         })
+        if (isTRUE(!input$multiBoxplotFactor2 %in% c("None", "Feature"))) {
+            lapply(unique(d_melt[[input$multiBoxplotFactor2]]), function(lvl) {
+                input[[paste0("GroupLabel", input$multiBoxplotFactor2, lvl)]]
+            })
+        }
     }
   },
   ignoreNULL = FALSE,
@@ -551,6 +557,18 @@ observeEvent(
 
     cols <- unlist(cols)
 
+    # Display labels from the Colours tab (x-axis/fill factor, and shape factor).
+    # If either is rich, both are, as they share the markdown legend text.
+    mbShapeFactor <- if (input$multiBoxplotFactor2 %in% c("None", "Feature")) NULL else input$multiBoxplotFactor2
+    mbShapeLevels <- if (is.null(mbShapeFactor)) NULL else levels(as.factor(countsBoxplotMelt[[mbShapeFactor]]))
+    mbLabels <- level_labels(input, input$multiBoxplotFactor1, groupLevels, wrap = input$multiBoxplotConditionFormat)
+    mbShapeLabels <- if (is.null(mbShapeFactor)) NULL else level_labels(input, mbShapeFactor, mbShapeLevels)
+    mbRich <- is_rich_labels(mbLabels) || is_rich_labels(mbShapeLabels)
+    if (mbRich) {
+      mbLabels <- level_labels(input, input$multiBoxplotFactor1, groupLevels, wrap = input$multiBoxplotConditionFormat, force_rich = TRUE)
+      if (!is.null(mbShapeFactor)) mbShapeLabels <- level_labels(input, mbShapeFactor, mbShapeLevels, force_rich = TRUE)
+    }
+
 
     facetFree <- "free"
     if (input$multiBoxplotYScaleFree) {
@@ -573,7 +591,7 @@ observeEvent(
         boxplot <- boxplot + geom_beeswarm(aes(fill = .data[[input$multiBoxplotFactor1]]), size = input$multiBoxplotPointSize, alpha = input$multiBoxplotPointAlpha, shape = 21, cex = input$multiBoxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$multiBoxplotPointBorder)
        } else {
         boxplot <- boxplot + geom_beeswarm(aes(fill = .data[[input$multiBoxplotFactor1]], shape = .data[[input$multiBoxplotFactor2]]), size = input$multiBoxplotPointSize, alpha = input$multiBoxplotPointAlpha, cex = input$multiBoxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$multiBoxplotPointBorder)
-        boxplot <- boxplot + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25), times = 10))[1:nlevels(as.factor(countsBoxplotMelt[[input$multiBoxplotFactor2]]))])
+        boxplot <- boxplot + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25), times = 10))[1:nlevels(as.factor(countsBoxplotMelt[[input$multiBoxplotFactor2]]))], labels = mbShapeLabels)
        }
     }
     if (input$multiBoxplotShowMeanBar & input$multiBoxplotMeanBarFront) {
@@ -581,16 +599,13 @@ observeEvent(
     }
 
     if (input$multiBoxplotGrey) {
-      boxplot <- boxplot + scale_colour_grey() + scale_fill_grey()
+      boxplot <- boxplot + scale_colour_grey() + scale_fill_grey(labels = mbLabels)
     } else {
-      boxplot <- boxplot + scale_fill_manual(values = cols)
+      boxplot <- boxplot + scale_fill_manual(values = cols, labels = mbLabels)
     }
 
-    if (input$multiBoxplotConditionFormat) {
-      xlabs <- levels(countsBoxplotMelt[[input$multiBoxplotFactor1]])
-      xlabs <- gsub("\\_|\\.|\\ |\\/", "\n", xlabs)
-      boxplot <- boxplot + scale_x_discrete(labels = xlabs)
-    }
+    # Level labels (custom and/or "format condition names" line breaks)
+    boxplot <- boxplot + scale_x_discrete(labels = mbLabels)
 
     # Facet labels: "gene symbol\nfeature_id" for proteomics, as in the single
     # boxplot; plain feature_id otherwise.
@@ -716,6 +731,7 @@ observeEvent(
     }
 
     boxplot <- boxplot + theme_prism(base_size = input$textSizeMultiBoxplot, axis_text_angle = input$multiBoxplotConditionAngle, base_family = input$multiBoxplotFont, border = input$multiBoxplotPlotBorder)
+    if (mbRich) boxplot <- boxplot + rich_label_theme(axis_x = TRUE, legend = TRUE)
 
     if (!input$multiBoxplotShowConditions) {
       boxplot <- boxplot + theme(axis.text.x = element_blank())
@@ -730,7 +746,9 @@ observeEvent(
     barplot <- ggplot(data = countsBarplot, aes(x = .data[[input$multiBoxplotFactor1]], y = Counts, fill = .data[[input$multiBoxplotFactor1]]))
     barplot <- barplot + facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol, labeller = facetLabeller)
     barplot <- barplot + geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = input$multiBoxplotBoxAlpha, show.legend = FALSE)
+    barplot <- barplot + scale_x_discrete(labels = mbLabels)
     barplot <- barplot + theme_prism(base_size = input$textSizeMultiBoxplot)
+    if (mbRich) barplot <- barplot + rich_label_theme(axis_x = TRUE)
 
     multiBoxplotFiguresReactive$barplot <- barplot
   }

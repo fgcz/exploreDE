@@ -62,7 +62,7 @@ tabItem(
                         hr(style = "border-top: 1px solid #000000;"),
                         h4("Display Options"),
                         checkboxInput(
-                            inputId = "colnamesHeatmap",
+                            inputId = "colnamesMultiPathwayHeatmap",
                             label = "Show contrast names?",
                             value = TRUE
                         ),
@@ -72,7 +72,7 @@ tabItem(
                             value = TRUE
                         ),
                         checkboxInput(
-                            inputId = "clusterRowsHeatmap",
+                            inputId = "clusterRowsMultiPathwayHeatmap",
                             label = "Cluster rows (pathways)?",
                             value = TRUE
                         ),
@@ -98,7 +98,7 @@ tabItem(
                         hr(style = "border-top: 1px solid #000000;"),
                         h4("Size & Fonts"),
                         sliderInput(
-                            inputId = "textSizeHeatmap",
+                            inputId = "textSizeMultiPathwayHeatmap",
                             label = "Base font size",
                             min = 6,
                             max = 24,
@@ -107,7 +107,7 @@ tabItem(
                             ticks = FALSE
                         ),
                         sliderInput(
-                            inputId = "figWidthHeatmap",
+                            inputId = "figWidthMultiPathwayHeatmap",
                             label = "Figure width (px)",
                             min = 800,
                             max = 4000,
@@ -116,14 +116,15 @@ tabItem(
                             ticks = FALSE
                         ),
                         sliderInput(
-                            inputId = "figHeightHeatmap",
+                            inputId = "figHeightMultiPathwayHeatmap",
                             label = "Figure height (px)",
                             min = 100,
                             max = 4000,
                             value = 800,
                             step = 100,
                             ticks = FALSE
-                        )
+                        ),
+                        legend_offset_ui("multiPathwayHeatmap")
                     )
                 )
             )

@@ -49,8 +49,6 @@ detect_se_shape <- function(se) {
 #' - A character path to a `.RData` file (Mageck EzResult convention).
 #' - A character path to a directory containing one of the standard
 #'   SUSHI artefacts (`deResult.rds`, `rawData_final.rds`, etc.).
-#' - A character path to a parquet directory written by
-#'   [export_h5ad_to_parquet()] (the exploreDElight bridge format).
 #' - An `http(s)://` URL pointing at an `.rds` file.
 #'
 #' @param input See above.

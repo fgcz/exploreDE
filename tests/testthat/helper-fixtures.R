@@ -6,8 +6,8 @@
 # `fx_*()` accessors below; if the underlying file / URL is unreachable, the
 # test skips gracefully (does not error).
 #
-# Bioconductor / ezRun generics are used unqualified inside R/helperFunctions.R
-# (metadata, assay, rowData, colData, getRpkm, getTpm, ...). The installed app
+# Bioconductor generics are used unqualified inside R/helperFunctions.R
+# (metadata, assay, rowData, colData, ...). The installed app
 # attaches these via library() at startup; tests need to mirror that, since
 # NAMESPACE does not currently importFrom them.
 # -----------------------------------------------------------------------------
@@ -16,7 +16,6 @@ suppressPackageStartupMessages({
   library(shiny)               # isolate() / reactiveValues() used unqualified
   library(SummarizedExperiment)
   library(DESeq2)
-  library(ezRun)
   library(ggrepel)             # ggrepel::geom_*_repel used unqualified
 })
 

@@ -398,15 +398,41 @@ load_from_url <- function(dataUrl) {
   set_eds_from_se(loaded$se, loaded$seUnfiltered, loaded$dataDir)
 }
 
-# The demo dataset (no ?data=, triggered by the landing-screen button).
-# A directory (as a ?data= URL resolves to), NOT the deResult file — load_sushi_se
-# appends deResult.rds/.qs2 itself for the DESeq2/EdgeR/Limma branch.
-DEMO_DATADIR <- "/srv/gstore/projects/p3009/o5638_EdgeR_diff--over--undiff_2026-07-30--12-08-00/diff--over--undiff"
+# The demo dataset (no ?data=, triggered by the landing-screen button): the
+# SUSHI RNA-seq result shipped with the package, so the demo works anywhere, not
+# only where /srv/gstore is mounted. The app always runs with inst/app (or an
+# installed package's app/) as its working directory, so the examples are at
+# ../examples in the source tree, the container and an installed package alike.
+DEMO_DATADIR <- normalizePath("../examples/genomics", mustWork = FALSE)
 load_demo <- function() {
-  record_project("p3009")
-  loaded <- load_sushi_se(DEMO_DATADIR, "demo", "p3009")
-  if (is.null(loaded)) return(invisible())
-  set_eds_from_se(loaded$se, loaded$seUnfiltered, loaded$dataDir)
+  record_project(NULL)
+  f <- file.path(DEMO_DATADIR, "deResult.rds")
+  if (!file.exists(f)) {
+    showModal(modalDialog(title = "Demo data not found",
+                          paste("Expected the demo dataset at", f), easyClose = TRUE))
+    return(invisible())
+  }
+  set_eds_from_se(readRDS(f), dataDir = DEMO_DATADIR)
+}
+
+# A file handed to exploreDE(file = ...): an .h5ad goes through the same checks
+# as an upload; anything else (a SummarizedExperiment .rds/.qs2, or a SUSHI
+# result directory) through new_explore_dataset().
+load_local_file <- function(path) {
+  if (grepl("\\.h5ad$", path, ignore.case = TRUE)) {
+    res <- load_h5ad_upload(path)
+    if (!isTRUE(res$ok)) {
+      showModal(modalDialog(title = "Could not load this file", res$msg, easyClose = TRUE))
+    }
+    return(invisible())
+  }
+  eds <- tryCatch(new_explore_dataset(path), error = function(e) e)
+  if (inherits(eds, "error")) {
+    showModal(modalDialog(title = "Could not load this file",
+                          conditionMessage(eds), easyClose = TRUE))
+    return(invisible())
+  }
+  set_eds(eds, dataDir = if (dir.exists(path)) path else dirname(path))
 }
 
 # A user-uploaded canonical .h5ad. Returns list(ok, msg) so the landing screen
@@ -434,14 +460,17 @@ load_h5ad_upload <- function(path) {
 # ---- Boot: resolve + load a ?data= URL eagerly (unchanged UX for SUSHI) ------
 queryList <- parseQueryString(session$clientData$url_search)
 dataUrl   <- if (is.list(queryList)) queryList$data else NULL
-message(format(Sys.time(), "%Y-%m-%d %H:%M:%S"), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
+message(format(Sys.time(), "%Y-%m-%d--%H-%M-%S"), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
 
 if (!is.null(dataUrl)) {
   # `dataType` at module scope for the telemetry-app-name check in app.R.
   dataType <- if (grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) "proteomics" else "gStore"
   load_from_url(dataUrl)
+} else if (!is.null(getOption("exploreDE.file"))) {
+  # Launched locally as exploreDE(file = ...).
+  load_local_file(getOption("exploreDE.file"))
 }
-# No ?data= → edsState stays NULL → the landing screen (server-landing.R) shows.
+# Nothing to load → edsState stays NULL → the landing screen (server-landing.R) shows.
 
 figuresDataReactive <- reactiveValues(
   "volcanoStatic" = NULL, "volcanoMA" = NULL, "volcanoPlotly" = NULL,

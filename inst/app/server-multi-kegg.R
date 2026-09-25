@@ -3,9 +3,9 @@
 observeEvent(
     {
         input$KEGGID
-        input$lfcKEGG
-        input$pTypeKEGG
-        input$pThresholdKEGG
+        input$lfcMultiKEGG
+        input$pTypeMultiKEGG
+        input$pThresholdMultiKEGG
         input$KEGGLimitColour
     },
     ignoreNULL = TRUE,
@@ -44,7 +44,7 @@ observeEvent(
         if (sp != "other") {
             req(input$KEGGID)
             if (nchar(input$KEGGID) >= 5) { # Allow short IDs like 05200
-                if (input$pTypeKEGG == "Raw") {
+                if (input$pTypeMultiKEGG == "Raw") {
                     pTypeKEGG <- "pValue"
                 } else {
                     pTypeKEGG <- "fdr"
@@ -63,7 +63,7 @@ observeEvent(
                     # df1 <- df1[df1$usedInTest == TRUE,] # exploreDE might not have this column, skip
 
                     # Filter
-                    df1 <- df1[which(df1[[pTypeKEGG]] <= as.numeric(input$pThresholdKEGG) & abs(df1$log2Ratio) >= as.numeric(input$lfcKEGG)), ]
+                    df1 <- df1[which(df1[[pTypeKEGG]] <= as.numeric(input$pThresholdMultiKEGG) & abs(df1$log2Ratio) >= as.numeric(input$lfcMultiKEGG)), ]
 
                     gL1 <- data.frame("Gene" = as.character(df1$entrez_id), "log2Ratio" = df1$log2Ratio)
                     colnames(gL1)[2] <- names(results)[i]
@@ -190,14 +190,14 @@ output$dlPlot_multiKegg <- downloadHandler(
         req(sp != "other")
         
         # Prepare data matrix (this logic is duplicated from renderImage, but safer to re-run for download)
-        if (input$pTypeKEGG == "Raw") pTypeKEGG <- "pValue" else pTypeKEGG <- "fdr"
+        if (input$pTypeMultiKEGG == "Raw") pTypeKEGG <- "pValue" else pTypeKEGG <- "fdr"
         
         pathviewList <- list()
         for (i in seq_along(results)) {
             df1 <- results[[i]]$seqAnno
             if (!"entrez_id" %in% colnames(df1)) next
             
-            df1 <- df1[which(df1[[pTypeKEGG]] <= as.numeric(input$pThresholdKEGG) & abs(df1$log2Ratio) >= as.numeric(input$lfcKEGG)), ]
+            df1 <- df1[which(df1[[pTypeKEGG]] <= as.numeric(input$pThresholdMultiKEGG) & abs(df1$log2Ratio) >= as.numeric(input$lfcMultiKEGG)), ]
             
             gL1 <- data.frame("Gene" = as.character(df1$entrez_id), "log2Ratio" = df1$log2Ratio)
             colnames(gL1)[2] <- names(results)[i]

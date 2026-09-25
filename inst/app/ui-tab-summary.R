@@ -64,39 +64,27 @@ tabItem(
         ),
         uiOutput(outputId = "referencesText"),
         box(
-          title = "Updates, August 2026",
+          title = "Updates, October 2026",
           width = NULL,
           solidHeader = TRUE,
           status = "primary",
-          tags$b("More new features? Surely you can't be serious?!"),
+          tags$b("Not another one?!"),
           br(),
-          tags$p("I am serious, and don't call me Shirley. ExploreDE v3.7.0 has crash landed! Otto himself got this down."),
+          tags$p("ExploreDE 3.8.0! This app gets more updates than the UK does elections."),
           tags$ul(
             tags$li(
-              "The main new feature is a ", tags$b("save-state function"), ". Now you can save all the settings you have carefully tweaked as a single .rds file, and then upload that again next time.",
+              tags$b("Finally!"), " You can relabel groups!",
               tags$ul(
-                tags$li("It's very much a beta, and possibly quite buggy — please report any issues (and send links and .rds files too, please). One .rds file works for one exploreDE URL only — no crossing the streams here."),
-                tags$li("It lives in its own tab under the now-labelled 'Session' section, called 'Save/Load Session (beta)'. Try it out!"),
-                tags$li("It also doesn't save anything for the multiDE section yet; that will hopefully come shortly.")
+                tags$li("Under the 'Colours / Label' tab, you can rename the group labels to whatever you want!"),
+                tags$li("It supports italics, super/subscript, and Greek letters..."),
+                tags$li("... mostly! They might not all show in the Shiny app, but the PDFs should render fine.")
               )
             ),
             tags$li(
-              "We've also rejigged the ", tags$b("main landing page"), " of the app (i.e. just ",
-              tags$a(href = "https://fgcz-shiny.uzh.ch/exploreDE", "https://fgcz-shiny.uzh.ch/exploreDE"),
-              ") as we're starting to build out support for custom datasets.",
-              tags$ul(
-                tags$li("The spec isn't finalised yet, so documentation will follow. But very soon you'll be able to easily make an exploreDE object of your own data, wherever it's from. Exciting!")
-              )
-            ),
-            tags$li(
-              "Lastly, some KEGG/GO pathway plots have been expanded.",
-              tags$ul(
-                tags$li("Specifically to heatmaps and multiDE, you can now select pathways independent of statistics. Might be useful to target specific pathways.")
-              )
+              "We've also spent some time tidying some plots, fixing some little niggles (like the feature bucket), and adding some extra little sliders."
             )
           ),
-          tags$p(tags$em("As always, feedback on the app (good and bad), feature requests, and bug reports are greatly appreciated!")),
-          tags$p(tags$em("P.S., if you got the film reference, then the app will run better for you."))
+          tags$p(tags$em("As always, feedback on the app (good and bad), feature requests, and bug reports are greatly appreciated!"))
         )
       )
     )

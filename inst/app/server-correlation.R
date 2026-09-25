@@ -177,12 +177,12 @@ observeEvent(
     input$correlationMaxOverlaps
     input$correlationLabelPosX
     input$correlationLabelPosY
-    # Add all color picker inputs as dependencies so plot updates when colors change
+    # Add all color picker + level label inputs as dependencies so plot updates when they change
     local({
       eds_dep <- inputDataReactive()$.eds
       lapply(eds_dep$factor_names(), function(fname) {
         lapply(eds_dep$factor_levels(fname), function(lev) {
-          input[[paste0("GroupColour", fname, lev)]]
+          list(input[[paste0("GroupColour", fname, lev)]], input[[paste0("GroupLabel", fname, lev)]])
         })
       })
     })
@@ -289,6 +289,18 @@ observeEvent(
       paste0(col2hex(input[[paste0("GroupColour", input$correlationColourBy, k)]]), "FF")
     }), input$correlationKeepBucket)
 
+    # Display labels from the Colours tab (fill factor, and shape factor).
+    # If either is rich, both are, as they share the markdown legend text.
+    corrShapeFactor <- if (isTRUE(input$correlationShapeBy != "None")) input$correlationShapeBy else NULL
+    corrShapeLevels <- if (is.null(corrShapeFactor)) NULL else levels(as.factor(countsCorrelation[[corrShapeFactor]]))
+    corrLabels <- level_labels(input, input$correlationColourBy, input$correlationKeepBucket)
+    corrShapeLabels <- if (is.null(corrShapeFactor)) NULL else level_labels(input, corrShapeFactor, corrShapeLevels)
+    corrRich <- is_rich_labels(corrLabels) || is_rich_labels(corrShapeLabels)
+    if (corrRich) {
+      corrLabels <- level_labels(input, input$correlationColourBy, input$correlationKeepBucket, force_rich = TRUE)
+      if (!is.null(corrShapeFactor)) corrShapeLabels <- level_labels(input, corrShapeFactor, corrShapeLevels, force_rich = TRUE)
+    }
+
     # get the correct coefficient
     if (input$correlationMethod == "Spearman") {
       cor <- "rho"
@@ -306,7 +318,7 @@ observeEvent(
       corr_plot1 <- corr_plot1 + geom_point(aes(fill = .data[[input$correlationColourBy]]), pch = 21, size = input$correlationPointSize, stroke = input$correlationPointStroke, alpha = input$correlationPointAlpha)
     } else {
       corr_plot1 <- corr_plot1 + geom_point(aes(fill = .data[[input$correlationColourBy]], shape = .data[[input$correlationShapeBy]]), size = input$correlationPointSize, stroke = input$correlationPointStroke, alpha = input$correlationPointAlpha)
-      corr_plot1 <- corr_plot1 + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25), times = 10))[1:nlevels(as.factor(countsCorrelation[[input$correlationShapeBy]]))])
+      corr_plot1 <- corr_plot1 + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25), times = 10))[1:nlevels(as.factor(countsCorrelation[[input$correlationShapeBy]]))], labels = corrShapeLabels)
       corr_plot1 <- corr_plot1 + guides(fill = guide_legend(override.aes = list(shape = 21, size = 3)), shape = guide_legend(override.aes = list(fill = "black", size = 3)))
     }
     if (input$correlationShowNames) {
@@ -322,9 +334,10 @@ observeEvent(
         max.overlaps = input$correlationMaxOverlaps
       )
     }
-    corr_plot1 <- corr_plot1 + scale_fill_manual(breaks = names(coloursCorrelation), values = as.character(coloursCorrelation))
+    corr_plot1 <- corr_plot1 + scale_fill_manual(breaks = names(coloursCorrelation), values = as.character(coloursCorrelation), labels = corrLabels)
     corr_plot1 <- corr_plot1 + theme_prism(base_size = input$textSizeCorrelation)
     corr_plot1 <- corr_plot1 + theme(legend.text = element_text(size = input$textSizeCorrelation, color = "black", face = "bold"))
+    if (corrRich) corr_plot1 <- corr_plot1 + rich_label_theme(legend = TRUE)
     corr_plot1 <- corr_plot1 + labs(x = corr_axis_labels[1], y = corr_axis_labels[2])
     corr_plot1
     correlationPlot$plot <- corr_plot1

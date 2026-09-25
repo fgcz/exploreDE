@@ -5,9 +5,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
   keggPlotReactive <- reactiveValues(outfile = NULL, gD = NULL, keggInput = NULL, spp = NULL)
   output$keggPlotDesign <- renderText({ design })
 
-  ref <- eds$ref_build()
-  spp <- ezRun::getSpecies(ref)
-  if (grepl("^Rattus", ref)) spp <- "Rat"
+  spp <- kegg_species_label(eds$ref_build())
   
   observeEvent(
     {

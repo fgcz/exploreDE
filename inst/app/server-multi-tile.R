@@ -565,7 +565,7 @@ observeEvent(
             ),
             border = TRUE,
             column_gap = unit(1, "mm"),
-            column_title = paste("Top", input$tileDEGNumber, "DEGs"),
+            column_title = paste("Top", input$tileDEGNumber, "DE"),
             top_annotation = ha,
             column_labels = colLabels,
             rect_gp = gpar(col = input$cellBorderColourTile2, lwd = input$cellBorderSizeTile2 / 10),
@@ -594,7 +594,8 @@ output$TopNTileMap <- renderPlot(
             return()
         }
         validate(need(nrow(tilePlots$mat1) > 0, "No genes meet the selected criteria (LFC/P-value thresholds)."))
-        draw(tilePlots$top, merge_legend = TRUE)
+        draw_heatmap(tilePlots$top, merge_legend = TRUE,
+                     legend_dx = input$multiTileLegendDX, legend_dy = input$multiTileLegendDY)
     },
     width = function() as.numeric(input$figWidthTile),
     height = function() as.numeric(input$figHeightTile)
@@ -613,7 +614,9 @@ output$dlPlot_tileTop <- downloadHandler(
     content = function(file) {
         req(tilePlots$top)
         export_plot_standard(
-            plot_object = tilePlots$top,
+            plot_object = function() draw_heatmap(tilePlots$top, merge_legend = TRUE,
+                                                  legend_dx = input$multiTileLegendDX,
+                                                  legend_dy = input$multiTileLegendDY),
             filename = file,
             format = tolower(input$downloadFormatMultiTile),
             width = as.numeric(input$figWidthTile) / 75,
@@ -690,8 +693,8 @@ output$dlTable_tileTop <- downloadHandler(
         export_excel_standard(
             df = tilePlots$df3,
             filename = file,
-            sheet_name = "Top DEGs Results",
-            table_name = "TopDEGsResults"
+            sheet_name = "Top DE Results",
+            table_name = "TopDEResults"
         )
     }
 )
@@ -935,7 +938,8 @@ lapply(c("Custom", "GO", "KEGG"), function(plotty) {
         {
             hm <- tilePlots[[tolower(plotty)]]
             validate(need(!is.null(hm), "No genes selected or meeting criteria for this plot."))
-            draw(hm, merge_legend = TRUE)
+            draw_heatmap(hm, merge_legend = TRUE,
+                         legend_dx = input$multiTileLegendDX, legend_dy = input$multiTileLegendDY)
         },
         width = function() as.numeric(input$figWidthTile),
         height = function() as.numeric(input$figHeightTile)
@@ -953,7 +957,9 @@ lapply(c("Custom", "GO", "KEGG"), function(plotty) {
             req(tilePlots[[tolower(plotty)]])
             hm <- tilePlots[[tolower(plotty)]]
             export_plot_standard(
-                plot_object = hm,
+                plot_object = function() draw_heatmap(hm, merge_legend = TRUE,
+                                                      legend_dx = input$multiTileLegendDX,
+                                                      legend_dy = input$multiTileLegendDY),
                 filename = file,
                 format = tolower(input$downloadFormatMultiTile),
                 width = as.numeric(input$figWidthTile) / 75,

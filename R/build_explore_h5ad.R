@@ -2,7 +2,7 @@
 #  build_explore_h5ad()  —  source-agnostic "bring your own data" constructor
 #
 #  Assembles a canonical exploreDE/1.0 .h5ad from a user's possibly-disparate
-#  pieces, per the finalised contract (plans/byo_data_import_plan.md §0c;
+#  pieces, per the finalised contract (plans/jambon/byo_data_import_plan.md §0c;
 #  memory project_exploreDE_byo_constructor_spec):
 #
 #    Required : >=1 count matrix (any kind; raw NOT privileged) + colData + omics
@@ -54,13 +54,11 @@
   if (key %in% names(map)) map[[key]] else nm
 }
 
-# Case-insensitive first column of `df` matching any of `patterns` (regex).
-.first_col <- function(df, patterns) {
-  for (p in patterns) {
-    hit <- grep(p, colnames(df), ignore.case = TRUE, value = TRUE)
-    if (length(hit)) return(hit[[1]])
-  }
-  NULL
+# The rowData column recognised as dictionary `concept` (gene_name, protein_Id,
+# go_bp, ...; see inst/dictionaries/column_patterns.json), or NULL.
+.rd_col <- function(rd, concept) {
+  if (is.null(rd)) return(NULL)
+  eds_match_col(colnames(rd), eds_rowdata_column_patterns[[concept]])
 }
 
 # as.data.frame() IGNORES check.names for an S4 DataFrame (colData/rowData), so
@@ -68,39 +66,66 @@
 # restore the true colnames from the source object. Safe for plain data.frames.
 .as_df_keep_names <- function(x) {
   if (is.null(x)) return(NULL)
-  df <- as.data.frame(x, check.names = FALSE, stringsAsFactors = FALSE)
+  df <- as.data.frame(x, optional = TRUE, stringsAsFactors = FALSE)
   cn <- colnames(x)
   if (!is.null(cn) && ncol(df) == length(cn)) colnames(df) <- cn
   df
 }
 
-# A DE column map mixes name->column entries (effect_log2fc, score_pvalue,
-# score_fdr, score) with SEMANTIC tokens (score_kind, fdr_kind) that describe a
-# significance axis's direction rather than naming a column. These are the
-# canonical column targets .canon_de_columns() may copy into.
-.DE_COLUMN_TARGETS <- c("effect_log2fc", "score_pvalue", "score_fdr", "score")
+# Does `x` contain a real clusterProfiler S4 object anywhere (itself, or
+# nested inside lists at any depth)? Decides whether a pathway entry also gets
+# an uns$enrichment_support block (what the reader needs to rebuild the
+# objects), or is data.frames all the way down.
+.contains_native_cp <- function(x) {
+  if (inherits(x, c("enrichResult", "gseaResult"))) return(TRUE)
+  if (is.data.frame(x)) return(FALSE)
+  if (is.list(x) && length(x)) return(any(vapply(x, .contains_native_cp, logical(1))))
+  FALSE
+}
 
-# Copy explicit-mapping columns to canonical names, then fill the rest by guess.
-# Only genuine column targets are copied; semantic tokens are ignored here (they
-# describe direction, not location) and surface via .de_semantics() instead.
+# The overridable DE columns: log2 fold change, p-value, FDR. Anything a caller
+# doesn't name here is resolved by the column dictionary. The optional extra
+# `score` column (e.g. SaintScore) is dictionary-only, never overridden.
+.DE_COLUMN_TARGETS <- c("effect_log2fc", "score_pvalue", "score_fdr")
+.DE_MAPPING_KEYS   <- .DE_COLUMN_TARGETS
+.ROWDATA_MAPPING_KEYS <- c("id_col", "symbol_col")
+
+# Warn (once per unknown key) about override keys we don't act on, so a typo
+# or a retired key (e.g. `score`, `description_col`, `score_kind`, `fdr_kind`)
+# is never silently ignored.
+.check_mapping_keys <- function(mapping, allowed, arg) {
+  bad <- setdiff(names(mapping), allowed)
+  if (length(bad))
+    warning(sprintf("build_explore_h5ad: ignoring unknown %s key(s): %s (allowed: %s)",
+                    arg, paste(bad, collapse = ", "), paste(allowed, collapse = ", ")),
+            call. = FALSE)
+  invisible(NULL)
+}
+
+# Copy explicit-mapping columns to canonical names, then fill the rest from the
+# column dictionary. attr(, "de_sources") records which source column
+# fed each canonical name, explicit or detected.
 .canon_de_columns <- function(df, mapping = NULL) {
-  df <- as.data.frame(df, check.names = FALSE, stringsAsFactors = FALSE)
+  df <- as.data.frame(df, optional = TRUE, stringsAsFactors = FALSE)
+  sources <- character()
   if (!is.null(mapping)) {
     for (canon in intersect(names(mapping), .DE_COLUMN_TARGETS)) {
       src <- mapping[[canon]]
-      if (!is.null(src) && src %in% colnames(df)) df[[canon]] <- df[[src]]
+      if (!is.null(src) && src %in% colnames(df)) {
+        df[[canon]] <- df[[src]]
+        sources[[canon]] <- src
+      }
     }
   }
+  attr(df, "de_sources") <- sources
   eds_standardise_de_columns(df)   # only adds a canon col if absent -> mapping wins
 }
 
 # Turn a DE column map into the declared uns$exploreDE$mapping$de entry: WHICH
-# source column fed each canonical target (effect_log2fc_col/score_pvalue_col/
-# score_fdr_col/score_col), plus the display-only semantics (score's label,
-# and score_kind/fdr_kind direction). This is the dictionary itself, kept in
-# the file so a reader (human or code) never has to re-guess "log2fc vs log2
-# ratio vs log2FoldChange" for THIS dataset — see plans/anndata_manifest_design.md.
-# NULL entries drop.
+# source column fed each overridden target (effect_log2fc_col/score_pvalue_col/
+# score_fdr_col). This is the dictionary itself, kept in the file so a reader (human or code) never has to
+# re-guess "log2fc vs log2 ratio vs log2FoldChange" for THIS dataset — see
+# plans/jambon/anndata_manifest_design.md. NULL entries drop.
 .de_semantics <- function(mapping) {
   if (is.null(mapping)) return(list())
   keep <- list()
@@ -108,26 +133,22 @@
     src <- mapping[[canon]]
     if (!is.null(src)) keep[[paste0(canon, "_col")]] <- src
   }
-  if (!is.null(mapping$score))      keep$score_label <- mapping$score
-  if (!is.null(mapping$score_kind)) keep$score_kind  <- mapping$score_kind
-  if (!is.null(mapping$fdr_kind))   keep$fdr_kind     <- mapping$fdr_kind
   keep
 }
 
 # Explicit rowdata_columns override wins (if the named column actually exists
-# in rd); else fall back to regex auto-detection. Same resolution order as DE
-# columns: explicit mapping > heuristic detection.
-.rowdata_col <- function(rd, explicit, patterns) {
+# in rd); else the column dictionary's `concept`. Same resolution order as DE
+# columns: explicit mapping > dictionary.
+.rowdata_col <- function(rd, explicit, concept) {
   if (!is.null(explicit) && !is.null(rd) && explicit %in% colnames(rd)) return(explicit)
-  if (!is.null(rd)) return(.first_col(rd, patterns))
-  NULL
+  .rd_col(rd, concept)
 }
 
 # ---- feature_level: detection-with-override --------------------------------
 # One knob spanning omics: rnaseq {gene,isoform}, proteomics
 # {protein,peptide,phospho}, crispr {sgrna}. Detection mirrors
 # ExploreDatasetSE_Proteomics (site -> phospho, peptide_Id -> peptide) and the
-# RNA-seq isoform rule (transcript_id present). Explicit `override` always wins.
+# RNA-seq isoform rule (one transcript_id per row). Explicit `override` always wins.
 
 .FEATURE_LEVELS <- list(rnaseq_bulk = c("gene", "isoform"),
                         proteomics  = c("protein", "peptide", "phospho"),
@@ -141,13 +162,17 @@
                    override, omics_type, paste(choices, collapse = ", ")))
     return(override)
   }
-  norm <- gsub("[^a-z0-9]+", "", tolower(colnames(rowdata %||% data.frame())))
+  rd <- as.data.frame(rowdata %||% data.frame())
   if (omics_type == "proteomics") {
-    if ("site"      %in% norm) return("phospho")
-    if ("peptideid" %in% norm) return("peptide")
+    if (!is.null(.rd_col(rd, "site")))       return("phospho")
+    if (!is.null(.rd_col(rd, "peptide_Id"))) return("peptide")
     return("protein")
   }
-  if (omics_type == "rnaseq_bulk" && "transcriptid" %in% norm) return("isoform")
+  # Isoform only when each row IS one transcript. Gene-level tables often carry
+  # a transcript_id column listing the gene's transcripts ("ENST...; ENST..."),
+  # which must not flip the level.
+  tcol <- if (omics_type == "rnaseq_bulk") .rd_col(rd, "transcript_id")
+  if (!is.null(tcol) && !any(grepl("[;,]", rd[[tcol]]))) return("isoform")
   choices[[1]]
 }
 
@@ -167,25 +192,25 @@
     if (any(bad)) ids[bad] <- base_ids[bad]
     ids
   }
-  prot_plus <- function(sub_pat) {                 # protein_Id [+ site/peptide]
-    pcol <- id_col %||% .first_col(rd, "^protein[._ ]?id$")
+  prot_plus <- function(sub_concept) {             # protein_Id [+ site/peptide]
+    pcol <- id_col %||% .rd_col(rd, "protein_Id")
     if (is.null(pcol)) return(make.unique(base_ids))
     pid  <- coalesce_ids(rd[[pcol]])
-    scol <- .first_col(rd, sub_pat)
+    scol <- .rd_col(rd, sub_concept)
     if (is.null(scol)) return(make.unique(pid))
     make.unique(paste(pid, gsub("~", "_", as.character(rd[[scol]])), sep = "_"))
   }
   fid <- switch(level,
     gene    = if (scu) scuttle::uniquifyFeatureNames(gid, sym) else make.unique(as.character(sym)),
     isoform = {
-      tcol <- .first_col(rd, "^transcript[._ ]?id$")
+      tcol <- .rd_col(rd, "transcript_id")
       tid  <- if (!is.null(tcol)) as.character(rd[[tcol]]) else base_ids
       if (scu) scuttle::uniquifyFeatureNames(tid, sym) else make.unique(as.character(tid))
     },
-    protein = { pcol <- id_col %||% .first_col(rd, "^protein[._ ]?id$")
+    protein = { pcol <- id_col %||% .rd_col(rd, "protein_Id")
                 make.unique(coalesce_ids(if (!is.null(pcol)) rd[[pcol]] else base_ids)) },
-    peptide = prot_plus("^peptide[._ ]?id$"),
-    phospho = prot_plus("^site$"),
+    peptide = prot_plus("peptide_Id"),
+    phospho = prot_plus("site"),
     sgrna   = make.unique(base_ids),
     make.unique(as.character(gid)))
   # Final safety net: any residual NA / empty id -> its join key, re-uniquified.
@@ -248,10 +273,9 @@
     rn <- rownames(rd)
     if (!is.null(rn) && all(base_ids %in% rn)) rd <- rd[base_ids, , drop = FALSE]
   }
-  sym_col <- .rowdata_col(rd, rowdata_columns$symbol_col,
-                          c("^gene[._ ]?name$", "^gene[._ ]?symbol$", "^symbol$"))
-  id_col  <- .rowdata_col(rd, rowdata_columns$id_col,
-                          c("^gene[._ ]?id$", "^ensembl", "^feature[._ ]?id$"))
+  .check_mapping_keys(rowdata_columns, .ROWDATA_MAPPING_KEYS, "rowdata_columns")
+  sym_col <- .rowdata_col(rd, rowdata_columns$symbol_col, "gene_name")
+  id_col  <- .rowdata_col(rd, rowdata_columns$id_col,     "gene_id")
   # An EXPLICIT id_col override (not merely auto-detected via the gene-id-like
   # patterns above) also drives protein/peptide/phospho feature-id construction
   # below — e.g. a foreign proteomics producer's "UniProt_Accession" column
@@ -324,12 +348,11 @@
                     stringsAsFactors = FALSE)
   desc_col <- NULL
   if (!is.null(rd)) {
-    desc_col <- .rowdata_col(rd, rowdata_columns$description_col, c("^description$", "^desc$"))
+    desc_col <- .rd_col(rd, "description")
     if (!is.null(desc_col)) var$description <- sub(" \\[.*", "", as.character(rd[[desc_col]]))
     # Pathway annotation -> canonical label_go_* (reader renames to "GO BP" etc.)
-    go_src <- c("bp" = "^go[._ ]?bp$|^go_bp$", "mf" = "^go[._ ]?mf$", "cc" = "^go[._ ]?cc$")
-    for (which in names(go_src)) {
-      col <- .first_col(rd, go_src[[which]])
+    for (which in c("bp", "mf", "cc")) {
+      col <- .rd_col(rd, paste0("go_", which))
       if (!is.null(col)) var[[paste0("label_go_", which)]] <- rd[[col]]
     }
     # Carry any remaining rowData columns through as label_* (annotation).
@@ -364,11 +387,21 @@
   # never wired into the FDR threshold path.
   per_contrast_map <- !is.null(de_columns) &&
     length(intersect(names(de_columns), names(de))) > 0
-  varm <- list(); uns_de <- list(); de_slot <- list()
+  if (per_contrast_map) {
+    for (cn in intersect(names(de_columns), names(de)))
+      .check_mapping_keys(de_columns[[cn]], .DE_MAPPING_KEYS, sprintf("de_columns[['%s']]", cn))
+  } else {
+    .check_mapping_keys(de_columns, .DE_MAPPING_KEYS, "de_columns")
+  }
+  varm <- list(); uns_de <- list(); de_slot <- list(); score_src <- list()
   for (cn in names(de)) {
     mapping <- if (per_contrast_map) de_columns[[cn]] else de_columns
     orig_cols <- colnames(de[[cn]])
     d <- .canon_de_columns(de[[cn]], mapping)
+    # The optional extra score (e.g. SaintScore) is found by the dictionary
+    # only; remember which column it came from, as that is its display label.
+    srcs <- attr(d, "de_sources")
+    if ("score" %in% names(srcs)) score_src[[cn]] <- srcs[["score"]]
     # effect_log2fc (magnitude) and score_fdr (the primary significance axis,
     # §6 of the design doc) are the two columns the app actually depends on.
     # score_pvalue is legitimately optional (SAINTexpress has none) and
@@ -407,11 +440,13 @@
   }
 
   # -- declared DE mapping (uns$exploreDE$mapping$de) --------------------------
-  # The dictionary itself: which source column fed each canonical target
-  # (effect_log2fc/score_pvalue/score_fdr/score), plus what the canonical stat
-  # arrays alone can't express (the extra score's display label, and which
-  # direction is significant for it / for fdr). A shared de_columns map =>
-  # one `de$default`; per-contrast maps => `de$contrasts`.
+  # The dictionary itself: which source column fed each overridden target
+  # (effect_log2fc/score_pvalue/score_fdr), plus what the canonical stat arrays
+  # alone can't express (the extra score's source column + display label).
+  # A shared de_columns map => one
+  # `de$default`; per-contrast maps => `de$contrasts`. A detected extra score
+  # is always recorded per contrast: without its label the reader would not
+  # surface it at all (no DE-table column, no volcano score axis).
   map_de <- list()
   if (!is.null(de_columns)) {
     if (per_contrast_map) {
@@ -426,6 +461,13 @@
       if (length(d0)) map_de$default <- d0
     }
   }
+  for (cn in names(de)) {
+    src <- score_src[[cn]]
+    if (is.null(src)) next
+    slot <- de_slot[[cn]]
+    map_de$contrasts[[slot]] <- c(map_de$contrasts[[slot]],
+                                  list(score_col = src, score_label = src))
+  }
 
   # -- declared feature-identity mapping (uns$exploreDE$mapping$feature) ------
   # Only recorded when rowdata_columns explicitly named a column AND it was
@@ -437,18 +479,23 @@
       map_feature$id_col <- id_col
     if (!is.null(rowdata_columns$symbol_col) && identical(sym_col, rowdata_columns$symbol_col))
       map_feature$symbol_col <- sym_col
-    if (!is.null(rowdata_columns$description_col) && identical(desc_col, rowdata_columns$description_col))
-      map_feature$description_col <- desc_col
   }
 
   # -- Pathway STATISTICS (B) : contrast-bound; keys must be a subset of DE.
   # Each named entry under a contrast is stored AS-IS, no leaf-walking:
-  #   * a data.frame                       -> tidy uns$enrichment
-  #   * anything else (a single cP object, OR a nested list of them such as the
-  #     SUSHI BP/MF/CC x up/down/both shape) -> serialised verbatim to
-  #     uns$enrichment_native, which the reader unpacks via
-  #     eds_flatten_cp_results() (recursive, any depth).
-  enr_native <- list(); enr_tidy <- list()
+  #   * a data.frame, OR a nested list containing only data.frames (e.g. a
+  #     hand-built BP/MF/CC x up/down/both tree with no clusterProfiler object
+  #     anywhere) -> flattened straight to the tidy uns$enrichment table.
+  #   * anything else (a single clusterProfiler object, OR a nested list that
+  #     contains at least one — e.g. the SUSHI BP/MF/CC x up/down/both shape)
+  #     -> the tidy table (filtered at enrichment_padj_max) PLUS a small
+  #     uns$enrichment_support block: object type, and for GSEA the gene sets
+  #     of the stored terms only, the ranked gene list and `exponent`. That is
+  #     everything the reader needs to rebuild the objects for the network /
+  #     ridge / running-score plots. The objects themselves are not stored:
+  #     >90% of them is the full gene-set collection, which nothing displays
+  #     (plans/exploredelight/enrichment_detach_plan.md).
+  enr_support <- list(); enr_tidy <- list()
   bad_keys <- setdiff(names(pathways), names(de))
   if (length(bad_keys))
     warning(sprintf("pathway stats for non-existent contrast(s): %s — kept but unbound",
@@ -464,21 +511,18 @@
       obj <- results[[rn]]
       if (is.data.frame(obj)) {
         enr_tidy[[slot]] <- c(enr_tidy[[slot]], setNames(list(obj), rn))
-      } else {
-        # gzip before base64 — clusterProfiler objects carry the full GO->gene
-        # universe (redundant, repetitive gene ids) and compress ~7-8x. Reader
-        # detects the gzip magic and decompresses.
-        enr_native[[slot]] <- c(enr_native[[slot]], setNames(
-          list(jsonlite::base64_enc(memCompress(serialize(obj, NULL), "gzip"))), rn))
-        # ALSO derive the tidy mirror. Measured on a real dataset: the S4
-        # objects are 106 MB to carry 6.6 MB of tables, because >90% of them is
-        # geneSets/geneList that nothing displays. The tidy form is what lets
-        # readers (Python, and exploreDElight under wasm, where DOSE has no
-        # build) get at the results without clusterProfiler. See
-        # plans/enrichment_detach_plan.md.
-        tidy <- .enr_tidy_from_native(obj, method = rn, padj_max = enrichment_padj_max)
+      } else if (!.contains_native_cp(obj)) {
+        tidy <- .enr_tidy_from_native(obj, method = rn)
         if (!is.null(tidy))
           enr_tidy[[slot]] <- c(enr_tidy[[slot]], setNames(list(tidy), rn))
+      } else {
+        tidy <- .enr_tidy_from_native(obj, method = rn, padj_max = enrichment_padj_max)
+        if (!is.null(tidy)) {
+          enr_tidy[[slot]] <- c(enr_tidy[[slot]], setNames(list(tidy), rn))
+          sup <- .enr_support_from_native(obj, tidy)
+          if (!is.null(sup))
+            enr_support[[slot]] <- c(enr_support[[slot]], setNames(list(sup), rn))
+        }
       }
     }
   }
@@ -488,7 +532,7 @@
                    hierarchy = .hierarchy_for_level(level),
                    design = list(factors = factor_prefixed,
                                  grouping = factor_prefixed[1] %||% NA_character_),
-                   de = uns_de, enrichment = enr_tidy, enrichment_native = enr_native,
+                   de = uns_de, enrichment = enr_tidy, enrichment_support = enr_support,
                    # The tidy mirror is FILTERED. Record the threshold, or a
                    # consumer cannot tell "cut by this filter" from "not
                    # significant" from "enrichment was never run" — three very
@@ -500,7 +544,7 @@
                    provenance = list(source_format = "build_explore_h5ad"))
   # `mapping` stays a DISTINCT key from `design` (design = what the experiment
   # is; mapping = where to find things / how to read the stats) -- this is the
-  # declared dictionary itself (plans/anndata_manifest_design.md): which raw
+  # declared dictionary itself (plans/jambon/anndata_manifest_design.md): which raw
   # column/matrix supplies each concept exploreDE cares about, kept in the file
   # rather than discarded once used at build time. Written only when a
   # declared mapping actually exists, so canonical files stay lean.
@@ -549,29 +593,24 @@
 #' @param rowdata Optional per-feature annotation (feature names/symbols/ids and
 #'   per-feature pathway annotation columns, e.g. `GO BP`).
 #' @param de Optional named list of DE tables keyed by contrast
-#'   (`DESeqResults` / `data.frame`); columns auto-mapped via
-#'   [eds_standardise_de_columns], overridable with `de_columns`.
-#' @param de_columns Optional explicit DE column mapping — a list like
-#'   `list(effect_log2fc="log2FoldChange", score_pvalue="pvalue",
-#'   score_fdr="padj")`, applied to all contrasts, or a per-contrast named list.
-#'   May also declare an OPTIONAL extra significance axis: `score` names a second
-#'   scored column (e.g. `score="SaintScore"`), carried through for display only
-#'   (like `nrPeptides`), never wired into the FDR threshold. Two semantic tokens
-#'   describe direction for display / future filtering: `score_kind` (one of
-#'   `"p_value_low_sig"`, `"fdr_low_sig"`, `"probability_high_sig"`) and
-#'   `fdr_kind` (default `"fdr_low_sig"`). A producer with no raw p-value (e.g.
-#'   SAINTexpress) simply omits `score_pvalue`; the app degrades to FDR-only.
-#'   Unlike `de_columns`' one-shot use to canonicalise columns at write time,
-#'   the whole mapping (which source column fed each target, plus the
-#'   semantics) is also persisted at `uns$exploreDE$mapping$de`, so the file
-#'   stays self-describing — see `plans/anndata_manifest_design.md`.
-#' @param rowdata_columns Optional explicit override of which `rowdata` column
-#'   supplies the feature id / symbol / description, for producers whose
-#'   column names don't match the built-in detection (e.g.
-#'   `list(id_col="Protein_Id", symbol_col="GeneName")`). Only consulted when
-#'   auto-detection would otherwise be ambiguous or wrong; anything not named
-#'   here is still auto-detected. Declared entries are persisted at
-#'   `uns$exploreDE$mapping$feature`.
+#'   (`DESeqResults` / `data.frame`). Columns are recognised by the column
+#'   dictionary (`inst/dictionaries/column_patterns.json`), overridable with
+#'   `de_columns`. An optional extra score column (e.g. SAINTexpress's
+#'   `SaintScore`) is picked up by the dictionary alone and shown for display
+#'   under its own column name.
+#' @param de_columns Optional DE column overrides:
+#'   `list(effect_log2fc = "<col>", score_pvalue = "<col>", score_fdr = "<col>")`,
+#'   applied to all contrasts, or a named list of such lists keyed by contrast.
+#'   Named columns are used as given; any not named are still found by the
+#'   dictionary. A producer with no raw p-value (e.g. SAINTexpress) simply has
+#'   none; the app degrades to FDR-only. Unknown keys are ignored with a
+#'   warning. Overrides are persisted at `uns$exploreDE$mapping$de`, so the
+#'   file stays self-describing.
+#' @param rowdata_columns Optional feature column overrides:
+#'   `list(id_col = "<col>", symbol_col = "<col>")` — which `rowdata` column
+#'   supplies the feature id and the display symbol. Anything not named is
+#'   still found by the dictionary. Unknown keys are ignored with a warning.
+#'   Overrides are persisted at `uns$exploreDE$mapping$feature`.
 #' @param pathways Optional pathway statistics: a named list keyed by contrast
 #'   (keys a subset of `de`); each entry a named list of clusterProfiler objects
 #'   and/or `data.frame`s.

@@ -11,7 +11,7 @@ tabItem(
                 collapsible = TRUE,
                 collapsed = TRUE,
                 tags$p(
-                    "Similar to the DEG tile plot, contrasts are columns, and pathways are rows. The top n pathways, based on p-value, have been plotted. In ORA mode, the colour of the dot is the contrast, and in GSEA mode, the colour is the
+                    "Similar to the DE tile plot, contrasts are columns, and pathways are rows. The top n pathways, based on p-value, have been plotted. In ORA mode, the colour of the dot is the contrast, and in GSEA mode, the colour is the
           normalised enrichment score. The size of the dot is the number of genes in that pathway (DE in ORA mode, total set size in GSEA mode). The rowname colour denotes which contrast the pathway came from. If it is black, it came from
           multiple contrasts."
                 )

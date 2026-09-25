@@ -15,6 +15,7 @@ build_explore_h5ad(
   de_columns = NULL,
   rowdata_columns = NULL,
   pathways = list(),
+  enrichment_padj_max = 0.1,
   factors = NULL,
   gene_symbol = NULL,
   organism = NA_character_,
@@ -41,31 +42,26 @@ object that carries it.}
 per-feature pathway annotation columns, e.g. `GO BP`).}
 
 \item{de}{Optional named list of DE tables keyed by contrast
-(`DESeqResults` / `data.frame`); columns auto-mapped via
-[eds_standardise_de_columns], overridable with `de_columns`.}
+(`DESeqResults` / `data.frame`). Columns are recognised by the column
+dictionary (`inst/dictionaries/column_patterns.json`), overridable with
+`de_columns`. An optional extra score column (e.g. SAINTexpress's
+`SaintScore`) is picked up by the dictionary alone and shown for display
+under its own column name.}
 
-\item{de_columns}{Optional explicit DE column mapping — a list like
-`list(effect_log2fc="log2FoldChange", score_pvalue="pvalue",
-score_fdr="padj")`, applied to all contrasts, or a per-contrast named list.
-May also declare an OPTIONAL extra significance axis: `score` names a second
-scored column (e.g. `score="SaintScore"`), carried through for display only
-(like `nrPeptides`), never wired into the FDR threshold. Two semantic tokens
-describe direction for display / future filtering: `score_kind` (one of
-`"p_value_low_sig"`, `"fdr_low_sig"`, `"probability_high_sig"`) and
-`fdr_kind` (default `"fdr_low_sig"`). A producer with no raw p-value (e.g.
-SAINTexpress) simply omits `score_pvalue`; the app degrades to FDR-only.
-Unlike `de_columns`' one-shot use to canonicalise columns at write time,
-the whole mapping (which source column fed each target, plus the
-semantics) is also persisted at `uns$exploreDE$mapping$de`, so the file
-stays self-describing — see `plans/anndata_manifest_design.md`.}
+\item{de_columns}{Optional DE column overrides:
+`list(effect_log2fc = "<col>", score_pvalue = "<col>", score_fdr = "<col>")`,
+applied to all contrasts, or a named list of such lists keyed by contrast.
+Named columns are used as given; any not named are still found by the
+dictionary. A producer with no raw p-value (e.g. SAINTexpress) simply has
+none; the app degrades to FDR-only. Unknown keys are ignored with a
+warning. Overrides are persisted at `uns$exploreDE$mapping$de`, so the
+file stays self-describing.}
 
-\item{rowdata_columns}{Optional explicit override of which `rowdata` column
-supplies the feature id / symbol / description, for producers whose
-column names don't match the built-in detection (e.g.
-`list(id_col="Protein_Id", symbol_col="GeneName")`). Only consulted when
-auto-detection would otherwise be ambiguous or wrong; anything not named
-here is still auto-detected. Declared entries are persisted at
-`uns$exploreDE$mapping$feature`.}
+\item{rowdata_columns}{Optional feature column overrides:
+`list(id_col = "<col>", symbol_col = "<col>")` — which `rowdata` column
+supplies the feature id and the display symbol. Anything not named is
+still found by the dictionary. Unknown keys are ignored with a warning.
+Overrides are persisted at `uns$exploreDE$mapping$feature`.}
 
 \item{pathways}{Optional pathway statistics: a named list keyed by contrast
 (keys a subset of `de`); each entry a named list of clusterProfiler objects

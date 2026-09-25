@@ -7,7 +7,7 @@
 #                             so the h5ad backend can be diffed accessor-for-
 #                             accessor against the SE backend (equivalence).
 #
-# These mirror plans/anndata_migration/poc_h5ad_roundtrip.R, and fold in the
+# These mirror plans/archive/anndata_migration/poc_h5ad_roundtrip.R, and fold in the
 # three anndataR gotchas (logical layers -> integer; grep [Factor] on the S4
 # colData; write_h5ad mode = "w").
 # -----------------------------------------------------------------------------
@@ -132,4 +132,23 @@ se_to_canonical_h5ad <- function(se, out) {
                reference_genome = as.character(param$refBuild %||% NA)))
   anndataR::write_h5ad(adata, out, mode = "w")
   out
+}
+
+# Real (tiny) clusterProfiler objects with everything the support block reads:
+# significant terms, geneID/core_enrichment, and for GSEA gene sets (including
+# one term that is NOT in the result, which must not be stored) + a ranked list.
+.mini_cp <- function(cls, n) {
+  ids <- sprintf("GO:%04d", seq_len(n))
+  res <- data.frame(ID = ids, Description = paste("term", seq_len(n)),
+                    pvalue = 0.001, p.adjust = 0.01, stringsAsFactors = FALSE,
+                    row.names = ids)
+  if (cls == "enrichResult") {
+    res$geneID <- "G1/G2"; res$Count <- 2L
+    return(methods::new(cls, result = res))
+  }
+  res$NES <- 1.5; res$enrichmentScore <- 0.5; res$setSize <- 3L; res$core_enrichment <- "G1/G2"
+  sets <- c(setNames(rep(list(c("G1", "G2", "G3")), n), ids), list("GO:9999" = c("G4", "G5")))
+  methods::new(cls, result = res, geneSets = sets,
+               geneList = c(G1 = 3, G2 = 2, G3 = 1, G4 = -1, G5 = -2),
+               params = list(exponent = 1))
 }

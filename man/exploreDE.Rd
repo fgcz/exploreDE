@@ -2,16 +2,24 @@
 % Please edit documentation in R/exploreDE.R
 \name{exploreDE}
 \alias{exploreDE}
-\title{start exploreDE application}
+\title{Start the exploreDE app}
 \usage{
-exploreDE(fileSE = NA, demo = NA)
+exploreDE(file = NULL, ...)
+}
+\arguments{
+\item{file}{Optional path to an exploreDE `.h5ad`, a SummarizedExperiment
+`.rds`/`.qs2`, or a SUSHI result directory.}
+
+\item{...}{Passed to [shiny::runApp()] (e.g. `port`, `launch.browser`).}
 }
 \description{
-start exploreDE application
+Opens the app locally. With no `file`, it starts on the landing page, where
+you can upload an `.h5ad` built with [build_explore_h5ad()] or load the demo
+dataset. With `file`, it opens straight into that dataset.
 }
 \examples{
 \dontrun{
-myDir <- system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE")
-exploreDE(myDir)
+exploreDE()
+exploreDE("my_data.h5ad")
 }
 }

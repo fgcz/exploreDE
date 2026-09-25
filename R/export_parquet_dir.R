@@ -3,7 +3,7 @@
 #  directory contract that ExploreDatasetParquet reads.
 #
 #  In the exploreDElight Tauri app this job belongs to a native Rust process
-#  (plans/exploredelight_tauri_plan.md §2): R inside webR cannot open a .h5ad,
+#  (plans/exploredelight/exploredelight_tauri_plan.md §2): R inside webR cannot open a .h5ad,
 #  because hdf5r's wasm read path is broken. Keeping an R implementation here
 #  earns its place three times over:
 #
@@ -49,7 +49,7 @@
 #' @param quiet Suppress per-layer progress messages.
 #'
 #' @return `out`, invisibly.
-#' @export
+#' @keywords internal
 export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
   adata <- if (inherits(input, "AbstractAnnData")) {
     input

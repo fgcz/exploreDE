@@ -432,10 +432,10 @@ observeEvent(
     input$boxplotShowPJust
     input$boxplotYScaleFree
     input$boxplotPlotBorder
-    # Add all color picker inputs as dependencies so plot updates when colors change
+    # Add all color picker + level label inputs as dependencies so plot updates when they change
     lapply(eds$factor_names(), function(fname) {
       lapply(eds$factor_levels(fname), function(lev) {
-        input[[paste0("GroupColour", fname, lev)]]
+        list(input[[paste0("GroupColour", fname, lev)]], input[[paste0("GroupLabel", fname, lev)]])
       })
     })
   },
@@ -459,6 +459,19 @@ observeEvent(
     coloursBoxplot <- setNames(lapply(input$boxKeepBucket, function(k) {
       paste0(col2hex(input[[paste0("GroupColour", input$boxplotFactor1, k)]]), "FF")
     }), input$boxKeepBucket)
+
+    # Display labels from the Colours tab (x-axis/fill factor, and shape factor).
+    # If either is rich, both are, as they share the markdown legend text.
+    boxLevels <- unique(c(input$boxKeepBucket, levels(as.factor(countsBoxplotMelt[[input$boxplotFactor1]]))))
+    boxShapeFactor <- if (input$boxplotFactor2 %in% c("None", "Feature")) NULL else input$boxplotFactor2
+    boxShapeLevels <- if (is.null(boxShapeFactor)) NULL else levels(as.factor(countsBoxplotMelt[[boxShapeFactor]]))
+    boxLabels <- level_labels(input, input$boxplotFactor1, boxLevels, wrap = input$boxplotConditionFormat)
+    boxShapeLabels <- if (is.null(boxShapeFactor)) NULL else level_labels(input, boxShapeFactor, boxShapeLevels)
+    boxRich <- is_rich_labels(boxLabels) || is_rich_labels(boxShapeLabels)
+    if (boxRich) {
+      boxLabels <- level_labels(input, input$boxplotFactor1, boxLevels, wrap = input$boxplotConditionFormat, force_rich = TRUE)
+      if (!is.null(boxShapeFactor)) boxShapeLabels <- level_labels(input, boxShapeFactor, boxShapeLevels, force_rich = TRUE)
+    }
 
     if (eds$omics_class() == "proteomics" && isTRUE(input$contrastSelected %in% eds$contrasts())) {
       cm <- eds$contrast_meta(input$contrastSelected)
@@ -504,7 +517,7 @@ observeEvent(
         boxplot <- boxplot + geom_beeswarm(aes(fill = .data[[input$boxplotFactor1]]), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, shape = 21, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$boxplotPointBorder)
       } else {
         boxplot <- boxplot + geom_beeswarm(aes(fill = .data[[input$boxplotFactor1]], shape = .data[[input$boxplotFactor2]]), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$boxplotPointBorder)
-        boxplot <- boxplot + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25), times = 10))[1:nlevels(as.factor(countsBoxplotMelt[[input$boxplotFactor2]]))])
+        boxplot <- boxplot + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25), times = 10))[1:nlevels(as.factor(countsBoxplotMelt[[input$boxplotFactor2]]))], labels = boxShapeLabels)
         boxplot <- boxplot + guides(
           fill = guide_legend(override.aes = list(shape = 21)),
           shape = guide_legend(override.aes = list(shape = c(rep(c(16, 15, 18, 17, 25), times = 10))[1:nlevels(as.factor(countsBoxplotMelt[[input$boxplotFactor2]]))]))
@@ -515,16 +528,13 @@ observeEvent(
       boxplot <- boxplot + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$boxplotMeanLine, show.legend = FALSE)
     }
     if (!input$boxplotGrey) {
-      boxplot <- boxplot + scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot))
+      boxplot <- boxplot + scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot), labels = boxLabels)
     } else {
       boxplot <- boxplot + scale_colour_grey()
-      boxplot <- boxplot + scale_fill_grey()
+      boxplot <- boxplot + scale_fill_grey(labels = boxLabels)
     }
-    if (input$boxplotConditionFormat) {
-      xlabs <- levels(countsBoxplotMelt[[input$boxplotFactor1]])
-      xlabs <- gsub("\\_|\\.|\\ |\\/", "\n", xlabs)
-      boxplot <- boxplot + scale_x_discrete(labels = xlabs)
-    }
+    # Level labels (custom and/or "format condition names" line breaks)
+    boxplot <- boxplot + scale_x_discrete(labels = boxLabels)
     ylabToPlot <- paste(input$boxplotCounts, "Counts")
     if (input$boxplotCountsLog) {
       ylabToPlot <- paste(ylabToPlot, "(Log2)")
@@ -568,6 +578,7 @@ observeEvent(
       boxplot <- boxplot + coord_cartesian(clip = "off")
     }
     boxplot <- boxplot + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle, base_family = input$boxplotFont, border = input$boxplotPlotBorder)
+    if (boxRich) boxplot <- boxplot + rich_label_theme(axis_x = TRUE, legend = TRUE)
     if (!input$boxplotShowConditions) {
       boxplot <- boxplot + theme(axis.text.x = element_blank())
     }
@@ -586,17 +597,16 @@ observeEvent(
     if (input$showDotsBarplot) {
       barplot <- barplot + geom_beeswarm(data = countsBoxplotMelt, aes_string(x = input$boxplotFactor1, y = "Counts"), pch = 21, size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = 3, corral = "gutter", corral.width = 0.9)
     }
-    if (input$boxplotConditionFormat) {
-      barplot <- barplot + scale_x_discrete(labels = xlabs)
-    }
+    barplot <- barplot + scale_x_discrete(labels = boxLabels)
     barplot <- barplot + labs(y = ylabToPlot)
     if (!input$boxplotGrey) {
-      barplot <- barplot + scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot))
+      barplot <- barplot + scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot), labels = boxLabels)
     } else {
       barplot <- barplot + scale_colour_grey()
-      barplot <- barplot + scale_fill_grey()
+      barplot <- barplot + scale_fill_grey(labels = boxLabels)
     }
     barplot <- barplot + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle, base_family = input$boxplotFont)
+    if (boxRich) barplot <- barplot + rich_label_theme(axis_x = TRUE, legend = TRUE)
     if (!input$boxplotShowConditions) {
       barplot <- barplot + theme(axis.text.x = element_blank())
     }

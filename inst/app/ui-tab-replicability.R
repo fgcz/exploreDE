@@ -53,7 +53,8 @@ tabItem(
                     sliderInput(inputId = "figWidthReplicability", label = "Figure Width", min = 400, max = 1200, value = 800, step = 10, width = "85%"),
                     sliderInput(inputId = "figHeightReplicability", label = "Figure Height", min = 400, max = 1200, value = 600, step = 10, width = "85%"),
                     cellArgs = list(style = "overflow: visible;")
-                )
+                ),
+                legend_offset_ui("replicability")
             )
         ),
         column(

@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 # Conformance test: inst/dictionaries/column_patterns.json -- the AUTOMATIC
-# half of exploreDE's dictionary (plans/anndata_manifest_design.md). When no
+# half of exploreDE's dictionary (plans/jambon/anndata_manifest_design.md). When no
 # explicit de_columns/rowdata_columns mapping is given, THIS is what figures
 # out which column is which for an arbitrary incoming data.frame. Lives as
 # data, validated against inst/schema/exploreDE_column_patterns.schema.json,
@@ -58,7 +58,7 @@ test_that("standard DESeq2 names still resolve unchanged", {
 })
 
 test_that("SAINTexpress's log2_EFCs/SaintScore/BFDR now auto-resolve with ZERO explicit mapping", {
-  # The flagship motivating case (plans/anndata_manifest_design.md) -- these
+  # The flagship motivating case (plans/jambon/anndata_manifest_design.md) -- these
   # three previously needed a hand-written de_columns= override because the
   # old patterns were fully-anchored (^fdr$ requires the name to be EXACTLY
   # "fdr"). BFDR/log2_EFCs/SaintScore all carry the concept as a SUBSTRING,
@@ -78,6 +78,54 @@ test_that("a truly opaque column name (no textual signal at all) is left alone, 
   expect_false("score_pvalue" %in% colnames(out))
   expect_false("score_fdr" %in% colnames(out))
   expect_false("score" %in% colnames(out))
+})
+
+# ---- priority order: anchored patterns beat substring catch-alls -----------
+
+test_that("eds_match_col() tries patterns in order: the first pattern with a hit decides", {
+  pats <- c("^padj$", "fdr")
+  expect_identical(eds_match_col(c("fdr_note", "padj"), pats), "padj")
+  expect_identical(eds_match_col(c("fdr_note", "x"), pats), "fdr_note")
+  expect_null(eds_match_col(c("a", "b"), pats))
+})
+
+test_that("eds_match_col(unique = TRUE) refuses to guess when the deciding pattern is ambiguous", {
+  expect_null(eds_match_col(c("p_value", "pValue"), "^p[._ ]?value$", unique = TRUE))
+  expect_identical(eds_match_col(c("p_value", "x"), "^p[._ ]?value$", unique = TRUE), "p_value")
+})
+
+test_that("decoy columns listed BEFORE the real one no longer win (was first-column-in-table-order)", {
+  d <- data.frame(log2_mean_intensity = 9, log2FC = 1.5,
+                  zscore = 3, SaintScore = 0.9,
+                  fdr_method = 0, padj = 0.04)
+  out <- eds_standardise_de_columns(d)
+  expect_identical(out$effect_log2fc, 1.5)   # ^log2...fc$ beats the "log2" substring
+  expect_identical(out$score_fdr, 0.04)      # ^padj$ beats the "fdr" substring
+})
+
+test_that("a canonical column added earlier is never re-matched by a later substring pattern", {
+  # "score" would match the freshly added score_pvalue / score_fdr columns if
+  # matching ran against the growing column set.
+  d <- data.frame(log2FoldChange = 1, pvalue = 0.01, padj = 0.02)
+  out <- eds_standardise_de_columns(d)
+  expect_false("score" %in% colnames(out))
+})
+
+test_that("eds_standardise_de_columns() records which source column fed each canonical name", {
+  d <- data.frame(log2_EFCs = 1.5, SaintScore = 0.9, BFDR = 0.03)
+  src <- attr(eds_standardise_de_columns(d), "de_sources")
+  expect_identical(src[["effect_log2fc"]], "log2_EFCs")
+  expect_identical(src[["score_fdr"]], "BFDR")
+  expect_identical(src[["score"]], "SaintScore")
+})
+
+test_that("standardise_columns() reads the same dictionary (legacy names for DE stats)", {
+  d <- data.frame(Accession = "P1", log2_EFCs = 1.5, SaintScore = 0.9, BFDR = 0.03,
+                  check.names = FALSE)
+  out <- standardise_columns(d)
+  expect_true(all(c("protein_Id", "log2Ratio", "fdr", "SaintScore") %in% colnames(out)))
+  # ...and the SAINT shim still recognises the renamed frame.
+  expect_true(exploreDE:::.se_is_saint(out))
 })
 
 # ---- the schema itself is actually strict ----------------------------------

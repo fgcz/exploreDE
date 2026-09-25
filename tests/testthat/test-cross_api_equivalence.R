@@ -7,9 +7,9 @@
 # `inputDataReactive()$countList[["Raw"]]` for `eds$assay("counts")`, it
 # must see the same matrix.
 #
-# Note: `test-legacy_shim_equivalence.R` already proves the shim's
-# gStoreList output equals the legacy converters' output. So if eds vs
-# shim is equivalent, eds vs legacy is also equivalent (by transitivity).
+# Note: the shim's gStoreList output was proven equal to the legacy
+# converters' output before those were retired (archived with their tests in
+# plans/archive/legacy_converters/).
 # -----------------------------------------------------------------------------
 
 # Helper — align two matrices by rownames/colnames, then compare values.

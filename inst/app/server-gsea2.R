@@ -5,11 +5,33 @@ req(eds)
 # whose keys are BP/MF/CC for the SE backend and gsea/BP... for h5ad — strip the
 # prefix so both normalise to the BP/MF/CC the rest of this module indexes by.
 contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
+
+# See server-hypergeo2.R for the identical rationale: a cell in `gsea` below is
+# EITHER a real clusterProfiler S4 object (native path, unchanged) or a plain
+# tidy data.frame (a BYO dataset with no clusterProfiler object at all).
+.is_native <- function(x) inherits(x, c("enrichResult", "gseaResult"))
+.res_df    <- function(x) if (.is_native(x)) x@result else x
+
 .gsea_raw <- function() {
   if (is.null(contrast)) return(NULL)
-  g <- eds$enrichment(contrast, "gsea")
+  g <- list()
+  flat <- eds$enrichment(contrast, "gsea")
+  if (length(flat)) {
+    names(flat) <- sub("^gsea/", "", names(flat))
+    g <- flat
+  }
+  # Fill any gaps from the tidy accessor -- the only source at all for a
+  # dataset whose GSEA entries were never clusterProfiler objects -- keyed by
+  # its `ontology` column the same way enrichment() names its leaves. Native
+  # always wins where both exist (it alone carries geneList/geneSets, needed
+  # for cnetplot/ridgeplot/gseaplot2 below).
+  tab <- eds$enrichment_table(contrast, "gsea")
+  if (is.data.frame(tab) && nrow(tab) && "ontology" %in% colnames(tab)) {
+    for (k in unique(tab$ontology)) {
+      if (is.null(g[[k]])) g[[k]] <- tab[tab$ontology == k, , drop = FALSE]
+    }
+  }
   if (!length(g)) return(NULL)
-  names(g) <- sub("^gsea/", "", names(g))
   g
 }
 
@@ -29,7 +51,7 @@ observeEvent(input$tabs, {
     # Check if current selection has no results
     if (!is.null(input$gseaType) && !is.null(g[[input$gseaType]])) {
       er <- g[[input$gseaType]]
-      if (is.null(er) || nrow(er@result) == 0) {
+      if (is.null(er) || nrow(.res_df(er)) == 0) {
         showModal(modalDialog(
           title = "No GSEA Results",
           "There are no results for this selection."
@@ -105,10 +127,10 @@ observeEvent(selectedContrast(), {
   output$gseaDesign <- renderText({ design })
 
   # GSEA overview table
-  gsea.overview <- data.frame("Number of Significant Pathways" = numeric(), check.names = FALSE)
+  gsea.overview <- data.frame(check.names = FALSE, "Number of Significant Pathways" = numeric())
   for (i in seq_along(names(gsea))) {
     testName <- names(gsea)[i]
-    gsea.overview[testName, "Number of Significant Pathways"] <- nrow(gsea[[i]]@result)
+    gsea.overview[testName, "Number of Significant Pathways"] <- nrow(.res_df(gsea[[i]]))
   }
   output$gseaOverview <- function() {
     gsea.overview %>% kable(format = "html", caption = "GSEA:") %>%
@@ -116,7 +138,7 @@ observeEvent(selectedContrast(), {
   }
 
   # GSEA thresholds table
-  gseaThresholds <- data.frame("GSEA Cut-Offs" = character(), check.names = FALSE)
+  gseaThresholds <- data.frame(check.names = FALSE, "GSEA Cut-Offs" = character())
   gseaThresholds["Output GSEA Term FDR", "GSEA Cut-Offs"] <- param$fdrThreshGSEA
   output$gseaThreshOverview <- function() {
     gseaThresholds %>% kable(format = "html", caption = "Cut-Offs:") %>%
@@ -161,10 +183,14 @@ observeEvent(
   {
     gseaToUse$er <- NULL
     gseaToUse$er_symbol <- NULL
-    er <- gsea[[input$gseaType]]
+    gseaToUse$rdf <- NULL
+    gseaToUse$rdf_symbol <- NULL
+    gseaToUse$is_native <- FALSE
+    er  <- gsea[[input$gseaType]]
+    rdf <- .res_df(er)
 
     # Check if results exist and show modal if empty
-    if (input$tabs == "gseaTab" && (is.null(er) || nrow(er@result) == 0)) {
+    if (input$tabs == "gseaTab" && (is.null(er) || nrow(rdf) == 0)) {
       showModal(modalDialog(
         title = "No GSEA Results",
         "There are no results for this selection."
@@ -173,35 +199,35 @@ observeEvent(
     }
 
     # Process results if they exist
-    if (!is.null(er) && nrow(er@result) > 0) {
+    if (!is.null(er) && nrow(rdf) > 0) {
       # Handle GO terms (BP, MF, CC) differently
       if (input$gseaType %in% c("BP", "MF", "CC")) {
-        er@result$Label <- ""
+        rdf$Label <- ""
 
         # Create labels for GO terms
-        for (i in seq_along(er@result$Description)) {
-          desc <- er@result$Description[i]
-          label <- paste0(er@result$ID[i], "\n", desc)
+        for (i in seq_along(rdf$Description)) {
+          desc <- rdf$Description[i]
+          label <- paste0(rdf$ID[i], "\n", desc)
           if (!is.na(label) && nchar(label) > 45) {
             label <- substr(label, 1, 45)
           }
-          er@result$Label[i] <- label
+          rdf$Label[i] <- label
         }
         colsToTable <- c("Label", "enrichmentScore", "NES", "qvalue", "geneName")
         # Rebuild geneName from core_enrichment via the backend-agnostic remap
         # (falls back to the raw ID where no symbol is known).
-        er@result$geneName <- sapply(strsplit(er@result$core_enrichment, "/"), function(ids) {
+        rdf$geneName <- sapply(strsplit(rdf$core_enrichment, "/"), function(ids) {
           paste(.id2sym(ids), collapse = "/")
         })
-        er_symbol <- er
+        rdf_symbol <- rdf
         # Convert core enrichment from gene IDs to gene names
-        er_symbol@result$core_enrichment <- vapply(er_symbol@result$core_enrichment, function(genes_string) {
+        rdf_symbol$core_enrichment <- vapply(rdf_symbol$core_enrichment, function(genes_string) {
           gene_ids <- strsplit(genes_string, "/")[[1]]
           paste(.id2sym(gene_ids), collapse = "/")
         }, character(1), USE.NAMES = FALSE)
       } else {
         # For other pathway databases (e.g., C2)
-        er_symbol <- er
+        rdf_symbol <- rdf
         colsToTable <- c("Description", "enrichmentScore", "NES", "qvalue", "core_enrichment")
       }
       # Prepare log2 ratio data for plotting (store raw, aggregate in plot observer)
@@ -211,9 +237,20 @@ observeEvent(
       names(log2RatioGSEA) <- .id2sym(gene_ids_gsea)
       log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
 
-      # Update reactive values
-      gseaToUse$er <- er
-      gseaToUse$er_symbol <- er_symbol
+      # Update reactive values. gseaplot2/ridgeplot/cnetplot/slice need the
+      # real S4 object (its geneList/geneSets, not just the result table --
+      # see plans/exploredelight/enrichment_detach_plan.md §9), so er/er_symbol stay NULL for
+      # tidy-only pathway data; everything else reads rdf/rdf_symbol either way.
+      if (.is_native(er)) {
+        er@result <- rdf
+        er_symbol <- er
+        er_symbol@result <- rdf_symbol
+        gseaToUse$er <- er
+        gseaToUse$er_symbol <- er_symbol
+        gseaToUse$is_native <- TRUE
+      }
+      gseaToUse$rdf <- rdf
+      gseaToUse$rdf_symbol <- rdf_symbol
       gseaToUse$log2RatioGSEA <- log2RatioGSEA
       gseaToUse$colsToTable <- colsToTable
     }
@@ -236,10 +273,10 @@ observeEvent(
 
 # Render the main GSEA table
 output$selectedTable_GSEA <- DT::renderDataTable({
-  req(gseaToUse$er, gseaToUse$colsToTable)
+  req(gseaToUse$rdf, gseaToUse$colsToTable)
 
   DT::datatable(
-    data = as.data.frame(gseaToUse$er)[, gseaToUse$colsToTable],
+    data = gseaToUse$rdf[, gseaToUse$colsToTable],
     filter = "top",
     class = "cell-border stripe",
     rownames = FALSE,
@@ -280,18 +317,14 @@ output$dlTable_GSEA <- downloadHandler(
     categories <- c("BP", "CC", "MF")
     for (category in categories) {
       if (!is.null(gsea[[category]])) {
-        enrich_obj <- gsea[[category]]
-        results_df <- as.data.frame(enrich_obj@result)
         sheet_name <- paste(category, sep = "_")
-        sheets_list[[sheet_name]] <- results_df
+        sheets_list[[sheet_name]] <- .res_df(gsea[[category]])
       }
     }
     # Handle custom GSEA types if present (e.g., C2)
     other_types <- setdiff(names(gsea), categories)
     for (type in other_types) {
-      enrich_obj <- gsea[[type]]
-      results_df <- as.data.frame(enrich_obj@result)
-      sheets_list[[type]] <- results_df
+      sheets_list[[type]] <- .res_df(gsea[[type]])
     }
 
     if (length(sheets_list) > 0) {
@@ -326,14 +359,20 @@ observeEvent(
   ignoreNULL = FALSE,
   ignoreInit = TRUE,
   {
-    req(gseaToUse$er_symbol)
-    current_er <- isolate(gseaToUse$er)
-    current_er_symbol <- isolate(gseaToUse$er_symbol)
+    req(gseaToUse$rdf_symbol)
+    current_rdf        <- isolate(gseaToUse$rdf)
+    current_rdf_symbol <- isolate(gseaToUse$rdf_symbol)
+    current_er         <- isolate(gseaToUse$er)
+    current_er_symbol  <- isolate(gseaToUse$er_symbol)
+    is_native          <- isolate(gseaToUse$is_native)
     req(!is.null(input$selectedTable_GSEA_rows_selected))
-    req(current_er)
+    req(current_rdf)
 
-    # Subset enrichment result for selected pathways
-    erRP <- clusterProfiler::slice(current_er, input$selectedTable_GSEA_rows_selected)
+    # Row-subset for the selected pathways, as a plain data.frame either way.
+    # For the native path this is identical in content to
+    # clusterProfiler::slice(current_er, ...)@result (used below wherever the
+    # real S4 object -- and its geneList/geneSets -- is still needed).
+    erRP_df <- current_rdf[input$selectedTable_GSEA_rows_selected, , drop = FALSE]
     labelColumn <- ifelse(input$gseaType == "C2", "Description", "Label")
 
     # Apply gene filtering based on visualisation thresholds
@@ -398,108 +437,119 @@ observeEvent(
     # In "genes" mode, also remove filtered genes from the enrichment result
     # so cnetplot doesn't render them as grey nodes
     if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode == "genes") {
-      current_er_symbol@result$core_enrichment <- sapply(strsplit(current_er_symbol@result$core_enrichment, "/"), function(g) {
+      current_rdf_symbol$core_enrichment <- sapply(strsplit(current_rdf_symbol$core_enrichment, "/"), function(g) {
         g <- g[g %in% genes_pass_filter]
         paste(g, collapse = "/")
       })
       # Check that selected pathways still have genes after filtering
-      sel_genes <- current_er_symbol@result$core_enrichment[input$selectedTable_GSEA_rows_selected]
+      sel_genes <- current_rdf_symbol$core_enrichment[input$selectedTable_GSEA_rows_selected]
       if (!any(nchar(sel_genes) > 0)) {
         showNotification("No genes in the selected pathways meet the current filter thresholds. Lower the Log2FC or P-Value threshold.", type = "warning")
         return()
       }
+      if (is_native) current_er_symbol@result <- current_rdf_symbol
     }
 
-    # Network plot
-    cn <- enrichplot::cnetplot(
-      x = current_er_symbol,
-      node_label = "none",
-      foldChange = log2RatioGSEA,
-      showCategory = current_er_symbol@result$Description[input$selectedTable_GSEA_rows_selected]
-    )
-
-    # Apply colour scale limits
-    cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange > input$scaleLimGSEA] <- input$scaleLimGSEA
-    cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimGSEA] <- -input$scaleLimGSEA
-
-    # Add custom styling
-    cn <- cn +
-      geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderGSEA) +
-      scale_colour_gradient2(
-        name = "fold change",
-        low = "deepskyblue4",
-        mid = "white",
-        high = "firebrick",
-        midpoint = 0
+    # Network plot and ridge plot both need the real S4 object -- geneSets for
+    # cnetplot, geneList+geneSets for ridgeplot -- so both are native-only (see
+    # plans/exploredelight/enrichment_detach_plan.md §9). Skip with a notification for
+    # tidy-only pathway data rather than crashing.
+    if (is_native) {
+      cn <- enrichplot::cnetplot(
+        x = current_er_symbol,
+        node_label = "none",
+        foldChange = log2RatioGSEA,
+        showCategory = current_er_symbol@result$Description[input$selectedTable_GSEA_rows_selected]
       )
 
-    # Prepare data for labels
-    cd1 <- cn$data
-    cd1$name[!is.na(cd1$foldChange)] <- NA
-    cd1$Label <- NA
-    cd1$Label[seq_along(input$selectedTable_GSEA_rows_selected)] <-
-      current_er_symbol@result[[labelColumn]][input$selectedTable_GSEA_rows_selected]
+      # Apply colour scale limits
+      cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange > input$scaleLimGSEA] <- input$scaleLimGSEA
+      cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimGSEA] <- -input$scaleLimGSEA
 
-    cd2 <- cn$data
-    cd2$name[is.na(cd2$foldChange)] <- NA
-    # Apply gene label filtering if in "labels" mode
-    if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode == "labels") {
-      cd2$name[!(cd2$name %in% genes_pass_filter)] <- NA
-    }
+      # Add custom styling
+      cn <- cn +
+        geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderGSEA) +
+        scale_colour_gradient2(
+          name = "fold change",
+          low = "deepskyblue4",
+          mid = "white",
+          high = "firebrick",
+          midpoint = 0
+        )
 
-    # Add gene labels if requested
-    if (input$showGeneLabelsGSEA) {
-      cn <- cn + geom_text_repel(
-        data = cd2,
-        aes(label = name, x = x, y = y),
+      # Prepare data for labels
+      cd1 <- cn$data
+      cd1$name[!is.na(cd1$foldChange)] <- NA
+      cd1$Label <- NA
+      cd1$Label[seq_along(input$selectedTable_GSEA_rows_selected)] <-
+        current_er_symbol@result[[labelColumn]][input$selectedTable_GSEA_rows_selected]
+
+      cd2 <- cn$data
+      cd2$name[is.na(cd2$foldChange)] <- NA
+      # Apply gene label filtering if in "labels" mode
+      if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode == "labels") {
+        cd2$name[!(cd2$name %in% genes_pass_filter)] <- NA
+      }
+
+      # Add gene labels if requested
+      if (input$showGeneLabelsGSEA) {
+        cn <- cn + geom_text_repel(
+          data = cd2,
+          aes(label = name, x = x, y = y),
+          size = input$textSizeGSEA / 3,
+          max.overlaps = input$gseaMaxOver,
+          nudge_x = input$gseaDodgeX / 10,
+          nudge_y = input$gseaDodgeY / 10,
+          fontface = "bold",
+          color = "black",
+          bg.color = "white",
+          bg.r = 0.15,
+          na.rm = TRUE
+        )
+      }
+
+      # Add pathway labels
+      cn <- cn + geom_label_repel(
+        data = cd1,
+        aes(label = Label, x = x, y = y, fill = Label),
         size = input$textSizeGSEA / 3,
         max.overlaps = input$gseaMaxOver,
         nudge_x = input$gseaDodgeX / 10,
         nudge_y = input$gseaDodgeY / 10,
         fontface = "bold",
-        color = "black",
-        bg.color = "white",
-        bg.r = 0.15,
+        show.legend = FALSE,
+        fill = alpha("white", input$gseaLabelAlpha),
         na.rm = TRUE
       )
+
+      gseaPlotReactive$cnetplot <- cn
+
+      # Ridge plot
+      erRP <- clusterProfiler::slice(current_er, input$selectedTable_GSEA_rows_selected)
+      rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
+      rp <- rp +
+        scale_y_discrete(labels = erRP@result$Label[match(
+          levels(as.factor(rp$plot_env$gs2val.df$category)),
+          erRP@result$Description
+        )]) +
+        theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeGSEA)) +
+        geom_vline(xintercept = 0, linetype = "dashed") +
+        scale_fill_gradient2(
+          low = "dodgerblue4",
+          high = "firebrick4",
+          mid = "white",
+          midpoint = 0
+        )
+
+      gseaPlotReactive$ridgeplot <- rp
+    } else {
+      gseaPlotReactive$cnetplot <- NULL
+      gseaPlotReactive$ridgeplot <- NULL
+      showNotification("Network and ridge plots need the original enrichment object; not available for this dataset.", type = "message")
     }
 
-    # Add pathway labels
-    cn <- cn + geom_label_repel(
-      data = cd1,
-      aes(label = Label, x = x, y = y, fill = Label),
-      size = input$textSizeGSEA / 3,
-      max.overlaps = input$gseaMaxOver,
-      nudge_x = input$gseaDodgeX / 10,
-      nudge_y = input$gseaDodgeY / 10,
-      fontface = "bold",
-      show.legend = FALSE,
-      fill = alpha("white", input$gseaLabelAlpha),
-      na.rm = TRUE
-    )
-
-    gseaPlotReactive$cnetplot <- cn
-
-    # Ridge plot
-    rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
-    rp <- rp +
-      scale_y_discrete(labels = erRP@result$Label[match(
-        levels(as.factor(rp$plot_env$gs2val.df$category)),
-        erRP@result$Description
-      )]) +
-      theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeGSEA)) +
-      geom_vline(xintercept = 0, linetype = "dashed") +
-      scale_fill_gradient2(
-        low = "dodgerblue4",
-        high = "firebrick4",
-        mid = "white",
-        midpoint = 0
-      )
-
-    gseaPlotReactive$ridgeplot <- rp
-
     # Lollipop plot (-log10 FDR, coloured by NES)
-    lolli_df <- erRP@result
+    lolli_df <- erRP_df
     lolli_df$negLogP <- -log10(lolli_df$p.adjust)
     lolli_df[[labelColumn]] <- factor(lolli_df[[labelColumn]], levels = lolli_df[[labelColumn]][order(lolli_df$negLogP)])
     scl <- input$gseaLollipopScale
@@ -517,7 +567,7 @@ observeEvent(
     # Heatmap - use filtered genes when filtering is active
     # Prepare matrix for ComplexHeatmap
     sel_idx <- input$selectedTable_GSEA_rows_selected
-    sel_er <- current_er_symbol@result[sel_idx, ]
+    sel_er <- current_rdf_symbol[sel_idx, ]
 
     # Extract genes for each pathway
     pathway_genes <- lapply(strsplit(sel_er$core_enrichment, "/"), function(g) g[nchar(g) > 0])
@@ -577,25 +627,30 @@ observeEvent(
       gseaPlotReactive$heatmap <- NULL
     }
 
-    # GSEA running score plot
-    rs <- enrichplot::gseaplot2(
-      x = current_er,
-      geneSetID = input$selectedTable_GSEA_rows_selected,
-      color = RColorBrewer::brewer.pal(max(3, length(input$selectedTable_GSEA_rows_selected)), "Set2")[seq_along(input$selectedTable_GSEA_rows_selected)]
-    )
-
-    gseaPlotReactive$runningscore <- rs
+    # GSEA running score plot -- needs the real S4 object's full geneList, so
+    # native-only (see plans/exploredelight/enrichment_detach_plan.md §9).
+    if (is_native) {
+      rs <- enrichplot::gseaplot2(
+        x = current_er,
+        geneSetID = input$selectedTable_GSEA_rows_selected,
+        color = RColorBrewer::brewer.pal(max(3, length(input$selectedTable_GSEA_rows_selected)), "Set2")[seq_along(input$selectedTable_GSEA_rows_selected)]
+      )
+      gseaPlotReactive$runningscore <- rs
+    } else {
+      gseaPlotReactive$runningscore <- NULL
+      showNotification("Running-score plot needs the original enrichment object; not available for this dataset.", type = "message")
+    }
 
     # UpSet plot
     geneSetsUpset <- setNames(
       lapply(input$selectedTable_GSEA_rows_selected, function(i) {
         colToUse <- if (input$gseaType %in% c("BP", "MF", "CC")) "geneName" else "core_enrichment"
-        g <- current_er@result[[colToUse]][i] %>%
+        g <- current_rdf[[colToUse]][i] %>%
           strsplit("/") %>%
           .[[1]]
         unique(g[nchar(g) > 1])
       }),
-      current_er@result[[labelColumn]][input$selectedTable_GSEA_rows_selected]
+      current_rdf[[labelColumn]][input$selectedTable_GSEA_rows_selected]
     )
 
     m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
@@ -653,7 +708,8 @@ output$dlPlot_cnetGSEA <- downloadHandler(
 output$heatmap_GSEA <- renderPlot(
   {
     req(!is.null(gseaPlotReactive[["heatmap"]]))
-    ComplexHeatmap::draw(gseaPlotReactive[["heatmap"]])
+    draw_heatmap(gseaPlotReactive[["heatmap"]],
+                 legend_dx = input$GSEALegendDX, legend_dy = input$GSEALegendDY)
   },
   width = function() as.numeric(input$figWidthGSEA),
   height = function() as.numeric(input$figHeightGSEA * 1.5)
@@ -670,7 +726,8 @@ output$dlPlot_heatmapGSEA <- downloadHandler(
   content = function(file) {
     req(gseaPlotReactive[["heatmap"]])
     export_plot_standard(
-      plot_object = gseaPlotReactive[["heatmap"]],
+      plot_object = function() draw_heatmap(gseaPlotReactive[["heatmap"]],
+                                            legend_dx = input$GSEALegendDX, legend_dy = input$GSEALegendDY),
       filename = file,
       format = tolower(input$downloadFormatGSEA),
       width = as.numeric(input$figWidthGSEA) / 25,

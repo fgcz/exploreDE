@@ -414,7 +414,7 @@ server <- function(input, output, session) {
       # 0. Session (always shown, all data types)
       tags$li(class = "header", "Session"),
       menuItem(text = "Results Summary", tabName = "summaryTab", icon = icon("list")),
-      menuItem(text = "Colours", tabName = "colourTab", icon = icon("palette")),
+      menuItem(text = "Colours / Labels", tabName = "colourTab", icon = icon("palette")),
       menuItem(text = "Save / Load Session (beta)", tabName = "saveStateTab", icon = icon("floppy-disk")),
 
       # 1. Count tabs (Always shown)
@@ -448,10 +448,7 @@ server <- function(input, output, session) {
     if (dataType == "RNASeq" && eds$has_de()) {
       # Check if species is supported for KEGG (human, mouse, rat)
       keggSpeciesSupported <- tryCatch({
-        ref <- eds$ref_build()
-        spp <- ezRun::getSpecies(ref)
-        if (grepl("^Rattus", ref)) spp <- "Rat"
-        spp %in% c("Human", "Mouse", "Rat")
+        !is.null(kegg_species_label(eds$ref_build()))
       }, error = function(e) FALSE)
 
       pathwayItems <- list(

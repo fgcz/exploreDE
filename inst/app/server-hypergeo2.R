@@ -5,18 +5,47 @@ req(eds)
 # BP/upGenes... (SE) or ora/BP/upGenes... (h5ad); strip the prefix and rebuild
 # the ontology x direction nesting this module indexes as ora[[type]][[dir]].
 contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
+
+# A cell in the ora[[type]][[dir]] structure below is EITHER a real
+# clusterProfiler S4 object (the native path -- existing behaviour, unchanged)
+# or a plain tidy data.frame (a BYO dataset whose pathway data was never a
+# clusterProfiler object at all -- see plans/exploredelight/enrichment_detach_plan.md). These
+# two helpers let the rest of this module read either uniformly; only the
+# genuinely S4-only plots (cnetplot/barplot/dotplot, which dispatch on the
+# class) need to branch on `.is_native()`.
+.is_native <- function(x) inherits(x, c("enrichResult", "gseaResult"))
+.res_df    <- function(x) if (.is_native(x)) x@result else x
+
 .ora_raw <- function() {
   if (is.null(contrast)) return(NULL)
-  flat <- eds$enrichment(contrast, "ora")
-  if (!length(flat)) return(NULL)
-  names(flat) <- sub("^ora/", "", names(flat))
   nested <- list()
-  for (k in names(flat)) {
-    parts <- strsplit(k, "/", fixed = TRUE)[[1]]
-    if (length(parts) >= 2) { dom <- parts[1]; dir <- parts[length(parts)] }
-    else { dom <- "GO"; dir <- parts[1] }
-    nested[[dom]][[dir]] <- flat[[k]]
+  flat <- eds$enrichment(contrast, "ora")
+  if (length(flat)) {
+    names(flat) <- sub("^ora/", "", names(flat))
+    for (k in names(flat)) {
+      parts <- strsplit(k, "/", fixed = TRUE)[[1]]
+      if (length(parts) >= 2) { dom <- parts[1]; dir <- parts[length(parts)] }
+      else { dom <- "GO"; dir <- parts[1] }
+      nested[[dom]][[dir]] <- flat[[k]]
+    }
   }
+  # Fill any gaps from the tidy accessor, split by its `ontology` column the
+  # same way -- this is the ONLY source of data for a dataset whose pathway
+  # entries were never clusterProfiler objects (plain data.frames: nothing to
+  # rebuild objects from). Objects always win where both exist (cnetplot below
+  # needs one), so this only ADDS cells, never overwrites one already set from
+  # `flat` above.
+  tab <- eds$enrichment_table(contrast, "ora")
+  if (is.data.frame(tab) && nrow(tab) && "ontology" %in% colnames(tab)) {
+    for (k in unique(tab$ontology)) {
+      parts <- strsplit(k, "/", fixed = TRUE)[[1]]
+      if (length(parts) >= 2) { dom <- parts[1]; dir <- parts[length(parts)] }
+      else { dom <- "GO"; dir <- parts[1] }
+      if (is.null(nested[[dom]][[dir]]))
+        nested[[dom]][[dir]] <- tab[tab$ontology == k, , drop = FALSE]
+    }
+  }
+  if (!length(nested)) return(NULL)
   nested
 }
 
@@ -105,9 +134,9 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       for (category in categories) {
         for (gene_set in gene_sets) {
           enrich_obj <- ora[[category]][[gene_set]]
-          results_df <- as.data.frame(enrich_obj@result)
+          if (is.null(enrich_obj)) next
           sheet_name <- paste(category, gene_set, sep = "_")
-          sheets_list[[sheet_name]] <- results_df
+          sheets_list[[sheet_name]] <- .res_df(enrich_obj)
         }
       }
       write_xlsx(sheets_list, file)
@@ -115,19 +144,15 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
   )
 
   # ORA Overview Table
-  ora.overview <- data.frame(
-    "Number of Significant Pathways" = numeric(),
-    check.names = FALSE
+  ora.overview <- data.frame(check.names = FALSE,
+    "Number of Significant Pathways" = numeric()
   )
   for (goDomain in names(ora)) {
     for (resName in names(ora[[goDomain]])) {
       testName <- paste0(goDomain, ": ", resName)
+      rdf <- .res_df(ora[[goDomain]][[resName]])
       ora.overview[testName, "Number of Significant Pathways"] <-
-        nrow(ora[[goDomain]][[resName]]@result[
-          as.numeric(
-            ora[[goDomain]][[resName]]@result$p.adjust
-          ) < param$fdrThreshORA,
-        ])
+        nrow(rdf[as.numeric(rdf$p.adjust) < param$fdrThreshORA, ])
     }
   }
   output$oraOverview <- function() {
@@ -144,14 +169,13 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       )
   }
   # ORA thresholds
-  oraThresholds <- data.frame(
-    "ORA Cut-Offs" = character(),
-    check.names = FALSE
+  oraThresholds <- data.frame(check.names = FALSE,
+    "ORA Cut-Offs" = character()
   )
-  oraThresholds["Input DEG P-value", "ORA Cut-Offs"] <- param$pValThreshGO %||% NA
-  oraThresholds["Input DEG Log2 Ratio", "ORA Cut-Offs"] <- param$log2RatioThreshGO %||% NA
-  oraThresholds["Input up-regulated DEG total", "ORA Cut-Offs"] <- length(sel$upGenes)
-  oraThresholds["Input down-regulated DEG total", "ORA Cut-Offs"] <- length(sel$downGenes)
+  oraThresholds["Input DE P-value", "ORA Cut-Offs"] <- param$pValThreshGO %||% NA
+  oraThresholds["Input DE Log2 Ratio", "ORA Cut-Offs"] <- param$log2RatioThreshGO %||% NA
+  oraThresholds["Input up-regulated DE total", "ORA Cut-Offs"] <- length(sel$upGenes)
+  oraThresholds["Input down-regulated DE total", "ORA Cut-Offs"] <- length(sel$downGenes)
   oraThresholds["Output ORA Term FDR", "ORA Cut-Offs"] <- param$fdrThreshORA
   output$oraThreshOverview <- function() {
     oraThresholds %>%
@@ -223,28 +247,29 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         DT::selectRows(proxy, NULL)
       })
 
-      er <- ora[[input$oraType]][[input$oraDirection]]
+      er  <- ora[[input$oraType]][[input$oraDirection]]
+      rdf <- .res_df(er)
       # if (input$tabs == "oraTab") {
-      if (is.null(er) || nrow(er@result) == 0) {
+      if (is.null(er) || nrow(rdf) == 0) {
         showModal(modalDialog(title = "No ORA Results", "There are no results for this selection."))
       }
       # }
-      if (!is.null(er) && nrow(er@result) != 0) {
-        er@result$Label <- ""
-        for (i in seq_along(er@result$Description)) {
-          desc <- er@result$Description[i]
-          label <- paste0(er@result$ID[i], "\n", desc)
+      if (!is.null(er) && nrow(rdf) != 0) {
+        rdf$Label <- ""
+        for (i in seq_along(rdf$Description)) {
+          desc <- rdf$Description[i]
+          label <- paste0(rdf$ID[i], "\n", desc)
           if (!is.na(label) && nchar(label) > 45) {
             label <- substr(label, 1, 45)
           }
-          er@result$Label[i] <- label
+          rdf$Label[i] <- label
         }
         # Rebuild geneName from geneID via the backend-agnostic remap.
-        er@result$geneName <- sapply(strsplit(er@result$geneID, "/"), function(ids) {
+        rdf$geneName <- sapply(strsplit(rdf$geneID, "/"), function(ids) {
           paste(.id2sym(ids), collapse = "/")
         })
         output$selectedTable_ORA <- DT::renderDataTable({
-          oraDfToShow <- as.data.frame(er)[, c("Label", "GeneRatio", "geneName")]
+          oraDfToShow <- rdf[, c("Label", "GeneRatio", "geneName")]
           oraDfToShow$geneNumber <- sapply(strsplit(as.character(oraDfToShow$GeneRatio), "/"), function(x) as.numeric(x[1]))
 
           DT::datatable(
@@ -291,17 +316,19 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
     {
       req(!is.null(input$selectedTable_ORA_rows_selected))
 
-      er <- ora[[input$oraType]][[input$oraDirection]]
-      req(nrow(er@result) >= 2)
+      er  <- ora[[input$oraType]][[input$oraDirection]]
+      req(!is.null(er))
+      rdf <- .res_df(er)
+      req(nrow(rdf) >= 2)
 
-      er@result$Label <- ""
-      for (i in seq_along(er@result$Description)) {
-        desc <- er@result$Description[i]
-        label <- paste0(er@result$ID[i], "\n", desc)
+      rdf$Label <- ""
+      for (i in seq_along(rdf$Description)) {
+        desc <- rdf$Description[i]
+        label <- paste0(rdf$ID[i], "\n", desc)
         if (!is.na(label) && nchar(label) > 45) {
           label <- substr(label, 1, 45)
         }
-        er@result$Label[i] <- label
+        rdf$Label[i] <- label
       }
 
       # Get log2FCs of genes for network plot
@@ -370,80 +397,95 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       }
 
       # Rebuild geneName from geneID via the backend-agnostic remap.
-      er@result$geneName <- sapply(strsplit(er@result$geneID, "/"), function(ids) {
+      rdf$geneName <- sapply(strsplit(rdf$geneID, "/"), function(ids) {
         paste(.id2sym(ids), collapse = "/")
       })
 
       # In "genes" mode, also remove filtered genes from the enrichment result
       # so cnetplot doesn't render them as grey nodes
       if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode == "genes") {
-        er@result$geneName <- sapply(strsplit(er@result$geneName, "/"), function(g) {
+        rdf$geneName <- sapply(strsplit(rdf$geneName, "/"), function(g) {
           g <- g[g %in% genes_pass_filter]
           paste(g, collapse = "/")
         })
         # Check that selected pathways still have genes after filtering
-        sel_genes <- er@result$geneName[input$selectedTable_ORA_rows_selected]
+        sel_genes <- rdf$geneName[input$selectedTable_ORA_rows_selected]
         if (!any(nchar(sel_genes) > 0)) {
           showNotification("No genes in the selected pathways meet the current filter thresholds. Lower the Log2FC or P-Value threshold.", type = "warning")
           return()
         }
       }
 
-      er@result$geneID <- er@result$geneName
+      rdf$geneID <- rdf$geneName
       nl <- "category"
       if (input$showGeneLabelsORA) {
         nl <- "all"
       }
 
-      oraPlotReactive$er <- er
+      # cnetplot needs the real clusterProfiler object (its geneSets slot, not
+      # just the result table -- see plans/exploredelight/enrichment_detach_plan.md §9), so it
+      # only runs on the native path. Sync the augmented table back into the
+      # S4 object's result slot first so cnetplot sees the same Label/geneName
+      # this reactive just built -- this is otherwise a no-op for the native
+      # path (identical to mutating er@result directly, just expressed via rdf
+      # so the table/heatmap/upset/lollipop code below can stay one code path
+      # for both the native and tidy-only cases).
+      if (.is_native(er)) {
+        er@result <- rdf
+        oraPlotReactive$er <- er
 
-      # network plot ----
-      cn <- cnetplot(
-        x = er,
-        foldChange = log2RatioORA,
-        showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
-        node_label = "none"
-      )
-      # Set the colour limits to the user-specified values
-      cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange > input$scaleLimORA] <- input$scaleLimORA
-      cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimORA] <- -input$scaleLimORA
-      # Add our own geom_points on top
-      cn <- cn + geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderORA)
-      # Get two copies of the plot data table so we can get gene and node labels and modify them for plotting
-      cd1 <- cn$data
-      cd1$name[!is.na(cd1$foldChange)] <- NA
-      cd1$Label <- NA
-      cd1$Label[1:length(input$selectedTable_ORA_rows_selected)] <- er@result$Label[input$selectedTable_ORA_rows_selected]
-      cd2 <- cn$data
-      cd2$name[is.na(cd2$foldChange)] <- NA
-      # Apply gene label filtering if in "labels" mode
-      if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode == "labels") {
-        cd2$name[!(cd2$name %in% genes_pass_filter)] <- NA
+        # network plot ----
+        cn <- cnetplot(
+          x = er,
+          foldChange = log2RatioORA,
+          showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
+          node_label = "none"
+        )
+        # Set the colour limits to the user-specified values
+        cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange > input$scaleLimORA] <- input$scaleLimORA
+        cn$data$foldChange[!is.na(cn$data$foldChange) & cn$data$foldChange < -input$scaleLimORA] <- -input$scaleLimORA
+        # Add our own geom_points on top
+        cn <- cn + geom_point(data = cn$data, aes(x = x, y = y, size = size), shape = 21, stroke = input$nodeBorderORA)
+        # Get two copies of the plot data table so we can get gene and node labels and modify them for plotting
+        cd1 <- cn$data
+        cd1$name[!is.na(cd1$foldChange)] <- NA
+        cd1$Label <- NA
+        cd1$Label[1:length(input$selectedTable_ORA_rows_selected)] <- er@result$Label[input$selectedTable_ORA_rows_selected]
+        cd2 <- cn$data
+        cd2$name[is.na(cd2$foldChange)] <- NA
+        # Apply gene label filtering if in "labels" mode
+        if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode == "labels") {
+          cd2$name[!(cd2$name %in% genes_pass_filter)] <- NA
+        }
+        # Some reason, enrichplot changed the default such that up is blue and down is red. We prefer the opposite...
+        if (input$oraDirection == "upGenes") {
+          cn <- cn + scale_color_gradientn(name = "fold change", colours = c("white", "firebrick"))
+        } else if (input$oraDirection == "downGenes") {
+          cn <- cn + scale_color_gradientn(name = "fold change", colours = c("deepskyblue4", "white"))
+        } else if (input$oraDirection == "bothGenes") {
+          cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick", midpoint = 0)
+        }
+        # Add gene and node labels in that order
+        if (input$showGeneLabelsORA) {
+          cn <- cn +
+            geom_text_repel(
+              data = cd2, aes(label = name, x = x, y = y), size = input$textSizeORA / 3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX / 10, nudge_y = input$oraDodgeY / 10,
+              fontface = "bold", color = "black", bg.color = "white", bg.r = .15, na.rm = T
+            )
+        }
+        cn <- cn + geom_label_repel(
+          data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeORA / 3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX / 10, nudge_y = input$oraDodgeY / 10, fontface = "bold", show.legend = F, fill = alpha(c("white"), input$oraLabelAlpha), na.rm = T
+        )
+        oraPlotReactive$cnetplot <- cn
+      } else {
+        oraPlotReactive$er <- rdf
+        oraPlotReactive$cnetplot <- NULL
+        showNotification("Network plot needs the original enrichment object; not available for this dataset.", type = "message")
       }
-      # Some reason, enrichplot changed the default such that up is blue and down is red. We prefer the opposite...
-      if (input$oraDirection == "upGenes") {
-        cn <- cn + scale_color_gradientn(name = "fold change", colours = c("white", "firebrick"))
-      } else if (input$oraDirection == "downGenes") {
-        cn <- cn + scale_color_gradientn(name = "fold change", colours = c("deepskyblue4", "white"))
-      } else if (input$oraDirection == "bothGenes") {
-        cn <- cn + scale_colour_gradient2(name = "fold change", low = "deepskyblue4", mid = "white", high = "firebrick", midpoint = 0)
-      }
-      # Add gene and node labels in that order
-      if (input$showGeneLabelsORA) {
-        cn <- cn +
-          geom_text_repel(
-            data = cd2, aes(label = name, x = x, y = y), size = input$textSizeORA / 3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX / 10, nudge_y = input$oraDodgeY / 10,
-            fontface = "bold", color = "black", bg.color = "white", bg.r = .15, na.rm = T
-          )
-      }
-      cn <- cn + geom_label_repel(
-        data = cd1, aes(label = Label, x = x, y = y, fill = Label), size = input$textSizeORA / 3, max.overlaps = input$oraMaxOver, nudge_x = input$oraDodgeX / 10, nudge_y = input$oraDodgeY / 10, fontface = "bold", show.legend = F, fill = alpha(c("white"), input$oraLabelAlpha), na.rm = T
-      )
-      oraPlotReactive$cnetplot <- cn
 
       # Prepare matrix for ComplexHeatmap
       sel_idx <- input$selectedTable_ORA_rows_selected
-      sel_er <- er@result[sel_idx, ]
+      sel_er <- rdf[sel_idx, ]
 
       pathway_genes <- lapply(strsplit(sel_er$geneName, "/"), function(g) g[nchar(g) > 0])
       names(pathway_genes) <- sel_er$Description
@@ -498,50 +540,76 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         oraPlotReactive$heatmap <- NULL
       }
 
-      bp <- barplot(
-        er,
-        showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
-        title = paste(input$oraType, input$oraDirection)
-      )
-      bp <- bp +
-        scale_y_discrete(
-          labels = rev(
-            er@result$Label[
-              match(bp$plot_env$df$ID, er@result$ID)
-            ]
-          )
-        ) +
-        theme_prism() +
-        theme(
-          axis.text.y = element_text(
-            vjust = -0.01, size = input$textSizeORA
-          )
+      if (.is_native(er)) {
+        bp <- barplot(
+          er,
+          showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
+          title = paste(input$oraType, input$oraDirection)
         )
-      oraPlotReactive$barplot <- bp
+        bp <- bp +
+          scale_y_discrete(
+            labels = rev(
+              er@result$Label[
+                match(bp$plot_env$df$ID, er@result$ID)
+              ]
+            )
+          ) +
+          theme_prism() +
+          theme(
+            axis.text.y = element_text(
+              vjust = -0.01, size = input$textSizeORA
+            )
+          )
+        oraPlotReactive$barplot <- bp
 
-      dp <- enrichplot::dotplot(
-        er,
-        x = "GeneRatio",
-        showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
-        title = paste(input$oraType, input$oraDirection)
-      )
-      dp <- dp +
-        scale_y_discrete(
-          labels = rev(
-            er@result$Label[
-              match(dp$plot_env$df$ID, er@result$ID)
-            ]
-          )
-        ) +
-        theme_prism() +
-        theme(
-          axis.text.y = element_text(
-            vjust = -0.01, size = input$textSizeORA
-          )
+        dp <- enrichplot::dotplot(
+          er,
+          x = "GeneRatio",
+          showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
+          title = paste(input$oraType, input$oraDirection)
         )
-      oraPlotReactive$dotplot <- dp
+        dp <- dp +
+          scale_y_discrete(
+            labels = rev(
+              er@result$Label[
+                match(dp$plot_env$df$ID, er@result$ID)
+              ]
+            )
+          ) +
+          theme_prism() +
+          theme(
+            axis.text.y = element_text(
+              vjust = -0.01, size = input$textSizeORA
+            )
+          )
+        oraPlotReactive$dotplot <- dp
+      } else {
+        # barplot()/dotplot() dispatch on the enrichResult class -- with no
+        # native S4 object (tidy-only pathway data), rebuild the same view by
+        # hand from the result table alone (both only ever needed `result`;
+        # see plans/exploredelight/enrichment_detach_plan.md).
+        sel_df <- rdf[input$selectedTable_ORA_rows_selected, ]
+        sel_df$Label <- factor(sel_df$Label, levels = rev(sel_df$Label[order(sel_df$Count)]))
 
-      lolli_df <- er@result[input$selectedTable_ORA_rows_selected, , drop = FALSE]
+        bp <- ggplot(sel_df, aes(x = Count, y = Label, fill = p.adjust)) +
+          geom_col() +
+          scale_fill_continuous(low = "red", high = "blue", name = "p.adjust") +
+          labs(x = "Count", y = NULL, title = paste(input$oraType, input$oraDirection)) +
+          theme_prism() +
+          theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeORA))
+        oraPlotReactive$barplot <- bp
+
+        sel_df$GeneRatioNum <- sapply(strsplit(as.character(sel_df$GeneRatio), "/"), function(x) as.numeric(x[1]) / as.numeric(x[2]))
+        dp <- ggplot(sel_df, aes(x = GeneRatioNum, y = Label, size = Count, colour = p.adjust)) +
+          geom_point() +
+          scale_colour_continuous(low = "red", high = "blue", name = "p.adjust") +
+          labs(x = "GeneRatio", y = NULL, title = paste(input$oraType, input$oraDirection)) +
+          theme_prism() +
+          theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeORA))
+        oraPlotReactive$dotplot <- dp
+      }
+
+      lolli_df <- rdf[input$selectedTable_ORA_rows_selected, , drop = FALSE]
       lolli_df$negLogP <- -log10(lolli_df$p.adjust)
       lolli_df$Label <- factor(lolli_df$Label, levels = lolli_df$Label[order(lolli_df$negLogP)])
       scl <- input$oraLollipopScale
@@ -556,12 +624,12 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       oraPlotReactive$lollipop <- lp
 
       geneSetsUpset <- setNames(lapply(input$selectedTable_ORA_rows_selected, function(i) {
-        g <- er@result$geneName[i] %>%
+        g <- rdf$geneName[i] %>%
           strsplit("/") %>%
           .[[1]]
         g <- unique(g[nchar(g) > 1])
         g
-      }), er@result$Label[input$selectedTable_ORA_rows_selected])
+      }), rdf$Label[input$selectedTable_ORA_rows_selected])
       m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
       up <- ComplexHeatmap::UpSet(
         m = m1,
@@ -667,7 +735,8 @@ output$dlPlot_dotORA <- downloadHandler(
 output$heatmap_ORA <- renderPlot(
   {
     req(!is.null(oraPlotReactive[["heatmap"]]))
-    ComplexHeatmap::draw(oraPlotReactive[["heatmap"]])
+    draw_heatmap(oraPlotReactive[["heatmap"]],
+                 legend_dx = input$ORALegendDX, legend_dy = input$ORALegendDY)
   },
   width = function() as.numeric(input$figWidthORA / 2),
   height = function() as.numeric(input$figHeightORA * 1.5)
@@ -683,7 +752,8 @@ output$dlPlot_heatmapORA <- downloadHandler(
   content = function(file) {
     req(oraPlotReactive[["heatmap"]])
     export_plot_standard(
-      plot_object = oraPlotReactive[["heatmap"]],
+      plot_object = function() draw_heatmap(oraPlotReactive[["heatmap"]],
+                                            legend_dx = input$ORALegendDX, legend_dy = input$ORALegendDY),
       filename = file,
       format = tolower(input$downloadFormatORA),
       width = (as.numeric(input$figWidthORA) / 25),

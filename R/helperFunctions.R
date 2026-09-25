@@ -1,5 +1,29 @@
 # Helper functions
 
+#' kegg_species_label
+#' Maps a `ref_build`/`refBuild` string's leading "Genus_species" segment
+#' (e.g. `"Homo_sapiens/GENCODE/..."`) to the KEGG-organism display name the
+#' pathway tabs use to decide whether KEGG lookups are supported. Self-
+#' contained so exploreDE does not need `ezRun::getSpecies()` just for this —
+#' `ezRun` is otherwise optional (`Suggests`), and a fresh install without it
+#' would hard-error on the four call sites this replaces (app.R, server-kegg.R,
+#' server-goTile.R, server-heatmap2.R). Only the three organisms those call
+#' sites ever recognised are mapped; anything else returns `NULL`, matching
+#' their existing `switch(spp, "Human"=, "Mouse"=, "Rat"=, NULL)` behaviour.
+#'
+#' @param ref_build A `ref_build`/`refBuild` string, or `NA`/`NULL`.
+#' @return `"Human"`, `"Mouse"`, `"Rat"`, or `NULL`.
+#' @export
+kegg_species_label <- function(ref_build) {
+  if (is.null(ref_build) || is.na(ref_build) || !nzchar(ref_build)) return(NULL)
+  genus_species <- strsplit(ref_build, "/", fixed = TRUE)[[1]][1]
+  switch(genus_species,
+    Homo_sapiens      = "Human",
+    Mus_musculus      = "Mouse",
+    Rattus_norvegicus = "Rat",
+    NULL)
+}
+
 #' batch_correction_design
 #' Build a design matrix for limma::removeBatchEffect that preserves biological
 #' signal. Without a design matrix, removeBatchEffect assumes a one-group
@@ -122,33 +146,28 @@ apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
 #' standardise_columns
 #' Fuzzy-match incoming column names to canonical names.
 #' Upstream data may call columns anything; this maps them to a known schema
-#' so downstream code can rely on consistent names.
+#' so downstream code can rely on consistent names. Patterns come from the one
+#' column dictionary (`inst/dictionaries/column_patterns.json`); DE concepts
+#' are renamed to the legacy names the SE-backed app code reads
+#' (`log2Ratio` / `pValue` / `fdr`). A column is only renamed when the
+#' deciding pattern matches exactly one column.
 #' @param df A data.frame (typically from rowData contrast)
 #' @return The same data.frame with standardised column names
 #' @export
 standardise_columns <- function(df) {
-  # Canonical name → regex patterns (case-insensitive) that map to it
-  patterns <- c(
-    "protein_Id"  = "^protein[._]?id$",
-    "peptide_Id"  = "^peptide[._]?id$|^peptide$",
-    "site"        = "^site$",
-    "gene_name"   = "^gene[._]?name$|^gene[._]?symbol$",
-    "description" = "^description$|^desc$",
-    "fasta.id"    = "^fasta[._]?id$",
-    "modelName"   = "^model[._]?name$",
-    "nrPeptides"  = "^nr[._]?peptides$|^n[._]?peptides$|^num[._]?peptides$",
-    "log2Ratio"   = "^diff$|^log2[._]?(fold)?[._]?(change|ratio|fc)?$|^logfc$",
-    "pValue"      = "^p[._]?value$",
-    "fdr"         = "^fdr$|^adj[._]?p[._]?value$|^padj$|^q[._]?value$"
-  )
+  # dictionary concept -> legacy column name it is renamed to
+  rowdata_concepts <- c("protein_Id", "peptide_Id", "site", "gene_name", "description",
+                        "fasta.id", "modelName", "nrPeptides")
+  de_concepts <- c(effect_log2fc = "log2Ratio", score_pvalue = "pValue", score_fdr = "fdr")
 
-  current <- colnames(df)
-  for (canonical in names(patterns)) {
-    idx <- grep(patterns[[canonical]], current, ignore.case = TRUE)
-    if (length(idx) == 1) {
-      current[idx] <- canonical
-    }
+  orig    <- colnames(df)
+  current <- orig
+  rename <- function(patterns, to) {
+    src <- eds_match_col(orig, patterns, unique = TRUE)
+    if (!is.null(src)) current[match(src, orig)] <<- to
   }
+  for (concept in rowdata_concepts) rename(eds_rowdata_column_patterns[[concept]], concept)
+  for (concept in names(de_concepts)) rename(eds_de_column_patterns[[concept]], de_concepts[[concept]])
   colnames(df) <- current
   df
 }
@@ -196,229 +215,12 @@ collapse_guides_to_genes <- function(counts, sgRNA_to_gene, exclude = NULL) {
 #' convert_genomics_se
 #' @export
 convert_genomics_se <- function(se, dataDir, param = NULL) {
-  # Phase 1 (2026-05-15): body delegates to the ExploreDataset hierarchy +
-  # legacy_gStoreList_from_eds() shim. Byte-equivalent output verified by
-  # tests/testthat/test-legacy_shim_equivalence.R. The shim is the
-  # migration scaffold; Phase 2 retires it one server module at a time.
+  # Delegates to the ExploreDataset hierarchy + legacy_gStoreList_from_eds()
+  # shim (byte-equivalent to the pre-2026-05 converter it replaced; that
+  # converter and its equivalence tests are archived in
+  # plans/archive/legacy_converters/).
   eds <- new_explore_dataset(se)
   return(legacy_gStoreList_from_eds(eds, se = se, dataDir = dataDir, param = param))
-}
-
-.convert_genomics_se_legacy <- function(se, dataDir, param = NULL) {
-  # Pre-Phase-1 implementation, retained for reference / regression bisecting.
-  # Not exported; not called by any package code. Delete once Phase 2 is done.
-  if (is.null(param)) {
-    param <- metadata(se)$param
-  }
-
-  # Generic for RNA seq AND CountQC ----
-  # Prepare the seqAnno results table
-  # Suppress S4Vectors deprecation warnings when accessing genomic ranges
-  seqAnno <- suppressWarnings(data.frame(rowData(se), row.names = rownames(se), check.names = FALSE))
-  # Tidy the description column to remove extraneous accessors
-  if ("description" %in% colnames(seqAnno)) {
-    seqAnno$description <- gsub(" \\[..*", "", seqAnno$description)
-  } else {
-    seqAnno$description <- seqAnno$gene_name
-  }
-  # Uniquify the gene symbols to create feature_id
-  if (param$featureLevel == "gene") {
-    seqAnno$feature_id <- scuttle::uniquifyFeatureNames(
-      ID = seqAnno$gene_id,
-      names = seqAnno$gene_name
-    )
-  } else if (param$featureLevel == "isoform") {
-    seqAnno$feature_id <- scuttle::uniquifyFeatureNames(
-      ID = seqAnno$transcript_id,
-      names = seqAnno$gene_name
-    )
-  }
-  # If uniquifying broke some names, fix them
-  seqAnno$feature_id[grep("^_", seqAnno$feature_id)] <- gsub("_", "", seqAnno$feature_id[grep("^_", seqAnno$feature_id)])
-  genes <- seqAnno$feature_id
-
-  # Prepare the metadata table ----
-  if (file.exists(file.path(dataDir, "../input_dataset.tsv"))) {
-    dataset <- read_tsv(file.path(dataDir, "../input_dataset.tsv"), show_col_types = F) %>% data.frame(check.names = F)
-  } else {
-    dataset <- data.frame(colData(se), check.names = FALSE)
-  }
-  if (length(param$samples) > 0) {
-    dataset <- dataset[which(dataset$Name %in% param$samples), ]
-  }
-  dataset[["Name"]] <- factor(dataset[["Name"]], levels = dataset[["Name"]])
-  rownames(dataset) <- dataset$Name
-  # Get the factors that should be available for plotting
-  factors <- colnames(dataset)[grep("\\[Factor]", colnames(dataset))]
-  # Remove [Factor] from colnames and factors
-  colnames(dataset) <- gsub(" \\[.*", "", colnames(dataset)) %>% gsub(" ", "_", .)
-  factors <- gsub(" \\[.*", "", factors) %>% gsub(" ", "_", .)
-  # Get the individual levels for each factor
-  factorLevels <- lapply(factors, function(f) {
-    levels(as.factor(dataset[[f]]))
-  }) %>% setNames(factors)
-  # If someone manually enters a duplicate column (but sans [Factor]), things will break. So, remove!
-  # Identify duplicated column names
-  dups <- which(duplicated(names(dataset)) | duplicated(names(dataset), fromLast = TRUE))
-  dup_names <- unique(names(dataset)[dups])
-  # Go through each duplicate group
-  for (dup in dup_names) {
-    cols <- which(names(dataset) == dup)
-    # Compare all pairwise combinations (in case there are >2)
-    keep <- cols[1]
-    drop_these <- integer(0)
-    for (i in 2:length(cols)) {
-      if (all(dataset[[cols[i]]] == dataset[[keep]], na.rm = TRUE)) {
-        # If identical, mark for dropping
-        drop_these <- c(drop_these, cols[i])
-      } else {
-        # If not identical, make unique
-        names(dataset)[cols[i]] <- paste0(dup, ".", i - 1)
-      }
-    }
-    # Drop identical duplicates
-    if (length(drop_these) > 0) {
-      dataset <- dataset[, -drop_these, drop = FALSE]
-    }
-  }
-  # The app doesn't like empty strings in the factor columns, so for now, add "None" to those entries
-  # dataset <- dataset %>% mutate_all(~ifelse(. == "", "None", .))
-  if (is.null(param$groupingName) || !nzchar(param$groupingName)) {
-    param$groupingName <- factors[[1]]
-  }
-  # Prepare the count files
-  countList <- list()
-  countList[["Raw"]] <- assay(se, "counts")
-  normCounts <- grep("^signal$|^xNorm$", names(assays(se)), value = TRUE)
-  countList[["Normalised"]] <- assay(se, normCounts)
-  countList[["Normalised + Log2"]] <- log2(assay(se, normCounts) + param$backgroundExpression)
-  if (!is.null(param$refBuild)) {
-    countList[["FPKM"]] <- eds_compute_rpkm(se)
-    countList[["TPM"]] <- eds_compute_tpm(se)
-  }
-  forVST <- as.matrix(assay(se, "counts"))
-  mode(forVST) <- "integer"
-  vstCountMatrix <- tryCatch({
-    if (nrow(forVST) < 1000) {
-      DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
-    } else {
-      DESeq2::vst(forVST, blind = FALSE)
-    }
-  }, error = function(e) {
-    message("VST failed (", e$message, "), falling back to varianceStabilizingTransformation")
-    DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
-  })
-  countList[["VST"]] <- vstCountMatrix
-  # For all the counts, match the assays to the seqAnno order
-  for (i in seq_along(countList)) {
-    if (param$featureLevel == "gene") {
-      geneOrder <- intersect(seqAnno$gene_id, rownames(countList[[i]]))
-      countList[[i]] <- countList[[i]][geneOrder, ]
-      rownames(countList[[i]]) <- seqAnno$feature_id
-    } else if (param$featureLevel == "isoform") {
-      geneOrder <- intersect(seqAnno$transcript_id, rownames(countList[[i]]))
-      countList[[i]] <- countList[[i]][geneOrder, ]
-      rownames(countList[[i]]) <- seqAnno$feature_id %>%
-        gsub("[:/()-]", ".", .) %>%
-        gsub(" ", ".", .)
-    }
-  }
-  # Prepare the GO info ----
-  allPathwaysDEG <- c(
-    unique(unlist(strsplit(x = c(seqAnno$`GO BP`), "; "))),
-    unique(unlist(strsplit(x = c(seqAnno$`GO MF`), "; "))),
-    unique(unlist(strsplit(x = c(seqAnno$`GO CC`), "; ")))
-  )
-  goTerms <- clusterProfiler::go2term(allPathwaysDEG)
-  allPathways <- paste(goTerms[, 1], goTerms[, 2])
-
-  dataTypeGStore <- if (grepl("ExploreMageckCounts", dataDir)) {
-    "CrisprCountQC"
-  } else if (grepl("CountQC", dataDir)) {
-    "CountQC"
-  } else {
-    "RNASeq"
-  }
-
-  # Create the first part of the import list
-  gStoreList <- list(
-    "dataType" = dataTypeGStore,
-    "se" = se,
-    "param" = param,
-    "seqAnno" = seqAnno,
-    "dataset" = dataset,
-    "factors" = factors,
-    "factorLevels" = factorLevels,
-    "groupingName" = param$groupingName,
-    "countList" = countList,
-    "genes" = genes,
-    "allPathways" = allPathways
-  )
-
-  # DE results ----
-  if (dataTypeGStore %in% c("CountQC", "CrisprCountQC")) {
-    # CountQC/CrisprCountQC don't have DE results, but some tabs expect these fields
-    gStoreList$design <- dataTypeGStore
-    gStoreList$designLevels <- NULL
-    if (dataTypeGStore == "CrisprCountQC") {
-      # Extract gene names from sgRNA IDs. Handles GENE_N_SEQ, GENE_sgrnaN_SEQ,
-      # and GENE_<strand>_<locus>_SEQ (e.g. Ptplad2_-_88439147.23-P1P2_GATCC…)
-      gStoreList$sgRNA_to_gene <- setNames(
-        gsub("_((sgrna)?[0-9]+|[+-]_[^_]+)_[ACGTN]+$", "", seqAnno$feature_id, ignore.case = TRUE),
-        seqAnno$feature_id
-      )
-    }
-  } else if (dataTypeGStore == "RNASeq") {
-    # Get the p-value and log2 columns
-    pValueColumn <- grep("^p[-_]?value$", colnames(seqAnno), value = TRUE, ignore.case = TRUE)[[1]]
-    pAdjColumn <- grep("^(padj|adj[._]?p[-_]?value|adjusted[._]?p[-_]?value|fdr|q[-_]?value)$", colnames(seqAnno), value = TRUE, ignore.case = TRUE)[[1]]
-    log2FCColumn <- grep("^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc)$", colnames(seqAnno), value = TRUE, ignore.case = TRUE)[[1]]
-    # Sort the dataframe by raw pvalue
-    seqAnno <- seqAnno[order(seqAnno[[pValueColumn]]), ]
-    # get the list of genes to go in as input options:
-    genes <- seqAnno$feature_id[order(seqAnno$pValue)]
-    # Set the comparison column levels to be in order of test, e.g., diff, undiff
-    dataset[[param$groupingName]] <- factor(
-      dataset[[param$groupingName]],
-      levels = c(
-        param$sampleGroup,
-        param$refGroup,
-        unique(dataset[[param$groupingName]])[!unique(dataset[[param$groupingName]]) %in% c(param$sampleGroup, param$refGroup)]
-      )
-    )
-    # Add global and per group means to the seqAnno table
-    for (count in names(countList)) {
-      cts <- countList[[count]]
-      seqAnno[[paste0(count, "_mean")]] <- rowMeans(cts)[seqAnno$feature_id]
-      seqAnno[[paste0(count, "_SD")]] <- matrixStats::rowSds(cts)[seqAnno$feature_id]
-      isSample <- dataset[[param$groupingName]] == param$sampleGroup
-      seqAnno[[paste0(count, "_", param$sampleGroup, "_Mean")]] <- rowMeans(cts[, isSample, drop = FALSE])[seqAnno$feature_id]
-      isRef <- dataset[[param$groupingName]] == param$refGroup
-      seqAnno[[paste0(count, "_", param$refGroup, "_Mean")]] <- rowMeans(cts[, isRef, drop = FALSE])[seqAnno$feature_id]
-    }
-    # Prepare the contrast info ----
-    design <- param$comparison
-    designLevels <- design %>%
-      strsplit(split = "--over--") %>%
-      .[[1]]
-
-    goObjects <- list(runGO = param$runGO)
-    if (param$runGO) {
-      goObjects$ora <- metadata(se)$enrichResult
-      goObjects$gsea <- metadata(se)$enrichResultGSEA
-    }
-    groupingName <- param$groupingName
-    for (f in c("goObjects", "groupingName", "design", "designLevels", "seqAnno", "dataset", "genes")) {
-      gStoreList[[f]] <- get(f)
-    }
-  }
-
-  # Store dataDir as attribute for methods text generation
-  attr(gStoreList, "dataDir") <- dataDir
-
-  return(
-    gStoreList
-  )
 }
 
 #' convert_proteomics_se
@@ -430,119 +232,6 @@ convert_proteomics_se <- function(se) {
   # eds$backend() is the SE the dataset was built from (after any layout
   # conversion in new_explore_dataset()), so the shim reads the same frames.
   return(legacy_gStoreList_from_eds(eds, se = eds$backend()))
-}
-
-.convert_proteomics_se_legacy <- function(se) {
-  # Pre-Phase-1 implementation, retained for reference / regression bisecting.
-  # Not exported; not called by any package code. Delete once Phase 2 is done.
-  contrasts <- names(rowData(se))[grep("^constrast_", names(rowData(se)))] %>% gsub("constrast_", "", .)
-
-  # Convert contrast DataFrames once, reuse for seqAnnoList and countList lookup
-  contrast_dfs <- setNames(lapply(contrasts, function(con) {
-    as.data.frame(rowData(se)[[paste0("constrast_", con)]])
-  }), contrasts)
-
-  # Make a list of seqAnno tables for each contrast
-  seqAnnoList <- setNames(lapply(contrasts, function(con) {
-    sa <- standardise_columns(contrast_dfs[[con]])
-    sa <- sa[order(sa$pValue), ]
-
-    # Build feature_id from canonical column names
-    sa$feature_id <- build_feature_id(sa)
-
-    # If feature_id == protein_Id (protein-level data), drop redundant protein_Id
-    if ("protein_Id" %in% colnames(sa) && identical(sa$feature_id, sa$protein_Id)) {
-      sa$protein_Id <- NULL
-    }
-
-    # Keep feature_id, all non-numeric columns (domain/annotation), and selected stats
-    stats_to_keep <- c("log2Ratio", "pValue", "fdr", "nrPeptides")
-    non_numeric <- colnames(sa)[!vapply(sa, is.numeric, logical(1))]
-    keep <- unique(c("feature_id", non_numeric, intersect(stats_to_keep, colnames(sa))))
-    sa <- sa[, keep, drop = FALSE]
-
-    # Guarantee description exists (volcano, brush tables, etc. expect it)
-    if (!"description" %in% colnames(sa)) {
-      sa$description <- if ("gene_name" %in% colnames(sa)) sa$gene_name else sa$feature_id
-    }
-
-    sa
-  }), contrasts)
-
-  # Prepare the metadata
-  dataset <- as.data.frame(colData(se))
-  names <- colnames(dataset)[grep("^Sample$|^Name$|^sampleName$", colnames(dataset), ignore.case = T)]
-  dataset$Name <- dataset[[names]]
-  rownames(dataset) <- dataset[[names]]
-
-  # Get the main columns from the metadata that are plottable
-  factors <- colnames(dataset)[grep("Sample|Name|names|channel|raw\\.file", colnames(dataset), invert = T, ignore.case = T)]
-  factorLevels <- lapply(factors, function(f) {
-    levels(as.factor(dataset[[f]]))
-  }) %>% setNames(factors)
-
-  # Sort numeric factor levels
-  for (x in factors) {
-    dataset[[x]] <- factor(dataset[[x]], levels = unique(gtools::mixedsort(dataset[[x]])))
-  }
-
-  # Map raw SE rownames → clean feature_ids via lookup (no quant-type regex)
-  # NB: seqAnnoList is sorted by pValue, so we must build the lookup from the
-  # UNSORTED contrast_df to keep rowname→feature_id alignment correct.
-  unsorted_sa <- standardise_columns(contrast_dfs[[contrasts[1]]])
-  unsorted_sa$feature_id <- build_feature_id(unsorted_sa)
-  raw_rn <- rownames(contrast_dfs[[contrasts[1]]])
-  fid_lookup <- setNames(unsorted_sa$feature_id, raw_rn)
-
-  countList <- setNames(lapply(names(assays(se)), function(ass) {
-    x <- assay(se, ass)
-    mapped <- fid_lookup[rownames(x)]
-    valid <- !is.na(mapped)
-    x <- x[valid, , drop = FALSE]
-    rownames(x) <- unname(mapped[valid])
-    x
-  }), names(assays(se)))
-
-  # Get the feature IDs
-  genes <- unique(unlist(lapply(seqAnnoList, `[[`, "feature_id")))
-
-  # Build lookup maps for feature selection modes
-  # Use first contrast's seqAnno as representative (all contrasts share the same features)
-  sa1 <- seqAnnoList[[1]]
-
-  # gene_lookup: gene_name → feature_ids (only if gene_name column exists and differs from feature_id)
-  gene_lookup <- NULL
-  gene_choices <- NULL
-  if ("gene_name" %in% colnames(sa1) && !identical(sa1$feature_id, sa1$gene_name)) {
-    gene_lookup <- split(sa1$feature_id, sa1$gene_name)
-    gene_choices <- unique(sa1$gene_name)
-  }
-
-  # protein_lookup: protein_Id → feature_ids (only for sub-protein data where protein_Id still exists)
-  protein_lookup <- NULL
-  protein_choices <- NULL
-  if ("protein_Id" %in% colnames(sa1)) {
-    protein_lookup <- split(sa1$feature_id, sa1$protein_Id)
-    protein_choices <- unique(sa1$protein_Id)
-  }
-
-  # Return the final list
-  return(list(
-    "dataType" = "proteomics",
-    "se" = se,
-    "seqAnnoList" = seqAnnoList,
-    "contrasts" = contrasts,
-    "dataset" = dataset,
-    "factors" = factors,
-    "countList" = countList,
-    "genes" = genes,
-    "factorLevels" = factorLevels,
-    "groupingName" = factors[[1]],
-    "gene_lookup" = gene_lookup,
-    "protein_lookup" = protein_lookup,
-    "gene_choices" = gene_choices,
-    "protein_choices" = protein_choices
-  ))
 }
 
 #' generateParams
@@ -764,10 +453,17 @@ make_rep_heatmap <- function(data, title_suffix = "") {
 
         anno_df <- dataset[, input$replicabilityFactors, drop = FALSE]
 
+        # Legend shows the Colours-tab display labels (plain text)
+        annoLegendParam <- lapply(input$replicabilityFactors, function(f) {
+            levs <- names(colourList[[f]])
+            list(at = levs, labels = unname(level_labels(input, f, levs, mode = "plain")))
+        }) %>% setNames(input$replicabilityFactors)
+
         ha_top <- HeatmapAnnotation(
             df = anno_df,
             col = colourList,
             show_legend = TRUE,
+            annotation_legend_param = annoLegendParam,
             annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
             gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
         )
@@ -870,6 +566,36 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
 # Summary / methods-text helpers (from server-summary.R)
 # =============================================================================
 
+#' count_result_summary
+#' SUSHI RNA-seq settings table for the Summary tab. A port of
+#' `ezRun::makeCountResultSummary()`, so exploreDE does not need ezRun for it.
+#' @param param SUSHI parameter list (`metadata(se)$param`).
+#' @param se The SUSHI deResult `SummarizedExperiment`.
+#' @return A one-column data.frame of settings.
+#' @export
+count_result_summary <- function(param, se) {
+  specified <- function(x) !is.null(x) && length(x) > 0 && !is.na(x[1]) && nzchar(x[1])
+  md <- S4Vectors::metadata(se)
+  settings <- character()
+  settings["Analysis:"] <- md$analysis
+  settings["Reference:"] <- param$refBuild
+  settings["Feature level:"] <- md$featureLevel
+  settings["Data Column Used:"] <- md$countName
+  settings["Method:"] <- md$method
+  if (specified(param$sampleGroupBaseline) && specified(param$refGroupBaseline)) {
+    settings["Baseline correction:"] <- paste(param$sampleGroupBaseline, "and",
+                                              param$refGroupBaseline)
+  }
+  settings["Comparison:"] <- param$comparison
+  if (!is.null(param$normMethod)) settings["Normalization:"] <- param$normMethod
+  if (!is.null(param$deTest)) settings["Differential expression test:"] <- param$deTest
+  if (isTRUE(param$useSigThresh)) {
+    settings["Log2 signal threshold:"] <- signif(log2(param$sigThresh), digits = 4)
+    settings["Linear signal threshold:"] <- signif(param$sigThresh, digits = 4)
+  }
+  as.data.frame(settings)
+}
+
 #' detectAligner
 #' Inspect input_dataset.tsv to guess whether STAR / Kallisto / FeatureCounts was used.
 #' @param dataDir Analysis directory containing ../input_dataset.tsv
@@ -879,7 +605,7 @@ detectAligner <- function(dataDir) {
   tryCatch({
     dataset_path <- file.path(dataDir, "../input_dataset.tsv")
     if (file.exists(dataset_path)) {
-      dataset <- read_tsv(dataset_path, show_col_types = FALSE)
+      dataset <- readr::read_tsv(dataset_path, show_col_types = FALSE)
 
       # Check Count [File] column for patterns
       count_col_name <- grep("Count.*File", names(dataset), value = TRUE, ignore.case = TRUE)
@@ -1277,8 +1003,8 @@ calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
   variance <- (pca_result$sdev^2 / sum(pca_result$sdev^2)) * 100
 
   list(
-    scores = as_tibble(pca_result$x, rownames = "Name"),
-    loadings = as_tibble(pca_result$rotation, rownames = "gene"),
+    scores = tibble::as_tibble(pca_result$x, rownames = "Name"),
+    loadings = tibble::as_tibble(pca_result$rotation, rownames = "gene"),
     variance = variance,
     method = "PCA",
     component_names = paste0("PC", 1:length(variance)),
@@ -1338,7 +1064,7 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
     colnames(scores_mat) <- component_names
 
     list(
-      scores = as_tibble(scores_mat, rownames = "Name"),
+      scores = tibble::as_tibble(scores_mat, rownames = "Name"),
       loadings = NULL,
       variance = NULL,
       stress = nmds_result$stress,
@@ -1371,7 +1097,7 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
     variance_explained <- (pcoa_result$eig[1:n_dims] / sum(abs(pcoa_result$eig))) * 100
 
     list(
-      scores = as_tibble(pcoa_result$points, rownames = "Name"),
+      scores = tibble::as_tibble(pcoa_result$points, rownames = "Name"),
       loadings = NULL,
       variance = variance_explained,
       stress = NULL,
@@ -1436,7 +1162,7 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
   colnames(glmpca_result$factors) <- component_names
 
   list(
-    scores = as_tibble(glmpca_result$factors, rownames = "Name"),
+    scores = tibble::as_tibble(glmpca_result$factors, rownames = "Name"),
     loadings = NULL, # GLM-PCA loadings are on a different scale, biplot not supported
     variance = NULL, # GLM-PCA doesn't have simple variance explained like PCA
     method = "GLM-PCA",
@@ -1478,29 +1204,29 @@ prepare_biplot_data <- function(ordination_result, top_n = 10,
     # Manual selection: use custom_genes
     if (!is.null(custom_genes) && length(custom_genes) > 0) {
       genes_to_plot <- loadings_subset %>%
-        filter(gene %in% custom_genes)
+        dplyr::filter(gene %in% custom_genes)
     } else {
       genes_to_plot <- loadings_subset[0, ] # Empty tibble if no genes specified
     }
   } else if (selection_method == "per_pc") {
     # Per-PC selection: top N from each PC separately
     top_x <- loadings_subset %>%
-      dplyr::arrange(desc(abs(.data[[pc_x_name]]))) %>%
+      dplyr::arrange(dplyr::desc(abs(.data[[pc_x_name]]))) %>%
       head(top_n) %>%
       dplyr::mutate(pc_source = pc_x_name)
 
     top_y <- loadings_subset %>%
-      dplyr::arrange(desc(abs(.data[[pc_y_name]]))) %>%
+      dplyr::arrange(dplyr::desc(abs(.data[[pc_y_name]]))) %>%
       head(top_n) %>%
       dplyr::mutate(pc_source = pc_y_name)
 
     # Combine and deduplicate - keep first occurrence (prioritize PC X if gene is in both)
-    genes_to_plot <- bind_rows(top_x, top_y) %>%
-      distinct(gene, .keep_all = TRUE)
+    genes_to_plot <- dplyr::bind_rows(top_x, top_y) %>%
+      dplyr::distinct(gene, .keep_all = TRUE)
   } else {
     # Overall selection: top N by combined magnitude (default behavior)
     genes_to_plot <- loadings_subset %>%
-      dplyr::arrange(desc(magnitude)) %>%
+      dplyr::arrange(dplyr::desc(magnitude)) %>%
       head(top_n)
   }
 
@@ -1579,7 +1305,9 @@ step_top_n_sd <- function(counts, dataset, top_n) {
 #' plot_ordination_samples
 #' Render the sample-only ordination scatter plot (no gene arrows).
 #' @export
-plot_ordination_samples <- function(ordination_result, pc_scores, input, coloursPCA) {
+plot_ordination_samples <- function(ordination_result, pc_scores, input, coloursPCA, levelLabels = NULL) {
+  fillLabels  <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
+  shapeLabels <- if (is.null(levelLabels$shape)) ggplot2::waiver() else levelLabels$shape
   pc_x <- input$pcaX
   pc_y <- input$pcaY
 
@@ -1600,7 +1328,7 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
       size = input$dotSizePCA,
       alpha = input$alphaPCA, stroke = input$dotBorderPCA
     )
-    p <- p + scale_shape_manual(values = c(21, 22, 23, 24, 25, 8, 3, 4))
+    p <- p + scale_shape_manual(values = c(21, 22, 23, 24, 25, 8, 3, 4), labels = shapeLabels)
   }
 
   if (input$pcaShowNames) {
@@ -1634,13 +1362,14 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
     p <- p + coord_fixed(ratio = ordination_result$variance[pc_y_num] / ordination_result$variance[pc_x_num])
   }
 
-  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
+  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
   p <- p + theme_bw(base_size = input$textSizePCA)
   face <- switch(input$boldPCA,
     "TRUE" = "bold",
     "FALSE" = "plain"
   )
   p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
+  if (isTRUE(levelLabels$rich)) p <- p + rich_label_theme(legend = TRUE)
 
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {
@@ -1671,7 +1400,8 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
 #' plot_ordination_biplot
 #' Render the ordination biplot (samples + feature arrows).
 #' @export
-plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursPCA, biplot_data, arrow_scale = 1, arrow_colour = "red", selection_method = "overall") {
+plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursPCA, biplot_data, arrow_scale = 1, arrow_colour = "red", selection_method = "overall", levelLabels = NULL) {
+  fillLabels <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
   pc_x <- biplot_data$pc_x_name
   pc_y <- biplot_data$pc_y_name
 
@@ -1719,13 +1449,14 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
   }
 
   p <- p + labs(x = x_lab, y = y_lab, fill = input$pcaFactor1)
-  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
+  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
   p <- p + theme_bw(base_size = input$textSizePCA)
   face <- switch(input$boldPCA,
     "TRUE" = "bold",
     "FALSE" = "plain"
   )
   p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
+  if (isTRUE(levelLabels$rich)) p <- p + rich_label_theme(legend = TRUE)
 
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {

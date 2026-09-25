@@ -90,6 +90,23 @@ test_that("make_rep_heatmap runs with replicabilityFactors and GroupColour input
   expect_error(fn(data, title_suffix = "Smoke-with-factor"), NA)
 })
 
+test_that("make_rep_heatmap runs with Colours-tab level labels", {
+  skip_on_cran()
+  data <- make_rep_data()
+  input <- make_rep_input(list(
+    replicabilityFactors = "cond",
+    GroupColourcondA     = "red",
+    GroupColourcondB     = "blue",
+    GroupLabelcondA      = "<i>Il4ra</i><sup>fl/fl</sup> &Delta;"
+  ))
+  fn <- with_mock_env(make_rep_heatmap, input = input)
+
+  pdf(tempfile(fileext = ".pdf"))
+  on.exit(dev.off(), add = TRUE)
+
+  expect_error(fn(data, title_suffix = "Smoke-with-labels"), NA)
+})
+
 test_that("make_rep_heatmap runs with a BrewerPal-derived palette", {
   skip_on_cran()
   data <- make_rep_data()

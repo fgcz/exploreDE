@@ -291,11 +291,30 @@ countQcGroupColours <- reactive({
   setNames(cols, lvls)
 })
 
-maybe_facet <- function(p, df) {
+# Display labels from the Colours tab for the colour-by factor and the facet
+# factor. If either is rich, both are (shared markdown theme).
+countQcLevelLabels <- function(df) {
+  groupCol <- input$countQcBarColourBy %||% eds$primary_grouping()
+  facetCol <- input$countQcBarFacetBy
+  has_facet <- "FacetGroup" %in% colnames(df)
+  make <- function(force) list(
+    group = level_labels(input, groupCol, levels(df$Group), force_rich = force),
+    facet = if (has_facet) level_labels(input, facetCol, levels(df$FacetGroup), force_rich = force) else NULL
+  )
+  labs <- make(FALSE)
+  rich <- is_rich_labels(labs$group) || is_rich_labels(labs$facet)
+  if (rich) labs <- make(TRUE)
+  labs$rich <- rich
+  labs
+}
+
+maybe_facet <- function(p, df, lbl = NULL) {
   if (isTRUE(attr(df, "use_facet")) && "FacetGroup" %in% colnames(df)) {
     p <- p + facet_grid(cols = vars(FacetGroup),
-                        scales = "free_x", space = "free_x")
+                        scales = "free_x", space = "free_x",
+                        labeller = if (is.null(lbl$facet)) "label_value" else as_labeller(lbl$facet))
   }
+  if (isTRUE(lbl$rich)) p <- p + rich_label_theme(legend = TRUE, strip = TRUE)
   p
 }
 
@@ -303,22 +322,24 @@ build_total_reads_plot <- function() {
   validate(need(isTRUE(try(countQcBarVisible(), silent = TRUE)),
                 "Total-reads plot not applicable for this data type."))
   df <- countQcBarData()
+  lbl <- countQcLevelLabels(df)
   p <- ggplot(df, aes(x = Sample, y = Total_M, fill = Group)) +
     geom_col(colour = "black", linewidth = 0.3) +
-    scale_fill_manual(values = countQcGroupColours()) +
+    scale_fill_manual(values = countQcGroupColours(), labels = lbl$group) +
     ggprism::theme_prism(base_size = cqT(), axis_text_angle = 45) +
     labs(title = "Total Reads per Sample",
          y = "Counts (millions)", x = NULL)
-  maybe_facet(p, df)
+  maybe_facet(p, df, lbl)
 }
 
 build_features_above_plot <- function() {
   validate(need(isTRUE(try(countQcBarVisible(), silent = TRUE)),
                 "Features-above-threshold plot not applicable for this data type."))
   df <- countQcBarData()
+  lbl <- countQcLevelLabels(df)
   p <- ggplot(df, aes(x = Sample, y = Pct_num, fill = Group)) +
     geom_col(colour = "black", linewidth = 0.3) +
-    scale_fill_manual(values = countQcGroupColours()) +
+    scale_fill_manual(values = countQcGroupColours(), labels = lbl$group) +
     scale_y_continuous(
       labels = function(v) paste0(v, "%"),
       limits = c(0, 105), expand = expansion(mult = c(0, 0.02))
@@ -333,7 +354,7 @@ build_features_above_plot <- function() {
       size  = input$countQcBarPctLabelSize %||% 3.5
     )
   }
-  maybe_facet(p, df)
+  maybe_facet(p, df, lbl)
 }
 
 output$countQcTotalReads <- renderPlot(
@@ -776,7 +797,9 @@ countQcDownloadFile <- function(plot_reactive, suffix, width_in = 8, height_in =
                width = width_in, height = height_in,
                dpi = as.numeric(input$countQcDlDpi %||% 300), bg = "white")
       } else {
-        ggsave(file, plot = plot_reactive(), device = fmt,
+        plt <- plot_reactive()
+        if (fmt == "pdf") plt <- prepare_plot_for_pdf(plt)
+        ggsave(file, plot = plt, device = fmt,
                width = width_in, height = height_in, bg = "white")
       }
     }

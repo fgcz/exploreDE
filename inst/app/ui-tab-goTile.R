@@ -121,7 +121,8 @@ tabItem(
           inputId = "figHeightGoTile",
           label = "Figure Height", min = 100, max = 2000,
           value = 1600, step = 10
-        )
+        ),
+        legend_offset_ui("goTile")
       ) # end of box
     ), # end of settings column
     column(

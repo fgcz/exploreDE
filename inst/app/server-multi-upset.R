@@ -363,7 +363,7 @@ observeEvent(
             output$upsetError <- NULL
             if (!length(which(as.numeric(lengths(gl1)) >= 1)) >= 2) {
                 output$upsetError <- renderUI({
-                    h5("There are no overlapping DEGs/pathways based on current settings/input data.")
+                    h5("There are no overlapping DE features/pathways based on current settings/input data.")
                 })
             }
             if (length(which(as.numeric(lengths(gl1)) >= 1)) >= 2) {
@@ -446,7 +446,7 @@ observeEvent(
                 output$UpsetPlot <- renderPlot(
                     {
                         validate(
-                            need(length(g()) > 0, "There are no overlapping DEGs/pathways based on current settings/input data.")
+                            need(length(g()) > 0, "There are no overlapping DE features/pathways based on current settings/input data.")
                         )
                         draw(ht)
                     },
