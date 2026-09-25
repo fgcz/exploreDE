@@ -58,12 +58,18 @@ detect_se_shape <- function(se) {
 #' @return An object inheriting from [ExploreDataset].
 #' @export
 new_explore_dataset <- function(input, config = NULL) {
-  # Canonical AnnData input (a live anndataR object or a `.h5ad` path) routes
-  # straight to the H5AD backend — the "bring your own data" path.
+  # AnnData input (a live anndataR object or a `.h5ad` path). A prolfquapp DEA
+  # AnnData is rebuilt into its proteomics SE (see prolfquapp_h5ad.R); any other
+  # AnnData is canonical and routes to the H5AD backend — the "bring your own
+  # data" path.
   if (inherits(input, "AbstractAnnData") ||
       (is.character(input) && length(input) == 1L &&
        grepl("\\.h5ad$", input, ignore.case = TRUE))) {
-    return(ExploreDatasetH5AD$new(input, config = config))
+    adata <- if (inherits(input, "AbstractAnnData")) input else .h5ad_read(input)
+    if (is_prolfquapp_anndata(adata)) {
+      return(new_explore_dataset(se_from_prolfquapp_anndata(adata), config = config))
+    }
+    return(ExploreDatasetH5AD$new(adata, config = config))
   }
 
   # A parquet directory written by export_h5ad_to_parquet() (or by the Rust
@@ -83,6 +89,8 @@ new_explore_dataset <- function(input, config = NULL) {
   } else {
     stop("Unrecognised input for new_explore_dataset()")
   }
+  # prolfquapp >= 2.10 keeps the feature annotation in its own rowData frame.
+  se <- .prolfquapp_legacy_layout(se)
 
   cls <- switch(detect_se_shape(se),
     rna_seq         = ExploreDatasetSE_RNASeq,

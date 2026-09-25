@@ -428,7 +428,9 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
   contrasts <- gsub("constrast_", "", contrasts)
 
   contrast_dfs <- setNames(
-    lapply(contrasts, function(con) .se_contrast_frame(se, con)),
+    lapply(contrasts, function(con) {
+      as.data.frame(SummarizedExperiment::rowData(se)[[paste0("constrast_", con)]])
+    }),
     contrasts
   )
 
@@ -463,7 +465,10 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
   dataset$Name <- dataset[[name_col]]
   rownames(dataset) <- dataset[[name_col]]
 
-  factors <- .se_factor_cols(se)
+  factors <- colnames(dataset)[
+    grep("Sample|Name|names|channel|raw\\.file", colnames(dataset),
+         invert = TRUE, ignore.case = TRUE)
+  ]
   factorLevels <- setNames(
     lapply(factors, function(f) levels(as.factor(dataset[[f]]))),
     factors

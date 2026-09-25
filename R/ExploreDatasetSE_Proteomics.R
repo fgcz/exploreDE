@@ -51,45 +51,6 @@
   if (is.null(col)) seq_len(nrow(d)) else order(d[[col]], na.last = TRUE)
 }
 
-# A contrast frame with its feature annotation. prolfquapp >= 2.10 stores the
-# annotation once, in rowData(se)$annotation, and each contrast frame carries
-# only the feature keys named in metadata(se)$feature_keys plus the DE stats;
-# join the annotation back on those keys. Older SEs carry the annotation inside
-# the contrast frames and pass through unchanged. Shared by the ExploreDataset
-# backend and the legacy gStoreList glue so they can't drift.
-.se_contrast_frame <- function(se, contrast) {
-  rd <- SummarizedExperiment::rowData(se)
-  d  <- data.frame(rd[[paste0("constrast_", contrast)]],
-                   check.names = FALSE, stringsAsFactors = FALSE)
-  if (!"annotation" %in% names(rd)) return(d)
-  keys <- S4Vectors::metadata(se)$feature_keys
-  if (!length(keys) || !all(keys %in% colnames(d))) {
-    stop("contrast '", contrast, "' does not carry the feature keys (",
-         paste(keys, collapse = ", "), ") to join rowData(se)$annotation on; ",
-         "SEs written by prolfquapp 2.10.0-2.10.4 lack them. ",
-         "Rerun the DEA with prolfquapp >= 2.10.5.")
-  }
-  annotation <- data.frame(rd$annotation, check.names = FALSE,
-                           stringsAsFactors = FALSE)
-  annotation <- annotation[, union(keys, setdiff(colnames(annotation), colnames(d))),
-                           drop = FALSE]
-  joined <- dplyr::left_join(d, annotation, by = keys, na_matches = "never",
-                             relationship = "many-to-one")
-  rownames(joined) <- rownames(d)
-  joined[, c(colnames(annotation), setdiff(colnames(d), keys)), drop = FALSE]
-}
-
-# Grouping factors. prolfquapp records them in
-# metadata(se)$analysis_configuration$factors, named by colData column; older
-# SEs fall back to excluding sample and file columns by name.
-.se_factor_cols <- function(se) {
-  cols     <- colnames(SummarizedExperiment::colData(se))
-  declared <- names(S4Vectors::metadata(se)$analysis_configuration$factors)
-  if (length(declared)) return(intersect(declared, cols))
-  grep("Sample|Name|names|channel|raw\\.file", cols,
-       invert = TRUE, ignore.case = TRUE, value = TRUE)
-}
-
 ExploreDatasetSE_Proteomics <- R6::R6Class(
   classname = "ExploreDatasetSE_Proteomics",
   inherit   = ExploreDatasetSE,
@@ -100,10 +61,12 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       cd <- data.frame(SummarizedExperiment::colData(se),
                        check.names = FALSE, stringsAsFactors = FALSE)
 
-      # Factors: see .se_factor_cols(). Names are taken verbatim from colData
-      # (NO `G_` stripping) to match the legacy gStoreList$factors /
-      # $groupingName values that modules consume.
-      factor_cols  <- .se_factor_cols(se)
+      # Factors: legacy convert_proteomics_se exclusion regex. Names are
+      # taken verbatim from colData (NO `G_` stripping) to match the legacy
+      # gStoreList$factors / $groupingName values that modules consume.
+      factor_cols  <- grep("Sample|Name|names|channel|raw\\.file",
+                           colnames(cd),
+                           invert = TRUE, ignore.case = TRUE, value = TRUE)
       factor_names <- factor_cols
       factor_levels <- setNames(
         lapply(factor_cols, function(fc) {
@@ -123,7 +86,10 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       # rowdata-annotation columns and DE-stat columns in a single pass.
       feature_id_kind <- "protein"; saint <- FALSE
       if (length(contrasts)) {
-        df1 <- standardise_columns(.se_contrast_frame(se, contrasts[1]))
+        df1 <- standardise_columns(
+          data.frame(SummarizedExperiment::rowData(se)[[paste0("constrast_", contrasts[1])]],
+                     check.names = FALSE, stringsAsFactors = FALSE)
+        )
         if      ("site"       %in% colnames(df1)) feature_id_kind <- "phospho"
         else if ("peptide_Id" %in% colnames(df1)) feature_id_kind <- "peptide"
         saint <- .se_is_saint(df1)   # standardise_columns leaves SAINT names as-is
@@ -239,7 +205,10 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       # Canonical AnnData-spec names are added later via
       # eds_standardise_de_columns() as aliases.
       raw_dfs <- setNames(
-        lapply(contrasts, function(cn) .se_contrast_frame(se, cn)),
+        lapply(contrasts, function(cn) {
+          data.frame(SummarizedExperiment::rowData(se)[[paste0("constrast_", cn)]],
+                     check.names = FALSE, stringsAsFactors = FALSE)
+        }),
         contrasts
       )
       std_dfs <- lapply(raw_dfs, standardise_columns)
