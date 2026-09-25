@@ -348,9 +348,8 @@ volcanoResultsList <- eventReactive(
     if (!scoreMode) {
       volcanoTable$log10p[volcanoTable$log10p > as.numeric(input$yLimVolcano)] <- as.numeric(input$yLimVolcano)
     }
-    volcanoTable$log2Ratio <- shrinkToRange(volcanoTable$log2Ratio,
-      theRange = c(-as.numeric(input$xLimVolcano), as.numeric(input$xLimVolcano))
-    )
+    xlim <- as.numeric(input$xLimVolcano)
+    volcanoTable$log2Ratio <- pmin(pmax(volcanoTable$log2Ratio, -xlim), xlim)
 
     # Summary table
     output$volcanoOverview <- function() {

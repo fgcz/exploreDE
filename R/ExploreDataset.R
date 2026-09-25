@@ -10,9 +10,6 @@
 #' Methods that touch the storage backend are virtual
 #' (`stop("not implemented")`) and must be overridden.
 #'
-#' See `plans/anndata_migration/internal_api_spec_2026-04-30_thin.qmd`
-#' for the full design and accessor contract.
-#'
 #' @export
 ExploreDataset <- R6::R6Class(
   classname = "ExploreDataset",
@@ -139,7 +136,7 @@ ExploreDataset <- R6::R6Class(
     # Default implementation derives it from enrichment() so it works on EVERY
     # file ever written, including those with no uns$enrichment block. Backends
     # holding a stored tidy mirror should override and prefer it.
-    # See plans/enrichment_detach_plan.md.
+    # See plans/exploredelight/enrichment_detach_plan.md.
     enrichment_table = function(contrast, kind) {
       objs <- self$enrichment(contrast, kind)
       if (!length(objs)) return(data.frame())

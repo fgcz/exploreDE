@@ -1,6 +1,6 @@
 eds <- inputDataReactive()$.eds
 req(eds)
-se <- eds$backend()   # SE-only escape hatch for legacy ezRun helpers below
+se <- eds$backend()   # SE-only escape hatch for legacy helpers below
 
 # Contrast selector for multi-contrast NON-proteomics data (proteomics renders
 # its own in server-initInputData.R). Reuses the summary-tab
@@ -75,31 +75,84 @@ output$colourPaletteUI <- renderUI({
 })
 outputOptions(output, "colourPaletteUI", suspendWhenHidden = FALSE)
 
-# Colour picker for each of the groups in Condition:
+# Colour picker + optional display label for each level, one column per factor:
 observeEvent(input$colourPalette, {
   output$colourPickerUI <- renderUI({
     factor_names <- eds$factor_names()
-    lapply(factor_names, function(fname) {
+    fluidRow(lapply(factor_names, function(fname) {
       levs <- eds$factor_levels(fname)
-      lapply(seq_along(levs), function(j) {
-        colourpicker::colourInput(
-          inputId = paste0("GroupColour", fname, levs[[j]]),
-          label = paste0(fname, ": ", levs[[j]]),
-          # save-state restore: seed the saved colour (the picker is rebuilt on
-          # colourPalette change, so this is where a restored colour lands).
-          value = restore_default(
-            paste0("GroupColour", fname, levs[[j]]),
-            rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j]
-          ),
-          palette = "square",
-          closeOnClick = TRUE,
-          returnName = TRUE,
-          width = "85%"
-        )
-      })
-    })
+      column(
+        width = 3,
+        h4(fname),
+        lapply(seq_along(levs), function(j) {
+          tagList(
+            colourpicker::colourInput(
+              inputId = paste0("GroupColour", fname, levs[[j]]),
+              label = levs[[j]],
+              # save-state restore: seed the saved colour (the picker is rebuilt on
+              # colourPalette change, so this is where a restored colour lands).
+              value = restore_default(
+                paste0("GroupColour", fname, levs[[j]]),
+                rep(as.character(unlist(colourPaletteList[input$colourPalette])), times = 5)[j]
+              ),
+              palette = "square",
+              closeOnClick = TRUE,
+              returnName = TRUE,
+              width = "85%"
+            ),
+            groupLabelInput(
+              inputId = paste0("GroupLabel", fname, levs[[j]]),
+              value = restore_default(paste0("GroupLabel", fname, levs[[j]]), ""),
+              placeholder = paste0("Plot label (default: ", levs[[j]], ")")
+            )
+          )
+        })
+      )
+    }))
   })
   outputOptions(output, "colourPickerUI", suspendWhenHidden = FALSE)
+})
+
+# Label text boxes send on blur/Enter (not every keystroke) where the installed
+# Shiny supports it, so plots don't redraw mid-typing.
+groupLabelInput <- function(inputId, value, placeholder) {
+  args <- list(inputId = inputId, label = NULL, value = value,
+               placeholder = placeholder, width = "85%")
+  if ("updateOn" %in% names(formals(shiny::textInput))) args$updateOn <- "blur"
+  do.call(shiny::textInput, args)
+}
+
+# Warn about labels that won't survive a PDF download (base pdf() is Latin-1;
+# Greek is handled via the Symbol font), or that fell back to plain text
+# because the markup couldn't be parsed.
+output$groupLabelWarningsUI <- renderUI({
+  ids <- grep("^GroupLabel", names(input), value = TRUE)
+  vals <- vapply(ids, function(i) paste(input[[i]], collapse = ""), character(1))
+  vals <- vals[nzchar(trimws(vals))]
+  req(length(vals) > 0)
+  parsed <- lapply(vals, parse_level_label)
+  plain <- vapply(parsed, `[[`, character(1), "plain")
+  msgs <- list()
+  bad <- names(vals)[!vapply(parsed, `[[`, logical(1), "ok")]
+  if (length(bad)) {
+    msgs <- c(msgs, list(tags$li(paste0(
+      "Couldn't parse the formatting in: ", paste(vals[bad], collapse = "; "),
+      ". Shown as plain text instead - check for unclosed tags."))))
+  }
+  if (label_has_greek(plain)) {
+    msgs <- c(msgs, list(tags$li(
+      "Greek letters are drawn with the standard PDF Symbol font in PDF downloads,",
+      "so they look slightly different from the surrounding text."
+    )))
+  }
+  unsupported <- label_pdf_unsupported_chars(plain)
+  if (length(unsupported)) {
+    msgs <- c(msgs, list(tags$li(paste0(
+      "These characters can't be drawn in PDF downloads and will appear as '.': ",
+      paste(unsupported, collapse = " "), " (PNG and on-screen are fine)."))))
+  }
+  req(length(msgs) > 0)
+  div(class = "alert alert-warning", style = "margin-top: 10px;", tags$ul(msgs))
 })
 
 saved_inputs <- reactiveVal(data.frame(Input = character(), Value = character(), stringsAsFactors = FALSE))
@@ -124,6 +177,10 @@ output$dlColourTemplate <- downloadHandler(
     colourTemplate <- saved_inputs()
     colnames(colourTemplate) <- c("Level", "Colour")
     colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
+    colourTemplate$Label <- vapply(sub("^GroupColour", "GroupLabel", colourTemplate$Level), function(id) {
+      v <- input[[id]]
+      if (is.null(v)) "" else v
+    }, character(1), USE.NAMES = FALSE)
     writexl::write_xlsx(x = colourTemplate, path = file)
   }
 )
@@ -142,6 +199,14 @@ observeEvent(input$importColourFile, {
     lapply(importedColours$Level, function(l) {
       updateColourInput(session = session, inputId = l, value = importedColours$Colour[importedColours$Level == l])
     })
+    # Label column is optional: older templates only have Level + Colour
+    if ("Label" %in% colnames(importedColours)) {
+      lapply(importedColours$Level, function(l) {
+        lab <- importedColours$Label[importedColours$Level == l]
+        updateTextInput(session = session, inputId = sub("^GroupColour", "GroupLabel", l),
+                        value = if (is.na(lab)) "" else as.character(lab))
+      })
+    }
   }
 })
 
@@ -1003,7 +1068,7 @@ observe({
             kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
         )
       }
-      kable(makeCountResultSummary(S4Vectors::metadata(se)$param, se),
+      kable(count_result_summary(S4Vectors::metadata(se)$param, se),
         row.names = TRUE,
         col.names = "Setting", format = "html"
       ) %>%

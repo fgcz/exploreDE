@@ -3,21 +3,19 @@
 \name{build_feature_id}
 \alias{build_feature_id}
 \title{build_feature_id
-Algorithmically determine the unique feature identifier for proteomics data.
-Takes a contrast DataFrame, returns a feature_id vector.
-Sub-feature columns are discovered by uniqueness testing, not hardcoded names.}
+Build a unique, human-readable feature identifier for proteomics data.
+Uses canonical column names (after standardisation).}
 \usage{
-build_feature_id(contrast_df)
+build_feature_id(df)
 }
 \arguments{
-\item{contrast_df}{A data.frame from rowData(se)[[contrast]]}
+\item{df}{A standardised data.frame with canonical column names}
 }
 \value{
 Character vector of unique feature IDs
 }
 \description{
 build_feature_id
-Algorithmically determine the unique feature identifier for proteomics data.
-Takes a contrast DataFrame, returns a feature_id vector.
-Sub-feature columns are discovered by uniqueness testing, not hardcoded names.
+Build a unique, human-readable feature identifier for proteomics data.
+Uses canonical column names (after standardisation).
 }

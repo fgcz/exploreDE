@@ -1,13 +1,11 @@
 Package: exploreDE
 Type: Package
 Title: exploreDE
-Version: 3.7.0
+Version: 3.8.0
 Author: Peter Leary [aut, cre]
-Maintainer: Peter Leary <you@example.com>
-Description: A Shiny application for interactively exploring differential
-    expression, proteomics, and CRISPR screen results, including tools to
-    build exploreDE-compatible AnnData (.h5ad) files from arbitrary source
-    data.
+Maintainer: Peter Leary <peter.leary@uzh.ch>
+Description: A Shiny application to help users explore and enjoy their 'omics data, 
+  and make publication-quality figures. 
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
@@ -60,6 +58,7 @@ Imports:
   dplyr,
   ggplot2,
   ggtext,
+  gridtext,
   gtools,
   png,
   matrixStats,
@@ -70,12 +69,14 @@ Imports:
 Suggests:
   testthat (>= 3.0.0),
   jsonvalidate,
-  ezRun,
   systemfonts,
   nanoparquet,
-  arrow
+  arrow,
+  knitr,
+  rmarkdown
+VignetteBuilder: knitr
 Config/testthat/edition: 3
 Remotes:
-  github::uzh/ezRun,
   github::scverse/anndataR
 Config/roxygen2/version: 8.0.0
+RoxygenNote: 7.3.2

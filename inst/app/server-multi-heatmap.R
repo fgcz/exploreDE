@@ -199,12 +199,12 @@ multiPathwayHeatmapObjectReactive <- reactive({
     topAnnotation <- HeatmapAnnotation(
         Contrast = colnames(heatmapMat),
         col = list(Contrast = unlist(contrastColours)),
-        annotation_name_gp = gpar(fontsize = input$textSizeHeatmap),
+        annotation_name_gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap),
         annotation_legend_param = list(
             Contrast = list(
                 title = "Contrast",
-                title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-                labels_gp = gpar(fontsize = input$textSizeHeatmap)
+                title_gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap, fontface = "bold"),
+                labels_gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap)
             )
         ),
         show_legend = TRUE,
@@ -236,19 +236,19 @@ multiPathwayHeatmapObjectReactive <- reactive({
         name = legendTitle,
         col = colFun,
         top_annotation = topAnnotation,
-        cluster_rows = input$clusterRowsHeatmap,
+        cluster_rows = input$clusterRowsMultiPathwayHeatmap,
         cluster_columns = input$clusterColsMultiHeatmap,
         show_row_names = input$rownamesHeatmap,
-        show_column_names = input$colnamesHeatmap,
-        row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-        column_names_gp = gpar(fontsize = input$textSizeHeatmap),
+        show_column_names = input$colnamesMultiPathwayHeatmap,
+        row_names_gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap),
+        column_names_gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap),
         column_names_rot = 45,
         row_names_side = "right",
-        row_names_max_width = max_text_width(rownames(heatmapMat), gp = gpar(fontsize = input$textSizeHeatmap)),
+        row_names_max_width = max_text_width(rownames(heatmapMat), gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap)),
         column_names_max_height = unit(8, "cm"),
         heatmap_legend_param = list(
-            title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-            labels_gp = gpar(fontsize = input$textSizeHeatmap),
+            title_gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap, fontface = "bold"),
+            labels_gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap),
             legend_height = unit(6, "cm")
         ),
         rect_gp = gpar(col = "white", lwd = 1),
@@ -256,11 +256,11 @@ multiPathwayHeatmapObjectReactive <- reactive({
             val <- heatmapMat[i, j]
             if (useNES) {
                 if (!is.na(val) && abs(val) > 0.01) {
-                    grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeHeatmap * 0.8))
+                    grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap * 0.8))
                 }
             } else {
                 if (!is.na(val) && val > 0) {
-                    grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeHeatmap * 0.8))
+                    grid.text(sprintf("%.2f", val), x, y, gp = gpar(fontsize = input$textSizeMultiPathwayHeatmap * 0.8))
                 }
             }
         }
@@ -273,10 +273,11 @@ output$pathwayHeatmapPlot <- renderPlot(
     {
         req(multiPathwayHeatmapObjectReactive())
         ht <- multiPathwayHeatmapObjectReactive()
-        draw(ht, merge_legend = TRUE, heatmap_legend_side = "bottom", annotation_legend_side = "bottom", padding = unit(c(2, 2, 2, 2), "cm"))
+        draw_heatmap(ht, merge_legend = TRUE, heatmap_legend_side = "bottom", annotation_legend_side = "bottom", padding = unit(c(2, 2, 2, 2), "cm"),
+                     legend_dx = input$multiPathwayHeatmapLegendDX, legend_dy = input$multiPathwayHeatmapLegendDY)
     },
-    width = function() input$figWidthHeatmap,
-    height = function() input$figHeightHeatmap
+    width = function() input$figWidthMultiPathwayHeatmap,
+    height = function() input$figHeightMultiPathwayHeatmap
 )
 
 # Render data table ----
@@ -341,11 +342,14 @@ output$dlPlot_multiHeatmap <- downloadHandler(
         req(multiPathwayHeatmapObjectReactive())
         ht <- multiPathwayHeatmapObjectReactive()
         export_plot_standard(
-            plot_object = ht,
+            plot_object = function() draw_heatmap(ht, merge_legend = TRUE, heatmap_legend_side = "bottom",
+                                                  annotation_legend_side = "bottom", padding = unit(c(2, 2, 2, 2), "cm"),
+                                                  legend_dx = input$multiPathwayHeatmapLegendDX,
+                                                  legend_dy = input$multiPathwayHeatmapLegendDY),
             filename = file,
             format = tolower(input$downloadFormatMultiHeatmap),
-            width = as.numeric(input$figWidthHeatmap) / 72,
-            height = as.numeric(input$figHeightHeatmap) / 72,
+            width = as.numeric(input$figWidthMultiPathwayHeatmap) / 72,
+            height = as.numeric(input$figHeightMultiPathwayHeatmap) / 72,
             dpi = as.numeric(input$dpiMultiHeatmap)
         )
     }

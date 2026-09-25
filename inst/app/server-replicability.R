@@ -184,13 +184,35 @@ make_rep_heatmap <- function(data, title_suffix = "") {
 
         anno_df <- dataset[, input$replicabilityFactors, drop = FALSE]
 
+        # Legend shows the Colours-tab display labels: rich ones via legends
+        # built at draw time by draw_heatmap() (see R/level_labels.R)
+        repRich <- any(vapply(input$replicabilityFactors, function(f) {
+            is_rich_labels(level_labels(input, f, names(colourList[[f]])))
+        }, logical(1)))
+        annoLegendParam <- lapply(input$replicabilityFactors, function(f) {
+            levs <- names(colourList[[f]])
+            list(at = levs, labels = unname(level_labels(input, f, levs, mode = "plain")))
+        }) %>% setNames(input$replicabilityFactors)
+
         ha_top <- HeatmapAnnotation(
             df = anno_df,
             col = colourList,
-            show_legend = TRUE,
+            show_legend = !repRich,
+            annotation_legend_param = annoLegendParam,
             annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
             gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
         )
+        if (repRich) {
+            attr(ha_top, "rich_legends") <- lapply(input$replicabilityFactors, function(f) {
+                heatmap_legend_spec(
+                    title = f,
+                    labels = level_labels(input, f, names(colourList[[f]]), force_rich = TRUE),
+                    fill = colourList[[f]],
+                    title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
+                    labels_gp = gpar(fontsize = input$replicabilityTextSize)
+                )
+            })
+        }
 
         ha_left <- rowAnnotation(
             df = anno_df,
@@ -233,7 +255,8 @@ make_rep_heatmap <- function(data, title_suffix = "") {
         column_title_gp = gpar(fontsize = input$replicabilityTextSize + 2, fontface = "bold")
     )
 
-    draw(hm, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
+    draw_heatmap(hm, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"),
+                 legend_dx = input$replicabilityLegendDX, legend_dy = input$replicabilityLegendDY)
 }
 
 # Helper function for Dendrogram

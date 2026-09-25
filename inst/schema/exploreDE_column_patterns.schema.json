@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/fgcz/exploreDE/schema/exploreDE_column_patterns.schema.json",
   "title": "exploreDE column-detection dictionary",
-  "description": "Validates inst/dictionaries/column_patterns.json -- the AUTOMATIC half of exploreDE's dictionary (plans/anndata_manifest_design.md). When a caller of build_explore_h5ad() gives NO explicit de_columns/rowdata_columns, this is what exploreDE uses to figure out which column is which, for an arbitrary incoming data.frame -- e.g. recognising 'adj.P.Val' as an FDR column, or 'log2FoldChange' as the log2 fold-change, without exploreDE's source code hardcoding every tool's spelling. Extending coverage to a new pipeline's naming convention means adding a pattern here, not editing R code. Two groups: `de` (DE stat columns) and `rowdata` (feature id/symbol/description/domain-extra columns). Each concept maps to an array of case-insensitive regexes; a column matching ANY of them is recognised as that concept.",
+  "description": "Validates inst/dictionaries/column_patterns.json -- the AUTOMATIC half of exploreDE's dictionary (plans/jambon/anndata_manifest_design.md). When a caller of build_explore_h5ad() gives NO explicit de_columns/rowdata_columns, this is what exploreDE uses to figure out which column is which, for an arbitrary incoming data.frame -- e.g. recognising 'adj.P.Val' as an FDR column, or 'log2FoldChange' as the log2 fold-change, without exploreDE's source code hardcoding every tool's spelling. Extending coverage to a new pipeline's naming convention means adding a pattern here, not editing R code. Two groups: `de` (DE stat columns) and `rowdata` (feature id/symbol/description/GO/proteomics columns). This is the ONLY column dictionary: build_explore_h5ad(), the ExploreDataset SE backends and standardise_columns() all read it. Each concept maps to an ORDERED array of case-insensitive regexes, tried first to last: the first pattern that matches any column decides, so list anchored patterns first and broad substring catch-alls last.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -13,7 +13,7 @@
   "definitions": {
     "patternGroup": {
       "type": "object",
-      "description": "concept name -> array of case-insensitive regex alternatives that identify a column as that concept.",
+      "description": "concept name -> ordered array of case-insensitive regexes (highest priority first) that identify a column as that concept.",
       "minProperties": 1,
       "additionalProperties": {
         "type": "array",

@@ -22,10 +22,8 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
   observe({
     # Detect species -> KEGG organism code (only hsa/mmu/rno supported)
     goTileKeggReactive$keggCode <- tryCatch({
-      rb  <- eds$ref_build()
-      spp <- ezRun::getSpecies(rb)
-      if (grepl("^Rattus", rb)) spp <- "Rat"
-      switch(spp, "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
+      spp <- kegg_species_label(eds$ref_build())
+      switch(spp %||% "", "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
     }, error = function(e) NULL)
     output$goTileKeggSupported <- reactive({ !is.null(goTileKeggReactive$keggCode) })
     outputOptions(output, "goTileKeggSupported", suspendWhenHidden = FALSE)
@@ -252,7 +250,7 @@ output$goTileOutput <- renderPlot({
   req(length(figuresDataReactive$goTilePlot) > 0)
 
   grobList <- lapply(figuresDataReactive$goTilePlot, function(hm) {
-    grid.grabExpr(draw(hm))
+    grid.grabExpr(draw_heatmap(hm, legend_dx = input$goTileLegendDX, legend_dy = input$goTileLegendDY))
   })
 
   grid.arrange(grobs = grobList, ncol = length(grobList))
@@ -276,7 +274,7 @@ output$dlGoTilePlot <- downloadHandler(
     export_plot_standard(
       plot_object = function() {
         grobList <- lapply(figuresDataReactive$goTilePlot, function(hm) {
-          grid.grabExpr(draw(hm))
+          grid.grabExpr(draw_heatmap(hm, legend_dx = input$goTileLegendDX, legend_dy = input$goTileLegendDY))
         })
         grid.arrange(grobs = grobList, ncol = length(grobList))
       },

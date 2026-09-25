@@ -316,7 +316,9 @@ step_top_n_sd <- function(counts, dataset, top_n) {
 }
 
 #' Plot ordination (samples only)
-plot_ordination_samples <- function(ordination_result, pc_scores, input, coloursPCA) {
+plot_ordination_samples <- function(ordination_result, pc_scores, input, coloursPCA, levelLabels = NULL) {
+  fillLabels  <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
+  shapeLabels <- if (is.null(levelLabels$shape)) ggplot2::waiver() else levelLabels$shape
   pc_x <- input$pcaX
   pc_y <- input$pcaY
 
@@ -337,7 +339,7 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
       size = input$dotSizePCA,
       alpha = input$alphaPCA, stroke = input$dotBorderPCA
     )
-    p <- p + scale_shape_manual(values = c(21, 22, 23, 24, 25, 8, 3, 4))
+    p <- p + scale_shape_manual(values = c(21, 22, 23, 24, 25, 8, 3, 4), labels = shapeLabels)
   }
 
   if (input$pcaShowNames) {
@@ -371,13 +373,14 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
     p <- p + coord_fixed(ratio = ordination_result$variance[pc_y_num] / ordination_result$variance[pc_x_num])
   }
 
-  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
+  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
   p <- p + theme_bw(base_size = input$textSizePCA)
   face <- switch(input$boldPCA,
     "TRUE" = "bold",
     "FALSE" = "plain"
   )
   p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
+  if (isTRUE(levelLabels$rich)) p <- p + rich_label_theme(legend = TRUE)
 
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {
@@ -406,7 +409,8 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
 }
 
 #' Plot biplot (samples + genes)
-plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursPCA, biplot_data, arrow_scale = 1, arrow_colour = "red", selection_method = "overall") {
+plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursPCA, biplot_data, arrow_scale = 1, arrow_colour = "red", selection_method = "overall", levelLabels = NULL) {
+  fillLabels <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
   pc_x <- biplot_data$pc_x_name
   pc_y <- biplot_data$pc_y_name
 
@@ -456,13 +460,14 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
   }
 
   p <- p + labs(x = x_lab, y = y_lab, fill = input$pcaFactor1)
-  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
+  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
   p <- p + theme_bw(base_size = input$textSizePCA)
   face <- switch(input$boldPCA,
     "TRUE" = "bold",
     "FALSE" = "plain"
   )
   p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
+  if (isTRUE(levelLabels$rich)) p <- p + rich_label_theme(legend = TRUE)
 
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {
@@ -937,10 +942,10 @@ observeEvent(
     input$biplotArrowColour
     input$biplotArrowColourX
     input$biplotArrowColourY
-    # Add all color picker inputs as dependencies so plot updates when colors change
+    # Add all color picker + level label inputs as dependencies so plot updates when they change
     lapply(eds$factor_names(), function(fname) {
       lapply(eds$factor_levels(fname), function(lev) {
-        input[[paste0("GroupColour", fname, lev)]]
+        list(input[[paste0("GroupColour", fname, lev)]], input[[paste0("GroupLabel", fname, lev)]])
       })
     })
   },
@@ -960,6 +965,20 @@ observeEvent(
     coloursPCA <- setNames(lapply(valid_groups, function(k) {
       paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, k)]]), "FF")
     }), valid_groups)
+
+    # Display labels from the Colours tab (fill factor, and shape factor).
+    # If either is rich, both are, as they share the markdown legend text.
+    pcaShapeFactor <- if (isTRUE(input$pcaFactor2 != "None")) input$pcaFactor2 else NULL
+    pcaShapeLevels <- if (is.null(pcaShapeFactor)) NULL else levels(as.factor(eds$samples()[[pcaShapeFactor]]))
+    pcaLevelLabels <- list(
+      fill = level_labels(input, input$pcaFactor1, valid_groups),
+      shape = if (is.null(pcaShapeFactor)) NULL else level_labels(input, pcaShapeFactor, pcaShapeLevels)
+    )
+    pcaLevelLabels$rich <- is_rich_labels(pcaLevelLabels$fill) || is_rich_labels(pcaLevelLabels$shape)
+    if (pcaLevelLabels$rich) {
+      pcaLevelLabels$fill <- level_labels(input, input$pcaFactor1, valid_groups, force_rich = TRUE)
+      if (!is.null(pcaShapeFactor)) pcaLevelLabels$shape <- level_labels(input, pcaShapeFactor, pcaShapeLevels, force_rich = TRUE)
+    }
 
     # Extract results from ordination
     pc_scores <- ord_res$scores
@@ -1193,7 +1212,8 @@ observeEvent(
           ordination_result = ord_res,
           pc_scores = pc_scores,
           input = input_validated,
-          coloursPCA = coloursPCA
+          coloursPCA = coloursPCA,
+          levelLabels = pcaLevelLabels
         )
       } else {
         # Determine arrow colors based on selection method
@@ -1217,7 +1237,8 @@ observeEvent(
           biplot_data = biplot_data,
           arrow_scale = input$biplotArrowScale,
           arrow_colour = arrow_colour,
-          selection_method = input$biplotGeneSelectionMethod
+          selection_method = input$biplotGeneSelectionMethod,
+          levelLabels = pcaLevelLabels
         )
       }
     } else {
@@ -1229,7 +1250,8 @@ observeEvent(
         ordination_result = ord_res,
         pc_scores = pc_scores,
         input = input_validated,
-        coloursPCA = coloursPCA
+        coloursPCA = coloursPCA,
+        levelLabels = pcaLevelLabels
       )
     }
 

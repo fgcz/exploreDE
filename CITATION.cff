@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use exploreDE, please cite it using these metadata."
+title: exploreDE
+type: software
+version: 3.7.0
+license: MIT
+repository-code: "https://github.com/fgcz/exploreDE"
+authors:
+  - family-names: Leary
+    given-names: Peter
+    email: peter.leary@uzh.ch
+    affiliation: Functional Genomics Center Zurich (FGCZ)

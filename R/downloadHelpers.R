@@ -56,8 +56,10 @@ export_plot_standard <- function(plot_object, filename, format = "pdf",
                                  dpi = 300, width = 8, height = 6) {
   format <- tolower(format)
   
-  # Set up the graphics device
+  # Set up the graphics device. PDF stays on base pdf() (Affinity-compatible);
+  # Greek in rich level labels is rewritten to the Symbol font for it.
   if (format == "pdf") {
+    plot_object <- prepare_plot_for_pdf(plot_object)
     pdf(file = filename, width = width, height = height)
   } else if (format == "svg") {
     svg(file = filename, width = width, height = height)

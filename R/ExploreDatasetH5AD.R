@@ -12,7 +12,7 @@
 #    obs                 sample metadata; experimental factors prefixed "factor_"
 #    var                 feature annotation; rownames = feature_id
 #    varm$de_<slot>      effect_log2fc / score_pvalue / score_fdr / label_*
-#    uns$omics_type / hierarchy / design / de / enrichment_native / ...
+#    uns$omics_type / hierarchy / design / de / enrichment (+ enrichment_support) / ...
 #
 #  Cross-API equivalence with ExploreDatasetSE_RNASeq is asserted in
 #  tests/testthat/test-explore_dataset-h5ad.R (assays agree to max|d| = 0).
@@ -167,6 +167,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         t(private$.layers[[layer_key]])                # samples x features -> features x samples
       } else {
         switch(name,
+          normalised = private$.compute_normalised(),
           normalised_log2 = log2(self$assay("normalised") +
                                    (private$.config$background_expression %||% 10)),
           vst  = private$.compute_vst(),
@@ -187,7 +188,8 @@ ExploreDatasetH5AD <- R6::R6Class(
       # carries the "de_" prefix (that's the varm key), so strip it.
       slot   <- sub("^de_", "", private$.contrast_slot[[contrast]] %||% contrast)
       native <- private$.uns$enrichment_native[[slot]]
-      if (is.null(native)) return(list())
+      if (is.null(native)) return(private$.rebuild_enrichment(slot, kind))
+      # Files written before 2026-09-25 carry the serialised objects themselves.
       pick <- if (kind == "gsea") "gsea" else setdiff(names(native), "gsea")
       objs <- lapply(native[intersect(pick, names(native))], .h5ad_decode_native)
       objs <- Filter(Negate(is.null), objs)
@@ -235,7 +237,37 @@ ExploreDatasetH5AD <- R6::R6Class(
     .obs = NULL, .var = NULL, .layers = NULL, .varm = NULL, .uns = NULL,
     .features_df = NULL, .de_dfs = list(), .contrast_slot = list(),
 
+    # Rebuild clusterProfiler objects from the tidy table + support block
+    # (uns$enrichment / uns$enrichment_support), named like the native path
+    # ("ora/BP/upGenes", "gsea/BP", or just "ora" for a bare object).
+    .rebuild_enrichment = function(slot, kind) {
+      sup_all  <- private$.uns$enrichment_support[[slot]] %||% list()
+      tidy_all <- private$.uns$enrichment[[slot]] %||% list()
+      pick <- if (kind == "gsea") "gsea" else setdiff(names(sup_all), "gsea")
+      out <- list()
+      for (nm in intersect(pick, names(sup_all))) {
+        objs <- .enr_rebuild(tidy_all[[nm]], sup_all[[nm]])
+        if (!length(objs)) next
+        names(objs) <- ifelse(names(objs) == "default", nm, paste0(nm, "/", names(objs)))
+        out <- c(out, objs)
+      }
+      out
+    },
+
     # Matrix-based VST — mirrors eds_compute_vst() (which takes an SE).
+    # Size-factor-normalised counts, for files built from raw counts alone
+    # (SUSHI results ship their own normalised layer). DESeq2 median-of-ratios;
+    # when every feature has a zero somewhere (no geometric mean), fall back to
+    # library-size scaling.
+    .compute_normalised = function() {
+      cts <- self$assay("counts")                           # features x samples
+      sf <- tryCatch(DESeq2::estimateSizeFactorsForMatrix(cts),
+                     error = function(e) NULL)
+      if (is.null(sf) || any(!is.finite(sf)) || any(sf <= 0))
+        sf <- colSums(cts) / mean(colSums(cts))
+      sweep(cts, 2, sf, "/")
+    },
+
     .compute_vst = function() {
       forVST <- t(as.matrix(private$.layers[["counts"]]))   # features x samples
       mode(forVST) <- "integer"
@@ -316,10 +348,9 @@ ExploreDatasetH5AD <- R6::R6Class(
           factor_name = grouping, method = d$model %||% "DESeq2",
           thresholds = list(fdr = 0.05, log2fc = 0, go_p = 0.01),
           # Display-only extra score (e.g. SAINTexpress SaintScore): its column
-          # label + kind, and the fdr direction. NULL when the file declares none.
-          score_label = sem$score_label,
-          score_kind  = sem$score_kind,
-          fdr_kind    = sem$fdr_kind %||% "fdr_low_sig")
+          # label. NULL when the file declares none. (Older files may also carry
+          # score_kind / fdr_kind tokens; nothing used them, so they are ignored.)
+          score_label = sem$score_label)
         slot_map[[key]] <- paste0("de_", slot)
       }
       private$.contrast_slot <- slot_map
@@ -352,9 +383,10 @@ ExploreDatasetH5AD <- R6::R6Class(
       } else {
         assay_map <- c(
           if ("counts"     %in% have) list(counts     = "counts"),
-          if ("normalised" %in% have) list(normalised = "normalised"),
+          if ("normalised" %in% have) list(normalised = "normalised")
+            else if ("counts" %in% have) list(normalised = NULL),            # computed
           if ("log2" %in% have)            list(normalised_log2 = "log2")
-            else if ("normalised" %in% have) list(normalised_log2 = NULL),   # computed
+            else if (any(c("normalised", "counts") %in% have)) list(normalised_log2 = NULL),   # computed
           if ("vst" %in% have)         list(vst = "vst")
             else if ("counts" %in% have) list(vst = NULL),                   # computed
           if ("tpm"  %in% have)        list(tpm  = "tpm")   else if (can_len) list(tpm  = NULL),
@@ -371,8 +403,10 @@ ExploreDatasetH5AD <- R6::R6Class(
       if (is.null(ref_build) || is.na(ref_build) || !nzchar(as.character(ref_build)))
         ref_build <- NA_character_
 
+      # Enrichment objects are available from the serialised copy (older
+      # files) or rebuildable from the support block (current files).
       enrich_kinds <- character()
-      en <- uns$enrichment_native %||% list()
+      en <- uns$enrichment_native %||% uns$enrichment_support %||% list()
       if (length(en)) {
         first <- en[[1]]
         if (any(grepl("ora", names(first)))) enrich_kinds <- c(enrich_kinds, "ora")

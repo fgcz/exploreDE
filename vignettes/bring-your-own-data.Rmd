@@ -1,0 +1,216 @@
+---
+title: "Bring your own data: building an exploreDE file"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Bring your own data: building an exploreDE file}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+exploreDE reads one file format: an `.h5ad` (AnnData) file built by
+`build_explore_h5ad()`. That function is the only supported way to get your
+own data into the app, whatever pipeline produced it. This vignette covers:
+
+1. installing exploreDE and running it on your own machine;
+2. building a file, from counts only up to counts + DE + pathways;
+3. checking the file before you open it;
+4. what to do when your column names aren't recognised.
+
+Every example below runs as written against the two datasets that ship with
+the package (`inst/examples/`).
+
+## Install and run
+
+```{r install, eval = FALSE}
+install.packages("BiocManager")
+BiocManager::install("fgcz/exploreDE")   # pulls in the Bioconductor dependencies
+```
+
+Start the app with:
+
+```{r run, eval = FALSE}
+library(exploreDE)
+exploreDE("my_data.h5ad")   # open straight into your file
+exploreDE()                 # or start on the landing page
+```
+
+On the landing page, use **Choose an exploreDE .h5ad file** to upload
+your file (up to 1 GB), or load the demo dataset. The file is read into memory for your session only.
+The menu then shows only the tabs your data supports: DE tabs need a DE
+table, pathway tabs need pathway results.
+
+## What goes into a file
+
+Only three things are required:
+
+| Argument  | What it is |
+|-----------|------------|
+| `x`       | the counts: a matrix (features × samples), a named list of matrices (e.g. `list(counts = , normalised = )`), or a `DESeqDataSet` |
+| `coldata` | sample metadata, one row per sample, rownames = the counts' column names |
+| `omics`   | `"rnaseq"`, `"proteomics"` or `"crispr"` |
+
+Everything else is optional: `rowdata` (feature annotation), `de` (one DE
+table per contrast), `pathways` (ORA/GSEA results per contrast), plus labels
+such as `organism`, `ref_build` and `factors`.
+
+```{r libs, message = FALSE}
+library(exploreDE)
+library(SummarizedExperiment)
+out_dir <- tempdir()
+```
+
+### Counts only
+
+The shipped RNA-seq example is a SUSHI/DESeq2 result. Using only its counts
+and sample table gives the smallest valid file:
+
+```{r counts-only}
+se <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))
+
+build_explore_h5ad(
+  assay(se, "counts"),
+  out     = file.path(out_dir, "counts_only.h5ad"),
+  omics   = "rnaseq",
+  coldata = colData(se)
+)
+```
+
+### Proteomics with one contrast
+
+The shipped proteomics example is a prolfqua result. Its DE table sits in
+`rowData` as a nested table, with prolfqua's own column names (`diff`,
+`p.value`, `FDR`). You pass it as it is; the column dictionary (below)
+recognises those names.
+
+```{r proteomics}
+se_prot <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds",
+                               package = "exploreDE"))
+de_prot <- as.data.frame(rowData(se_prot)$constrast_B_vs_A)
+
+build_explore_h5ad(
+  x       = list(raw = assay(se_prot, "rawData"),
+                 transformed = assay(se_prot, "transformedData")),
+  out     = file.path(out_dir, "proteomics.h5ad"),
+  omics   = "proteomics",
+  coldata = colData(se_prot),
+  rowdata = de_prot,
+  factors = "G_",
+  de      = list(B_vs_A = de_prot)
+)
+```
+
+### RNA-seq with DE and pathways
+
+The same SUSHI result, this time with everything: two count layers, feature
+annotation, the DE statistics (SUSHI keeps them in `rowData`) and the
+clusterProfiler ORA and GSEA results from its metadata.
+
+```{r rnaseq-full}
+build_explore_h5ad(
+  x         = list(counts = assay(se, "counts"), normalised = assay(se, "xNorm")),
+  out       = file.path(out_dir, "rnaseq_full.h5ad"),
+  omics     = "rnaseq",
+  organism  = "Homo sapiens",
+  ref_build = metadata(se)$param$refBuild,
+  coldata   = colData(se),
+  rowdata   = rowData(se),
+  factors   = "Condition [Factor]",
+  de        = list(diff_vs_undiff = rowData(se)),
+  pathways  = list(diff_vs_undiff = list(ora  = metadata(se)$enrichResult,
+                                          gsea = metadata(se)$enrichResultGSEA))
+)
+```
+
+`de` and `pathways` are named by contrast; add one entry per contrast.
+
+Pathway results can be clusterProfiler objects (`enrichResult`,
+`gseaResult`), plain data.frames, or nested lists of either (as above:
+BP/MF/CC × up/down/both). A plain data.frame must use clusterProfiler's
+column names: `ID`, `Description`, `p.adjust`, `GeneRatio`, `Count`,
+`geneID` for ORA, plus `enrichmentScore`, `NES`, `setSize`,
+`core_enrichment` for GSEA. clusterProfiler objects are filtered to
+`p.adjust <= enrichment_padj_max` (default 0.1); data.frames are stored as
+given. With clusterProfiler objects, the network, ridge and running-score
+plots are available too; with data.frames, the table-based pathway plots
+are.
+
+## Check the file before you open it
+
+```{r check}
+eds <- new_explore_dataset(file.path(out_dir, "rnaseq_full.h5ad"))
+eds
+
+eds$has_de()                                   # TRUE: a DE table was supplied
+eds$has_pvalue()                               # TRUE only if a raw p-value was found
+d <- eds$de(eds$primary_contrast())
+c(log2fc_missing = all(is.na(d$effect_log2fc)),
+  fdr_missing    = all(is.na(d$score_fdr)))   # both should be FALSE
+```
+
+If a DE column wasn't recognised it comes through as `NA` rather than as an
+error, so do this check before trusting the file.
+
+## How columns are recognised
+
+You don't tell `build_explore_h5ad()` which column is the log2 fold change,
+the p-value or the FDR. A dictionary shipped with the package
+(`inst/dictionaries/column_patterns.json`) holds an ordered list of
+case-insensitive patterns per concept. The first pattern that matches any
+column wins, so exact names beat loose substrings:
+
+```json
+"effect_log2fc": ["^diff$", "^log2[._ ]?(fold)?[._ ]?(change|ratio|fc)?$",
+                  "^logfc$", "^estimate$", "log2"],
+"score_pvalue":  ["^p[._ ]?value$"],
+"score_fdr":     ["^fdr$", "^adj[._ ]?p[._ ]?val(ue)?$", "^padj$",
+                  "^q[._ ]?val(ue)?$", "^p[._ ]?adjusted$", "fdr"],
+"score":         ["score"]
+```
+
+This covers DESeq2, edgeR, limma and prolfqua out of the box. It also
+covers SAINTexpress, whose tables have `log2_EFCs`, `BFDR` and
+`SaintScore` and no p-value at all: `log2_EFCs` matches `log2`, `BFDR`
+matches `fdr`, and `SaintScore` becomes an extra score. That score is shown
+in the DE table and offered as a volcano y-axis; significance thresholds
+still use the FDR. With no p-value, the app works from the FDR alone.
+
+The `rowdata` side works the same way for gene IDs, symbols, descriptions,
+protein and peptide IDs, phospho sites and GO columns.
+
+Only the recognised statistics are stored for each contrast. Other DE-table
+columns (e.g. a per-contrast `avgAbd`) are not kept; put per-feature
+annotation in `rowdata`, where every column is kept.
+
+### When a column isn't recognised
+
+`build_explore_h5ad()` warns, naming the contrast, the field it couldn't
+fill and the columns it saw. Two fixes:
+
+- **For one file:** name the columns yourself. Five keys exist; anything you
+  don't name is still found by the dictionary.
+
+  ```{r overrides, eval = FALSE}
+  build_explore_h5ad(...,
+    de_columns      = list(effect_log2fc = "<your column>",
+                           score_pvalue  = "<your column>",
+                           score_fdr     = "<your column>"),
+    rowdata_columns = list(id_col = "<your column>", symbol_col = "<your column>"))
+  ```
+
+  `de_columns` applies to every contrast, or pass a list of such lists
+  named by contrast. The mapping is saved in the file.
+
+- **For a naming convention you'll see again:** add a pattern to
+  `inst/dictionaries/column_patterns.json`. It's a JSON edit, not a code
+  change; put anchored patterns (`^...$`) before loose ones.
+
+### Feature level
+
+`feature_level` is detected from `rowdata`: a `site` column means phospho, a
+`peptide_Id` column means peptide, and a `transcript_id` column with one
+transcript per row means isoform. Otherwise it's gene (RNA-seq) or protein
+(proteomics). Pass `feature_level =` to override.

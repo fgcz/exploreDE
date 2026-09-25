@@ -177,7 +177,8 @@ tabItem(
               sliderInput(inputId = "textSizeHeatmap", label = "Figure Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = FALSE),
               sliderInput(inputId = "figWidthHeatmap", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10, width = "85%", ticks = FALSE),
               sliderInput(inputId = "figHeightHeatmap", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10, width = "85%", ticks = FALSE)
-            )
+            ),
+            legend_offset_ui("heatmap")
           ),
           
           tabPanel(

@@ -134,7 +134,7 @@ test_that("SAINT SE: reference group resolves to the CONTROL level", {
   cm  <- eds$contrast_meta(eds$primary_contrast())
   expect_identical(cm$method, "SAINTexpress")
   expect_identical(cm$reference_group, "eGFP")
-  expect_identical(cm$score_kind, "probability_high_sig")
+  expect_identical(cm$score_label, "SaintScore")
 })
 
 test_that("SAINT SE: standard prolfqua proteomics is unaffected (no SAINT tagging)", {

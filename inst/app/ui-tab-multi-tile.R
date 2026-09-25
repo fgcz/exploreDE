@@ -20,9 +20,9 @@ tabItem(
           The colour of the rowname denotes which contrast that gene is from. If a gene name is black, it came from multiple contrasts (e.g., it was in the top 10 of more than one contrast).
           "
                 ),
-                h4("Top DEGs tab"),
+                h4("Top DE tab"),
                 tags$p(
-                    "The top DEG plot has three main settings to determine the top n DEGs. The first is to sort each contrast by p-value, and take the top n.
+                    "The top DE plot has three main settings to determine the top n DE features. The first is to sort each contrast by p-value, and take the top n.
           The second is to sort each contrast by absolute log2FC (so both positive and negative in a single, decending order) and then take the top n.
           The third option is to sort each contrast by both positive and negative LFC and take the top n/2 from each. Here, if you select an odd number,
           it will round down (e.g., if you select n = 25, it will take top 12 + and top 12 -).
@@ -63,9 +63,10 @@ tabItem(
                 tabsetPanel(
                     tabPanel(
                         title = "Input Options",
-                        h4("Top DEGs Options"),
-                        selectInput(inputId = "tileSortBy", label = "Sort DEG table by:", choices = c("P-value", "Absolute Log2FC", "Top n +/- Log2FC"), selected = "P-value"),
-                        numericInput(inputId = "tileDEGNumber", label = "Number Top DEGs from each contrast", min = 5, max = 5000, value = 10, step = 1),
+                        uiOutput("fb_label_mode_multiTile"),
+                        h4("Top DE Options"),
+                        selectInput(inputId = "tileSortBy", label = "Sort DE table by:", choices = c("P-value", "Absolute Log2FC", "Top n +/- Log2FC"), selected = "P-value"),
+                        numericInput(inputId = "tileDEGNumber", label = "Number of top DE features from each contrast", min = 5, max = 5000, value = 10, step = 1),
                         sliderInput(inputId = "lfcTile", label = "Log2 Fold Change Threshold:", value = 0.5, min = 0, max = 10, step = 0.25, ticks = F, width = "85%"),
                         selectInput(inputId = "pTypeTile", choices = c("FDR", "Raw"), label = "P-Value:", selected = "Raw"),
                         selectInput(inputId = "pThresholdTile", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
@@ -78,7 +79,6 @@ tabItem(
                         checkboxInput(inputId = "clusterColsTile", label = "Cluster contrasts?", value = TRUE),
                         tags$b("Turn off/on names of rows/columns"),
                         checkboxInput(inputId = "colnamesTile", label = "Show contrast names?", value = FALSE),
-                        uiOutput("fb_label_mode_multiTile"),
                         # checkboxInput(inputId = "geneNamesTile", label = "Show gene names?", value = TRUE),
 
                         hr(style = "border-top: 1px solid #000000;"), h4("Tile Plot Colours"),
@@ -110,6 +110,7 @@ tabItem(
                             sliderInput(inputId = "figWidthTile", label = "Figure Width", min = 100, max = 2000, value = 800, step = 10, width = "85%", ticks = FALSE),
                             sliderInput(inputId = "figHeightTile", label = "Figure Height", min = 100, max = 2000, value = 800, step = 10, width = "85%", ticks = FALSE)
                         ),
+                        legend_offset_ui("multiTile"),
                         hr(style = "border-top: 1px solid #000000;"), h4("Download Settings"),
                         splitLayout(
                              selectInput(inputId = "downloadFormatMultiTile", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF", width = "85%"),
@@ -129,9 +130,9 @@ tabItem(
                 tabsetPanel(
                     id = "multiTileTabs",
                     tabPanel(
-                        title = "Top DEGs",
+                        title = "Top DE",
                         h3("Tile Plot"),
-                        textInput(inputId = "filename_tileTop", label = NULL, value = "Top_DEGs_Tile", placeholder = "Filename"),
+                        textInput(inputId = "filename_tileTop", label = NULL, value = "Top_DE_Tile", placeholder = "Filename"),
                         downloadButton(outputId = "dlPlot_tileTop", label = "Download This Plot"),
                         downloadButton(outputId = "dlTable_tileTopRes", label = "Download Results Matrix (Excel)"),
                         br(), br(),

@@ -114,21 +114,32 @@ lapply(fb_tabs, function(tab) {
           hidden_bucket
         )
       } else {
-        bucket_list(
-          header = "Drag and drop features (Ctrl/Cmd to select multiple)",
-          group_name = paste0("fb_group_", tab),
-          orientation = "horizontal",
-          add_rank_list(
-            text = "Include these features in this order",
-            labels = features,
-            input_id = paste0("fb_keep_", tab),
-            options = sortable::sortable_options(multiDrag = TRUE)
-          ),
-          add_rank_list(
-            text = "Exclude these features",
-            labels = NULL,
-            input_id = paste0("fb_exclude_", tab),
-            options = sortable::sortable_options(multiDrag = TRUE)
+        # Long IDs (e.g. phospho sites with several peptides) are cut off with
+        # an ellipsis; hovering shows the full ID. Named labels make sortable
+        # return the feature_id itself (data-rank-id), not the visible text.
+        labels <- setNames(lapply(features, function(f) tags$span(title = f, f)), features)
+        div(
+          class = "fb-bucket",
+          tags$style(HTML(
+            ".fb-bucket .rank-list-item { max-width: 16em; overflow: hidden;
+               text-overflow: ellipsis; white-space: nowrap; }"
+          )),
+          bucket_list(
+            header = "Drag and drop features (Ctrl/Cmd to select multiple)",
+            group_name = paste0("fb_group_", tab),
+            orientation = "horizontal",
+            add_rank_list(
+              text = "Include these features in this order",
+              labels = labels,
+              input_id = paste0("fb_keep_", tab),
+              options = sortable::sortable_options(multiDrag = TRUE)
+            ),
+            add_rank_list(
+              text = "Exclude these features",
+              labels = NULL,
+              input_id = paste0("fb_exclude_", tab),
+              options = sortable::sortable_options(multiDrag = TRUE)
+            )
           )
         )
       }
@@ -145,44 +156,28 @@ lapply(fb_tabs, function(tab) {
 
 # --- Per-tab input observers (contributors) ---
 
-# Boxplot tab
-observeEvent(
-  { input$fb_select_boxplot; input$fb_text_boxplot },
-  ignoreNULL = FALSE, ignoreInit = TRUE,
-  {
-    search_mode <- input$fb_search_by_boxplot %||% "feature_id"
-    genes <- c(input$fb_select_boxplot %||% character(0),
-               parse_gene_text(input$fb_text_boxplot))
-    genes <- resolve_features(genes, search_mode)
-    bucket_add(genes, source = "boxplot")
-  }
-)
-
-# Volcano tab (selectize + text only; brush is handled via staging area)
-observeEvent(
-  { input$fb_select_volcano; input$fb_text_volcano },
-  ignoreNULL = FALSE, ignoreInit = TRUE,
-  {
-    search_mode <- input$fb_search_by_volcano %||% "feature_id"
-    genes <- c(input$fb_select_volcano %||% character(0),
-               parse_gene_text(input$fb_text_volcano))
-    genes <- resolve_features(genes, search_mode)
-    bucket_add(genes, source = "volcano")
-  }
-)
-
-# Heatmap tab
-observeEvent(
-  { input$fb_select_heatmap; input$fb_text_heatmap },
-  ignoreNULL = FALSE, ignoreInit = TRUE,
-  {
-    search_mode <- input$fb_search_by_heatmap %||% "feature_id"
-    genes <- c(input$fb_select_heatmap %||% character(0),
-               parse_gene_text(input$fb_text_heatmap))
-    genes <- resolve_features(genes, search_mode)
-    bucket_add(genes, source = "heatmap")
-  }
-)
+# Boxplot, volcano and heatmap tabs: selectize + text box (the volcano brush is
+# handled via the staging area). Each tab remembers what its inputs last
+# contributed, so a feature removed from the selectize (its "x") or deleted
+# from the text box also leaves the bucket, not just the input.
+lapply(c("boxplot", "volcano", "heatmap"), function(tab) {
+  sel_id  <- paste0("fb_select_", tab)
+  text_id <- paste0("fb_text_", tab)
+  contributed <- character(0)
+  observeEvent(
+    { input[[sel_id]]; input[[text_id]] },
+    ignoreNULL = FALSE, ignoreInit = TRUE,
+    {
+      search_mode <- input[[paste0("fb_search_by_", tab)]] %||% "feature_id"
+      genes <- c(input[[sel_id]] %||% character(0),
+                 parse_gene_text(input[[text_id]]))
+      genes <- resolve_features(genes, search_mode)
+      bucket_remove(setdiff(contributed, genes), source = tab)
+      bucket_add(genes, source = tab)
+      contributed <<- genes
+    }
+  )
+})
 
 # DEG table tab (row selection)
 observeEvent(input$degTable_rows_selected, ignoreNULL = FALSE, ignoreInit = TRUE, {
@@ -292,6 +287,10 @@ lapply(c("heatmap", "ordination", "volcano", "multiTile"), function(tab) {
       inline = TRUE
     )
   })
+  # Render even while its settings tab is hidden: plots read the radio's value,
+  # and an unrendered radio is NULL, so the Gene Symbol default would silently
+  # fall back to feature IDs until someone opened that tab.
+  outputOptions(output, paste0("fb_label_mode_", tab), suspendWhenHidden = FALSE)
 })
 
 # =============================================================================

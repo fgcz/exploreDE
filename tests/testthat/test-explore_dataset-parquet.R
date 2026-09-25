@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # ExploreDatasetParquet + export_h5ad_to_parquet() tests
 #
-# The exploreDElight backend (plans/exploredelight_tauri_plan.md). The whole
+# The exploreDElight backend (plans/exploredelight/exploredelight_tauri_plan.md). The whole
 # point of this backend is that it must be INDISTINGUISHABLE from the h5ad
 # backend through the accessor contract — Light runs the same server modules —
 # so the central test is accessor-for-accessor equivalence on one source file,

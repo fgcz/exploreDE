@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # ExploreDatasetH5AD + build_explore_h5ad (source-agnostic constructor) tests
 #
-# Covers the finalised contract (plans/byo_data_import_plan.md §0c):
+# Covers the finalised contract (plans/jambon/byo_data_import_plan.md §0c):
 #   - rich object (DESeqDataSet) route
 #   - loose-pieces route (matrix + colData + omics, no rich object)
 #   - counts as a named collection of matrices
@@ -135,12 +135,10 @@ test_that("pathway stats (data.frame) are stored under their contrast", {
 test_that("nested SUSHI-shaped pathway stats round-trip and flatten", {
   skip_if_no_anndataR()
   p <- make_toy_pieces()
-  # Lightweight cP stand-ins: S3 objects that inherit the class the flattener
-  # keys on. Serialise/deserialise like the real S4 objects for this purpose.
-  er <- function(n) structure(list(result = data.frame(ID = paste0("GO:", seq_len(n)))),
-                              class = "enrichResult")
-  gr <- function(n) structure(list(result = data.frame(ID = paste0("GO:", seq_len(n)))),
-                              class = "gseaResult")
+  # Minimal real clusterProfiler objects (rebuilt from the stored tidy table +
+  # support block on read, so they must carry a real `result` slot).
+  er <- function(n) .mini_cp("enrichResult", n)
+  gr <- function(n) .mini_cp("gseaResult", n)
   # SUSHI shapes: ORA nested ontology x direction; GSEA nested by ontology.
   ora  <- list(BP = list(upGenes = er(3), downGenes = er(2), bothGenes = er(5)),
                MF = list(upGenes = er(1), downGenes = er(1), bothGenes = er(2)),
@@ -159,12 +157,12 @@ test_that("nested SUSHI-shaped pathway stats round-trip and flatten", {
   ora_flat <- eds$enrichment("treated_vs_control", "ora")
   expect_length(ora_flat, 9L)                              # 3 ontologies x 3 directions
   expect_true("ora/BP/upGenes" %in% names(ora_flat))
-  expect_s3_class(ora_flat[["ora/BP/upGenes"]], "enrichResult")
+  expect_true(methods::is(ora_flat[["ora/BP/upGenes"]], "enrichResult"))
 
   gsea_flat <- eds$enrichment("treated_vs_control", "gsea")
   expect_length(gsea_flat, 3L)                             # BP / MF / CC
   expect_true("gsea/CC" %in% names(gsea_flat))
-  expect_s3_class(gsea_flat[["gsea/BP"]], "gseaResult")
+  expect_true(methods::is(gsea_flat[["gsea/BP"]], "gseaResult"))
 })
 
 test_that("pathway stats for a non-existent contrast warn", {
@@ -187,14 +185,8 @@ test_that("legacy_multi_contrast_from_eds fans a multi-contrast h5ad out per con
   # Two contrasts against the same reference so both test/reference groups are
   # real levels of the grouping factor.
   de2 <- p$de_df; de2$LFC <- -de2$LFC
-  er <- function(n) structure(
-    list(result = data.frame(ID = paste0("GO:", seq_len(n)),
-                             Description = paste("term", seq_len(n)))),
-    class = "enrichResult")
-  gr <- function(n) structure(
-    list(result = data.frame(ID = paste0("GO:", seq_len(n)),
-                             Description = paste("term", seq_len(n)))),
-    class = "gseaResult")
+  er <- function(n) .mini_cp("enrichResult", n)
+  gr <- function(n) .mini_cp("gseaResult", n)
   ora  <- list(BP = list(upGenes = er(3), downGenes = er(2), bothGenes = er(5)),
                MF = list(upGenes = er(1), downGenes = er(1), bothGenes = er(2)))
   gsea <- list(BP = gr(4), MF = gr(2))
@@ -229,15 +221,13 @@ test_that("legacy_multi_contrast_from_eds fans a multi-contrast h5ad out per con
   expect_true("Raw" %in% names(o$countList))
   expect_setequal(rownames(o$countList[["Raw"]]), o$seqAnno$feature_id)
 
-  # Enrichment reshaped back to nested ont -> sig (ORA) / ont (GSEA). (The
-  # `Label` column added by .label_enrichment_results is exercised against real
-  # S4 clusterProfiler objects in the manual round-trip check — the S3
-  # stand-ins here collide with clusterProfiler's own S4 `[[`/`@` methods.)
+  # Enrichment reshaped back to nested ont -> sig (ORA) / ont (GSEA), as real
+  # clusterProfiler objects rebuilt from the file.
   expect_setequal(names(o$ora), c("BP", "MF"))
   expect_setequal(names(o$ora$BP), c("upGenes", "downGenes", "bothGenes"))
-  expect_s3_class(o$ora$BP$upGenes, "enrichResult")
+  expect_true(methods::is(o$ora$BP$upGenes, "enrichResult"))
   expect_setequal(names(o$gsea), c("BP", "MF"))
-  expect_s3_class(o$gsea$BP, "gseaResult")
+  expect_true(methods::is(o$gsea$BP, "gseaResult"))
 
   # The second contrast has no enrichment attached (pathways only for the first).
   o2 <- legacy_multi_contrast_from_eds(eds, "control_vs_treated")
@@ -257,6 +247,16 @@ test_that("rnaseq isoform is detected from a transcript_id column", {
   eds <- new_explore_dataset(out)
   expect_identical(eds$feature_id_kind(), "isoform")
   expect_identical(eds$data_type(), "RNASeq")
+})
+
+test_that("a gene-level transcript_id list (SUSHI style) does not flip rnaseq to isoform", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  rd <- p$rowdata
+  rd$transcript_id <- paste0("ENST", seq_len(nrow(rd)), "; ENST", seq_len(nrow(rd)) + 1e5)
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata, rowdata = rd)
+  expect_identical(new_explore_dataset(out)$feature_id_kind(), "gene")
 })
 
 test_that("proteomics flavour: protein & phospho detected, peptide via override", {
@@ -484,9 +484,7 @@ build_saint <- function(env = parent.frame()) {
   build_explore_h5ad(list(intensities = s$intensities), out = out, omics = "proteomics",
                      feature_level = "protein", coldata = s$coldata, rowdata = s$rowdata,
                      de = s$de,
-                     de_columns = list(effect_log2fc = "log2_EFCs", score_fdr = "BFDR",
-                                       fdr_kind = "fdr_low_sig", score = "SaintScore",
-                                       score_kind = "probability_high_sig"))
+                     de_columns = list(effect_log2fc = "log2_EFCs", score_fdr = "BFDR"))
   new_explore_dataset(out)
 }
 
@@ -519,16 +517,21 @@ test_that("SAINT-shaped producer: SaintScore surfaces as a display-only extra", 
   expect_false(isTRUE(all.equal(d$SaintScore, d$fdr)))
 })
 
-test_that("SAINT-shaped producer: declared mapping semantics round-trip", {
+test_that("SAINT-shaped producer: declared mapping round-trips", {
   skip_if_no_anndataR()
   eds <- build_saint()
   cm <- eds$contrast_meta(eds$primary_contrast())
-  expect_identical(cm$score_kind, "probability_high_sig")
-  expect_identical(cm$fdr_kind,   "fdr_low_sig")
-  # The mapping lives under the distinct uns$exploreDE$mapping key.
-  mp <- eds$backend()$uns$exploreDE$mapping$de$default
-  expect_identical(mp$score_label, "SaintScore")
-  expect_identical(mp$score_kind,  "probability_high_sig")
+  expect_identical(cm$score_label, "SaintScore")
+  expect_null(cm$score_kind)   # retired token
+  # The mapping lives under the distinct uns$exploreDE$mapping key: the
+  # overrides in the shared default, the dictionary-detected score's source
+  # column (its display label) per contrast.
+  mp <- eds$backend()$uns$exploreDE$mapping$de
+  expect_identical(mp$default$effect_log2fc_col, "log2_EFCs")
+  expect_identical(mp$default$score_fdr_col,     "BFDR")
+  expect_null(mp$default$score_kind)
+  expect_identical(mp$contrasts$baita_vs_egfp$score_label, "SaintScore")
+  expect_identical(mp$contrasts$baita_vs_egfp$score_col,   "SaintScore")
 })
 
 test_that("SAINT-shaped producer: enrichment selections threshold on FDR", {
@@ -575,8 +578,12 @@ test_that("SAINT-shaped producer with NO de_columns at all now auto-resolves via
   d <- eds$de(eds$primary_contrast())
   expect_false(all(is.na(d$effect_log2fc)))
   expect_false(all(is.na(d$score_fdr)))
-  expect_false(all(is.na(d$score)))
+  expect_false(all(is.na(d$SaintScore)))
   expect_false(eds$has_pvalue())   # SAINT genuinely has no p-value column
+  # Regression: a dictionary-detected score used to reach varm but carried no
+  # display label, so the app never surfaced it (no DE-table column, no
+  # volcano score axis).
+  expect_identical(eds$de_display_extras(), "SaintScore")
 })
 
 test_that("a DE table whose columns carry NO textual signal at all still warns loudly instead of going silently all-NA", {
@@ -655,7 +662,7 @@ test_that("unused levels are dropped even when the order is honoured", {
   expect_identical(new_explore_dataset(out)$factor_levels("g"), c("zeta", "beta"))
 })
 
-# ---- tidy enrichment mirror (plans/enrichment_detach_plan.md) ---------------
+# ---- tidy enrichment mirror (plans/exploredelight/enrichment_detach_plan.md) ---------------
 
 # Minimal real clusterProfiler S4 objects. Constructed rather than fixtured
 # because the point under test is the S4 -> tidy derivation, not the contents.
@@ -664,6 +671,21 @@ test_that("unused levels are dropped even when the order is honoured", {
     ID = sprintf("GO:%04d", seq_along(padj)),
     Description = sprintf("term %d", seq_along(padj)),
     pvalue = padj / 10, p.adjust = padj, Count = seq_along(padj),
+    stringsAsFactors = FALSE))
+}
+
+# GSEA-shaped stand-in, exercising the columns hypergeo2/gsea2 UI migration
+# actually reads (enrichmentScore/NES/qvalue/core_enrichment/setSize) — the
+# existing .fake_enrich() only covers ORA columns.
+.fake_gsea_enrich <- function(cls = "gseaResult", n = 3, padj = c(.001, .02, .4)) {
+  methods::new(cls, result = data.frame(
+    ID = sprintf("GS%04d", seq_len(n)),
+    Description = sprintf("gene set %d", seq_len(n)),
+    enrichmentScore = seq(0.3, 0.7, length.out = n),
+    NES = seq(-2, 2, length.out = n),
+    pvalue = padj[seq_len(n)] / 10, p.adjust = padj[seq_len(n)], qvalue = padj[seq_len(n)],
+    setSize = 10 * seq_len(n),
+    core_enrichment = sprintf("Gene%03d/Gene%03d", seq_len(n), seq_len(n) + 1),
     stringsAsFactors = FALSE))
 }
 
@@ -743,25 +765,99 @@ test_that("nested ORA/GSEA structure survives as an `ontology` column", {
   expect_identical(unique(d$method), "ora")
 })
 
-test_that("enrichment_table() works on a file with no tidy block at all", {
+test_that("enrichment_table() round-trips GSEA columns end to end", {
   skip_if_no_anndataR()
-  # Backwards compatibility: every .h5ad written before this change has only
-  # enrichment_native. The base-class implementation derives the table from it,
-  # so no file needs rewriting for the new accessor to work.
-  out <- .toy_with_pathways(list(ora = .fake_enrich(padj = c(.001, .09, .6))))
+  # The existing GSEA coverage above only asserts row count / ontology / method
+  # -- nothing previously checked that the columns the migrated GSEA tab
+  # actually reads (enrichmentScore/NES/qvalue/core_enrichment/setSize) survive
+  # the S4 -> tidy round trip.
+  out <- .toy_with_pathways(list(gsea = .fake_gsea_enrich()), enrichment_padj_max = 1)
+  e <- new_explore_dataset(out)
+  d <- e$enrichment_table("treated_vs_control", "gsea")
+  expect_s3_class(d, "data.frame")
+  expect_equal(nrow(d), 3L)
+  for (col in c("enrichmentScore", "NES", "qvalue", "core_enrichment", "setSize"))
+    expect_true(col %in% colnames(d), info = col)
+  expect_identical(unique(d$method), "gsea")
+})
+
+test_that("a nested tree of PLAIN data.frames (no clusterProfiler object anywhere) flattens and never touches enrichment_native", {
+  skip_if_no_anndataR()
+  # A BYO producer's own tidy ORA table, nested the same BP/MF/CC x up/down
+  # shape a SUSHI producer would use -- but with plain data.frame leaves, not
+  # clusterProfiler objects. eds_flatten_cp_results() used to recurse INTO a
+  # data.frame leaf (a data.frame is itself a list-of-columns in R) instead of
+  # treating it as a leaf, so this data silently vanished. Regression test for
+  # that fix (R/utils_explore_dataset.R, R/build_explore_h5ad.R).
+  leaf <- function(n) data.frame(ID = paste0("GO:", seq_len(n)),
+                                 Description = paste0("term", seq_len(n)),
+                                 p.adjust = seq_len(n) / (n + 1),
+                                 stringsAsFactors = FALSE)
+  ora <- list(BP = list(upGenes = leaf(3), downGenes = leaf(2)),
+             MF = list(upGenes = leaf(1)))
+  out <- .toy_with_pathways(list(ora = ora))
+  e <- new_explore_dataset(out)
+
+  d <- e$enrichment_table("treated_vs_control", "ora")
+  expect_setequal(unique(d$ontology), c("BP/upGenes", "BP/downGenes", "MF/upGenes"))
+  expect_equal(nrow(d), 3 + 2 + 1)
+
+  # No clusterProfiler object anywhere in the tree -> nothing to serialise, so
+  # the native-only accessor stays empty and the file carries no native blob.
+  expect_length(e$enrichment("treated_vs_control", "ora"), 0L)
+  expect_length(e$backend()$uns$enrichment_native, 0L)
+})
+
+test_that("older files that carry only serialised objects (enrichment_native) still read", {
+  skip_if_no_anndataR()
+  # Backwards compatibility: files written before 2026-09-25 carry the
+  # clusterProfiler objects themselves (gzip + base64 serialise) and, the
+  # oldest, no tidy block. Rebuild one of those by hand: the writer no longer
+  # produces this format.
+  obj <- .fake_enrich(padj = c(.001, .09, .6))
+  out <- .toy_with_pathways(list(ora = obj))
   ad  <- anndataR::read_h5ad(out, as = "InMemoryAnnData")
-  # Strip BOTH, because that is what a pre-change file looks like: the writer
-  # records enrichment_filter only when it actually emits a tidy block, so a
-  # file with one and not the other cannot arise in practice.
   ad$uns$enrichment <- list()
   ad$uns$enrichment_filter <- NULL
-  stripped <- withr::local_tempfile(fileext = ".h5ad")
-  anndataR::write_h5ad(ad, stripped, mode = "w")
+  ad$uns$enrichment_support <- NULL
+  ad$uns$enrichment_native <- list(treated_vs_control = list(
+    ora = jsonlite::base64_enc(memCompress(serialize(obj, NULL), "gzip"))))
+  old <- withr::local_tempfile(fileext = ".h5ad")
+  anndataR::write_h5ad(ad, old, mode = "w")
 
-  e <- new_explore_dataset(stripped)
+  e <- new_explore_dataset(old)
+  expect_identical(e$enrichment_kinds(), "ora")
   d <- e$enrichment_table("treated_vs_control", "ora")
   expect_equal(nrow(d), 3L)                       # derived live, so unfiltered
   expect_true(is.na(e$enrichment_filter()))       # and it says it was not filtered
+  objs <- e$enrichment("treated_vs_control", "ora")
+  expect_true(methods::is(objs[["ora"]], "enrichResult"))
+  expect_equal(nrow(objs[["ora"]]@result), 3L)    # the stored object, unfiltered
+})
+
+test_that("new files store no serialised objects; enrichment() rebuilds them from table + support block", {
+  skip_if_no_anndataR()
+  gs <- .mini_cp("gseaResult", 3)
+  out <- .toy_with_pathways(list(ora = list(BP = list(upGenes = .mini_cp("enrichResult", 2))),
+                                 gsea = list(BP = gs, MF = gs)))
+  e <- new_explore_dataset(out)
+  u <- e$backend()$uns
+  expect_length(u$enrichment_native, 0L)
+  expect_identical(u$enrichment_support$treated_vs_control$ora$class, "enrichResult")
+  sup <- u$enrichment_support$treated_vs_control$gsea
+  expect_identical(sup$class, "gseaResult")
+  expect_identical(unique(sup$gene_list$ontology), "*")   # one shared ranked list, stored once
+  expect_setequal(unique(sup$gene_sets$ID), gs@result$ID)  # stored terms only
+
+  g <- e$enrichment("treated_vs_control", "gsea")
+  expect_setequal(names(g), c("gsea/BP", "gsea/MF"))
+  expect_identical(g[["gsea/BP"]]@geneList, gs@geneList)
+  expect_identical(g[["gsea/BP"]]@geneSets[gs@result$ID], gs@geneSets[gs@result$ID])
+  expect_identical(g[["gsea/BP"]]@params$exponent, 1)
+  expect_equal(g[["gsea/BP"]]@result[, colnames(gs@result)], gs@result, ignore_attr = TRUE)
+  o <- e$enrichment("treated_vs_control", "ora")
+  expect_identical(names(o), "ora/BP/upGenes")
+  expect_true(methods::is(o[[1]], "enrichResult"))
 })
 
 test_that("enrichment_table() is empty, not an error, when nothing was run", {
@@ -774,4 +870,22 @@ test_that("enrichment_table() is empty, not an error, when nothing was run", {
   e <- new_explore_dataset(out)
   expect_false(e$has_enrichment())
   expect_equal(nrow(e$enrichment_table("treated_vs_control", "ora")), 0L)
+})
+
+test_that("a counts-only file gets computed normalised + normalised_log2 assays", {
+  # Regression: an h5ad with raw counts + DE but no normalised layer crashed the
+  # DE QC tab ("Unknown computed assay: normalised").
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata)
+  eds <- new_explore_dataset(out)
+  expect_true(all(c("normalised", "normalised_log2") %in% eds$assay_names()))
+  cts  <- eds$assay("counts")
+  norm <- eds$assay("normalised")
+  expect_identical(dim(norm), dim(cts))
+  sf <- DESeq2::estimateSizeFactorsForMatrix(cts)
+  expect_equal(norm, sweep(cts, 2, sf, "/"))
+  expect_equal(eds$assay("normalised_log2"),
+               log2(norm + eds$background_expression()))
 })

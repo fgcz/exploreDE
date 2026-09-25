@@ -11,6 +11,7 @@
       "^p[._ ]?value$"
     ],
     "score_fdr": [
+      "^fdr$",
       "^adj[._ ]?p[._ ]?val(ue)?$",
       "^padj$",
       "^q[._ ]?val(ue)?$",
@@ -22,6 +23,32 @@
     ]
   },
   "rowdata": {
+    "gene_id": [
+      "^gene[._ ]?id$",
+      "^ensembl",
+      "^feature[._ ]?id$"
+    ],
+    "gene_name": [
+      "^gene[._ ]?name$",
+      "^gene[._ ]?symbol$",
+      "^symbol$"
+    ],
+    "description": [
+      "^description$",
+      "^desc$"
+    ],
+    "transcript_id": [
+      "^transcript[._ ]?id$"
+    ],
+    "go_bp": [
+      "^go[._ ]?bp$"
+    ],
+    "go_mf": [
+      "^go[._ ]?mf$"
+    ],
+    "go_cc": [
+      "^go[._ ]?cc$"
+    ],
     "protein_Id": [
       "^protein[._ ]?id$",
       "^uniprot([._ ]?(id|accession))?$",
@@ -33,14 +60,6 @@
     ],
     "site": [
       "^site$"
-    ],
-    "gene_name": [
-      "^gene[._ ]?name$",
-      "^gene[._ ]?symbol$"
-    ],
-    "description": [
-      "^description$",
-      "^desc$"
     ],
     "fasta.id": [
       "^fasta[._ ]?id$"

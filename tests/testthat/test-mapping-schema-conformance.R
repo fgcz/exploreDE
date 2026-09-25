@@ -1,12 +1,12 @@
 # -----------------------------------------------------------------------------
 # Conformance test: uns['exploreDE']['mapping'] -- the declared "dictionary"
-# WEW proposed (see plans/anndata_manifest_design.md) -- as written by
+# WEW proposed (see plans/jambon/anndata_manifest_design.md) -- as written by
 # build_explore_h5ad(), validates against inst/schema/exploreDE_mapping.schema.json.
 #
 # Scope: this schema covers ONLY uns$exploreDE$mapping, not the whole h5ad
 # contract. It is the dictionary itself -- for THIS dataset, which raw column
 # fed each canonical DE target (log2fc/p-value/fdr/extra score), plus the
-# feature id/symbol/description column when auto-detection needed an explicit
+# feature id/symbol column when auto-detection needed an explicit
 # override -- kept in the file rather than discarded once used at build time.
 # validate_explore_dataset() operates on the live accessor object and never
 # inspects this block, so this is the only place the on-disk mapping shape is
@@ -47,18 +47,32 @@ test_that("default-only DE mapping (generic, non-canonical column names) conform
   build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata,
                      rowdata = p$rowdata, de = list(treated_vs_control = p$de_df),
                      de_columns = list(effect_log2fc = "LFC", score_pvalue = "P",
-                                       score_fdr = "Q", score = "P",
-                                       score_kind = "p_value_low_sig",
-                                       fdr_kind = "fdr_low_sig"))
+                                       score_fdr = "Q"))
 
   eds <- new_explore_dataset(out)
   mp <- eds$backend()$uns$exploreDE$mapping
-  expect_identical(mp$de$default$score_label, "P")
   expect_identical(mp$de$default$effect_log2fc_col, "LFC")
   expect_identical(mp$de$default$score_pvalue_col, "P")
   expect_identical(mp$de$default$score_fdr_col, "Q")
-  expect_identical(mp$de$default$score_col, "P")
+  expect_null(mp$de$default$score_col)
   expect_true(validate_mapping(mp))
+})
+
+test_that("retired / unknown override keys warn instead of being silently ignored", {
+  testthat::skip_if_not_installed("anndataR")
+  p <- make_toy_pieces()
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_warning(
+    build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata,
+                       rowdata = p$rowdata, de = list(treated_vs_control = p$de_df),
+                       de_columns = list(effect_log2fc = "LFC", score_pvalue = "P",
+                                         score_fdr = "Q", score = "P")),
+    regexp = "unknown de_columns key\\(s\\): score")
+  expect_warning(
+    build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata,
+                       rowdata = p$rowdata,
+                       rowdata_columns = list(description_col = "whatever")),
+    regexp = "unknown rowdata_columns key\\(s\\): description_col")
 })
 
 test_that("per-contrast override mapping (no shared default) conforms", {
@@ -77,19 +91,15 @@ test_that("per-contrast override mapping (no shared default) conforms", {
 
   build_explore_h5ad(m, out = out, omics = "rnaseq", coldata = coldata, de = de,
                      de_columns = list(
-                       A_vs_ctrl = list(effect_log2fc = "lfc", score_fdr = "fdrcol",
-                                        fdr_kind = "fdr_low_sig", score = "extra",
-                                        score_kind = "p_value_low_sig"),
-                       B_vs_ctrl = list(effect_log2fc = "lfc", score_fdr = "fdrcol",
-                                        fdr_kind = "fdr_low_sig", score = "extra",
-                                        score_kind = "probability_high_sig")))
+                       A_vs_ctrl = list(effect_log2fc = "lfc", score_fdr = "fdrcol"),
+                       B_vs_ctrl = list(effect_log2fc = "fdrcol", score_fdr = "fdrcol")))
 
   eds <- new_explore_dataset(out)
   mp <- eds$backend()$uns$exploreDE$mapping
   expect_null(mp$de$default)
   expect_length(mp$de$contrasts, 2L)
-  expect_identical(mp$de$contrasts$a_vs_ctrl$score_kind, "p_value_low_sig")
-  expect_identical(mp$de$contrasts$b_vs_ctrl$score_kind, "probability_high_sig")
+  expect_identical(mp$de$contrasts$a_vs_ctrl$effect_log2fc_col, "lfc")
+  expect_identical(mp$de$contrasts$b_vs_ctrl$effect_log2fc_col, "fdrcol")
   expect_true(validate_mapping(mp))
 })
 
@@ -134,9 +144,9 @@ test_that("explicit rowdata_columns override -> mapping$feature conforms, and ac
 
 # ---- the schema itself is actually strict, not a rubber stamp --------------
 
-test_that("schema accepts the SAINT-shaped default mapping directly", {
+test_that("schema accepts the SAINT-shaped mapping directly", {
   ok <- validate_mapping_json(
-    '{"de":{"default":{"score_label":"SaintScore","score_kind":"probability_high_sig","fdr_kind":"fdr_low_sig"}}}')
+    '{"de":{"default":{"effect_log2fc_col":"log2_EFCs","score_fdr_col":"BFDR"},"contrasts":{"baita_vs_egfp":{"score_col":"SaintScore","score_label":"SaintScore"}}}}')
   expect_true(ok)
 })
 
@@ -146,9 +156,9 @@ test_that("schema accepts a feature mapping alongside de", {
   expect_true(ok)
 })
 
-test_that("schema rejects a bad score_kind enum value", {
-  ok <- validate_mapping_json('{"de":{"default":{"score_kind":"not_a_real_kind"}}}')
-  expect_false(ok)
+test_that("schema rejects the retired score_kind / fdr_kind tokens", {
+  expect_false(validate_mapping_json('{"de":{"default":{"score_kind":"probability_high_sig"}}}'))
+  expect_false(validate_mapping_json('{"de":{"default":{"fdr_kind":"fdr_low_sig"}}}'))
 })
 
 test_that("schema rejects an undeclared top-level key (e.g. a not-yet-built 'assay' block)", {

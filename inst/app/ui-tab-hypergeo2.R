@@ -48,7 +48,7 @@ tabItem(
             plot as it is currently displayed"
         ),
         tags$p(
-          "To generate the list of DEGs that were input into the ORA test, and 
+          "To generate the list of DE features that were input into the ORA test, and 
           that are visualised in any of the figures on the ORA tab, a raw p-value
           threshold of 0.01 and no log fold change threshold, were applied."
         )
@@ -161,6 +161,7 @@ tabItem(
           sliderInput(inputId = "textSizeORA", label = "Figure Font Size", min = 4, max = 30, value = 10, step = 0.5, width = "85%"),
           sliderInput(inputId = "figHeightORA", label = "Figure Height", min = 100, max = 2000, value = 400, step = 10, width = "85%"),
           sliderInput(inputId = "figWidthORA", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
+          legend_offset_ui("ORA"),
         ),
         column(
           width = 4,

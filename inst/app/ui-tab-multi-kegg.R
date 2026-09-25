@@ -30,7 +30,7 @@ tabItem(
                     placeholder = "e.g., 05200, hsa05200, mmu05200"
                 ),
                 numericInput(
-                    inputId = "lfcKEGG",
+                    inputId = "lfcMultiKEGG",
                     label = "Log2 Fold Change Threshold:",
                     value = 0.5,
                     min = 0,
@@ -38,13 +38,13 @@ tabItem(
                     step = 0.25
                 ),
                 radioButtons(
-                    inputId = "pTypeKEGG",
+                    inputId = "pTypeMultiKEGG",
                     choices = c("FDR", "Raw"),
                     label = "P-Value:",
                     selected = "FDR"
                 ),
                 radioButtons(
-                    inputId = "pThresholdKEGG",
+                    inputId = "pThresholdMultiKEGG",
                     choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001),
                     label = "P-Value Threshold:",
                     selected = 0.05

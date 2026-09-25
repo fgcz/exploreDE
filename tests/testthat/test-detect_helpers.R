@@ -62,3 +62,12 @@ test_that("detectDEMethod uses testMethod hint when path / normMethod are uninfo
 test_that("detectDEMethod defaults to DESeq2 when no signals present", {
   expect_equal(detectDEMethod("/foo/bar", list()), "DESeq2")
 })
+
+test_that("count_result_summary matches ezRun::makeCountResultSummary on the shipped SUSHI example", {
+  se <- readRDS(test_path("../../inst/examples/genomics/deResult.rds"))
+  ours <- count_result_summary(S4Vectors::metadata(se)$param, se)
+  expect_s3_class(ours, "data.frame")
+  expect_true(all(c("Analysis:", "Reference:", "Method:") %in% rownames(ours)))
+  skip_if_not_installed("ezRun")
+  expect_identical(ours, ezRun::makeCountResultSummary(S4Vectors::metadata(se)$param, se))
+})

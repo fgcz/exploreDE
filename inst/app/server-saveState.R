@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 # Serialise the app's widget state + a few reactiveValues that live outside
 # input$ to a single .rds the user downloads, and restore it on re-upload.
-# See plans/save_state_plan.md for the full design. Restore uses three paths:
+# See plans/archive/save_state_plan.md for the full design. Restore uses three paths:
 #   (1) a sendInputMessage retry burst for standard widgets,
 #   (2) the restore_seed store (consulted by restore_default() in every rebuilt
 #       renderUI / child observer) for widgets that can't be message-set,

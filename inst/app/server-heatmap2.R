@@ -19,10 +19,8 @@ req(eds)
 observe({
   # Detect species for KEGG heatmap
   keggHeatmapReactive$keggCode <- tryCatch({
-    rb  <- eds$ref_build()
-    spp <- ezRun::getSpecies(rb)
-    if (grepl("^Rattus", rb)) spp <- "Rat"
-    switch(spp, "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
+    spp <- kegg_species_label(eds$ref_build())
+    switch(spp %||% "", "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
   }, error = function(e) NULL)
 
   # Output flag for conditionalPanel in UI
@@ -447,10 +445,10 @@ heatmapInputs <- reactive({
     input$cellBorderColourHeatmap2,
     input$heatmapCollapseGuides,
     input$heatmapExcludeGuides,
-    # Add all color picker inputs as dependencies so plot updates when colors change
+    # Add all color picker + level label inputs as dependencies so plot updates when they change
     lapply(eds$factor_names(), function(fname) {
       lapply(eds$factor_levels(fname), function(lev) {
-        input[[paste0("GroupColour", fname, lev)]]
+        list(input[[paste0("GroupColour", fname, lev)]], input[[paste0("GroupLabel", fname, lev)]])
       })
     }),
     lapply(1:10, function(i) {
@@ -564,6 +562,9 @@ observeEvent(
         countsHeatmap <- sweep(countsHeatmap, 1, rowMeans(countsHeatmap, na.rm = T))
       }
 
+      # Column labels: sample names, unless aggregated (below)
+      hmColumnLabels <- function(m) colnames(m)
+
       ## 4. Calculate per-condition aggregation if requested (LAST step)
       if (!is.null(input$heatmapShowMeans) && input$heatmapShowMeans) {
         # Get the grouping factor (first selected factor)
@@ -593,6 +594,20 @@ observeEvent(
 
         # Convert back to matrix and ensure proper formatting
         countsHeatmap <- as.matrix(countsHeatmapAgg)
+
+        # Aggregated columns are condition levels, but data.frame() above
+        # mangled their names (make.names): label them with the Colours-tab
+        # display label, falling back to the raw level.
+        aggLevels <- names(condition_levels)
+        aggLabels <- level_labels(input, grouping_factor, aggLevels)
+        aggRich <- is_rich_labels(aggLabels)
+        aggLabelMap <- setNames(aggLabels, make.names(aggLevels, unique = TRUE))
+        hmColumnLabels <- function(m) {
+          out <- unname(aggLabelMap[colnames(m)])
+          fallback <- if (aggRich) escape_label_markdown(colnames(m)) else colnames(m)
+          out <- ifelse(is.na(out), fallback, out)
+          if (aggRich) ComplexHeatmap::gt_render(out) else out
+        }
 
         # Update datasetHeatmap to reflect the new structure (one row per condition)
         # Note: datasetHeatmapOriginal already stored above for batch correction
@@ -658,14 +673,30 @@ observeEvent(
         }) %>% setNames((levels(datasetHeatmap[[f]])))
       }) %>% setNames(input$heatmapColumnSelect)
       if (any(input$heatmapColumnSelect != "")) {
-        p1 <- paste(lapply(input$heatmapColumnSelect, function(g) {
-          paste0("'", g, "' = datasetHeatmap[['", g, "']]")
-        }), collapse = ",")
-        ha <- paste0(
-          "HeatmapAnnotation(",
-          p1, ", show_legend = T, annotation_legend_param = list(title_gp = gpar(fontsize = ", input$textSizeHeatmap, ", fontface = 'bold'), labels_gp = gpar(fontsize = ", input$textSizeHeatmap, ")), gp = gpar(col = '", input$cellBorderColourHeatmap1, "', lwd = ", input$cellBorderSizeHeatmap1 / 10, "))"
-        )
-        ha <- eval(parse(text = ha))
+        # Colours-tab display labels. Rich (formatted) labels get legends built
+        # at draw time by draw_heatmap() (ComplexHeatmap mis-sizes gt_render
+        # legend labels, see R/level_labels.R); otherwise the annotation's own
+        # legends show the plain labels.
+        annoFactors <- intersect(input$heatmapColumnSelect, colnames(datasetHeatmap))
+        annoLevels <- lapply(setNames(annoFactors, annoFactors), function(g) levels(as.factor(datasetHeatmap[[g]])))
+        annoRich <- any(vapply(annoFactors, function(g) is_rich_labels(level_labels(input, g, annoLevels[[g]])), logical(1)))
+        annoLegendParam <- lapply(annoFactors, function(g) {
+          levs <- levels(as.factor(datasetHeatmap[[g]]))
+          list(
+            title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
+            labels_gp = gpar(fontsize = input$textSizeHeatmap),
+            at = levs,
+            labels = unname(level_labels(input, g, levs, mode = "plain"))
+          )
+        }) %>% setNames(annoFactors)
+        ha <- do.call(HeatmapAnnotation, c(
+          lapply(setNames(annoFactors, annoFactors), function(g) datasetHeatmap[[g]]),
+          list(
+            show_legend = !annoRich,
+            annotation_legend_param = annoLegendParam,
+            gp = gpar(col = input$cellBorderColourHeatmap1, lwd = input$cellBorderSizeHeatmap1 / 10)
+          )
+        ))
         # Only apply colors for factors that actually exist in datasetHeatmap
         for (f in c(input$heatmapColumnSelect)) {
           if (f %in% colnames(datasetHeatmap)) {
@@ -674,6 +705,17 @@ observeEvent(
               ha@anno_list[[f]]@fun@var_env$color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
             }
           }
+        }
+        if (annoRich) {
+          attr(ha, "rich_legends") <- lapply(annoFactors, function(g) {
+            heatmap_legend_spec(
+              title = g,
+              labels = level_labels(input, g, annoLevels[[g]], force_rich = TRUE),
+              fill = unlist(colourListHeatmap[[g]]),
+              title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
+              labels_gp = gpar(fontsize = input$textSizeHeatmap)
+            )
+          })
         }
       }
 
@@ -781,6 +823,7 @@ observeEvent(
           cluster_columns = input$clusterColsHeatmap,
           cluster_rows = input$clusterRowsHeatmap,
           show_column_names = input$colnamesHeatmap,
+          column_labels = hmColumnLabels(countsHeatmapSig),
           show_row_names = input$geneNamesHeatmap,
           show_column_dend = input$showClusterColDend,
           show_row_dend = input$showClusterRowDend,
@@ -899,6 +942,7 @@ observeEvent(
         cluster_columns = input$clusterColsHeatmap,
         cluster_rows = input$clusterRowsHeatmap,
         show_column_names = input$colnamesHeatmap,
+        column_labels = hmColumnLabels(countsHeatmapCustom),
         show_row_names = input$geneNamesHeatmap,
         show_column_dend = input$showClusterColDend,
         show_row_dend = input$showClusterRowDend,
@@ -1003,6 +1047,7 @@ observeEvent(
           cluster_columns = input$clusterColsHeatmap,
           cluster_rows = input$clusterRowsHeatmap,
           show_column_names = input$colnamesHeatmap,
+          column_labels = hmColumnLabels(countsHeatmapGO),
           show_row_names = input$geneNamesHeatmap,
           show_column_dend = input$showClusterColDend,
           show_row_dend = input$showClusterRowDend,
@@ -1122,6 +1167,7 @@ observeEvent(
               cluster_columns = input$clusterColsHeatmap,
               cluster_rows = input$clusterRowsHeatmap,
               show_column_names = input$colnamesHeatmap,
+              column_labels = hmColumnLabels(countsHeatmapKEGG),
               show_row_names = input$geneNamesHeatmap,
               show_column_dend = input$showClusterColDend,
               show_row_dend = input$showClusterRowDend,
@@ -1305,7 +1351,8 @@ lapply(c("DEFeatures", "Custom", "GO", "KEGG"), function(sig) {
   output[[paste0("heatmap", sig)]] <- renderPlot(
     {
       req(figuresDataReactive[[paste0("heatmap", sig)]])
-      draw(figuresDataReactive[[paste0("heatmap", sig)]], merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
+      draw_heatmap(figuresDataReactive[[paste0("heatmap", sig)]], merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"),
+                   legend_dx = input$heatmapLegendDX, legend_dy = input$heatmapLegendDY)
     },
     width = function() {
       as.numeric(input$figWidthHeatmap)
@@ -1354,7 +1401,8 @@ lapply(c("DEFeatures", "Custom", "GO", "KEGG"), function(sig) {
       # and ComplexHeatmap needs draw() with specific params.
       export_plot_standard(
         plot_object = function() {
-          draw(heatmap_obj, merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"))
+          draw_heatmap(heatmap_obj, merge_legend = TRUE, padding = unit(c(10, 20, 10, 10), "mm"),
+                       legend_dx = input$heatmapLegendDX, legend_dy = input$heatmapLegendDY)
         },
         filename = file,
         format = input$heatmapDownloadFormat,
