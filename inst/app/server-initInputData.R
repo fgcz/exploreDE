@@ -425,7 +425,7 @@ load_h5ad_upload <- function(path) {
 # ---- Boot: resolve + load a ?data= URL eagerly (unchanged UX for SUSHI) ------
 queryList <- parseQueryString(session$clientData$url_search)
 dataUrl   <- if (is.list(queryList)) queryList$data else NULL
-message(ezTime(), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
+message(format(Sys.time(), "%Y-%m-%d %H:%M:%S"), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
 
 if (!is.null(dataUrl)) {
   # `dataType` at module scope for the telemetry-app-name check in app.R.

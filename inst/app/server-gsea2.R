@@ -105,7 +105,7 @@ observeEvent(selectedContrast(), {
   output$gseaDesign <- renderText({ design })
 
   # GSEA overview table
-  gsea.overview <- ezFrame("Number of Significant Pathways" = numeric())
+  gsea.overview <- data.frame("Number of Significant Pathways" = numeric(), check.names = FALSE)
   for (i in seq_along(names(gsea))) {
     testName <- names(gsea)[i]
     gsea.overview[testName, "Number of Significant Pathways"] <- nrow(gsea[[i]]@result)
@@ -116,7 +116,7 @@ observeEvent(selectedContrast(), {
   }
 
   # GSEA thresholds table
-  gseaThresholds <- ezFrame("GSEA Cut-Offs" = character())
+  gseaThresholds <- data.frame("GSEA Cut-Offs" = character(), check.names = FALSE)
   gseaThresholds["Output GSEA Term FDR", "GSEA Cut-Offs"] <- param$fdrThreshGSEA
   output$gseaThreshOverview <- function() {
     gseaThresholds %>% kable(format = "html", caption = "Cut-Offs:") %>%

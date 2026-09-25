@@ -1003,7 +1003,7 @@ observe({
             kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
         )
       }
-      kable(makeCountResultSummary(S4Vectors::metadata(se)$param, se),
+      kable(ezRun::makeCountResultSummary(S4Vectors::metadata(se)$param, se),
         row.names = TRUE,
         col.names = "Setting", format = "html"
       ) %>%

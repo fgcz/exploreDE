@@ -115,8 +115,9 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
   )
 
   # ORA Overview Table
-  ora.overview <- ezFrame(
-    "Number of Significant Pathways" = numeric()
+  ora.overview <- data.frame(
+    "Number of Significant Pathways" = numeric(),
+    check.names = FALSE
   )
   for (goDomain in names(ora)) {
     for (resName in names(ora[[goDomain]])) {
@@ -143,8 +144,9 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       )
   }
   # ORA thresholds
-  oraThresholds <- ezFrame(
-    "ORA Cut-Offs" = character()
+  oraThresholds <- data.frame(
+    "ORA Cut-Offs" = character(),
+    check.names = FALSE
   )
   oraThresholds["Input DEG P-value", "ORA Cut-Offs"] <- param$pValThreshGO %||% NA
   oraThresholds["Input DEG Log2 Ratio", "ORA Cut-Offs"] <- param$log2RatioThreshGO %||% NA

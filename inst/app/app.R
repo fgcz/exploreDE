@@ -7,7 +7,7 @@ cat("loading packages...\n\n")
 packagesToLoad <- c(
   "shiny", "shinydashboard", "tidyverse", "ggpubr", "plotly", "DESeq2", "RColorBrewer",
   "ComplexHeatmap", "clusterProfiler", "DT", "colourpicker", "writexl", "circlize",
-  "ezRun", "kableExtra", "ggrepel", "gplots", "sortable", "waiter", "ggprism", "ggbeeswarm",
+  "kableExtra", "ggrepel", "gplots", "sortable", "waiter", "ggprism", "ggbeeswarm",
   "rstatix", "gridExtra", "shinylogs", "parallel", "plyr", "reshape2", "shinycssloaders", "shinyjs", "GGally", "patchwork",
   "Matrix", "matrixStats", "SingleCellExperiment", "fresh", "pathview", "openxlsx", "dendextend", "officer"
 )
