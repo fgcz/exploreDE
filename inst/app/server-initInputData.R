@@ -312,7 +312,16 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
 
   # ---- Import proteomics data from pStore ----
   if (dataType == "proteomics") {
-    se <- if (is_url(dataDir)) readRDS(url(dataDir)) else readRDS(dataDir)
+    se <- if (grepl("\\.h5ad$", dataDir, ignore.case = TRUE)) {
+      # prolfquapp DEA AnnData; the reader needs a local file.
+      path <- dataDir
+      if (is_url(dataDir)) {
+        path <- tempfile(fileext = ".h5ad")
+        on.exit(unlink(path), add = TRUE)
+        utils::download.file(dataDir, path, mode = "wb", quiet = TRUE)
+      }
+      se_from_prolfquapp_anndata(.h5ad_read(path))
+    } else if (is_url(dataDir)) readRDS(url(dataDir)) else readRDS(dataDir)
     return(list(se = se, seUnfiltered = NULL, dataDir = dataDir))
   }
   if (grepl("zip", dataDir)) {

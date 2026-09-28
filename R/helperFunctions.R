@@ -229,7 +229,9 @@ convert_proteomics_se <- function(se) {
   # Phase 1 (2026-05-15): body delegates to the ExploreDataset hierarchy +
   # legacy_gStoreList_from_eds() shim. See convert_genomics_se() for context.
   eds <- new_explore_dataset(se)
-  return(legacy_gStoreList_from_eds(eds, se = se))
+  # eds$backend() is the SE the dataset was built from (after any layout
+  # conversion in new_explore_dataset()), so the shim reads the same frames.
+  return(legacy_gStoreList_from_eds(eds, se = eds$backend()))
 }
 
 #' generateParams
