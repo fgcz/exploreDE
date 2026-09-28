@@ -98,7 +98,7 @@ updateSelectizeInput(
 observeEvent(
   {
     input$pTypeVolcano
-    input$contrastSelected
+    selectedContrast()
   },
   ignoreInit = TRUE,
   ignoreNULL = TRUE,
@@ -120,15 +120,15 @@ observeEvent(
     }
 
     if (eds$omics_class() == "proteomics") {
-      req(!is.null(input$contrastSelected))
-      req(input$contrastSelected %in% eds$contrasts())
-      seqAnnoFilt <- eds$de(input$contrastSelected)
+      req(!is.null(selectedContrast()))
+      req(selectedContrast() %in% eds$contrasts())
+      seqAnnoFilt <- eds$de(selectedContrast())
       seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, log2Ratio, pValue, fdr)
 
       output$volcanoDesign <- renderText({
-        input$contrastSelected
+        selectedContrast()
       })
-      updateTextInput(session = session, inputId = "filename_volcano", value = input$contrastSelected)
+      updateTextInput(session = session, inputId = "filename_volcano", value = selectedContrast())
     }
 
     if (input$pTypeVolcano == "Raw") {
@@ -137,22 +137,33 @@ observeEvent(
       pTypeVolcano <- "fdr"
     }
 
-    # y limit is only used on the -log10 scale; skip Inf (p/BFDR == 0) and NA
+    # Default axis limits: 90% of the max, so a few extreme outliers don't
+    # squash the rest of the cloud (points beyond are clamped to the edge).
+    # y limit is only used on the -log10 scale; skip Inf (p/BFDR == 0) and NA,
+    # and keep it above the significance line.
     if (!volcano_score_mode()) {
       y <- -log10(seqAnnoFilt[[pTypeVolcano]])
       y <- y[is.finite(y)]
+      sig <- suppressWarnings(-log10(as.numeric(input$pThresholdVolcano)))
+      if (!length(sig) || !is.finite(sig)) sig <- -log10(0.05)
       if (length(y)) {
         updateNumericInput(
           session = session,
           inputId = "yLimVolcano",
-          value = ceiling(max(y) * 1.1)
+          value = max(ceiling(max(y) * 0.9), ceiling(sig * 1.1), 1)
         )
       }
     }
+    # x limit from finite log2FCs of plotted points only (an NA/Inf ratio
+    # would blank the input; NA-p rows, e.g. independent filtering, aren't
+    # drawn but carry noisy low-count ratios), at least 1
+    yCol <- if (volcano_score_mode()) volcanoScoreCol else pTypeVolcano
+    x <- abs(seqAnnoFilt[["log2Ratio"]])
+    x <- x[is.finite(x) & !is.na(seqAnnoFilt[[yCol]])]
     updateNumericInput(
       session = session,
       inputId = "xLimVolcano",
-      value = ceiling(max(abs(seqAnnoFilt[["log2Ratio"]])) * 1.1)
+      value = if (length(x)) max(ceiling(max(x) * 0.9), 1) else 5
     )
   }
 )
@@ -223,7 +234,7 @@ volcanoResultsList <- eventReactive(
     input$volcanoShowGenes
     featureBucket$features
     input$fb_exclude_volcano
-    input$contrastSelected
+    selectedContrast()
     input$nrPeptideVolcano
     input$showImputedVolcano
     input$highlightImputedVolcano
@@ -249,9 +260,9 @@ volcanoResultsList <- eventReactive(
       seqAnnoFilt <- seqAnno[which(seqAnno$usedInTest), ]
     }
     if (eds$omics_class() == "proteomics") {
-      req(!is.null(input$contrastSelected))
-      req(input$contrastSelected %in% eds$contrasts())
-      seqAnnoFilt <- eds$de(input$contrastSelected)
+      req(!is.null(selectedContrast()))
+      req(selectedContrast() %in% eds$contrasts())
+      seqAnnoFilt <- eds$de(selectedContrast())
       if (!is.null(input$nrPeptideVolcano)) {
         if (any(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano)) {
           seqAnnoFilt <- seqAnnoFilt[which(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano), ]
@@ -273,7 +284,7 @@ volcanoResultsList <- eventReactive(
       }
 
       output$volcanoDesign <- renderText({
-        input$contrastSelected
+        selectedContrast()
       })
     }
 

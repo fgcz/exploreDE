@@ -1,9 +1,9 @@
 eds <- inputDataReactive()$.eds
 
 if (eds$data_type() == "RNASeq" && eds$has_de()) {
-  design <- eds$contrast_label(eds$primary_contrast())
   keggPlotReactive <- reactiveValues(outfile = NULL, gD = NULL, keggInput = NULL, spp = NULL)
-  output$keggPlotDesign <- renderText({ design })
+  # Follows the app-wide selected contrast (constant for single-contrast data).
+  output$keggPlotDesign <- renderText({ eds$contrast_label(selectedContrast()) })
 
   spp <- kegg_species_label(eds$ref_build())
   
@@ -14,6 +14,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
       input$pTypeKEGG
       input$pThresholdKEGG
       input$keggLimitColour
+      selectedContrast()
     }, ignoreInit = TRUE,
     {
       # tryCatch({
@@ -36,8 +37,9 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
         keggInput <- input$keggInput
       }
       
-      ei     <- eds$enrichment_input(eds$primary_contrast())
-      de_df  <- eds$de(eds$primary_contrast())
+      req(input$keggInput)
+      ei     <- eds$enrichment_input(selectedContrast())
+      de_df  <- eds$de(selectedContrast())
       sig_ids <- de_df$gene_id[
         which(de_df[[pTypeKEGG]] <= as.numeric(input$pThresholdKEGG) &
               abs(de_df$log2Ratio) >= as.numeric(input$lfcKEGG))
@@ -104,7 +106,7 @@ output$dlPlot_kegg <- downloadHandler(
     generate_filename(
       base_name = input$filename_kegg,
       suffix = keggPlotReactive$keggInput,
-      design_name = design,
+      design_name = if (eds$has_de()) eds$contrast_label(selectedContrast()) else "",
       extension = "png"
     )
   },

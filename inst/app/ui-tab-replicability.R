@@ -8,6 +8,7 @@ tabItem(
                 width = NULL,
                 solidHeader = TRUE,
                 status = "primary",
+                uiOutput(outputId = "contrastSelectorUI_replicability"),
                 selectInput(inputId = "replicabilityCounts", label = "Select count method", choices = NULL, selected = NULL),
                 conditionalPanel(
                     condition = "output.test == 'CrisprCountQC'",

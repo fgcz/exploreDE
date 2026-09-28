@@ -2,32 +2,17 @@ eds <- inputDataReactive()$.eds
 req(eds)
 se <- eds$backend()   # SE-only escape hatch for legacy helpers below
 
-# Contrast selector for multi-contrast NON-proteomics data (proteomics renders
-# its own in server-initInputData.R). Reuses the summary-tab
-# `proteomicsContrastSelectorUI` slot + the shared `contrastSelected` input id,
-# which the DE + enrichment tabs read via selectedContrast(). Single-contrast
-# datasets get no selector (and selectedContrast() == primary_contrast()).
-if (eds$omics_class() != "proteomics" && length(eds$contrasts()) > 1) {
-  output$proteomicsContrastSelectorUI <- renderUI({
-    selectInput(
-      inputId  = "contrastSelected",
-      label    = "Select contrast to view",
-      choices  = eds$contrasts(),
-      selected = eds$primary_contrast(),
-      multiple = FALSE, selectize = TRUE
-    )
-  })
-  outputOptions(output, "proteomicsContrastSelectorUI", suspendWhenHidden = FALSE)
-}
+# The contrast selector (canonical `contrastSelected` + per-tab mirrors) is
+# rendered and synced in server-initInputData.R; modules read selectedContrast().
 
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   if (eds$data_type() == "RNASeq") {
-    if (eds$has_de()) return(eds$contrast_label(eds$primary_contrast()))
+    if (eds$has_de()) return(eds$contrast_label(selectedContrast()))
     return("")   # counts-only upload: no contrast to label
   } else if (eds$omics_class() == "proteomics") {
-    if (isTruthy(input$contrastSelected)) {
-      return(input$contrastSelected)
+    if (isTruthy(selectedContrast())) {
+      return(selectedContrast())
     } else {
       return("No contrast selected")
     }
@@ -705,7 +690,7 @@ observe({
 
         # Try to add annotation columns if they exist (RNA-seq has DE; CountQC does not)
         if (eds$data_type() == "RNASeq" && eds$has_de()) {
-          seqAnno <- eds$de(eds$primary_contrast())
+          seqAnno <- eds$de(selectedContrast())
           anno_cols <- c("gene_id", "transcript_id", "feature_id")
           valid_cols <- intersect(anno_cols, colnames(seqAnno))
           if (length(valid_cols) > 0) {
@@ -735,10 +720,9 @@ observe({
         # Add DE statistics if requested
         if (!is.null(input$includeDEStats) &&
             input$includeDEStats &&
-            !is.null(input$contrastSelected) &&
-            input$contrastSelected %in% eds$contrasts()) {
+            isTruthy(selectedContrast())) {
           de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-          seqAnno_c <- eds$de(input$contrastSelected)
+          seqAnno_c <- eds$de(selectedContrast())
           valid_de_cols <- intersect(de_cols, colnames(seqAnno_c))
           if (length(valid_de_cols) > 1) {
             de_data <- seqAnno_c[, valid_de_cols, drop = FALSE]
@@ -1080,7 +1064,7 @@ observe({
     output$summaryTable <- function() {
       settings <- character()
       settings["Number of features:"] <- eds$n_features()
-      seqAnno <- if (eds$has_de()) eds$de(eds$primary_contrast()) else NULL
+      seqAnno <- if (eds$has_de()) eds$de(selectedContrast()) else NULL
       if (!is.null(seqAnno$isPresentProbe)) {
         settings["Number of features with counts above threshold:"] <-
           sum(seqAnno$isPresentProbe)

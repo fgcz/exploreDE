@@ -42,6 +42,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        uiOutput(outputId = "contrastSelectorUI_deQc"),
         tabsetPanel(
           id = "deQcSettingsTabs",
           tabPanel(

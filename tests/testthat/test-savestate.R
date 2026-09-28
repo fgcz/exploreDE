@@ -31,6 +31,13 @@ test_that("contrastSelected is kept but *_rows_selected echoes are dropped", {
   expect_false("degTable_rows_selected" %in% kept)
 })
 
+test_that("contrastSelected is kept but its per-tab mirrors are dropped", {
+  x <- list(contrastSelected = "A", contrastSelected_volcano = "A",
+            contrastSelected_heatmap = "A", contrastSelected_ora = "A")
+  kept <- names(save_state_filter_inputs(x))
+  expect_equal(kept, "contrastSelected")
+})
+
 test_that("skip regex has no empty-alternative over-match (José || bug guard)", {
   # Ordinary ids must NEVER be dropped by a stray empty alternative.
   ordinary <- c("boxplotFactor1", "heatmapZScore", "pcaCounts", "textSizeORA")

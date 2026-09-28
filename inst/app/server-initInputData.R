@@ -176,21 +176,65 @@ inputDataReactive <- reactive({
   edsState()
 })
 
-# The contrast currently selected in the UI: the shared `contrastSelected`
-# selector (rendered for proteomics in load_sushi_se, and for multi-contrast
-# non-proteomics data in server-summary.R), falling back to the dataset's
-# primary contrast. DE + enrichment modules read this so their tabs follow the
-# selector whenever a dataset carries more than one contrast; for single-contrast
-# data it is a constant (== primary_contrast), so behaviour is unchanged.
+# ---- App-wide contrast (linked per-tab selectors) ---------------------------
+# ONE server-side value, `activeContrast`, is the single source of truth. Every
+# contrast-dependent tab carries its own selector (Shiny input ids must be
+# unique): the canonical `contrastSelected` on the Summary tab, plus mirrors
+# `contrastSelected_<tab>`. Changing any of them writes activeContrast(); one
+# observer pushes the value back out to all the others, so a change made on
+# Volcano is already in place when Heatmap is opened. The loop terminates: a
+# reactiveVal set to its current value doesn't invalidate, and a selectize
+# updated to its current value doesn't fire. Save/Load state only snapshots the
+# canonical id (mirrors are dropped in save_state_filter_inputs()).
+# Selectors render only for datasets with more than one contrast.
+activeContrast <- reactiveVal(NULL)
+
+contrast_mirror_tabs <- c("degTable", "volcano", "deQc", "heatmap", "boxplot",
+                          "ora", "gsea", "goTile", "kegg", "correlation",
+                          "replicability")
+contrast_selector_ids <- c(summary = "contrastSelected",
+                           stats::setNames(paste0("contrastSelected_", contrast_mirror_tabs),
+                                           contrast_mirror_tabs))
+
+# The contrast currently selected: activeContrast(), validated against the
+# dataset and falling back to its primary contrast. Every contrast-dependent
+# module reads this; for single-contrast data it is a constant
+# (== primary_contrast), so behaviour is unchanged there.
 selectedContrast <- reactive({
   eds <- inputDataReactive()$.eds
   # Counts-only datasets carry no contrasts; return NULL so DE-family
   # observeEvent(selectedContrast()) blocks (ignoreNULL = TRUE) never fire.
   if (!eds$has_de()) return(NULL)
   cs  <- eds$contrasts()
-  sel <- input$contrastSelected
+  sel <- activeContrast()
   if (!is.null(sel) && nzchar(sel) && sel %in% cs) sel else eds$primary_contrast()
 })
+
+base::lapply(names(contrast_selector_ids), function(tab) {
+  id <- contrast_selector_ids[[tab]]
+  output[[paste0("contrastSelectorUI_", tab)]] <- renderUI({
+    eds <- inputDataReactive()$.eds
+    cs  <- eds$contrasts()
+    if (length(cs) < 2) return(NULL)
+    selectizeInput(inputId = id, label = "Select contrast to view",
+                   choices = cs, selected = isolate(selectedContrast()),
+                   multiple = FALSE)
+  })
+  outputOptions(output, paste0("contrastSelectorUI_", tab), suspendWhenHidden = FALSE)
+  observeEvent(input[[id]], {
+    v <- input[[id]]
+    if (nzchar(v) && !identical(v, isolate(activeContrast()))) activeContrast(v)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+})
+
+observeEvent(activeContrast(), {
+  v <- activeContrast()
+  for (id in contrast_selector_ids) {
+    if (!identical(isolate(input[[id]]), v)) {
+      updateSelectizeInput(session = session, inputId = id, selected = v)
+    }
+  }
+}, ignoreNULL = TRUE)
 
 is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))
@@ -203,19 +247,13 @@ set_eds <- function(eds, seUnfiltered = NULL, dataDir = NULL) {
   attr(res, "dataDir") <- dataDir
   edsState(res)
 
-  # Proteomics carries no primary contrast — DE + heatmap modules follow the
-  # `contrastSelected` picker. load_sushi_se() renders this for the SUSHI URL
-  # path; render it here from the eds too so ANY load path (h5ad upload
-  # included) populates the selector. Without it input$contrastSelected stays
-  # NULL and every DE tab / heatmap feature picker starves.
-  if (identical(eds$omics_class(), "proteomics") && length(eds$contrasts())) {
-    contrasts <- eds$contrasts()
-    output$proteomicsContrastSelectorUI <- renderUI({
-      selectInput(inputId = "contrastSelected", label = "Select contrast to view",
-                  choices = contrasts, selected = contrasts[1], multiple = FALSE, selectize = TRUE)
-    })
-    outputOptions(output, "proteomicsContrastSelectorUI", suspendWhenHidden = FALSE)
-  }
+  # Reset the app-wide contrast for the new dataset. Deliberately NOT seeded to
+  # the primary contrast: selectedContrast() already falls back to it, and the
+  # first selector to report its value sets activeContrast(), which invalidates
+  # selectedContrast() *after* the modules are sourced. Several modules rely on
+  # that late invalidation for their first render (observeEvent(..., ignoreInit
+  # = TRUE)), exactly as they did when the old selector's input first arrived.
+  activeContrast(NULL)
 }
 
 # Wrap a loaded SE into an eds and publish it. The full-screen spinner is managed
@@ -275,11 +313,6 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
   # ---- Import proteomics data from pStore ----
   if (dataType == "proteomics") {
     se <- if (is_url(dataDir)) readRDS(url(dataDir)) else readRDS(dataDir)
-    contrasts <- names(rowData(se))[grep("^constrast_", names(rowData(se)))] %>% gsub("constrast_", "", .)
-    output$proteomicsContrastSelectorUI <- renderUI({
-      selectInput(inputId = "contrastSelected", label = "Select contrast to view", choices = contrasts, selected = contrasts[1], multiple = F, selectize = T)
-    })
-    outputOptions(output, "proteomicsContrastSelectorUI", suspendWhenHidden = FALSE)
     return(list(se = se, seUnfiltered = NULL, dataDir = dataDir))
   }
   if (grepl("zip", dataDir)) {
@@ -291,11 +324,6 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
       message("download failed")
     }
     se <- readRDS(myTempFile)
-    contrasts <- names(rowData(se))[grep("^constrast_", names(rowData(se)))] %>% gsub("constrast_", "", .)
-    output$proteomicsContrastSelectorUI <- renderUI({
-      selectInput(inputId = "contrastSelected", label = "Select contrast to view", choices = contrasts, selected = contrasts[1], multiple = F, selectize = T)
-    })
-    outputOptions(output, "proteomicsContrastSelectorUI", suspendWhenHidden = FALSE)
     return(list(se = se, seUnfiltered = NULL, dataDir = dataDir))
   }
 

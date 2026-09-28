@@ -501,11 +501,11 @@ req(eds)
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   if (eds$data_type() == "RNASeq") {
-    if (eds$has_de()) return(eds$contrast_label(eds$primary_contrast()))
+    if (eds$has_de()) return(eds$contrast_label(selectedContrast()))
     return("")   # counts-only upload: no contrast to label
   } else if (eds$omics_class() == "proteomics") {
-    if (isTruthy(input$contrastSelected)) {
-      return(input$contrastSelected)
+    if (isTruthy(selectedContrast())) {
+      return(selectedContrast())
     } else {
       return("No contrast selected")
     }

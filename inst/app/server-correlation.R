@@ -7,11 +7,7 @@ designReactive <- reactive({
   req(inputDataReactive())
   eds <- inputDataReactive()$.eds
   if (eds$has_de()) {
-    contrast <- if (eds$omics_class() == "proteomics" && isTruthy(input$contrastSelected)) {
-      input$contrastSelected
-    } else {
-      eds$primary_contrast()
-    }
+    contrast <- selectedContrast()
     eds$contrast_label(contrast)
   } else if (eds$omics_class() == "proteomics") {
     "No contrast selected"

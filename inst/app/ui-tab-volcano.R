@@ -37,6 +37,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        uiOutput(outputId = "contrastSelectorUI_volcano"),
         tabsetPanel(
           tabPanel(
             title = "Main settings",

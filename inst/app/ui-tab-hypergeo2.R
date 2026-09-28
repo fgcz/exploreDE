@@ -68,6 +68,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        uiOutput(outputId = "contrastSelectorUI_ora"),
         textOutput("oraDesign"), br(),
         downloadButton(
           outputId = "dlTable_ORA",

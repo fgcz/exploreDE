@@ -39,6 +39,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        uiOutput(outputId = "contrastSelectorUI_kegg"),
         h4("KEGG Pathway plot settings"),
         textInput(
           inputId = "keggInput",

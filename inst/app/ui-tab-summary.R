@@ -13,7 +13,7 @@ tabItem(
           verbatimTextOutput("test"),
           uiOutput("workunitsLinkUI"),
           h5("Main settings"),
-          uiOutput(outputId = "proteomicsContrastSelectorUI", inline = T),
+          uiOutput(outputId = "contrastSelectorUI_summary", inline = T),
           tableOutput("settingsTable"),
           br(),
           tableOutput("summaryTable"),

@@ -204,11 +204,11 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
 if (eds$omics_class() == "proteomics") {
   observeEvent(
     {
-      input$contrastSelected
+      selectedContrast()
     },
     {
-      design <- input$contrastSelected
-      designLevels <- input$contrastSelected %>%
+      design <- selectedContrast()
+      designLevels <- selectedContrast() %>%
         strsplit(split = "_vs_") %>%
         .[[1]]
       output$DEGDesign <- renderText({
@@ -226,7 +226,7 @@ if (eds$omics_class() == "proteomics") {
           )
         },
         content = function(file) {
-          tableToWrite <- eds$de(input$contrastSelected)
+          tableToWrite <- eds$de(selectedContrast())
           export_excel_standard(
             df = tableToWrite,
             filename = file,
@@ -236,7 +236,7 @@ if (eds$omics_class() == "proteomics") {
         }
       )
 
-      seqAnnoDEG <- eds$de(input$contrastSelected)
+      seqAnnoDEG <- eds$de(selectedContrast())
 
       # The significance-counts table thresholds on the raw p-value; a p-value-
       # less producer (e.g. SAINTexpress) has an all-NA pValue, so fall back to

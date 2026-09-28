@@ -72,7 +72,7 @@ observe({
 })
 
 # ---- Proteomics-only selectors -----------------------------------------------
-# Contrast (reuses the app-wide input$contrastSelected); count-type + group
+# Contrast (reuses the app-wide selectedContrast()); count-type + group
 # pair for building the scatter. Choices embedded in the renderUI so the
 # selectInputs materialise with sensible defaults the moment the UI is drawn
 # (rather than relying on update* observers that race the plot render).
@@ -81,7 +81,7 @@ output$deQcProteomicsSelectorsUI <- renderUI({
   ch_counts <- eds$assay_names() %||% character(0)
   default_count <- if ("intensities" %in% ch_counts) "intensities" else ch_counts[[1]]
 
-  contr <- input$contrastSelected
+  contr <- selectedContrast()
   levels_avail <- if (!is.null(contr) && nzchar(contr) && contr %in% eds$contrasts()) {
     cm <- eds$contrast_meta(contr)
     c(cm$test_group, cm$reference_group)
@@ -116,7 +116,7 @@ deQcHighlightIds <- reactive({
   tokens <- c(input$deQcHighlightSelect, parse_gene_text(input$deQcHighlightText))
   tokens <- unique(tokens[nzchar(tokens)])
   if (!length(tokens)) return(character(0))
-  contr <- if (eds$omics_class() == "proteomics") input$contrastSelected else selectedContrast()
+  contr <- selectedContrast()
   req(!is.null(contr), nzchar(contr))
   sa <- eds$de(contr)
   # Match on feature_id first, then gene_name
@@ -150,7 +150,7 @@ deQcScatterData <- reactive({
     ref_idx    <- which(dataset[[grouping]] == cm$reference_group)
   } else {
     # proteomics
-    contr <- input$contrastSelected
+    contr <- selectedContrast()
     req(!is.null(contr), nzchar(contr))
     req(contr %in% eds$contrasts())
     rd <- eds$de(contr)
@@ -255,7 +255,7 @@ output$deQcScatterDesign <- renderText({
   if (eds$data_type() == "RNASeq") {
     eds$contrast_label(selectedContrast()) %||% ""
   } else {
-    input$contrastSelected %||% ""
+    selectedContrast() %||% ""
   }
 })
 
@@ -373,7 +373,7 @@ deQcPhistDf <- reactive({
       Category = ifelse(sa$usedInTest, "Used in test", "Not expressed")
     )
   } else {
-    contr <- input$contrastSelected
+    contr <- selectedContrast()
     req(!is.null(contr), nzchar(contr), contr %in% eds$contrasts())
     sa <- eds$de(contr)
     req(pcol %in% colnames(sa))

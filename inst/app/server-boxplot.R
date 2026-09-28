@@ -20,11 +20,11 @@ req(eds)
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   if (eds$data_type() == "RNASeq") {
-    if (eds$has_de()) return(eds$contrast_label(eds$primary_contrast()))
+    if (eds$has_de()) return(eds$contrast_label(selectedContrast()))
     return("")   # counts-only upload: no contrast to label
   } else if (eds$omics_class() == "proteomics") {
-    if (isTruthy(input$contrastSelected)) {
-      return(input$contrastSelected)
+    if (isTruthy(selectedContrast())) {
+      return(selectedContrast())
     } else {
       return("No contrast selected")
     }
@@ -174,10 +174,13 @@ observeEvent(
 
 # Extract the appropriate data ----
 if (eds$data_type() == "RNASeq" && eds$has_de()) {
-  .contrast <- eds$primary_contrast()
-  seqAnnoReactive <- reactiveValues("sa" = eds$de(.contrast), "saF" = NULL)
+  seqAnnoReactive <- reactiveValues("sa" = eds$de(eds$primary_contrast()), "saF" = NULL)
+  # Follow the app-wide contrast (constant for single-contrast data).
+  observeEvent(selectedContrast(), {
+    seqAnnoReactive$sa <- eds$de(selectedContrast())
+  }, ignoreInit = TRUE, ignoreNULL = TRUE)
   output$boxplotDesign <- renderText({
-    eds$contrast_label(.contrast)
+    eds$contrast_label(selectedContrast())
   })
 } else if (eds$data_type() == "RNASeq" || eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
   # CountQC has no DE results — leave seqAnno NULL; every downstream consumer
@@ -192,13 +195,13 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
       dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
   } else NULL
   seqAnnoReactive <- reactiveValues("sa" = .first_sa, "saF" = .first_sa)
-  observeEvent(input$contrastSelected,
+  observeEvent(selectedContrast(),
     {
-      seqAnnoReactive$sa <- eds$de(input$contrastSelected) %>%
+      seqAnnoReactive$sa <- eds$de(selectedContrast()) %>%
         dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
       seqAnnoReactive$saF <- seqAnnoReactive$sa
       output$boxplotDesign <- renderText({
-        input$contrastSelected
+        selectedContrast()
       })
     },
     ignoreInit = T,
@@ -241,7 +244,7 @@ boxplotCountsReactive <- eventReactive(
     input$boxplotBatch
     input$boxplotDesign
     input$boxplotCounts
-    input$contrastSelected
+    selectedContrast()
     input$boxplotShowPHeight
     input$boxplotCountsLog
     input$boxplotZScore
@@ -254,15 +257,15 @@ boxplotCountsReactive <- eventReactive(
     req(input$boxKeepBucket[[1]] %in% eds$samples()[[input$boxplotFactor1]])
 
     # Resolve the contrast's test/reference group labels (used for stat_pvalue_manual
-    # brackets below). RNA-seq uses primary contrast; proteomics tracks the picker.
+    # brackets below). Both follow the app-wide selected contrast.
     designLevels <- NULL
     if (eds$omics_class() == "proteomics") {
-      if (isTRUE(input$contrastSelected %in% eds$contrasts())) {
-        cm <- eds$contrast_meta(input$contrastSelected)
+      if (isTRUE(selectedContrast() %in% eds$contrasts())) {
+        cm <- eds$contrast_meta(selectedContrast())
         designLevels <- c(cm$test_group, cm$reference_group)
       }
     } else if (eds$data_type() == "RNASeq" && length(eds$contrasts())) {
-      cm <- eds$contrast_meta(eds$primary_contrast())
+      cm <- eds$contrast_meta(selectedContrast())
       designLevels <- c(cm$test_group, cm$reference_group)
     }
 
@@ -410,7 +413,7 @@ observeEvent(
     input$boxplotShowViolin
     input$boxplotPoints
     input$showDotsBarplot
-    input$contrastSelected
+    selectedContrast()
     input$boxplotPointSize
     input$boxplotPointAlpha
     input$boxplotMeanLine
@@ -473,8 +476,8 @@ observeEvent(
       if (!is.null(boxShapeFactor)) boxShapeLabels <- level_labels(input, boxShapeFactor, boxShapeLevels, force_rich = TRUE)
     }
 
-    if (eds$omics_class() == "proteomics" && isTRUE(input$contrastSelected %in% eds$contrasts())) {
-      cm <- eds$contrast_meta(input$contrastSelected)
+    if (eds$omics_class() == "proteomics" && isTRUE(selectedContrast() %in% eds$contrasts())) {
+      cm <- eds$contrast_meta(selectedContrast())
       designLevels <- c(cm$test_group, cm$reference_group)
     }
 
@@ -487,9 +490,9 @@ observeEvent(
     # Build a facet labeller that annotates feature_ids with gene symbols
     # (proteomics only, when gene_name info exists in the seqAnno)
     facet_labeller <- "label_value"
-    if (eds$omics_class() == "proteomics" && !is.null(input$contrastSelected) &&
-        input$contrastSelected %in% eds$contrasts()) {
-      sa_full <- eds$de(input$contrastSelected)
+    if (eds$omics_class() == "proteomics" && !is.null(selectedContrast()) &&
+        selectedContrast() %in% eds$contrasts()) {
+      sa_full <- eds$de(selectedContrast())
       if ("gene_name" %in% colnames(sa_full)) {
         gene_map <- setNames(sa_full$gene_name, sa_full$feature_id)
         facet_labeller <- labeller(Feature = function(fids) {
@@ -723,13 +726,13 @@ output$dlTable_boxplot <- downloadHandler(
       # Add DE statistics: log2Ratio, pValue, fdr
       # First add pValue if it doesn't exist (it's not in countsBoxplotMelt by default)
       if (eds$data_type() == "RNASeq") {
-        seqAnno_dl <- eds$de(eds$primary_contrast())
+        seqAnno_dl <- eds$de(selectedContrast())
         if ("pValue" %in% colnames(seqAnno_dl)) {
           counts_data$pValue <- seqAnno_dl$pValue[match(counts_data$Feature, seqAnno_dl$feature_id)]
         }
-      } else if (!is.null(input$contrastSelected) &&
-                 input$contrastSelected %in% eds$contrasts()) {
-        seqAnno_dl <- eds$de(input$contrastSelected)
+      } else if (!is.null(selectedContrast()) &&
+                 selectedContrast() %in% eds$contrasts()) {
+        seqAnno_dl <- eds$de(selectedContrast())
         if ("pValue" %in% colnames(seqAnno_dl)) {
           counts_data$pValue <- seqAnno_dl$pValue[match(counts_data$Feature, seqAnno_dl$feature_id)]
         }

@@ -43,6 +43,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        uiOutput(outputId = "contrastSelectorUI_boxplot"),
         tabsetPanel(
           id = "boxplotSettingsTabs",
           tabPanel(

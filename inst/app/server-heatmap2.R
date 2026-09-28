@@ -423,7 +423,7 @@ heatmapInputs <- reactive({
     input$heatmapAtLow,
     input$heatmapAtMid,
     input$heatmapAtHigh,
-    input$contrastSelected,
+    selectedContrast(),
     input$fb_keep_heatmap,
     input$heatmapCustomTitle,
     goHeatmapReactive$currentGenes,
@@ -483,7 +483,7 @@ observeEvent(
       figuresDataReactive[["heatmapDEFeatures"]] <- NULL
       # Get some variables ----
       if (eds$omics_class() == "proteomics") {
-        design <- input$contrastSelected
+        design <- selectedContrast()
         req(!is.null(design) && nzchar(design) && design %in% eds$contrasts())
         seqAnnoHeatmap <- eds$de(design)
         seqAnnoHeatmap[["usedInTest"]] <- TRUE
@@ -491,8 +491,8 @@ observeEvent(
           seqAnnoHeatmap <- seqAnnoHeatmap[which(seqAnnoHeatmap$nrPeptides >= input$nrPeptideHeatmap), ]
         }
       } else if (length(eds$contrasts()) > 0) {
-        design <- eds$contrast_label(eds$primary_contrast())
-        seqAnnoHeatmap <- eds$de(eds$primary_contrast())
+        design <- eds$contrast_label(selectedContrast())
+        seqAnnoHeatmap <- eds$de(selectedContrast())
       } else {
         # CountQC/CrisprCountQC — no DE results
         design <- eds$data_type()
@@ -864,16 +864,16 @@ observeEvent(
 
               if (eds$data_type() == "RNASeq" && eds$has_de()) {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
+                valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
                 if (length(valid_de_cols) > 1) {
-                  de_data <- eds$de(eds$primary_contrast())[, valid_de_cols, drop = FALSE]
+                  de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
                   counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
-              } else if (!is.null(input$contrastSelected)) {
+              } else if (!is.null(selectedContrast())) {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(eds$de(input$contrastSelected)))
+                valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
                 if (length(valid_de_cols) > 1) {
-                  de_data <- eds$de(input$contrastSelected)[, valid_de_cols, drop = FALSE]
+                  de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
                   counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               }
@@ -981,16 +981,16 @@ observeEvent(
 
             if (eds$data_type() == "RNASeq" && eds$has_de()) {
               de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-              valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
+              valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
               if (length(valid_de_cols) > 1) {
-                de_data <- eds$de(eds$primary_contrast())[, valid_de_cols, drop = FALSE]
+                de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
                 counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
               }
-            } else if (!is.null(input$contrastSelected)) {
+            } else if (!is.null(selectedContrast())) {
               de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-              valid_de_cols <- intersect(de_cols, colnames(eds$de(input$contrastSelected)))
+              valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
               if (length(valid_de_cols) > 1) {
-                de_data <- eds$de(input$contrastSelected)[, valid_de_cols, drop = FALSE]
+                de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
                 counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
               }
             }
@@ -1089,16 +1089,16 @@ observeEvent(
 
               if (eds$data_type() == "RNASeq" && eds$has_de()) {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
+                valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
                 if (length(valid_de_cols) > 1) {
-                  de_data <- eds$de(eds$primary_contrast())[, valid_de_cols, drop = FALSE]
+                  de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
                   counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
-              } else if (!is.null(input$contrastSelected)) {
+              } else if (!is.null(selectedContrast())) {
                 de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(eds$de(input$contrastSelected)))
+                valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
                 if (length(valid_de_cols) > 1) {
-                  de_data <- eds$de(input$contrastSelected)[, valid_de_cols, drop = FALSE]
+                  de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
                   counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                 }
               }
@@ -1204,16 +1204,16 @@ observeEvent(
                     input$includeDEStatsHeatmap) {
                   if (eds$data_type() == "RNASeq" && eds$has_de()) {
                     de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                    valid_de_cols <- intersect(de_cols, colnames(eds$de(eds$primary_contrast())))
+                    valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
                     if (length(valid_de_cols) > 1) {
-                      de_data <- eds$de(eds$primary_contrast())[, valid_de_cols, drop = FALSE]
+                      de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
                       counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                     }
-                  } else if (!is.null(input$contrastSelected)) {
+                  } else if (!is.null(selectedContrast())) {
                     de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                    valid_de_cols <- intersect(de_cols, colnames(eds$de(input$contrastSelected)))
+                    valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
                     if (length(valid_de_cols) > 1) {
-                      de_data <- eds$de(input$contrastSelected)[, valid_de_cols, drop = FALSE]
+                      de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
                       counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
                     }
                   }

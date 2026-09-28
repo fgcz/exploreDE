@@ -2,11 +2,11 @@ eds <- inputDataReactive()$.eds
 
 if (eds$data_type() == "RNASeq" && eds$has_de()) {
 
-  design      <- eds$contrast_label(eds$primary_contrast())
   allPathways <- eds$all_pathways()
 
+  # Follows the app-wide selected contrast (constant for single-contrast data).
   output$goTilePlotDesign <- renderText({
-    design
+    eds$contrast_label(selectedContrast())
   })
 
   # --- KEGG tile support (mirrors the heatmap KEGG option) -----------------
@@ -77,7 +77,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
         entrezIds <- gsub(paste0(keggCode, ":"), "", geneLinks)
 
         # Map ENTREZ IDs to feature_ids in the DE table
-        seqAnno <- eds$de(eds$primary_contrast())
+        seqAnno <- eds$de(selectedContrast())
         if ("entrez_id" %in% colnames(seqAnno)) {
           keggFeatureIds <- seqAnno$feature_id[seqAnno$entrez_id %in% entrezIds]
         } else {
@@ -140,16 +140,17 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
       input$lfcGoTile
       input$pThresholdGoTile
       goTileKeggReactive$currentGenes
+      selectedContrast()
     },
-    # ignoreNULL = FALSE: the block's value is goTileKeggReactive$currentGenes,
-    # NULL until a KEGG pathway is fetched; with the default ignoreNULL = TRUE
-    # selecting GO terms alone never drew a tile.
+    # ignoreNULL = FALSE: goTileKeggReactive$currentGenes is NULL until a KEGG
+    # pathway is fetched; if it ever ends the block again, the default
+    # ignoreNULL = TRUE would stop GO terms alone from drawing a tile.
     ignoreNULL = FALSE, ignoreInit = TRUE, {
 
       figuresDataReactive$goTilePlot <- NULL
 
       pCol    <- if (input$pTypeGoTile == "Raw") "pValue" else "fdr"
-      seqAnno <- eds$de(eds$primary_contrast())
+      seqAnno <- eds$de(selectedContrast())
 
       # Significance filter shared by GO and KEGG tiles (mirrors heatmap):
       # keep features used in the test, and — when requested — those passing
@@ -263,7 +264,7 @@ output$dlGoTilePlot <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_goTile, "_", gsub(" .*", "", input$goTileInput)),
-      design_name = design,
+      design_name = if (eds$has_de()) eds$contrast_label(selectedContrast()) else "",
       extension = tolower(input$downloadFormatGoTile)
     )
   },

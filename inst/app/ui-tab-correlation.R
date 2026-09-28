@@ -19,6 +19,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        uiOutput(outputId = "contrastSelectorUI_correlation"),
         tabsetPanel(
           tabPanel(
             title = "Main settings",

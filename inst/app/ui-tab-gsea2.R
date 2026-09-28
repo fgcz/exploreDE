@@ -92,6 +92,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        uiOutput(outputId = "contrastSelectorUI_gsea"),
         textOutput("gseaDesign"), br(),
         downloadButton(
           outputId = "dlTable_GSEA",

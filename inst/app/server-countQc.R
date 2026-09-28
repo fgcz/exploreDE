@@ -593,7 +593,7 @@ countQcIntraData <- reactive({
   dataType <- eds$data_type()
   # Proteomics: use the currently selected contrast's DE table
   seqAnno <- if (eds$omics_class() == "proteomics") {
-    contr <- input$contrastSelected %||% eds$contrasts()[[1]]
+    contr <- selectedContrast() %||% eds$contrasts()[[1]]
     eds$de(contr)
   } else if (length(eds$contrasts()) > 0) {
     eds$de(eds$primary_contrast())

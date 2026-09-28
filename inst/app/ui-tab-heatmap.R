@@ -71,6 +71,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        uiOutput(outputId = "contrastSelectorUI_heatmap"),
         tabsetPanel(
           tabPanel(
             title = "Feature settings",

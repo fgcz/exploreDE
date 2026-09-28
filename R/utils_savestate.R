@@ -8,8 +8,10 @@
 #' Filter a Shiny input snapshot down to the restorable widgets
 #'
 #' Drops file uploads (stale datapath), action buttons, DT/plotly UI echoes, the
-#' save-state tab's own widgets, download buttons, and every `multi*` input
-#' (out of scope for save-state v1).
+#' save-state tab's own widgets, download buttons, every `multi*` input
+#' (out of scope for save-state v1), and the per-tab `contrastSelected_<tab>`
+#' mirrors (only the canonical `contrastSelected` is saved; restoring it syncs
+#' the mirrors).
 #'
 #' @param x Named list, typically `reactiveValuesToList(input, all.names = TRUE)`.
 #' @return `x` with the non-restorable entries removed.
@@ -18,7 +20,8 @@ save_state_filter_inputs <- function(x) {
   ids <- names(x)
   skip_pat <- paste0(
     "^(load_state_file|importColourFile|multiImportFile|multiImportColourFile",
-    "|fb_reset_|fb_add_|resetGeneBucket|resetDEGTableSelectRows|multi)",
+    "|fb_reset_|fb_add_|resetGeneBucket|resetDEGTableSelectRows|multi",
+    "|contrastSelected_)",
     "|(_btn|_cell_edit|_cell_clicked|_rows_selected|_row_last_clicked",
     "|_state|_search|_hover|_click|_relayout|_brush|_selected)$")
   keep <- !grepl(skip_pat, ids)

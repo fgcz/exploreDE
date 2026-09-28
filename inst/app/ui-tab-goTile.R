@@ -23,6 +23,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
+        uiOutput(outputId = "contrastSelectorUI_goTile"),
         h4("Tile Input settings"),
         selectizeInput(
           inputId = "goTileInput",

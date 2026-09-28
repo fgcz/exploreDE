@@ -9,6 +9,7 @@ tabItem(
           width = 9,
           solidHeader = TRUE,
           status = "primary",
+          uiOutput(outputId = "contrastSelectorUI_degTable"),
           textOutput("DEGDesign"), br(),
           textInput(inputId = "filename_deg", label = NULL, value = "DE_Results", placeholder = "Filename"),
           downloadButton(
