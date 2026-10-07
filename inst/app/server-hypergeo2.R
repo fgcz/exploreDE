@@ -269,13 +269,19 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
           paste(.id2sym(ids), collapse = "/")
         })
         output$selectedTable_ORA <- DT::renderDataTable({
-          oraDfToShow <- rdf[, c("Label", "GeneRatio", "geneName")]
+          oraDfToShow <- rdf[, c("Label", "GeneRatio", "p.adjust", "geneName")]
+          colnames(oraDfToShow)[colnames(oraDfToShow) == "p.adjust"] <- "FDR"
           oraDfToShow$geneNumber <- sapply(strsplit(as.character(oraDfToShow$GeneRatio), "/"), function(x) as.numeric(x[1]))
 
           DT::datatable(
             data = oraDfToShow,
             filter = "top", class = "cell-border stripe",
-            rownames = FALSE, caption = "Click pathways in this table to add them to the figures on the right",
+            rownames = FALSE,
+            caption = paste0(
+              "Click pathways in this table to add them to the figures on the right. ",
+              "Only pathways with FDR < ", param$fdrThreshORA, " (green) are plotted; ",
+              "clicking any other pathway will not add it to the figures."
+            ),
             options = list(
               columnDefs = list(
                 list(visible = FALSE, targets = c(grep("geneNumber", colnames(oraDfToShow)) - 1)),
@@ -285,6 +291,12 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
           ) %>%
             DT::formatStyle(
               columns = colnames(.$x$data), `font-size` = "12px"
+            ) %>%
+            DT::formatSignif(columns = "FDR", digits = 3) %>%
+            DT::formatStyle(
+              columns = "FDR",
+              color = styleInterval(cuts = param$fdrThreshORA, values = c("green", "black")),
+              fontWeight = "bold"
             )
         })
       }
@@ -329,6 +341,24 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
           label <- substr(label, 1, 45)
         }
         rdf$Label[i] <- label
+      }
+
+      # Only pathways passing the term FDR cut-off (green in the table) are
+      # plotted -- enrichplot already silently drops the rest from the native
+      # plots, so apply the same rule to every figure and say so.
+      sel_rows <- input$selectedTable_ORA_rows_selected
+      sel_rows <- sel_rows[!is.na(rdf$p.adjust[sel_rows]) & rdf$p.adjust[sel_rows] <= param$fdrThreshORA]
+      n_dropped <- length(input$selectedTable_ORA_rows_selected) - length(sel_rows)
+      if (n_dropped > 0) {
+        showNotification(
+          paste0(n_dropped, " selected pathway(s) with FDR > ", param$fdrThreshORA,
+                 " not added to the figures."),
+          id = "oraFdrDrop", type = "warning"
+        )
+      }
+      if (!length(sel_rows)) {
+        for (x in names(oraPlotReactive)) oraPlotReactive[[x]] <- NULL
+        return()
       }
 
       # Get log2FCs of genes for network plot
@@ -409,7 +439,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
           paste(g, collapse = "/")
         })
         # Check that selected pathways still have genes after filtering
-        sel_genes <- rdf$geneName[input$selectedTable_ORA_rows_selected]
+        sel_genes <- rdf$geneName[sel_rows]
         if (!any(nchar(sel_genes) > 0)) {
           showNotification("No genes in the selected pathways meet the current filter thresholds. Lower the Log2FC or P-Value threshold.", type = "warning")
           return()
@@ -438,7 +468,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         cn <- cnetplot(
           x = er,
           foldChange = log2RatioORA,
-          showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
+          showCategory = er@result$Description[sel_rows],
           node_label = "none"
         )
         # Set the colour limits to the user-specified values
@@ -450,7 +480,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         cd1 <- cn$data
         cd1$name[!is.na(cd1$foldChange)] <- NA
         cd1$Label <- NA
-        cd1$Label[1:length(input$selectedTable_ORA_rows_selected)] <- er@result$Label[input$selectedTable_ORA_rows_selected]
+        cd1$Label[1:length(sel_rows)] <- er@result$Label[sel_rows]
         cd2 <- cn$data
         cd2$name[is.na(cd2$foldChange)] <- NA
         # Apply gene label filtering if in "labels" mode
@@ -484,7 +514,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       }
 
       # Prepare matrix for ComplexHeatmap
-      sel_idx <- input$selectedTable_ORA_rows_selected
+      sel_idx <- sel_rows
       sel_er <- rdf[sel_idx, ]
 
       pathway_genes <- lapply(strsplit(sel_er$geneName, "/"), function(g) g[nchar(g) > 0])
@@ -543,7 +573,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       if (.is_native(er)) {
         bp <- barplot(
           er,
-          showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
+          showCategory = er@result$Description[sel_rows],
           title = paste(input$oraType, input$oraDirection)
         )
         bp <- bp +
@@ -565,7 +595,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         dp <- enrichplot::dotplot(
           er,
           x = "GeneRatio",
-          showCategory = er@result$Description[input$selectedTable_ORA_rows_selected],
+          showCategory = er@result$Description[sel_rows],
           title = paste(input$oraType, input$oraDirection)
         )
         dp <- dp +
@@ -588,7 +618,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         # native S4 object (tidy-only pathway data), rebuild the same view by
         # hand from the result table alone (both only ever needed `result`;
         # see plans/exploredelight/enrichment_detach_plan.md).
-        sel_df <- rdf[input$selectedTable_ORA_rows_selected, ]
+        sel_df <- rdf[sel_rows, ]
         sel_df$Label <- factor(sel_df$Label, levels = rev(sel_df$Label[order(sel_df$Count)]))
 
         bp <- ggplot(sel_df, aes(x = Count, y = Label, fill = p.adjust)) +
@@ -609,7 +639,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         oraPlotReactive$dotplot <- dp
       }
 
-      lolli_df <- rdf[input$selectedTable_ORA_rows_selected, , drop = FALSE]
+      lolli_df <- rdf[sel_rows, , drop = FALSE]
       lolli_df$negLogP <- -log10(lolli_df$p.adjust)
       lolli_df$Label <- factor(lolli_df$Label, levels = lolli_df$Label[order(lolli_df$negLogP)])
       scl <- input$oraLollipopScale
@@ -623,13 +653,13 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         theme_prism(base_size = ts)
       oraPlotReactive$lollipop <- lp
 
-      geneSetsUpset <- setNames(lapply(input$selectedTable_ORA_rows_selected, function(i) {
+      geneSetsUpset <- setNames(lapply(sel_rows, function(i) {
         g <- rdf$geneName[i] %>%
           strsplit("/") %>%
           .[[1]]
         g <- unique(g[nchar(g) > 1])
         g
-      }), rdf$Label[input$selectedTable_ORA_rows_selected])
+      }), rdf$Label[sel_rows])
       m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
       up <- ComplexHeatmap::UpSet(
         m = m1,

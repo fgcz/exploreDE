@@ -105,6 +105,14 @@ tabItem(
               checkboxInput(inputId = "borderVolcano", label = "Plot Border?", value = TRUE),
               checkboxInput(inputId = "showLinesVolcano", label = "Grid lines?", value = FALSE)
             ),
+            hr(style = "border-top: 1px solid #000000;"), h4("Quadrant counts"),
+            checkboxInput(inputId = "volcanoShowCounts", label = "Show n = for the top-left/top-right quadrants?", value = TRUE),
+            splitLayout(
+              sliderInput(inputId = "volcanoCountsX", label = "Position X (log2 FC)", min = 0, max = 7.5, value = 3, step = 0.05, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "volcanoCountsY", label = "Position Y (y axis)", min = 0, max = 75, value = 52.5, step = 0.5, width = "85%", ticks = FALSE),
+              sliderInput(inputId = "volcanoCountsSize", label = "Font Size", min = 4, max = 30, value = 14, step = 0.5, width = "85%", ticks = FALSE)
+            ),
+            helpText("Counts are the features passing both the log2 fold change and p-value thresholds (down on the left, up on the right). Positions are in the plot's own axis units and can go past the axis limits (default: above the dots); the plot extends to fit them while the axis ticks stay within the limits. X is mirrored for the left count."),
             hr(style = "border-top: 1px solid #000000;"), h4("Annotation settings"),
             numericInput(inputId = "volcanoLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 10, step = 1, width = "33%"),
             helpText("Increasing the number of overlapping labels will label more features, but can take a *very* long time to generate"),

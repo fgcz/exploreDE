@@ -55,6 +55,30 @@ if (eds$omics_class() == "proteomics") {
   updateNumericInput(session = session, inputId = "xLimVolcano", value = 2)
 }
 
+# Quadrant-count position sliders are in data units and reach 1.5x the current
+# axis limits (so the counts can sit above/beside the dots). On a limit change,
+# keep the label at the same relative spot on the plot.
+volcanoCountsLims <- c(x = 5, y = 50)  # axis limits the UI slider defaults assume
+observeEvent(
+  {
+    input$xLimVolcano
+    input$yLimVolcano
+    input$pTypeVolcano
+  },
+  {
+    if (isTRUE(restoring())) return()  # save-state restore guard
+    xMax <- as.numeric(input$xLimVolcano)
+    yMax <- if (volcano_score_mode()) 1 else as.numeric(input$yLimVolcano)
+    req(isTRUE(xMax > 0), isTRUE(yMax > 0))
+    xVal <- as.numeric(input$volcanoCountsX) / volcanoCountsLims[["x"]] * xMax
+    yVal <- as.numeric(input$volcanoCountsY) / volcanoCountsLims[["y"]] * yMax
+    updateSliderInput(session, "volcanoCountsX", min = 0, max = xMax * 1.5, value = xVal, step = signif(xMax / 100, 1))
+    updateSliderInput(session, "volcanoCountsY", min = 0, max = yMax * 1.5, value = yVal, step = signif(yMax / 100, 1))
+    volcanoCountsLims <<- c(x = xMax, y = yMax)
+  },
+  ignoreInit = TRUE
+)
+
 volcanoColoursDefault <- c(
   "Highlight" = "goldenrod3",
   "NotSignificant" = "grey60",
@@ -440,6 +464,10 @@ observeEvent(
     input$volcanoPointBorder
     input$volcanoHaloStyle
     input$volcanoHaloMult
+    input$volcanoShowCounts
+    input$volcanoCountsX
+    input$volcanoCountsY
+    input$volcanoCountsSize
     volcanoResultsList()
   },
   ignoreInit = TRUE,
@@ -513,7 +541,16 @@ observeEvent(
     )
     # Score axis is a probability: fixed 0-1 (yLimVolcano applies to -log10 only)
     yMaxVolcano <- if (volcano_score_mode()) 1 else input$yLimVolcano
-    volcanoStatic <- volcanoStatic + ylim(0, yMaxVolcano) + xlim(-input$xLimVolcano, input$xLimVolcano)
+    # Axis limits extend to fit the n = counts (which may sit above/beside the
+    # dots), but ticks stay within the user's limits.
+    xMaxVolcano <- as.numeric(input$xLimVolcano)
+    showCounts  <- isTRUE(input$volcanoShowCounts)
+    xPlotMax <- max(xMaxVolcano, if (showCounts) as.numeric(input$volcanoCountsX))
+    yPlotMax <- max(yMaxVolcano, if (showCounts) as.numeric(input$volcanoCountsY))
+    within_breaks <- function(lo, hi) { b <- scales::breaks_extended()(c(lo, hi)); b[b >= lo & b <= hi] }
+    volcanoStatic <- volcanoStatic +
+      scale_y_continuous(limits = c(0, yPlotMax), breaks = within_breaks(0, yMaxVolcano)) +
+      scale_x_continuous(limits = c(-xPlotMax, xPlotMax), breaks = within_breaks(-xMaxVolcano, xMaxVolcano))
     volcanoStatic <- volcanoStatic + theme_prism(base_size = input$textSizeVolcano, border = input$borderVolcano)
     volcanoStatic <- volcanoStatic + geom_vline(xintercept = c(-as.numeric(input$lfcVolcano), as.numeric(input$lfcVolcano)), col = "black", linetype = "dashed")
     volcanoStatic <- volcanoStatic + geom_hline(yintercept = volcano_y_threshold(), col = "black", linetype = "dashed")
@@ -544,6 +581,27 @@ observeEvent(
           fontface = "bold",
           show.legend = F
         ) + scale_colour_manual(breaks = names(volcanoColours), values = as.character(volcanoColours))
+    }
+    # n = for the top-left/top-right quadrants: features past both the LFC and
+    # significance thresholds, from the unclipped values (so Highlight/Imputed
+    # relabelling of Status doesn't change the count).
+    if (isTRUE(input$volcanoShowCounts)) {
+      lfcThr <- as.numeric(input$lfcVolcano)
+      isSig  <- !is.na(volcanoTable$log10p_full) & volcanoTable$log10p_full >= volcano_y_threshold()
+      nUp    <- sum(isSig & volcanoTable$log2Ratio_full >= lfcThr, na.rm = TRUE)
+      nDown  <- sum(isSig & volcanoTable$log2Ratio_full <= -lfcThr, na.rm = TRUE)
+      # Positioned in data units (log2 FC, y-axis scale); the scales above
+      # already extend to include these positions.
+      countsX <- as.numeric(input$volcanoCountsX)
+      countsY <- as.numeric(input$volcanoCountsY)
+      volcanoStatic <- volcanoStatic + annotate(
+        "text",
+        x = c(-countsX, countsX),
+        y = countsY,
+        label = paste0("n = ", c(nDown, nUp)),
+        size = as.numeric(input$volcanoCountsSize) / ggplot2::.pt,
+        fontface = "bold"
+      )
     }
     volcanoStatic <- volcanoStatic + labs(
       x = "Log2 Fold Change",

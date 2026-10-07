@@ -68,9 +68,9 @@ tabItem(
           width = NULL,
           solidHeader = TRUE,
           status = "primary",
-          tags$b("Not another one?!"),
+          tags$b("Yer jokin'! Not another one?!"),
           br(),
-          tags$p("ExploreDE 3.8.0! This app gets more updates than the UK does elections."),
+          tags$p("ExploreDE 3.8.0! This app gets more updates than the UK does elections.", tags$sub(tags$em("[Spain enters the chat]"), style = "font-size: 40%;")),
           tags$ul(
             tags$li(
               tags$b("Finally!"), " You can relabel groups!",

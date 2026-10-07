@@ -213,7 +213,7 @@ observeEvent(
           }
           rdf$Label[i] <- label
         }
-        colsToTable <- c("Label", "enrichmentScore", "NES", "qvalue", "geneName")
+        colsToTable <- c("Label", "enrichmentScore", "NES", "p.adjust", "geneName")
         # Rebuild geneName from core_enrichment via the backend-agnostic remap
         # (falls back to the raw ID where no symbol is known).
         rdf$geneName <- sapply(strsplit(rdf$core_enrichment, "/"), function(ids) {
@@ -228,7 +228,7 @@ observeEvent(
       } else {
         # For other pathway databases (e.g., C2)
         rdf_symbol <- rdf
-        colsToTable <- c("Description", "enrichmentScore", "NES", "qvalue", "core_enrichment")
+        colsToTable <- c("Description", "enrichmentScore", "NES", "p.adjust", "core_enrichment")
       }
       # Prepare log2 ratio data for plotting (store raw, aggregate in plot observer)
       log2RatioGSEA <- ei$ranked_l2fc
@@ -275,19 +275,27 @@ observeEvent(
 output$selectedTable_GSEA <- DT::renderDataTable({
   req(gseaToUse$rdf, gseaToUse$colsToTable)
 
+  # Show FDR (p.adjust, which the enrichment was thresholded on) in place of qvalue.
+  gseaDfToShow <- gseaToUse$rdf[, gseaToUse$colsToTable]
+  colnames(gseaDfToShow)[colnames(gseaDfToShow) == "p.adjust"] <- "FDR"
+
   DT::datatable(
-    data = gseaToUse$rdf[, gseaToUse$colsToTable],
+    data = gseaDfToShow,
     filter = "top",
     class = "cell-border stripe",
     rownames = FALSE,
-    caption = "Click pathways in this table to add them to the figures on the right"
+    caption = paste0(
+      "Click pathways in this table to add them to the figures on the right. ",
+      "Only pathways with FDR < ", param$fdrThreshGSEA, " (green) are plotted; ",
+      "clicking any other pathway will not add it to the figures."
+    )
   ) %>%
     DT::formatStyle(
       columns = colnames(.$x$data),
       `font-size` = "12px"
     ) %>%
     DT::formatSignif(
-      columns = c("enrichmentScore", "NES", "qvalue"),
+      columns = c("enrichmentScore", "NES", "FDR"),
       digits = 3
     ) %>%
     DT::formatStyle(
@@ -296,7 +304,7 @@ output$selectedTable_GSEA <- DT::renderDataTable({
       fontWeight = "bold"
     ) %>%
     DT::formatStyle(
-      columns = "qvalue",
+      columns = "FDR",
       color = styleInterval(cuts = param$fdrThreshGSEA, values = c("green", "black")),
       fontWeight = "bold"
     )
@@ -368,11 +376,29 @@ observeEvent(
     req(!is.null(input$selectedTable_GSEA_rows_selected))
     req(current_rdf)
 
+    # Only pathways passing the term FDR cut-off (green in the table) are
+    # plotted -- enrichplot already silently drops the rest from the native
+    # plots, so apply the same rule to every figure and say so.
+    sel_rows <- input$selectedTable_GSEA_rows_selected
+    sel_rows <- sel_rows[!is.na(current_rdf$p.adjust[sel_rows]) & current_rdf$p.adjust[sel_rows] <= param$fdrThreshGSEA]
+    n_dropped <- length(input$selectedTable_GSEA_rows_selected) - length(sel_rows)
+    if (n_dropped > 0) {
+      showNotification(
+        paste0(n_dropped, " selected pathway(s) with FDR > ", param$fdrThreshGSEA,
+               " not added to the figures."),
+        id = "gseaFdrDrop", type = "warning"
+      )
+    }
+    if (!length(sel_rows)) {
+      for (x in names(gseaPlotReactive)) gseaPlotReactive[[x]] <- NULL
+      return()
+    }
+
     # Row-subset for the selected pathways, as a plain data.frame either way.
     # For the native path this is identical in content to
     # clusterProfiler::slice(current_er, ...)@result (used below wherever the
     # real S4 object -- and its geneList/geneSets -- is still needed).
-    erRP_df <- current_rdf[input$selectedTable_GSEA_rows_selected, , drop = FALSE]
+    erRP_df <- current_rdf[sel_rows, , drop = FALSE]
     labelColumn <- ifelse(input$gseaType == "C2", "Description", "Label")
 
     # Apply gene filtering based on visualisation thresholds
@@ -442,7 +468,7 @@ observeEvent(
         paste(g, collapse = "/")
       })
       # Check that selected pathways still have genes after filtering
-      sel_genes <- current_rdf_symbol$core_enrichment[input$selectedTable_GSEA_rows_selected]
+      sel_genes <- current_rdf_symbol$core_enrichment[sel_rows]
       if (!any(nchar(sel_genes) > 0)) {
         showNotification("No genes in the selected pathways meet the current filter thresholds. Lower the Log2FC or P-Value threshold.", type = "warning")
         return()
@@ -459,7 +485,7 @@ observeEvent(
         x = current_er_symbol,
         node_label = "none",
         foldChange = log2RatioGSEA,
-        showCategory = current_er_symbol@result$Description[input$selectedTable_GSEA_rows_selected]
+        showCategory = current_er_symbol@result$Description[sel_rows]
       )
 
       # Apply colour scale limits
@@ -481,8 +507,8 @@ observeEvent(
       cd1 <- cn$data
       cd1$name[!is.na(cd1$foldChange)] <- NA
       cd1$Label <- NA
-      cd1$Label[seq_along(input$selectedTable_GSEA_rows_selected)] <-
-        current_er_symbol@result[[labelColumn]][input$selectedTable_GSEA_rows_selected]
+      cd1$Label[seq_along(sel_rows)] <-
+        current_er_symbol@result[[labelColumn]][sel_rows]
 
       cd2 <- cn$data
       cd2$name[is.na(cd2$foldChange)] <- NA
@@ -525,7 +551,7 @@ observeEvent(
       gseaPlotReactive$cnetplot <- cn
 
       # Ridge plot
-      erRP <- clusterProfiler::slice(current_er, input$selectedTable_GSEA_rows_selected)
+      erRP <- clusterProfiler::slice(current_er, sel_rows)
       rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
       rp <- rp +
         scale_y_discrete(labels = erRP@result$Label[match(
@@ -566,7 +592,7 @@ observeEvent(
 
     # Heatmap - use filtered genes when filtering is active
     # Prepare matrix for ComplexHeatmap
-    sel_idx <- input$selectedTable_GSEA_rows_selected
+    sel_idx <- sel_rows
     sel_er <- current_rdf_symbol[sel_idx, ]
 
     # Extract genes for each pathway
@@ -632,8 +658,8 @@ observeEvent(
     if (is_native) {
       rs <- enrichplot::gseaplot2(
         x = current_er,
-        geneSetID = input$selectedTable_GSEA_rows_selected,
-        color = RColorBrewer::brewer.pal(max(3, length(input$selectedTable_GSEA_rows_selected)), "Set2")[seq_along(input$selectedTable_GSEA_rows_selected)]
+        geneSetID = sel_rows,
+        color = RColorBrewer::brewer.pal(max(3, length(sel_rows)), "Set2")[seq_along(sel_rows)]
       )
       gseaPlotReactive$runningscore <- rs
     } else {
@@ -643,14 +669,14 @@ observeEvent(
 
     # UpSet plot
     geneSetsUpset <- setNames(
-      lapply(input$selectedTable_GSEA_rows_selected, function(i) {
+      lapply(sel_rows, function(i) {
         colToUse <- if (input$gseaType %in% c("BP", "MF", "CC")) "geneName" else "core_enrichment"
         g <- current_rdf[[colToUse]][i] %>%
           strsplit("/") %>%
           .[[1]]
         unique(g[nchar(g) > 1])
       }),
-      current_rdf[[labelColumn]][input$selectedTable_GSEA_rows_selected]
+      current_rdf[[labelColumn]][sel_rows]
     )
 
     m1 <- ComplexHeatmap::make_comb_mat(geneSetsUpset)
