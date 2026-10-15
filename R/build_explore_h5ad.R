@@ -245,6 +245,13 @@
 #            clusterProfiler objects and/or data.frames.
 # factors  : optional colData columns that are experimental factors (else all
 #            character/factor-typed columns).
+# enrichment_padj_max is one number, or a list keyed by pathway method name
+# (ora / gsea); a method missing from the list falls back to the largest value.
+.padj_max_for <- function(padj_max, method) {
+  if (!is.list(padj_max)) return(padj_max)
+  padj_max[[method]] %||% max(unlist(padj_max))
+}
+
 .assemble_parts <- function(counts, coldata, omics = "rnaseq", feature_level = NULL,
                             rowdata = NULL, de = list(), de_columns = NULL,
                             pathways = list(), enrichment_padj_max = 0.1,
@@ -516,7 +523,8 @@
         if (!is.null(tidy))
           enr_tidy[[slot]] <- c(enr_tidy[[slot]], setNames(list(tidy), rn))
       } else {
-        tidy <- .enr_tidy_from_native(obj, method = rn, padj_max = enrichment_padj_max)
+        tidy <- .enr_tidy_from_native(obj, method = rn,
+                                      padj_max = .padj_max_for(enrichment_padj_max, rn))
         if (!is.null(tidy)) {
           enr_tidy[[slot]] <- c(enr_tidy[[slot]], setNames(list(tidy), rn))
           sup <- .enr_support_from_native(obj, tidy)
@@ -538,6 +546,7 @@
                    # significant" from "enrichment was never run" — three very
                    # different things that all look like an absent row.
                    enrichment_filter = list(
+                     # one number, or a list keyed by method (ora / gsea)
                      padj_max = if (length(enr_tidy)) enrichment_padj_max else NULL,
                      column   = "p.adjust"),
                    reference_genome = as.character(ref_build),
@@ -614,6 +623,13 @@
 #' @param pathways Optional pathway statistics: a named list keyed by contrast
 #'   (keys a subset of `de`); each entry a named list of clusterProfiler objects
 #'   and/or `data.frame`s.
+#' @param enrichment_padj_max p.adjust cut-off applied to clusterProfiler
+#'   results before they are stored (`p.adjust <= enrichment_padj_max`). Either
+#'   one number for every method, or a named list keyed by the method names used
+#'   in `pathways` (e.g. `list(ora = 0.05, gsea = 0.05)`) so that ORA and GSEA can
+#'   follow their own FDR thresholds; a method not named in the list uses the
+#'   largest value given. The value(s) are recorded in `uns$enrichment_filter`
+#'   and the app uses a per-method value as its significance threshold.
 #' @param factors Optional colData columns that are experimental factors
 #'   (default: all character/factor-typed columns).
 #' @param gene_symbol,organism,ref_build Optional labels.

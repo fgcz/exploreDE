@@ -12,6 +12,33 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
 .is_native <- function(x) inherits(x, c("enrichResult", "gseaResult"))
 .res_df    <- function(x) if (.is_native(x)) x@result else x
 
+# FDR threshold for "ora" / "gsea": the SUSHI parameter (fdrThreshORA /
+# fdrThreshGSEA) for an SE; for an h5ad, the per-method value that
+# build_explore_h5ad() recorded in uns$enrichment_filter; otherwise 0.05.
+.enr_fdr_thresh <- function(kind) {
+  p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else NULL
+  v <- switch(kind, ora = p$fdrThreshORA, gsea = p$fdrThreshGSEA)
+  if (is.null(v)) {
+    f <- eds$enrichment_filter()
+    if (is.list(f)) v <- f[[kind]]
+  }
+  if (is.null(v) || is.na(v)) 0.05 else as.numeric(v)
+}
+# Keep only the terms with p.adjust <= thr. ezRun stores every tested term (the
+# full table goes to its Excel export); the app, like the HTML report, only
+# ever shows the significant ones.
+.enr_keep_sig <- function(x, thr) {
+  df <- .res_df(x)
+  if (!is.data.frame(df) || !nrow(df) || !"p.adjust" %in% colnames(df)) return(x)
+  keep <- !is.na(df$p.adjust) & df$p.adjust <= thr
+  if (.is_native(x)) {
+    x@result <- df[keep, , drop = FALSE]
+    x
+  } else {
+    df[keep, , drop = FALSE]
+  }
+}
+
 .gsea_raw <- function() {
   if (is.null(contrast)) return(NULL)
   g <- list()
@@ -31,6 +58,7 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
       if (is.null(g[[k]])) g[[k]] <- tab[tab$ontology == k, , drop = FALSE]
     }
   }
+  g <- lapply(g, .enr_keep_sig, thr = .enr_fdr_thresh("gsea"))
   if (!length(g)) return(NULL)
   g
 }
@@ -99,7 +127,7 @@ observeEvent(selectedContrast(), {
   p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else list()
   if (is.null(p)) p <- list()
   if (is.null(p$featureLevel))  p$featureLevel  <- eds$feature_id_kind()
-  if (is.null(p$fdrThreshGSEA)) p$fdrThreshGSEA <- 0.05
+  p$fdrThreshGSEA <- .enr_fdr_thresh("gsea")
   param <<- p
 
   # Backend-agnostic gene-id -> symbol remap (no-op when feature_ids are already
@@ -286,8 +314,7 @@ output$selectedTable_GSEA <- DT::renderDataTable({
     rownames = FALSE,
     caption = paste0(
       "Click pathways in this table to add them to the figures on the right. ",
-      "Only pathways with FDR < ", param$fdrThreshGSEA, " (green) are plotted; ",
-      "clicking any other pathway will not add it to the figures."
+      "Only pathways with FDR <= ", param$fdrThreshGSEA, " are listed."
     )
   ) %>%
     DT::formatStyle(

@@ -16,6 +16,33 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
 .is_native <- function(x) inherits(x, c("enrichResult", "gseaResult"))
 .res_df    <- function(x) if (.is_native(x)) x@result else x
 
+# FDR threshold for "ora" / "gsea": the SUSHI parameter (fdrThreshORA /
+# fdrThreshGSEA) for an SE; for an h5ad, the per-method value that
+# build_explore_h5ad() recorded in uns$enrichment_filter; otherwise 0.05.
+.enr_fdr_thresh <- function(kind) {
+  p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else NULL
+  v <- switch(kind, ora = p$fdrThreshORA, gsea = p$fdrThreshGSEA)
+  if (is.null(v)) {
+    f <- eds$enrichment_filter()
+    if (is.list(f)) v <- f[[kind]]
+  }
+  if (is.null(v) || is.na(v)) 0.05 else as.numeric(v)
+}
+# Keep only the terms with p.adjust <= thr. ezRun stores every tested term (the
+# full table goes to its Excel export); the app, like the HTML report, only
+# ever shows the significant ones.
+.enr_keep_sig <- function(x, thr) {
+  df <- .res_df(x)
+  if (!is.data.frame(df) || !nrow(df) || !"p.adjust" %in% colnames(df)) return(x)
+  keep <- !is.na(df$p.adjust) & df$p.adjust <= thr
+  if (.is_native(x)) {
+    x@result <- df[keep, , drop = FALSE]
+    x
+  } else {
+    df[keep, , drop = FALSE]
+  }
+}
+
 .ora_raw <- function() {
   if (is.null(contrast)) return(NULL)
   nested <- list()
@@ -45,6 +72,8 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
         nested[[dom]][[dir]] <- tab[tab$ontology == k, , drop = FALSE]
     }
   }
+  thr <- .enr_fdr_thresh("ora")
+  nested <- lapply(nested, function(d) lapply(d, .enr_keep_sig, thr = thr))
   if (!length(nested)) return(NULL)
   nested
 }
@@ -88,7 +117,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
   p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else list()
   if (is.null(p)) p <- list()
   if (is.null(p$featureLevel)) p$featureLevel <- eds$feature_id_kind()
-  if (is.null(p$fdrThreshORA)) p$fdrThreshORA <- 0.05
+  p$fdrThreshORA <- .enr_fdr_thresh("ora")
   param <<- p
 
   # Significant-gene selections, with bothGenes synthesised when the backend
@@ -151,8 +180,8 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
     for (resName in names(ora[[goDomain]])) {
       testName <- paste0(goDomain, ": ", resName)
       rdf <- .res_df(ora[[goDomain]][[resName]])
-      ora.overview[testName, "Number of Significant Pathways"] <-
-        nrow(rdf[as.numeric(rdf$p.adjust) < param$fdrThreshORA, ])
+      ## already restricted to p.adjust <= fdrThreshORA in .ora_raw()
+      ora.overview[testName, "Number of Significant Pathways"] <- NROW(rdf)
     }
   }
   output$oraOverview <- function() {
@@ -279,8 +308,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
             rownames = FALSE,
             caption = paste0(
               "Click pathways in this table to add them to the figures on the right. ",
-              "Only pathways with FDR < ", param$fdrThreshORA, " (green) are plotted; ",
-              "clicking any other pathway will not add it to the figures."
+              "Only pathways with FDR <= ", param$fdrThreshORA, " are listed."
             ),
             options = list(
               columnDefs = list(

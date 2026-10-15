@@ -748,6 +748,21 @@ test_that("the filter threshold is caller-controllable", {
   expect_equal(e$enrichment_filter(), 1)
 })
 
+test_that("ORA and GSEA can each have their own threshold, and both are recorded", {
+  skip_if_no_anndataR()
+  # ezRun passes list(ora = fdrThreshORA, gsea = fdrThreshGSEA); the app reads
+  # the per-method value back as its significance threshold.
+  out <- .toy_with_pathways(list(ora  = .fake_enrich(padj = c(.001, .03, .6)),
+                                 gsea = .fake_gsea_enrich(padj = c(.001, .02, .4))),
+                            enrichment_padj_max = list(ora = 0.01, gsea = 0.05))
+  e <- new_explore_dataset(out)
+  expect_equal(nrow(e$enrichment_table("treated_vs_control", "ora")), 1L)
+  expect_equal(nrow(e$enrichment_table("treated_vs_control", "gsea")), 2L)
+  f <- e$enrichment_filter()
+  expect_equal(f$ora, 0.01)
+  expect_equal(f$gsea, 0.05)
+})
+
 test_that("nested ORA/GSEA structure survives as an `ontology` column", {
   skip_if_no_anndataR()
   # The SUSHI shape is BP/MF/CC x up/down/both. That nesting used to live in
