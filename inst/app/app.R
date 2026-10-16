@@ -33,6 +33,61 @@ if (!is.null(r_dir)) {
   cat("sourced", length(r_files), "R/ helper file(s) from", r_dir, "\n")
 }
 
+# ═══════════════════════════════════════════════════════════════════════════
+# CONTAINER RESOURCE USAGE (header badge)
+# ═══════════════════════════════════════════════════════════════════════════
+
+#' First line of a file, or NULL when it cannot be read.
+first_line <- function(file) {
+  if (!file.exists(file)) return(NULL)
+  tryCatch(readLines(file, n = 1L, warn = FALSE), error = function(e) NULL)
+}
+
+#' Numeric value of `key` in a "key value" file such as memory.stat or cpu.stat.
+keyed_value <- function(file, key) {
+  lines <- tryCatch(readLines(file, warn = FALSE), error = function(e) character(0))
+  hit <- grep(paste0("^", key, " "), lines, value = TRUE)
+  if (length(hit) == 0) return(NA_real_)
+  suppressWarnings(as.numeric(sub(paste0("^", key, " "), "", hit[1])))
+}
+
+#' Number of CPUs in a cpuset list such as "0-7,16-23".
+cpuset_count <- function(x) {
+  if (is.null(x) || !nzchar(x)) return(NA_real_)
+  parts <- strsplit(strsplit(x, ",", fixed = TRUE)[[1]], "-", fixed = TRUE)
+  sum(vapply(parts, function(p) {
+    p <- as.integer(p)
+    if (length(p) == 2) p[2] - p[1] + 1 else 1
+  }, numeric(1)))
+}
+
+#' One cgroup v2 sample of this container's memory and CPU; NULL outside a container.
+container_usage_sample <- function(root = "/sys/fs/cgroup") {
+  current <- suppressWarnings(as.numeric(first_line(file.path(root, "memory.current"))))
+  if (length(current) == 0 || is.na(current)) return(NULL)
+  inactive <- keyed_value(file.path(root, "memory.stat"), "inactive_file")
+  used <- if (is.na(inactive)) current else max(0, current - inactive)
+  limit <- suppressWarnings(as.numeric(first_line(file.path(root, "memory.max"))))
+  limited <- length(limit) == 1 && !is.na(limit)
+  if (!limited) {
+    total <- first_line("/proc/meminfo")
+    limit <- if (is.null(total)) NA_real_
+             else suppressWarnings(as.numeric(sub("^MemTotal:\\s+(\\d+).*$", "\\1", total))) * 1024
+  }
+  quota <- strsplit(first_line(file.path(root, "cpu.max")) %||% "max", " ", fixed = TRUE)[[1]]
+  cores <- if (length(quota) == 2 && quota[1] != "max") as.numeric(quota[1]) / as.numeric(quota[2])
+           else cpuset_count(first_line(file.path(root, "cpuset.cpus.effective")))
+  if (is.na(cores) || cores <= 0) cores <- parallel::detectCores()
+  list(time = Sys.time(), used = used, limit = limit, limited = limited,
+       cpu_usec = keyed_value(file.path(root, "cpu.stat"), "usage_usec"), cores = cores)
+}
+
+format_gb <- function(bytes) {
+  gb <- bytes / 1024^3
+  if (is.na(gb)) "?" else if (gb < 10) sprintf("%.1f", gb) else sprintf("%.0f", gb)
+}
+
+
 my_theme <- create_theme(
   adminlte_color(
     light_blue = "#527085"
@@ -42,6 +97,7 @@ my_theme <- create_theme(
 ui <- dashboardPage(
   dashboardHeader(
     title = "Explore DE",
+    tags$li(class = "dropdown", uiOutput("container_usage")),
     tags$li(
       title = "Please include the URL to the dataset in your email.",
       a(
@@ -270,6 +326,34 @@ ui <- dashboardPage(
 )
 
 server <- function(input, output, session) {
+  # ── Container resource usage (header badge) ──
+  usage_prev <- NULL
+  output$container_usage <- renderUI({
+    invalidateLater(5000, session)
+    now <- container_usage_sample()
+    if (is.null(now)) return(NULL)
+    prev <- usage_prev
+    usage_prev <<- now
+    cpu <- NA_real_
+    if (!is.null(prev) && !is.na(now$cpu_usec) && !is.na(prev$cpu_usec)) {
+      wall <- as.numeric(difftime(now$time, prev$time, units = "secs")) * 1e6
+      if (wall > 0) cpu <- 100 * (now$cpu_usec - prev$cpu_usec) / (wall * now$cores)
+    }
+    mem_pct <- 100 * now$used / now$limit
+    high <- isTRUE(mem_pct >= 85) || isTRUE(cpu >= 90)
+    tags$span(
+      style = paste0("display:block; padding:15px 12px; line-height:20px; font-size:13px; color:#fff;",
+                     if (high) " background:#a93226; font-weight:bold;" else ""),
+      title = paste0(
+        "This app's container, all its open sessions together, refreshed every 5 s. ",
+        "Memory leaves out reclaimable file cache",
+        if (now$limited) "." else ", and the container has no memory limit, so it is shown against the host's RAM.",
+        " CPU is the share of the ", format(round(now$cores, 1)), " cores available to it."),
+      icon("memory"), sprintf(" RAM %s of %s GB", format_gb(now$used), format_gb(now$limit)),
+      HTML("&nbsp;&nbsp;"), icon("microchip"),
+      if (is.na(cpu)) " CPU \u2026" else sprintf(" CPU %.0f%%", max(0, cpu)))
+  })
+
   # ── Session save/restore primitives ────────────────────────────────────────
   # `restoring` is TRUE only while a saved-state bundle is being applied (set in
   # server-saveState.R). `restore_seed` holds the saved input snapshot so widgets
