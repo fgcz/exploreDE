@@ -740,48 +740,6 @@ observe({
     }
   )
 
-  # Download all currently selected inputs
-  output$dlInputsExcel_summary <- downloadHandler(
-    filename = function() {
-      generate_filename(
-        base_name = "Input_Options",
-        design_name = designReactive(),
-        extension = "xlsx"
-      )
-    },
-    content = function(file) {
-      x <- saved_inputs()
-      colnames(x) <- c("Input", "Value")
-      writexl::write_xlsx(x, path = file)
-    }
-  )
-  output$dlInputsQS_summary <- downloadHandler(
-    filename = function() {
-      generate_filename(
-        base_name = "Input_Options",
-        design_name = designReactive(),
-        extension = "qs"
-      )
-    },
-    content = function(file) {
-      qs2::qs_save(object = saved_inputs(), file = file, nthreads = 8)
-    }
-  )
-
-  # Download current reactive data
-  output$dlData_summary <- downloadHandler(
-    filename = function() {
-      generate_filename(
-        base_name = "exploreDE_Data",
-        design_name = designReactive(),
-        extension = "qs"
-      )
-    },
-    content = function(file) {
-      qs2::qs_save(object = inputDataReactive(), file = file, nthreads = 8)
-    }
-  )
-
   # Download methods section as Word document
   output$dlMethods_summary <- downloadHandler(
     filename = function() {

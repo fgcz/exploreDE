@@ -36,11 +36,6 @@ tabItem(
           solidHeader = TRUE,
           status = "primary",
           tabsetPanel(
-            # tabPanel(
-            #   title = "Settings",
-            #   br(),
-            #   downloadButton("dlInputsQS_summary", "Download settings (qs)")
-            # ),
             tabPanel(
               title = "Counts",
               br(),
@@ -50,15 +45,6 @@ tabItem(
               title = "Methods",
               br(),
               uiOutput("methodsDownloadUI")
-            ),
-            tabPanel(
-              title = "App Data",
-              br(),
-              h4("App data"),
-              helpText("Deprecated, please use the 'Save/Load' tab."),
-              downloadButton("dlData_summary", "Download app data"),
-              helpText("Download all the app settings as either an Excel sheet, or as a qs file of the settings as a list."),
-              downloadButton("dlInputsExcel_summary", "Download settings (Excel)"),
             )
           )
         ),
@@ -70,7 +56,7 @@ tabItem(
           status = "primary",
           tags$b("Yer jokin'! Not another one?!"),
           br(),
-          tags$p("ExploreDE 3.8.0! This app gets more updates than the UK does elections.", tags$sub(tags$em("[Spain enters the chat]"), style = "font-size: 40%;")),
+          tags$p("ExploreDE 3.8.0! This app gets more updates than the UK does prime ministers.", tags$sub(tags$em("[Spain enters the chat]"), style = "font-size: 60%;")),
           tags$ul(
             tags$li(
               tags$b("Finally!"), " You can relabel groups!",

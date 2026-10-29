@@ -25,14 +25,15 @@ current_fingerprint <- function() {
 }
 
 # ── SAVE ────────────────────────────────────────────────────────────────────
-output$download_state <- downloadHandler(
-  filename = function() {
-    dt <- tryCatch(inputDataReactive()$.eds$data_type(), error = function(e) "data")
-    sprintf("exploreDE_state_%s_%s.rds", dt, format(Sys.time(), "%Y%m%d_%H%M%S"))
-  },
-  content = function(file) {
-    eds <- tryCatch(inputDataReactive()$.eds, error = function(e) NULL)
+# One bundle, two formats: .json (format exploreDE-session/2, see
+# inst/spec/exploreDE-session-2.md) and the original .rds, kept alongside
+# while the JSON format is tested.
+state_filename <- function(ext) {
+  dt <- tryCatch(inputDataReactive()$.eds$data_type(), error = function(e) "data")
+  sprintf("exploreDE_state_%s_%s.%s", dt, format(Sys.time(), "%Y%m%d_%H%M%S"), ext)
+}
 
+build_state_bundle <- function() {
     # ORA / GSEA selected pathway rows. The enrichResult behind these tables is
     # only materialised after a selection fires the plot observer, so it isn't
     # available to map Descriptions on restore — but for the same dataset the
@@ -69,8 +70,25 @@ output$download_state <- downloadHandler(
         gseaType     = tryCatch(isolate(input$gseaType), error = function(e) NULL)
       )
     )
-    saveRDS(bundle, file)
-  }
+    # Multi DE: Which datasets are loaded (as links or contrasts, in order,
+    # under their display names) and the multi* widgets. Datasets are re-read
+    # on restore, never saved.
+    multi_results <- isolate(multiDeReactive$results)
+    if (length(multi_results)) {
+      bundle$multi <- list(
+        datasets = save_state_multi_datasets(multi_results),
+        inputs   = save_state_multi_inputs(reactiveValuesToList(input, all.names = TRUE)))
+    }
+    bundle
+}
+
+output$download_state_json <- downloadHandler(
+  filename = function() state_filename("json"),
+  content  = function(file) writeLines(save_state_to_json(build_state_bundle()), file, useBytes = TRUE)
+)
+output$download_state <- downloadHandler(
+  filename = function() state_filename("rds"),
+  content  = function(file) saveRDS(build_state_bundle(), file)
 )
 
 output$save_state_status <- renderText({
@@ -146,11 +164,49 @@ observeEvent(input$tabs, {
   }
 }, ignoreInit = TRUE)
 
+# Rebuild multiDeReactive$results from a saved session's dataset list. Link
+# datasets are re-read from gStore; contrast datasets are taken from the ones
+# the loaded dataset already put in Multi DE. Returns a note for the status
+# message ("" when the session has no Multi DE datasets).
+restore_multi_datasets <- function(datasets) {
+  if (!length(datasets)) return("")
+  current <- isolate(multiDeReactive$results)
+  # withProgress evaluates in the caller's frame, so results come back as its value.
+  res <- withProgress(message = "Restoring Multi DE datasets", value = 0, {
+    out <- list(); missing <- character()
+    for (d in datasets) {
+      incProgress(1 / length(datasets), detail = d[["name"]])
+      obj <- NULL
+      if (identical(d[["source"]], "link")) {
+        resolved <- multi_resolve_dataset(d[["link"]], MULTI_DATA_ROOTS)
+        if (!is.null(resolved) && multi_access_ok(resolved)) {
+          obj <- tryCatch(multi_load_de_result(resolved$path), error = function(e) NULL)
+          if (!is.null(obj)) obj$source <- list(kind = "link", link = resolved$link)
+        }
+      } else if (identical(d[["source"]], "contrast")) {
+        hit <- Filter(function(x) identical(x[["source"]][["contrast"]], d[["contrast"]]), current)
+        if (length(hit)) obj <- hit[[1]]
+      }
+      if (is.null(obj)) missing <- c(missing, d[["name"]]) else out[[d[["name"]]]] <- obj
+    }
+    list(out = out, missing = missing)
+  })
+  if (length(res$out)) {
+    multiDeReactive$results <- res$out
+    multiDeReactive$menuUpdateTrigger <- isolate(multiDeReactive$menuUpdateTrigger) + 1
+  }
+  note <- sprintf(" Multi DE: %d of %d datasets restored.", length(res$out), length(datasets))
+  if (length(res$missing))
+    note <- paste0(note, " Not found or not accessible: ", paste(res$missing, collapse = ", "), ".")
+  note
+}
+
 # ── RESTORE handler ─────────────────────────────────────────────────────────
 observeEvent(input$load_state_file, {
   f <- input$load_state_file
   req(f)
-  bundle <- tryCatch(readRDS(f$datapath),
+  is_json <- grepl("\\.json$", f$name, ignore.case = TRUE)
+  bundle <- tryCatch(if (is_json) save_state_from_json(f$datapath) else readRDS(f$datapath),
                      error = function(e) list(.error = conditionMessage(e)))
   if (!is.null(bundle$.error) || !is.list(bundle) ||
       !identical(bundle$meta$app, "exploreDE")) {
@@ -179,6 +235,13 @@ observeEvent(input$load_state_file, {
   }
 
   inputs_bundle <- if (is.list(bundle$inputs)) bundle$inputs else list()
+
+  # Multi DE: Re-read the saved datasets (links go through the same path and
+  # project checks as the Data Selection tab), in saved order and names, then
+  # queue the multi* widgets with the rest.
+  multi_note <- restore_multi_datasets(bundle[["multi"]][["datasets"]])
+  multi_inputs <- bundle[["multi"]][["inputs"]]
+  if (is.list(multi_inputs) && length(multi_inputs)) inputs_bundle <- c(inputs_bundle, multi_inputs)
 
   # Enter restore mode (drives the M2 guards; the burst observe keeps it live).
   restoring(TRUE)
@@ -230,8 +293,8 @@ observeEvent(input$load_state_file, {
 
   saved_at <- tryCatch(format(bundle$meta$saved_at, "%Y-%m-%d %H:%M:%S"),
                        error = function(e) "unknown")
-  msg <- sprintf("✓ Restored from '%s' (saved %s). %d settings queued.",
-                 f$name, saved_at, length(inputs_bundle))
+  msg <- sprintf("✓ Restored from '%s' (saved %s). %d settings queued.%s",
+                 f$name, saved_at, length(inputs_bundle), multi_note)
   output$load_state_status <- renderText(msg)
   showNotification(msg, type = "message", duration = 8)
 })

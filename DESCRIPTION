@@ -52,6 +52,7 @@ Imports:
   R6,
   anndataR,
   jsonlite,
+  curl,
   SummarizedExperiment,
   S4Vectors,
   BiocManager,

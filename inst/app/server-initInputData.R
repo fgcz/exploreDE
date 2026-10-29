@@ -266,6 +266,16 @@ set_eds_from_se <- function(se, seUnfiltered = NULL, dataDir = NULL) {
 # Resolve a ?data= value into list(dataDir, dataType, projectFromUrl); NULL
 # (after a modal) when it can't be resolved.
 resolve_from_url <- function(dataUrl) {
+  # The LDAP check below uses the project named in the link, so a ".." could
+  # name an allowed project and load another one. Real links never contain it.
+  if (any(strsplit(dataUrl, "/", fixed = TRUE)[[1]] == "..")) {
+    showModal(modalDialog(
+      title = "The file does not exist",
+      "This link is not a valid dataset path. If the issue persists, email peter.leary@uzh.ch",
+      easyClose = TRUE, footer = NULL
+    ))
+    return(NULL)
+  }
   proj <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
   if (grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) {
     return(list(dataDir = paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl),
@@ -303,6 +313,21 @@ record_project <- function(projectFromUrl) {
     projectPath <- file.path("/srv/GT/analysis/course_sushi/public/gstore/projects", projectFromUrl)
     if (dir.exists(projectPath)) multiProjectInfo$projectDir <- projectPath
   }
+}
+
+# The user's B-Fabric roles (R_2 = employee, R_3 = user) and projects, from
+# LDAP. Looked up once per session and shared by the ?data= check and every
+# multi-DE dataset (ldap_allows_project() in R/utils_multi_de.R).
+ldap_lookup <- function(user) {
+  query <- paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' ",
+                  shQuote(paste0("(cn=", user, ")")), " memberof")
+  list(roles    = system(paste0(query, " | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"), intern = TRUE),
+       projects = system(paste0(query, " | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"), intern = TRUE))
+}
+.ldap_cache <- NULL
+session_ldap <- function() {
+  if (is.null(.ldap_cache)) .ldap_cache <<- ldap_lookup(username)
+  .ldap_cache
 }
 
 # Load a SUSHI SE (proteomics or genomics) from a resolved dataDir.
@@ -347,8 +372,9 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
     allowed <- TRUE
     ldap_role <- "course"
   } else {
-    roles <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"), intern = T)
-    allowedProjects <- system(paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' '(cn=", username, ")' memberof | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"), intern = T)
+    lk <- session_ldap()
+    roles <- lk$roles
+    allowedProjects <- lk$projects
 
     if ("R_2" %in% roles) {
       ldap_role <- "employee"
@@ -418,12 +444,36 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
 
 # Resolve + load a ?data= URL, then publish the eds.
 load_from_url <- function(dataUrl) {
+  # A full link (?data=https://...) to an .h5ad on an allowed site.
+  if (grepl("^[A-Za-z][A-Za-z0-9+.-]*://", dataUrl)) return(load_h5ad_from_link(dataUrl))
   resolved <- resolve_from_url(dataUrl)
   if (is.null(resolved)) return(invisible())
   record_project(resolved$projectFromUrl)
   loaded <- load_sushi_se(resolved$dataDir, resolved$dataType, resolved$projectFromUrl)
   if (is.null(loaded)) return(invisible())
   set_eds_from_se(loaded$se, loaded$seUnfiltered, loaded$dataDir)
+}
+
+# ?data=https://... : Download the .h5ad (allowed sites only, no redirects,
+# 1 GB limit; R/utils_url_load.R), then the same checks as an upload. No LDAP
+# check: Whoever has the link can already download the file.
+load_h5ad_from_link <- function(url) {
+  record_project(NULL)
+  fail <- function(title, msg) {
+    showModal(modalDialog(title = title, msg, easyClose = TRUE))
+    invisible()
+  }
+  ok <- url_load_allowed(url)
+  if (!isTRUE(ok)) return(fail("This link can't be opened", paste0("exploreDE can't load it: ", attr(ok, "reason"), ".")))
+  path <- tempfile(fileext = ".h5ad")
+  on.exit(unlink(path), add = TRUE)
+  fetched <- tryCatch(url_load_fetch(url, path), error = function(e) e)
+  if (inherits(fetched, "error"))
+    return(fail("Could not download this file", paste0(conditionMessage(fetched),
+      ". Links to finished jobs expire; check that the job still exists.")))
+  res <- load_h5ad_upload(path)
+  if (!isTRUE(res$ok)) fail("Could not load this file", res$msg)
+  invisible()
 }
 
 # The demo dataset (no ?data=, triggered by the landing-screen button): the

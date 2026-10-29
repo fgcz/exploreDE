@@ -139,3 +139,129 @@ test_that("restore_default_value valid= intersects, falling back when all stale"
       c("n1", "n2"))
   })
 })
+
+# ---- JSON session files (exploreDE-session/2) -------------------------------
+
+# A bundle shaped like the app's build_state_bundle(), with the value types a
+# real session holds (548 inputs from a demo session were character, integer,
+# numeric, logical, NULL, empty, and two named lists for bucket_list groups).
+state_bundle <- function(contrasts = "diff_vs_undiff") {
+  list(
+    meta = list(app = "exploreDE", version = 1L,
+                saved_at = as.POSIXct("2026-10-29 11:51:23"), dataUrl = "",
+                fingerprint = list(dataDir = "/data/genomics", dataType = "RNASeq", omics = "genomics",
+                                   nSamples = 9L, nFeatures = 21057L, factors = "Condition",
+                                   contrasts = contrasts)),
+    inputs = list(heatmapColourRed = "#8B1A1A", featureCalcLFC = 0.5, boxplotNCol = 3L,
+                  pcaEllipses = TRUE, emptySelect = character(0), sidebarItemExpanded = NULL,
+                  multiPick = c("a", "b"),
+                  bucket_list_group = list(boxKeepBucket = c("diff", "undiff"), boxExcludeBucket = character(0)),
+                  someButton = structure(2L, class = c("shinyActionButtonValue", "integer"))),
+    rv = list(featureBucket = c("GAPDH", "ACTB"), goHeatmap = list(genes = NULL, name = NULL, term = NULL),
+              oraSelected = c(1L, 3L), gseaSelected = NULL, gseaType = "BP"),
+    multi = list(
+      datasets = list(list(name = "KO over WT", source = "link", link = "p1000/DESeq2_x/KO--over--WT"),
+                      list(name = "B_vs_A", source = "contrast", contrast = "B_vs_A")),
+      inputs = list(multiBoxplotNCol = 2L, multiGroupColourKO_over_WT = "#1B9E77")))
+}
+
+write_json_session <- function(bundle, env = parent.frame()) {
+  f <- withr::local_tempfile(fileext = ".json", .local_envir = env)
+  writeLines(save_state_to_json(bundle), f)
+  f
+}
+
+test_that("a session round-trips through JSON with the same values", {
+  b <- state_bundle()
+  r <- save_state_from_json(write_json_session(b))
+  expect_identical(r$meta$format, "exploreDE-session/2")
+  for (k in setdiff(names(b$inputs), c("someButton", "sidebarItemExpanded")))
+    expect_equal(r$inputs[[k]], b$inputs[[k]], info = k)
+  expect_null(r$inputs$sidebarItemExpanded)
+  expect_identical(r$rv$featureBucket, b$rv$featureBucket)
+  expect_identical(r$rv$oraSelected, b$rv$oraSelected)
+  expect_identical(r$rv$gseaType, "BP")
+  expect_equal(as.numeric(r$meta$saved_at), as.numeric(b$meta$saved_at))
+})
+
+test_that("the fingerprint still matches after JSON, also with no contrasts", {
+  for (con in list("diff_vs_undiff", character())) {
+    b <- state_bundle(contrasts = con)
+    r <- save_state_from_json(write_json_session(b))
+    expect_true(save_state_fp_match(r$meta$fingerprint, b$meta$fingerprint))
+  }
+})
+
+test_that("action-button values are not written", {
+  json <- save_state_to_json(state_bundle())
+  expect_false(grepl("someButton", json, fixed = TRUE))
+  expect_true(grepl('"format": ["exploreDE-session/2"]', json, fixed = TRUE))
+})
+
+test_that("the Multi DE block round-trips: datasets in order, and their widgets", {
+  r <- save_state_from_json(write_json_session(state_bundle()))
+  expect_equal(vapply(r$multi$datasets, `[[`, "", "name"), c("KO over WT", "B_vs_A"))
+  expect_identical(r$multi$datasets[[1]], list(name = "KO over WT", source = "link", link = "p1000/DESeq2_x/KO--over--WT"))
+  expect_identical(r$multi$datasets[[2]], list(name = "B_vs_A", source = "contrast", contrast = "B_vs_A"))
+  expect_identical(r$multi$inputs$multiGroupColourKO_over_WT, "#1B9E77")
+})
+
+test_that("Multi DE entries with an unknown source or no reference are dropped", {
+  b <- state_bundle()
+  b$multi$datasets <- c(b$multi$datasets,
+                        list(list(name = "x", source = "file", link = "/etc/passwd"),
+                             list(name = "y", source = "link")))
+  r <- save_state_from_json(write_json_session(b))
+  expect_equal(length(r$multi$datasets), 2L)
+})
+
+test_that("the reader refuses what isn't a session", {
+  f <- withr::local_tempfile(fileext = ".json")
+  bad <- list(
+    not_json   = "{not json",
+    array      = "[1, 2, 3]",
+    other_app  = '{"meta": {"app": ["other"], "format": ["exploreDE-session/2"]}}',
+    old_format = '{"meta": {"app": ["exploreDE"], "format": ["exploreDE-session/1"]}}',
+    no_meta    = '{"inputs": {}}',
+    too_deep   = paste0('{"meta": {"app": ["exploreDE"], "format": ["exploreDE-session/2"]}, "inputs": ',
+                        strrep('{"a": ', 8), "1", strrep("}", 8), "}"))
+  for (nm in names(bad)) {
+    writeLines(bad[[nm]], f)
+    expect_error(save_state_from_json(f), info = nm)
+  }
+})
+
+test_that("the reader refuses files over the size limit", {
+  f <- write_json_session(state_bundle())
+  expect_error(save_state_from_json(f, max_bytes = 100), "larger than")
+})
+
+test_that("code-like content stays text, and R objects cannot be written", {
+  b <- state_bundle()
+  b$inputs$heatmapColourRed <- 'system("id")'
+  r <- save_state_from_json(write_json_session(b))
+  expect_identical(r$inputs$heatmapColourRed, 'system("id")')
+  e <- new.env()
+  expect_error(save_state_to_json(list(meta = list(app = "exploreDE"), inputs = list(x = e))))
+})
+
+# ---- Multi DE helpers ------------------------------------------------------
+
+test_that("save_state_multi_inputs keeps multi widgets and drops the rest", {
+  x <- list(multiBoxplotNCol = 2L, multiGroupColourA = "#000000", multiContrastLink1 = "p1/x",
+            multiImportFile = list(), multiDatasetsCheckbox = "/srv/x", multiContrastOrder = c("a", "b"),
+            multiDlColourTemplate = 1L, multiSelectedDatasetsTable_rows_selected = 1L,
+            multiApplyOrder = structure(1L, class = c("shinyActionButtonValue", "integer")),
+            boxplotFactor1 = "Condition")
+  expect_setequal(names(save_state_multi_inputs(x)),
+                  c("multiBoxplotNCol", "multiGroupColourA", "multiContrastLink1"))
+})
+
+test_that("save_state_multi_datasets lists sources in display order", {
+  res <- list(`My KO` = list(source = list(kind = "link", link = "p1/D/KO")),
+              B_vs_A = list(source = list(kind = "contrast", contrast = "B_vs_A")),
+              nosource = list(seqAnno = data.frame()))
+  out <- save_state_multi_datasets(res)
+  expect_equal(vapply(out, `[[`, "", "name"), c("My KO", "B_vs_A"))
+  expect_equal(out[[1]]$link, "p1/D/KO")
+})

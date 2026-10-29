@@ -1,6 +1,17 @@
 # Server logic for Multi DE Data Selection
 # Note: multiProjectInfo is defined in app.R
 
+# Where multi-DE datasets may come from (as for ?data=). Every link, typed or
+# ticked, goes through multi_resolve_dataset() (R/utils_multi_de.R) and then
+# the same project check as ?data=: Course data needs none, gStore projects
+# need the user's LDAP role or project membership.
+MULTI_COURSE_ROOT <- "/srv/GT/analysis/course_sushi/public/gstore/projects"
+MULTI_DATA_ROOTS  <- c("/srv/gstore/projects", MULTI_COURSE_ROOT)
+multi_access_ok <- function(resolved) {
+    if (identical(resolved$root, MULTI_COURSE_ROOT)) return(TRUE)
+    ldap_allows_project(session_ldap(), resolved$project)
+}
+
 # Conditional UI - Only show data selection box for genomics (not proteomics)
 output$multiDataSelectionBoxUI <- renderUI({
     # Check if we have proteomics data loaded
@@ -178,7 +189,14 @@ observeEvent(
 
 # 1. Browse Projects Logic - Simplified to use current project only
 observeEvent(input$multiRefreshProjects, {
-    req(multiProjectInfo$projectDir)
+    # The demo, uploads and local files belong to no project, so there is
+    # nothing to browse: Say so rather than doing nothing.
+    if (is.null(multiProjectInfo$projectDir)) {
+        showNotification(paste("There is no project to browse: This dataset wasn't opened from a SUSHI link.",
+                               "Use the Manual Import tab to load result links instead."),
+                         type = "warning", duration = 10)
+        return(NULL)
+    }
 
     projectDir <- multiProjectInfo$projectDir
 
@@ -302,7 +320,9 @@ observeEvent(input$multiLoadSelected, {
     )
     waiter$show()
 
-    selectedPaths <- input$multiDatasetsCheckbox
+    # Only paths the project browser offered: Shiny does not check checkbox
+    # values against the choices, so a modified client could send any path.
+    selectedPaths <- intersect(input$multiDatasetsCheckbox, multiDeReactive$available$Path)
 
     tryCatch({
         for (i in seq_along(selectedPaths)) {
@@ -319,76 +339,22 @@ observeEvent(input$multiLoadSelected, {
             # This ensures different methods of same contrast get unique names
             name <- basename(dirname(fullPath))
 
-            # Load the dataset
-            if (file.exists(file.path(fullPath, "deResult.rds"))) {
-                se <- readRDS(file.path(fullPath, "deResult.rds"))
-            } else if (file.exists(file.path(fullPath, "deResult.qs2"))) {
-                se <- qs2::qs_read(file.path(fullPath, "deResult.qs2"), nthreads = 4)
-            } else {
+            resolved <- multi_resolve_dataset(fullPath, MULTI_DATA_ROOTS)
+            if (is.null(resolved)) {
                 showNotification(paste("No deResult found in", fullPath), type = "error")
                 next
             }
-                formatted <- convert_genomics_se(se, fullPath)
-
-                # Compatibility Fix: Ensure log2Ratio exists
-                if (!"log2Ratio" %in% colnames(formatted$seqAnno)) {
-                    lfcCol <- grep("^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc)$",
-                                   colnames(formatted$seqAnno), value = TRUE, ignore.case = TRUE)
-                    if (length(lfcCol) > 0) {
-                        formatted$seqAnno$log2Ratio <- formatted$seqAnno[[lfcCol[1]]]
-                    }
-                }
-
-                # Extract ORA and GSEA data from metadata (like multiDEG does)
-                if (!is.null(formatted$param$runGO) && formatted$param$runGO) {
-                    # ORA data
-                    if (!is.null(metadata(se)$enrichResult)) {
-                        ora <- metadata(se)$enrichResult
-
-                        # Add Label column to each ORA result
-                        for (ont in names(ora)) {
-                            for (sig in names(ora[[ont]])) {
-                                if (nrow(ora[[ont]][[sig]]) >= 2) {
-                                    er <- ora[[ont]][[sig]]
-                                    er@result$Label <- ""
-                                    for (j in seq_along(er@result$Description)) {
-                                        desc <- er@result$Description[j]
-                                        if (nchar(desc) > 35) {
-                                            desc <- substr(desc, 1, 45)
-                                        }
-                                        er@result$Label[j] <- paste0(er@result$ID[j], "\n", desc)
-                                    }
-                                    ora[[ont]][[sig]] <- er
-                                }
-                            }
-                        }
-                        formatted$ora <- ora
-                    }
-
-                    # GSEA data
-                    if (!is.null(metadata(se)$enrichResultGSEA)) {
-                        gsea <- metadata(se)$enrichResultGSEA
-
-                        # Add Label column to each GSEA result
-                        for (ont in names(gsea)) {
-                            if (nrow(gsea[[ont]]) >= 2) {
-                                er <- gsea[[ont]]
-                                er@result$Label <- ""
-                                for (j in seq_along(er@result$Description)) {
-                                    desc <- er@result$Description[j]
-                                    if (nchar(desc) > 35) {
-                                        desc <- substr(desc, 1, 45)
-                                    }
-                                    er@result$Label[j] <- paste0(er@result$ID[j], "\n", desc)
-                                }
-                                gsea[[ont]] <- er
-                            }
-                        }
-                        formatted$gsea <- gsea
-                    }
-                }
-
-                multiDeReactive$results[[name]] <- formatted
+            if (!multi_access_ok(resolved)) {
+                showNotification(paste("You do not have access to the project of", name), type = "error")
+                next
+            }
+            formatted <- multi_load_de_result(resolved$path)
+            if (is.null(formatted)) {
+                showNotification(paste("No deResult found in", fullPath), type = "error")
+                next
+            }
+            formatted$source <- list(kind = "link", link = resolved$link)  # for saved sessions
+            multiDeReactive$results[[name]] <- formatted
         }
 
         # Hide waiter on success
@@ -475,100 +441,24 @@ observeEvent(input$multiImportButton, {
             link <- inputTable[i, "Link"]
             name <- inputTable[i, "Name"]
 
-            # Clean link logic (from multiDEG)
-            if (grepl(" ", link)) {
-                link <- gsub(" ", "", link)
-            }
-            if (isTRUE(as.logical(grep("^http", link)))) {
-                link <- gsub(".*\\?data\\=", "", link)
-            }
-
-            # Construct path
-            # We need to handle the path construction carefully.
-            # multiDEG had logic to check multiple roots.
-            urlDataRoot <- c("/srv/gstore/projects", "/srv/GT/analysis/course_sushi/public/gstore/projects")
-
-            # If link is already a full path?
-            # Usually it's p1234/o5678...
-
-            found <- FALSE
-            for (root in urlDataRoot) {
-                fullPath <- file.path(root, link)
-                # Check for deResult.rds or deResult.qs2
-                if (file.exists(file.path(fullPath, "deResult.rds"))) {
-                    se <- readRDS(file.path(fullPath, "deResult.rds"))
-                } else if (file.exists(file.path(fullPath, "deResult.qs2"))) {
-                    se <- qs2::qs_read(file.path(fullPath, "deResult.qs2"), nthreads = 4)
-                } else {
-                    next
-                }
-                    formatted <- convert_genomics_se(se, fullPath)
-
-                    # Compatibility Fix: Ensure log2Ratio exists (for multiDEG tabs)
-                    if (!"log2Ratio" %in% colnames(formatted$seqAnno)) {
-                        lfcCol <- grep("^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc)$", colnames(formatted$seqAnno), value = TRUE, ignore.case = TRUE)
-                        if (length(lfcCol) > 0) {
-                            formatted$seqAnno$log2Ratio <- formatted$seqAnno[[lfcCol[1]]]
-                        }
-                    }
-
-                    # Extract ORA and GSEA data from metadata (like multiDEG does)
-                    if (!is.null(formatted$param$runGO) && formatted$param$runGO) {
-                        # ORA data
-                        if (!is.null(metadata(se)$enrichResult)) {
-                            ora <- metadata(se)$enrichResult
-
-                            # Add Label column to each ORA result (copied from multiDEG)
-                            for (ont in names(ora)) {
-                                for (sig in names(ora[[ont]])) {
-                                    if (nrow(ora[[ont]][[sig]]) >= 2) {
-                                        er <- ora[[ont]][[sig]]
-                                        er@result$Label <- ""
-                                        for (j in seq_along(er@result$Description)) {
-                                            desc <- er@result$Description[j]
-                                            if (nchar(desc) > 35) {
-                                                desc <- substr(desc, 1, 45)
-                                            }
-                                            er@result$Label[j] <- paste0(er@result$ID[j], "\n", desc)
-                                        }
-                                        ora[[ont]][[sig]] <- er
-                                    }
-                                }
-                            }
-                            formatted$ora <- ora
-                        }
-
-                        # GSEA data
-                        if (!is.null(metadata(se)$enrichResultGSEA)) {
-                            gsea <- metadata(se)$enrichResultGSEA
-
-                            # Add Label column to each GSEA result (copied from multiDEG)
-                            for (ont in names(gsea)) {
-                                if (nrow(gsea[[ont]]) >= 2) {
-                                    er <- gsea[[ont]]
-                                    er@result$Label <- ""
-                                    for (j in seq_along(er@result$Description)) {
-                                        desc <- er@result$Description[j]
-                                        if (nchar(desc) > 35) {
-                                            desc <- substr(desc, 1, 45)
-                                        }
-                                        er@result$Label[j] <- paste0(er@result$ID[j], "\n", desc)
-                                    }
-                                    gsea[[ont]] <- er
-                                }
-                            }
-                            formatted$gsea <- gsea
-                        }
-                    }
-
-                    multiDeReactive$results[[name]] <- formatted
-                    found <- TRUE
-                    break
-            }
-
-            if (!found) {
+            # Link -> result directory under a data root (strips spaces and an
+            # exploreDE URL down to its ?data= path; refuses "..").
+            resolved <- multi_resolve_dataset(link, MULTI_DATA_ROOTS)
+            if (is.null(resolved)) {
                 showNotification(paste("Could not find data for:", name), type = "warning")
+                next
             }
+            if (!multi_access_ok(resolved)) {
+                showNotification(paste("You do not have access to the project of", name), type = "error")
+                next
+            }
+            formatted <- multi_load_de_result(resolved$path)
+            if (is.null(formatted)) {
+                showNotification(paste("Could not find data for:", name), type = "warning")
+                next
+            }
+            formatted$source <- list(kind = "link", link = resolved$link)  # for saved sessions
+            multiDeReactive$results[[name]] <- formatted
         }
     })
 
@@ -878,6 +768,7 @@ observeEvent(inputDataReactive(), {
                 groupingName = groupingName
             )
 
+            pseudoObj$source <- list(kind = "contrast", contrast = con)  # for saved sessions
             multiDeReactive$results[[con]] <- pseudoObj
         }
 
@@ -932,7 +823,10 @@ observeEvent(inputDataReactive(), {
                 NULL
             }
         )
-        if (!is.null(obj)) multiDeReactive$results[[con]] <- obj
+        if (!is.null(obj)) {
+            obj$source <- list(kind = "contrast", contrast = con)  # for saved sessions
+            multiDeReactive$results[[con]] <- obj
+        }
     }
 
     if (length(multiDeReactive$results) > 0) {

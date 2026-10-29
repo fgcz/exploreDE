@@ -47,6 +47,10 @@ it can't place one.
   `system.file("skills/exploreDE-byod/SKILL.md", package = "exploreDE")`.
   It's written so an assistant can write the import script for your data.
 - **Argument reference:** `?build_explore_h5ad`.
+- **Writing files from another tool (Python, an exporter app):**
+  `system.file("spec/exploreDE-h5ad-1.0.md", package = "exploreDE")` is the
+  written `.h5ad` format spec, including the proteomics profile and the
+  prolfquapp layouts exploreDE accepts.
 
 ## Citing exploreDE
 

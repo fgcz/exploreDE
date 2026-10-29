@@ -104,7 +104,9 @@ lapply(fb_tabs, function(tab) {
             input_id = paste0("fb_keep_", tab)
           )
         )
-        hidden_bucket <- tagAppendAttributes(hidden_bucket, style = "display:none;")
+        # bucket_list() returns a tagList, which tagAppendAttributes() would
+        # print as text; hide it with a wrapper instead.
+        hidden_bucket <- div(style = "display:none;", hidden_bucket)
         tagList(
           div(
             class = "text-muted text-center", style = "padding: 20px;",
