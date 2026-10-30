@@ -8,3 +8,6 @@
 ^Dev_R_Code$
 ^\.gitignore$
 ^\.Rhistory$
+^\.github$
+^\.lintr$
+^air\.toml$
