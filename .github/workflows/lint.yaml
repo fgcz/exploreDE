@@ -21,9 +21,8 @@ jobs:
         with:
           version: "0.11.0"
 
-      # Formatting and lint are report-only until a one-time air reformat and lint cleanup.
+      # Formatting is blocking since the air reformat (6e98403); lint stays report-only until a lint cleanup.
       - name: Check formatting
-        continue-on-error: true
         run: air format . --check
 
       - uses: r-lib/actions/setup-r@v2
