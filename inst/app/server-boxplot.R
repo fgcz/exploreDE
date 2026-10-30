@@ -7,8 +7,10 @@ dataSummary <- function(data, varname, groupnames) {
     )
   }
   data_sum <- ddply(
-    data, groupnames,
-    .fun = summary_func, varname
+    data,
+    groupnames,
+    .fun = summary_func,
+    varname
   )
   data_sum <- rename(data_sum, c("mean" = varname))
   return(data_sum)
@@ -20,8 +22,10 @@ req(eds)
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   if (eds$data_type() == "RNASeq") {
-    if (eds$has_de()) return(eds$contrast_label(selectedContrast()))
-    return("")   # counts-only upload: no contrast to label
+    if (eds$has_de()) {
+      return(eds$contrast_label(selectedContrast()))
+    }
+    return("") # counts-only upload: no contrast to label
   } else if (eds$omics_class() == "proteomics") {
     if (isTruthy(selectedContrast())) {
       return(selectedContrast())
@@ -40,7 +44,7 @@ output$boxplotStatic <- renderPlot({
   figuresDataReactive$boxplot
 })
 
-.assay_keys    <- eds$assay_names()
+.assay_keys <- eds$assay_names()
 .count_choices <- setNames(.assay_keys, vapply(.assay_keys, eds$assay_label, character(1)))
 .default_count <- if (eds$omics_class() == "proteomics") {
   if ("intensities" %in% .assay_keys) "intensities" else .assay_keys[1]
@@ -63,24 +67,30 @@ updateSelectizeInput(
 )
 
 # Update feature choices when collapse guides toggle changes
-observeEvent(input$boxplotCollapseGuides, {
-  if (isTRUE(restoring())) return()  # save-state restore guard
-  if (eds$data_type() == "CrisprCountQC") {
-    if (isTRUE(input$boxplotCollapseGuides)) {
-      gene_choices <- sort(unique(eds$sgrna_to_gene()))
-    } else {
-      gene_choices <- eds$feature_ids()
+observeEvent(
+  input$boxplotCollapseGuides,
+  {
+    if (isTRUE(restoring())) {
+      return()
+    } # save-state restore guard
+    if (eds$data_type() == "CrisprCountQC") {
+      if (isTRUE(input$boxplotCollapseGuides)) {
+        gene_choices <- sort(unique(eds$sgrna_to_gene()))
+      } else {
+        gene_choices <- eds$feature_ids()
+      }
+      # Clear everything — feature level has changed
+      featureBucket$features <- character(0)
+      featureBucket$version <- isolate(featureBucket$version) + 1L
+      updateSelectizeInput(session, "fb_select_boxplot", choices = gene_choices, selected = NULL, server = TRUE)
+      updateTextAreaInput(session, "fb_text_boxplot", value = "")
+      # Clear plots
+      figuresDataReactive$boxplot <- NULL
+      figuresDataReactive$barplot <- NULL
     }
-    # Clear everything — feature level has changed
-    featureBucket$features <- character(0)
-    featureBucket$version <- isolate(featureBucket$version) + 1L
-    updateSelectizeInput(session, "fb_select_boxplot", choices = gene_choices, selected = NULL, server = TRUE)
-    updateTextAreaInput(session, "fb_text_boxplot", value = "")
-    # Clear plots
-    figuresDataReactive$boxplot <- NULL
-    figuresDataReactive$barplot <- NULL
-  }
-}, ignoreInit = TRUE)
+  },
+  ignoreInit = TRUE
+)
 
 updateSelectInput(
   session = session,
@@ -101,17 +111,21 @@ updateSelectInput(
 # batch defaults to None and any factor can be chosen as design (free
 # exploration for CountQC/CrisprCountQC, groupingName pre-selected for DE).
 observe({
-  .dt        <- eds$data_type()
-  .factors   <- eds$factor_names()
-  .grouping  <- eds$primary_grouping()
+  .dt <- eds$data_type()
+  .factors <- eds$factor_names()
+  .grouping <- eds$primary_grouping()
   .secondary <- eds$secondary_grouping()
   .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
   # Proteomics grouping: SUSHI data carries the prolfqua "G_" column; an uploaded
   # h5ad won't, so fall back to the dataset's primary grouping factor.
   .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
-  .deDesignCol <- if (.dt == "RNASeq") .grouping
-                  else if (eds$omics_class() == "proteomics") .protGroup
-                  else NA_character_
+  .deDesignCol <- if (.dt == "RNASeq") {
+    .grouping
+  } else if (eds$omics_class() == "proteomics") {
+    .protGroup
+  } else {
+    NA_character_
+  }
 
   batchChoices <- c("None", .factors)
   batchDefault <- if (.twoFactor) .secondary else "None"
@@ -127,9 +141,13 @@ observe({
   } else {
     c("None", .factors)
   }
-  designDefault <- if (.dt == "RNASeq") .grouping
-                   else if (eds$omics_class() == "proteomics") .protGroup
-                   else "None"
+  designDefault <- if (.dt == "RNASeq") {
+    .grouping
+  } else if (eds$omics_class() == "proteomics") {
+    .protGroup
+  } else {
+    "None"
+  }
   updateSelectInput(
     session = session,
     inputId = "boxplotDesign",
@@ -176,9 +194,14 @@ observeEvent(
 if (eds$data_type() == "RNASeq" && eds$has_de()) {
   seqAnnoReactive <- reactiveValues("sa" = eds$de(eds$primary_contrast()), "saF" = NULL)
   # Follow the app-wide contrast (constant for single-contrast data).
-  observeEvent(selectedContrast(), {
-    seqAnnoReactive$sa <- eds$de(selectedContrast())
-  }, ignoreInit = TRUE, ignoreNULL = TRUE)
+  observeEvent(
+    selectedContrast(),
+    {
+      seqAnnoReactive$sa <- eds$de(selectedContrast())
+    },
+    ignoreInit = TRUE,
+    ignoreNULL = TRUE
+  )
   output$boxplotDesign <- renderText({
     eds$contrast_label(selectedContrast())
   })
@@ -193,9 +216,12 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
   .first_sa <- if (!is.null(.first_contrast)) {
     eds$de(.first_contrast) %>%
       dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
-  } else NULL
+  } else {
+    NULL
+  }
   seqAnnoReactive <- reactiveValues("sa" = .first_sa, "saF" = .first_sa)
-  observeEvent(selectedContrast(),
+  observeEvent(
+    selectedContrast(),
     {
       seqAnnoReactive$sa <- eds$de(selectedContrast()) %>%
         dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
@@ -232,12 +258,15 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
 # Generate a reactive list of the count data to be plotted ----
 # We do this so we can make aesthetic changes to the plot without having to recalculate the required boxplots and results
 
-debouncedFeatures <- reactive({ input$fb_keep_boxplot }) %>% debounce(200)
+debouncedFeatures <- reactive({
+  input$fb_keep_boxplot
+}) %>%
+  debounce(200)
 
 boxplotCountsReactive <- eventReactive(
   {
     debouncedFeatures()
-    bananaMode()  # rebuild significance markers when banana mode toggles
+    bananaMode() # rebuild significance markers when banana mode toggles
     input$boxplotFactor1
     input$boxKeepBucket
     input$boxplotFactor2
@@ -289,8 +318,7 @@ boxplotCountsReactive <- eventReactive(
 
     # Apply the following in this specific order as required: Log2, batch correct, Z-scale
     # If the user wants to log2, then do that
-    is_logged <- input$boxplotCounts %in% c("normalised_log2", "vst") ||
-      eds$omics_class() == "proteomics"
+    is_logged <- input$boxplotCounts %in% c("normalised_log2", "vst") || eds$omics_class() == "proteomics"
     if (input$boxplotCountsLog) {
       if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         if (input$boxplotCounts %in% c("tpm", "fpkm", "normalised", "counts")) {
@@ -303,14 +331,17 @@ boxplotCountsReactive <- eventReactive(
     if (input$boxplotBatch != "None") {
       if (is_logged) {
         countsBoxplot <- apply_batch_correction(
-          counts    = countsBoxplot,
-          dataset   = datasetBoxplot,
-          batchCol  = input$boxplotBatch,
+          counts = countsBoxplot,
+          dataset = datasetBoxplot,
+          batchCol = input$boxplotBatch,
           designCol = input$boxplotDesign
         )
       } else {
-        showNotification("Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
-          type = "warning", duration = 8)
+        showNotification(
+          "Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
+          type = "warning",
+          duration = 8
+        )
       }
     }
     # If the user wants to plot gene-wise Z-scores, then do that
@@ -336,7 +367,12 @@ boxplotCountsReactive <- eventReactive(
     countsBoxplot[["Name"]] <- factor(countsBoxplot[["Name"]], levels = countsBoxplot[["Name"]])
 
     # melt the table
-    countsBoxplotMelt <- reshape2:::melt.data.frame(data = countsBoxplot, id.vars = c("Name", eds$factor_names()), value.name = "Counts", variable.name = "Feature")
+    countsBoxplotMelt <- reshape2:::melt.data.frame(
+      data = countsBoxplot,
+      id.vars = c("Name", eds$factor_names()),
+      value.name = "Counts",
+      variable.name = "Feature"
+    )
     countsBoxplotMelt$Feature <- as.factor(x = countsBoxplotMelt$Feature)
 
     # Force the order of the genes as factor so the order the genes are
@@ -354,7 +390,10 @@ boxplotCountsReactive <- eventReactive(
     if (!is.null(seqAnnoReactive$sa)) {
       countsBoxplotMelt$fdr <- seqAnnoReactive$sa$fdr[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
       countsBoxplotMelt$fdr[is.na(countsBoxplotMelt$fdr)] <- 1
-      countsBoxplotMelt$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(countsBoxplotMelt$Feature, seqAnnoReactive$sa$feature_id)]
+      countsBoxplotMelt$log2Ratio <- seqAnnoReactive$sa$log2Ratio[match(
+        countsBoxplotMelt$Feature,
+        seqAnnoReactive$sa$feature_id
+      )]
       countsBoxplotMelt$log2Ratio[is.na(countsBoxplotMelt$log2Ratio)] <- 0
       countsBoxplotMelt <- add_significance(
         countsBoxplotMelt,
@@ -370,7 +409,8 @@ boxplotCountsReactive <- eventReactive(
           max(countsBoxplotMelt$Counts[countsBoxplotMelt$Feature == g], na.rm = T),
           nrow(countsBoxplotMelt[countsBoxplotMelt$Feature == g, ])
         )
-      }) %>% unlist()
+      }) %>%
+        unlist()
     }
 
     # Get a data frame for the barplots
@@ -399,7 +439,7 @@ boxplotCountsReactive <- eventReactive(
 observeEvent(
   {
     boxplotCountsReactive()
-    bananaMode()  # redraw with bananas / asterisks when banana mode toggles
+    bananaMode() # redraw with bananas / asterisks when banana mode toggles
     input$boxplotYLimLFC
     input$textSizeBoxplot
     input$boxplotNCol
@@ -459,9 +499,12 @@ observeEvent(
     genesToPlot <- levels(as.factor(countsBoxplotMelt$variable))
 
     # Get the colours for the condition levels
-    coloursBoxplot <- setNames(lapply(input$boxKeepBucket, function(k) {
-      paste0(col2hex(input[[paste0("GroupColour", input$boxplotFactor1, k)]]), "FF")
-    }), input$boxKeepBucket)
+    coloursBoxplot <- setNames(
+      lapply(input$boxKeepBucket, function(k) {
+        paste0(col2hex(input[[paste0("GroupColour", input$boxplotFactor1, k)]]), "FF")
+      }),
+      input$boxKeepBucket
+    )
 
     # Display labels from the Colours tab (x-axis/fill factor, and shape factor).
     # If either is rich, both are, as they share the markdown legend text.
@@ -472,8 +515,16 @@ observeEvent(
     boxShapeLabels <- if (is.null(boxShapeFactor)) NULL else level_labels(input, boxShapeFactor, boxShapeLevels)
     boxRich <- is_rich_labels(boxLabels) || is_rich_labels(boxShapeLabels)
     if (boxRich) {
-      boxLabels <- level_labels(input, input$boxplotFactor1, boxLevels, wrap = input$boxplotConditionFormat, force_rich = TRUE)
-      if (!is.null(boxShapeFactor)) boxShapeLabels <- level_labels(input, boxShapeFactor, boxShapeLevels, force_rich = TRUE)
+      boxLabels <- level_labels(
+        input,
+        input$boxplotFactor1,
+        boxLevels,
+        wrap = input$boxplotConditionFormat,
+        force_rich = TRUE
+      )
+      if (!is.null(boxShapeFactor)) {
+        boxShapeLabels <- level_labels(input, boxShapeFactor, boxShapeLevels, force_rich = TRUE)
+      }
     }
 
     if (eds$omics_class() == "proteomics" && isTRUE(selectedContrast() %in% eds$contrasts())) {
@@ -490,16 +541,13 @@ observeEvent(
     # Build a facet labeller that annotates feature_ids with gene symbols
     # (proteomics only, when gene_name info exists in the seqAnno)
     facet_labeller <- "label_value"
-    if (eds$omics_class() == "proteomics" && !is.null(selectedContrast()) &&
-        selectedContrast() %in% eds$contrasts()) {
+    if (eds$omics_class() == "proteomics" && !is.null(selectedContrast()) && selectedContrast() %in% eds$contrasts()) {
       sa_full <- eds$de(selectedContrast())
       if ("gene_name" %in% colnames(sa_full)) {
         gene_map <- setNames(sa_full$gene_name, sa_full$feature_id)
         facet_labeller <- labeller(Feature = function(fids) {
           gnames <- gene_map[fids]
-          ifelse(!is.na(gnames) & gnames != fids,
-                 paste0(gnames, "\n", fids),
-                 fids)
+          ifelse(!is.na(gnames) & gnames != fids, paste0(gnames, "\n", fids), fids)
         })
       }
     }
@@ -507,31 +555,96 @@ observeEvent(
     # Boxplot ----
     boxplot <- ggplot(data = countsBoxplotMelt, aes(x = .data[[input$boxplotFactor1]], y = Counts))
     if (input$boxplotShowBox & !input$boxplotShowViolin) {
-      boxplot <- boxplot + geom_boxplot(aes(fill = .data[[input$boxplotFactor1]]), alpha = input$boxplotBoxAlpha, outlier.shape = NA, show.legend = FALSE)
+      boxplot <- boxplot +
+        geom_boxplot(
+          aes(fill = .data[[input$boxplotFactor1]]),
+          alpha = input$boxplotBoxAlpha,
+          outlier.shape = NA,
+          show.legend = FALSE
+        )
     }
     if (!input$boxplotShowBox & input$boxplotShowViolin) {
-      boxplot <- boxplot + geom_violin(aes(fill = .data[[input$boxplotFactor1]]), alpha = input$boxplotBoxAlpha, draw_quantiles = 0.5, show.legend = FALSE)
+      boxplot <- boxplot +
+        geom_violin(
+          aes(fill = .data[[input$boxplotFactor1]]),
+          alpha = input$boxplotBoxAlpha,
+          draw_quantiles = 0.5,
+          show.legend = FALSE
+        )
     }
     if (input$boxplotShowMeanBar & !input$boxplotMeanBarFront) {
-      boxplot <- boxplot + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$boxplotMeanLine, show.legend = FALSE)
+      boxplot <- boxplot +
+        stat_summary(
+          geom = "crossbar",
+          fun = mean,
+          position = position_dodge(0.9),
+          colour = "black",
+          size = 0.4,
+          width = input$boxplotMeanLine,
+          show.legend = FALSE
+        )
     }
     if (input$boxplotShowPoint) {
       if (input$boxplotFactor2 == "None" | input$boxplotFactor2 == "Feature") {
-        boxplot <- boxplot + geom_beeswarm(aes(fill = .data[[input$boxplotFactor1]]), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, shape = 21, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$boxplotPointBorder)
+        boxplot <- boxplot +
+          geom_beeswarm(
+            aes(fill = .data[[input$boxplotFactor1]]),
+            size = input$boxplotPointSize,
+            alpha = input$boxplotPointAlpha,
+            shape = 21,
+            cex = input$boxplotPointDodge,
+            method = "swarm",
+            corral = "none",
+            corral.width = 0.9,
+            stroke = input$boxplotPointBorder
+          )
       } else {
-        boxplot <- boxplot + geom_beeswarm(aes(fill = .data[[input$boxplotFactor1]], shape = .data[[input$boxplotFactor2]]), size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = input$boxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$boxplotPointBorder)
-        boxplot <- boxplot + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25), times = 10))[1:nlevels(as.factor(countsBoxplotMelt[[input$boxplotFactor2]]))], labels = boxShapeLabels)
-        boxplot <- boxplot + guides(
-          fill = guide_legend(override.aes = list(shape = 21)),
-          shape = guide_legend(override.aes = list(shape = c(rep(c(16, 15, 18, 17, 25), times = 10))[1:nlevels(as.factor(countsBoxplotMelt[[input$boxplotFactor2]]))]))
-        )
+        boxplot <- boxplot +
+          geom_beeswarm(
+            aes(fill = .data[[input$boxplotFactor1]], shape = .data[[input$boxplotFactor2]]),
+            size = input$boxplotPointSize,
+            alpha = input$boxplotPointAlpha,
+            cex = input$boxplotPointDodge,
+            method = "swarm",
+            corral = "none",
+            corral.width = 0.9,
+            stroke = input$boxplotPointBorder
+          )
+        boxplot <- boxplot +
+          scale_shape_manual(
+            values = c(rep(c(21, 22, 23, 24, 25), times = 10))[
+              1:nlevels(as.factor(countsBoxplotMelt[[input$boxplotFactor2]]))
+            ],
+            labels = boxShapeLabels
+          )
+        boxplot <- boxplot +
+          guides(
+            fill = guide_legend(override.aes = list(shape = 21)),
+            shape = guide_legend(
+              override.aes = list(
+                shape = c(rep(c(16, 15, 18, 17, 25), times = 10))[
+                  1:nlevels(as.factor(countsBoxplotMelt[[input$boxplotFactor2]]))
+                ]
+              )
+            )
+          )
       }
     }
     if (input$boxplotShowMeanBar & input$boxplotMeanBarFront) {
-      boxplot <- boxplot + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$boxplotMeanLine, show.legend = FALSE)
+      boxplot <- boxplot +
+        stat_summary(
+          geom = "crossbar",
+          fun = mean,
+          position = position_dodge(0.9),
+          colour = "black",
+          size = 0.4,
+          width = input$boxplotMeanLine,
+          show.legend = FALSE
+        )
     }
     if (!input$boxplotGrey) {
-      boxplot <- boxplot + scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot), labels = boxLabels)
+      boxplot <- boxplot +
+        scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot), labels = boxLabels)
     } else {
       boxplot <- boxplot + scale_colour_grey()
       boxplot <- boxplot + scale_fill_grey(labels = boxLabels)
@@ -548,91 +661,157 @@ observeEvent(
     boxplot <- boxplot + labs(y = ylabToPlot)
     boxplot <- boxplot + facet_wrap(~Feature, scales = facetFree, ncol = input$boxplotNCol, labeller = facet_labeller)
     if (input$boxplotVertLines) {
-      boxplot <- boxplot + geom_vline(xintercept = seq_along(input$boxKeepBucket)[-length(seq_along(input$boxKeepBucket))] + 0.5, linetype = "dashed", alpha = 0.7)
+      boxplot <- boxplot +
+        geom_vline(
+          xintercept = seq_along(input$boxKeepBucket)[-length(seq_along(input$boxKeepBucket))] + 0.5,
+          linetype = "dashed",
+          alpha = 0.7
+        )
     }
     # Banana mode: keep the p-value bracket (blank its text label) and float a
     # row of banana images just above it. Bracket groups live in the melt data
     # (group1/group2, from designLevels upstream); present only with DE results.
-    bananaGrp <- if (!is.null(countsBoxplotMelt$group1))
-      c(countsBoxplotMelt$group1[1], countsBoxplotMelt$group2[1]) else NULL
-    bananaOK <- banana_on(bananaMode()) && !is.null(bananaGrp) &&
-      all(!is.na(bananaGrp)) && all(bananaGrp %in% input$boxKeepBucket)
+    bananaGrp <- if (!is.null(countsBoxplotMelt$group1)) {
+      c(countsBoxplotMelt$group1[1], countsBoxplotMelt$group2[1])
+    } else {
+      NULL
+    }
+    bananaOK <- banana_on(bananaMode()) &&
+      !is.null(bananaGrp) &&
+      all(!is.na(bananaGrp)) &&
+      all(bananaGrp %in% input$boxKeepBucket)
     if (input$boxplotShowP) {
       bmelt <- countsBoxplotMelt
-      if (bananaOK) bmelt$stars <- ""
-      boxplot <- boxplot + stat_pvalue_manual(
-        data = bmelt,
-        y.position = bmelt$y.position * 1.03,
-        label = "stars",
-        size = input$boxplotShowPLabelSize * 2,
-        label.size = input$boxplotShowPLabelSize * 2,
-        bracket.size = input$boxplotShowPBracketSize / 6,
-        tip.length = c(input$boxplotShowPTipSizeA / 50, input$boxplotShowPTipSizeB / 50),
-        bracket.nudge.y = input$boxplotShowPJust / 3
-      )
+      if (bananaOK) {
+        bmelt$stars <- ""
+      }
+      boxplot <- boxplot +
+        stat_pvalue_manual(
+          data = bmelt,
+          y.position = bmelt$y.position * 1.03,
+          label = "stars",
+          size = input$boxplotShowPLabelSize * 2,
+          label.size = input$boxplotShowPLabelSize * 2,
+          bracket.size = input$boxplotShowPBracketSize / 6,
+          tip.length = c(input$boxplotShowPTipSizeA / 50, input$boxplotShowPTipSizeB / 50),
+          bracket.nudge.y = input$boxplotShowPJust / 3
+        )
       if (bananaOK) {
         bnY <- countsBoxplotMelt$y.position * 1.03 + input$boxplotShowPJust / 3
         boxplot <- boxplot +
-          banana_layer(countsBoxplotMelt, x = mean(match(bananaGrp, input$boxKeepBucket)),
-                       y = bnY, fdr_col = "fdr",
-                       px = max(12L, round(input$boxplotShowPLabelSize * 8))) +
+          banana_layer(
+            countsBoxplotMelt,
+            x = mean(match(bananaGrp, input$boxKeepBucket)),
+            y = bnY,
+            fdr_col = "fdr",
+            px = max(12L, round(input$boxplotShowPLabelSize * 8))
+          ) +
           scale_y_continuous(expand = expansion(mult = c(0.05, 0.18)))
       }
       boxplot <- boxplot + coord_cartesian(clip = "off")
     }
-    boxplot <- boxplot + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle, base_family = input$boxplotFont, border = input$boxplotPlotBorder)
-    if (boxRich) boxplot <- boxplot + rich_label_theme(axis_x = TRUE, legend = TRUE)
+    boxplot <- boxplot +
+      theme_prism(
+        base_size = input$textSizeBoxplot,
+        axis_text_angle = input$boxplotConditionAngle,
+        base_family = input$boxplotFont,
+        border = input$boxplotPlotBorder
+      )
+    if (boxRich) {
+      boxplot <- boxplot + rich_label_theme(axis_x = TRUE, legend = TRUE)
+    }
     if (!input$boxplotShowConditions) {
       boxplot <- boxplot + theme(axis.text.x = element_blank())
     }
     figuresDataReactive$boxplot <- boxplot
 
-
     # Barplot ----
     countsBarplot <- countsBarplot %>% complete(!!sym(input$boxplotFactor1), Feature, fill = list(Counts = 0))
-    barplot <- ggplot(data = countsBarplot, aes(x = .data[[input$boxplotFactor1]], y = Counts, fill = .data[[input$boxplotFactor1]]))
+    barplot <- ggplot(
+      data = countsBarplot,
+      aes(x = .data[[input$boxplotFactor1]], y = Counts, fill = .data[[input$boxplotFactor1]])
+    )
     barplot <- barplot + facet_wrap(~Feature, scales = "free", ncol = input$boxplotNCol, labeller = facet_labeller)
-    barplot <- barplot + geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = input$boxplotBoxAlpha, show.legend = FALSE)
+    barplot <- barplot +
+      geom_bar(
+        stat = "identity",
+        color = "black",
+        position = position_dodge(),
+        alpha = input$boxplotBoxAlpha,
+        show.legend = FALSE
+      )
     barplot <- barplot + scale_y_continuous(expand = expansion(mult = c(0, if (isTRUE(bananaOK)) 0.2 else 0.1)))
     if (input$barplotSDorSE %in% c("SE", "SD")) {
-      barplot <- barplot + geom_errorbar(aes(ymin = Counts - .data[[tolower(input$barplotSDorSE)]], ymax = Counts + .data[[tolower(input$barplotSDorSE)]]), width = .2, position = position_dodge(.9))
+      barplot <- barplot +
+        geom_errorbar(
+          aes(
+            ymin = Counts - .data[[tolower(input$barplotSDorSE)]],
+            ymax = Counts + .data[[tolower(input$barplotSDorSE)]]
+          ),
+          width = .2,
+          position = position_dodge(.9)
+        )
     }
     if (input$showDotsBarplot) {
-      barplot <- barplot + geom_beeswarm(data = countsBoxplotMelt, aes_string(x = input$boxplotFactor1, y = "Counts"), pch = 21, size = input$boxplotPointSize, alpha = input$boxplotPointAlpha, cex = 3, corral = "gutter", corral.width = 0.9)
+      barplot <- barplot +
+        geom_beeswarm(
+          data = countsBoxplotMelt,
+          aes_string(x = input$boxplotFactor1, y = "Counts"),
+          pch = 21,
+          size = input$boxplotPointSize,
+          alpha = input$boxplotPointAlpha,
+          cex = 3,
+          corral = "gutter",
+          corral.width = 0.9
+        )
     }
     barplot <- barplot + scale_x_discrete(labels = boxLabels)
     barplot <- barplot + labs(y = ylabToPlot)
     if (!input$boxplotGrey) {
-      barplot <- barplot + scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot), labels = boxLabels)
+      barplot <- barplot +
+        scale_fill_manual(breaks = names(coloursBoxplot), values = as.character(coloursBoxplot), labels = boxLabels)
     } else {
       barplot <- barplot + scale_colour_grey()
       barplot <- barplot + scale_fill_grey(labels = boxLabels)
     }
-    barplot <- barplot + theme_prism(base_size = input$textSizeBoxplot, axis_text_angle = input$boxplotConditionAngle, base_family = input$boxplotFont)
-    if (boxRich) barplot <- barplot + rich_label_theme(axis_x = TRUE, legend = TRUE)
+    barplot <- barplot +
+      theme_prism(
+        base_size = input$textSizeBoxplot,
+        axis_text_angle = input$boxplotConditionAngle,
+        base_family = input$boxplotFont
+      )
+    if (boxRich) {
+      barplot <- barplot + rich_label_theme(axis_x = TRUE, legend = TRUE)
+    }
     if (!input$boxplotShowConditions) {
       barplot <- barplot + theme(axis.text.x = element_blank())
     }
     if (input$boxplotShowP) {
       bbar <- countsBarplot
-      if (bananaOK) bbar$stars <- ""
-      barplot <- barplot + stat_pvalue_manual(
-        data = bbar,
-        y.position = bbar$y.position * 1.03,
-        label = "stars",
-        size = input$boxplotShowPLabelSize * 2,
-        label.size = input$boxplotShowPLabelSize * 2,
-        bracket.size = input$boxplotShowPBracketSize / 6,
-        tip.length = c(input$boxplotShowPTipSizeA / 50, input$boxplotShowPTipSizeB / 50),
-        bracket.nudge.y = input$boxplotShowPJust / 3
-      )
+      if (bananaOK) {
+        bbar$stars <- ""
+      }
+      barplot <- barplot +
+        stat_pvalue_manual(
+          data = bbar,
+          y.position = bbar$y.position * 1.03,
+          label = "stars",
+          size = input$boxplotShowPLabelSize * 2,
+          label.size = input$boxplotShowPLabelSize * 2,
+          bracket.size = input$boxplotShowPBracketSize / 6,
+          tip.length = c(input$boxplotShowPTipSizeA / 50, input$boxplotShowPTipSizeB / 50),
+          bracket.nudge.y = input$boxplotShowPJust / 3
+        )
       if (bananaOK) {
         bnYb <- countsBarplot$y.position * 1.03 + input$boxplotShowPJust / 3
-        barplot <- barplot + banana_layer(
-          countsBarplot, x = mean(match(bananaGrp, input$boxKeepBucket)),
-          y = bnYb, fdr_col = "fdr",
-          px = max(12L, round(input$boxplotShowPLabelSize * 8))
-        )
+        barplot <- barplot +
+          banana_layer(
+            countsBarplot,
+            x = mean(match(bananaGrp, input$boxKeepBucket)),
+            y = bnYb,
+            fdr_col = "fdr",
+            px = max(12L, round(input$boxplotShowPLabelSize * 8))
+          )
       }
       barplot <- barplot + coord_cartesian(clip = "off")
     }
@@ -678,10 +857,10 @@ lapply(c("boxplot", "barplot"), function(b) {
       as.numeric(input$figHeightBoxplot)
     }
   )
-  
+
   # Map internal name 'b' to new button ID suffix
   button_id <- paste0("dlPlot_", b)
-  
+
   output[[button_id]] <- downloadHandler(
     filename = function() {
       plot_type_suffix <- if (b == "boxplot") "_Boxplot" else "_Barplot"
@@ -720,9 +899,11 @@ output$dlTable_boxplot <- downloadHandler(
     # Basic columns: Name, factor columns, Feature, Counts
     basic_cols <- c("Name", eds$factor_names(), "Feature", "Counts")
 
-    if ((eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics") &&
+    if (
+      (eds$data_type() == "RNASeq" || eds$omics_class() == "proteomics") &&
         !is.null(input$includeDEStatsBoxplot) &&
-        input$includeDEStatsBoxplot) {
+        input$includeDEStatsBoxplot
+    ) {
       # Add DE statistics: log2Ratio, pValue, fdr
       # First add pValue if it doesn't exist (it's not in countsBoxplotMelt by default)
       if (eds$data_type() == "RNASeq") {
@@ -730,8 +911,10 @@ output$dlTable_boxplot <- downloadHandler(
         if ("pValue" %in% colnames(seqAnno_dl)) {
           counts_data$pValue <- seqAnno_dl$pValue[match(counts_data$Feature, seqAnno_dl$feature_id)]
         }
-      } else if (!is.null(selectedContrast()) &&
-                 selectedContrast() %in% eds$contrasts()) {
+      } else if (
+        !is.null(selectedContrast()) &&
+          selectedContrast() %in% eds$contrasts()
+      ) {
         seqAnno_dl <- eds$de(selectedContrast())
         if ("pValue" %in% colnames(seqAnno_dl)) {
           counts_data$pValue <- seqAnno_dl$pValue[match(counts_data$Feature, seqAnno_dl$feature_id)]

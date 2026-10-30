@@ -41,14 +41,14 @@
 # not ship. Proven interoperable with arrow-rs-written parquet 2026-08-28
 # (plans/exploredelight/spike_h5ad_bridge/README.md).
 .pq_read <- function(path) {
-  if (!file.exists(path)) stop("ExploreDatasetParquet: missing file: ", path)
+  if (!file.exists(path)) {
+    stop("ExploreDatasetParquet: missing file: ", path)
+  }
   if (requireNamespace("nanoparquet", quietly = TRUE)) {
-    return(as.data.frame(nanoparquet::read_parquet(path),
-                         check.names = FALSE, stringsAsFactors = FALSE))
+    return(as.data.frame(nanoparquet::read_parquet(path), check.names = FALSE, stringsAsFactors = FALSE))
   }
   if (requireNamespace("arrow", quietly = TRUE)) {
-    return(as.data.frame(arrow::read_parquet(path),
-                         check.names = FALSE, stringsAsFactors = FALSE))
+    return(as.data.frame(arrow::read_parquet(path), check.names = FALSE, stringsAsFactors = FALSE))
   }
   stop("ExploreDatasetParquet needs nanoparquet (shipped) or arrow (testing)")
 }
@@ -58,8 +58,9 @@
 # rownames, so the writer carries them as an ordinary column.
 .pq_read_indexed <- function(path) {
   d <- .pq_read(path)
-  if (!"_index" %in% colnames(d))
+  if (!"_index" %in% colnames(d)) {
     stop("ExploreDatasetParquet: ", basename(path), " has no `_index` column")
+  }
   idx <- as.character(d[["_index"]])
   d <- d[, setdiff(colnames(d), "_index"), drop = FALSE]
   rownames(d) <- idx
@@ -113,18 +114,20 @@
 #' @keywords internal
 ExploreDatasetParquet <- R6::R6Class(
   classname = "ExploreDatasetParquet",
-  inherit   = ExploreDatasetH5AD,
+  inherit = ExploreDatasetH5AD,
 
   public = list(
-
     initialize = function(input, config = NULL) {
-      if (!is.character(input) || length(input) != 1L || !dir.exists(input))
+      if (!is.character(input) || length(input) != 1L || !dir.exists(input)) {
         stop("ExploreDatasetParquet: input must be a path to a parquet directory")
+      }
 
-      manifest <- jsonlite::fromJSON(file.path(input, "manifest.json"),
-                                     simplifyVector = TRUE,
-                                     simplifyDataFrame = FALSE,
-                                     simplifyMatrix = FALSE)
+      manifest <- jsonlite::fromJSON(
+        file.path(input, "manifest.json"),
+        simplifyVector = TRUE,
+        simplifyDataFrame = FALSE,
+        simplifyMatrix = FALSE
+      )
 
       obs <- .pq_read_indexed(file.path(input, "obs.parquet"))
       var <- .pq_read_indexed(file.path(input, "var.parquet"))
@@ -149,18 +152,19 @@ ExploreDatasetParquet <- R6::R6Class(
       # than length-1 lists.
       uns_path <- file.path(input, "uns.json")
       uns <- if (file.exists(uns_path)) {
-        jsonlite::fromJSON(uns_path, simplifyVector = TRUE,
-                           simplifyDataFrame = FALSE, simplifyMatrix = FALSE)
-      } else list()
+        jsonlite::fromJSON(uns_path, simplifyVector = TRUE, simplifyDataFrame = FALSE, simplifyMatrix = FALSE)
+      } else {
+        list()
+      }
 
-      private$.obs      <- obs
-      private$.var      <- var
-      private$.layers   <- layers
-      private$.varm     <- varm
-      private$.uns      <- uns
-      private$.dir      <- input
+      private$.obs <- obs
+      private$.var <- var
+      private$.layers <- layers
+      private$.varm <- varm
+      private$.uns <- uns
+      private$.dir <- input
       private$.manifest <- manifest
-      private$.config   <- config %||% private$.build_config()
+      private$.config <- config %||% private$.build_config()
       private$.prep()
       private$.warn_if_stale()
       invisible(self)
@@ -191,9 +195,10 @@ ExploreDatasetParquet <- R6::R6Class(
     # check against (a live AnnData was exported, or the source has moved).
     verify_source = function(path = NULL) {
       src <- private$.manifest$source %||% list()
-      p   <- path %||% src$path
-      if (is.null(p) || is.null(src$md5) || !nzchar(src$md5) || !file.exists(p))
+      p <- path %||% src$path
+      if (is.null(p) || is.null(src$md5) || !nzchar(src$md5) || !file.exists(p)) {
         return(NA)
+      }
       identical(unname(tools::md5sum(p)), src$md5)
     },
 
@@ -203,22 +208,30 @@ ExploreDatasetParquet <- R6::R6Class(
     # and an empty vector when it is not, which is what the callers already
     # treat as "this dataset has no GO annotation".
     all_pathways = function() {
-      if (!requireNamespace("clusterProfiler", quietly = TRUE)) return(character(0))
+      if (!requireNamespace("clusterProfiler", quietly = TRUE)) {
+        return(character(0))
+      }
       super$all_pathways()
     }
   ),
 
   private = list(
-    .dir = NULL, .manifest = NULL, .hydrated = character(),
+    .dir = NULL,
+    .manifest = NULL,
+    .hydrated = character(),
 
     # Pull the hoisted base64 payloads for one contrast into .uns, once.
     .hydrate_enrichment = function(contrast) {
       slot <- sub("^de_", "", private$.contrast_slot[[contrast]] %||% contrast)
-      if (slot %in% private$.hydrated) return(invisible(NULL))
+      if (slot %in% private$.hydrated) {
+        return(invisible(NULL))
+      }
       files <- (private$.manifest$enrichment_files %||% list())[[slot]]
       for (kind in names(files %||% list())) {
         f <- file.path(private$.dir, "enrichment", files[[kind]])
-        if (!file.exists(f)) next
+        if (!file.exists(f)) {
+          next
+        }
         private$.uns$enrichment_native[[slot]][[kind]] <-
           paste(readLines(f, warn = FALSE), collapse = "")
       }
@@ -233,19 +246,23 @@ ExploreDatasetParquet <- R6::R6Class(
     # load itself; verify_source() is there when certainty is wanted.
     .warn_if_stale = function() {
       src <- private$.manifest$source %||% list()
-      if (is.null(src$path) || !nzchar(src$path) || !file.exists(src$path))
+      if (is.null(src$path) || !nzchar(src$path) || !file.exists(src$path)) {
         return(invisible(NULL))
+      }
       fi <- file.info(src$path)
-      changed <- (!is.null(src$size) && !isTRUE(all.equal(as.numeric(fi$size),
-                                                          as.numeric(src$size)))) ||
-                 (!is.null(src$mtime) &&
-                  !identical(format(fi$mtime, "%Y-%m-%dT%H:%M:%S"), src$mtime))
+      changed <- (!is.null(src$size) && !isTRUE(all.equal(as.numeric(fi$size), as.numeric(src$size)))) ||
+        (!is.null(src$mtime) &&
+          !identical(format(fi$mtime, "%Y-%m-%dT%H:%M:%S"), src$mtime))
       if (changed) {
-        warning("This parquet directory was exported from '", src$basename,
-                "' on ", private$.manifest$written_at,
-                ", but that file has changed since. The data you are looking at ",
-                "is out of date -- re-run export_h5ad_to_parquet().",
-                call. = FALSE)
+        warning(
+          "This parquet directory was exported from '",
+          src$basename,
+          "' on ",
+          private$.manifest$written_at,
+          ", but that file has changed since. The data you are looking at ",
+          "is out of date -- re-run export_h5ad_to_parquet().",
+          call. = FALSE
+        )
       }
       invisible(NULL)
     },
@@ -256,10 +273,14 @@ ExploreDatasetParquet <- R6::R6Class(
     # pure-visualisation. When the producer already stored a vst layer the
     # inherited assay_map points straight at it and this is never reached.
     .compute_vst = function() {
-      if (requireNamespace("DESeq2", quietly = TRUE)) return(super$.compute_vst())
-      stop("VST is not available in this build: it must be computed with DESeq2, ",
-           "which exploreDElight does not ship. Ask the producer to write a ",
-           "`vst` layer into the .h5ad, or use a different assay.")
+      if (requireNamespace("DESeq2", quietly = TRUE)) {
+        return(super$.compute_vst())
+      }
+      stop(
+        "VST is not available in this build: it must be computed with DESeq2, ",
+        "which exploreDElight does not ship. Ask the producer to write a ",
+        "`vst` layer into the .h5ad, or use a different assay."
+      )
     }
   )
 )

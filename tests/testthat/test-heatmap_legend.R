@@ -7,8 +7,7 @@ library(ComplexHeatmap)
 }
 
 .legend_children <- function(g) {
-  Filter(function(ch) grepl("(heatmap|annotation)_legend", as.character(ch$vp %||% "")),
-         g$children)
+  Filter(function(ch) grepl("(heatmap|annotation)_legend", as.character(ch$vp %||% "")), g$children)
 }
 
 test_that(".shift_heatmap_legends() wraps only the legend grobs, adding the offset viewport", {
@@ -34,17 +33,22 @@ test_that("draw_heatmap() with offsets draws without error on right and bottom l
   grDevices::png(f, 500, 500)
   on.exit(grDevices::dev.off(), add = TRUE)
   expect_no_error(draw_heatmap(.legend_ht(), merge_legend = TRUE, legend_dx = 20, legend_dy = 10))
-  expect_no_error(draw_heatmap(.legend_ht(), merge_legend = TRUE, heatmap_legend_side = "bottom",
-                               annotation_legend_side = "bottom",
-                               padding = grid::unit(c(2, 2, 2, 2), "cm"),
-                               legend_dx = -20, legend_dy = -15))
+  expect_no_error(draw_heatmap(
+    .legend_ht(),
+    merge_legend = TRUE,
+    heatmap_legend_side = "bottom",
+    annotation_legend_side = "bottom",
+    padding = grid::unit(c(2, 2, 2, 2), "cm"),
+    legend_dx = -20,
+    legend_dy = -15
+  ))
 })
 
 test_that("draw_heatmap() copes with regex characters in heatmap / annotation names", {
   # Regression: "transformedData [Centred]" made redrawing the grabbed heatmap
   # fail with "Viewport '..._heatmap_body_1_1' was not found".
   set.seed(1)
-  m  <- matrix(rnorm(100), 10)
+  m <- matrix(rnorm(100), 10)
   ha <- HeatmapAnnotation("Condition [Factor]" = rep(c("a", "b"), 5))
   f <- withr::local_tempfile(fileext = ".png")
   grDevices::png(f, 500, 500)

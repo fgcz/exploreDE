@@ -24,50 +24,148 @@
 # ---------------------------------------------------------------------------
 
 .label_allowed_tags <- c("i", "b", "em", "strong", "sup", "sub", "br")
-.label_tag_pattern  <- "<\\s*/?\\s*([A-Za-z]+)\\s*/?\\s*>"
+.label_tag_pattern <- "<\\s*/?\\s*([A-Za-z]+)\\s*/?\\s*>"
 
 # Named HTML entities we decode (everything else numeric: &#916; / &#x394;).
 .label_entities <- c(
-  amp = "&", lt = "<", gt = ">", quot = "\"", apos = "'", nbsp = "\u00a0",
-  micro = "\u00b5", deg = "\u00b0", plusmn = "\u00b1", times = "\u00d7",
-  middot = "\u00b7", minus = "\u2212", ndash = "\u2013", mdash = "\u2014",
-  hellip = "\u2026", rarr = "\u2192", larr = "\u2190",
-  Alpha = "\u0391", Beta = "\u0392", Gamma = "\u0393", Delta = "\u0394",
-  Epsilon = "\u0395", Zeta = "\u0396", Eta = "\u0397", Theta = "\u0398",
-  Iota = "\u0399", Kappa = "\u039a", Lambda = "\u039b", Mu = "\u039c",
-  Nu = "\u039d", Xi = "\u039e", Omicron = "\u039f", Pi = "\u03a0",
-  Rho = "\u03a1", Sigma = "\u03a3", Tau = "\u03a4", Upsilon = "\u03a5",
-  Phi = "\u03a6", Chi = "\u03a7", Psi = "\u03a8", Omega = "\u03a9",
-  alpha = "\u03b1", beta = "\u03b2", gamma = "\u03b3", delta = "\u03b4",
-  epsilon = "\u03b5", zeta = "\u03b6", eta = "\u03b7", theta = "\u03b8",
-  iota = "\u03b9", kappa = "\u03ba", lambda = "\u03bb", mu = "\u03bc",
-  nu = "\u03bd", xi = "\u03be", omicron = "\u03bf", pi = "\u03c0",
-  rho = "\u03c1", sigmaf = "\u03c2", sigma = "\u03c3", tau = "\u03c4",
-  upsilon = "\u03c5", phi = "\u03c6", chi = "\u03c7", psi = "\u03c8",
+  amp = "&",
+  lt = "<",
+  gt = ">",
+  quot = "\"",
+  apos = "'",
+  nbsp = "\u00a0",
+  micro = "\u00b5",
+  deg = "\u00b0",
+  plusmn = "\u00b1",
+  times = "\u00d7",
+  middot = "\u00b7",
+  minus = "\u2212",
+  ndash = "\u2013",
+  mdash = "\u2014",
+  hellip = "\u2026",
+  rarr = "\u2192",
+  larr = "\u2190",
+  Alpha = "\u0391",
+  Beta = "\u0392",
+  Gamma = "\u0393",
+  Delta = "\u0394",
+  Epsilon = "\u0395",
+  Zeta = "\u0396",
+  Eta = "\u0397",
+  Theta = "\u0398",
+  Iota = "\u0399",
+  Kappa = "\u039a",
+  Lambda = "\u039b",
+  Mu = "\u039c",
+  Nu = "\u039d",
+  Xi = "\u039e",
+  Omicron = "\u039f",
+  Pi = "\u03a0",
+  Rho = "\u03a1",
+  Sigma = "\u03a3",
+  Tau = "\u03a4",
+  Upsilon = "\u03a5",
+  Phi = "\u03a6",
+  Chi = "\u03a7",
+  Psi = "\u03a8",
+  Omega = "\u03a9",
+  alpha = "\u03b1",
+  beta = "\u03b2",
+  gamma = "\u03b3",
+  delta = "\u03b4",
+  epsilon = "\u03b5",
+  zeta = "\u03b6",
+  eta = "\u03b7",
+  theta = "\u03b8",
+  iota = "\u03b9",
+  kappa = "\u03ba",
+  lambda = "\u03bb",
+  mu = "\u03bc",
+  nu = "\u03bd",
+  xi = "\u03be",
+  omicron = "\u03bf",
+  pi = "\u03c0",
+  rho = "\u03c1",
+  sigmaf = "\u03c2",
+  sigma = "\u03c3",
+  tau = "\u03c4",
+  upsilon = "\u03c5",
+  phi = "\u03c6",
+  chi = "\u03c7",
+  psi = "\u03c8",
   omega = "\u03c9"
 )
 
 # Greek (Unicode) -> character in the Adobe Symbol font encoding.
 .symbol_font_map <- c(
-  "\u0391" = "A", "\u0392" = "B", "\u0393" = "G", "\u0394" = "D", "\u2206" = "D",
-  "\u0395" = "E", "\u0396" = "Z", "\u0397" = "H", "\u0398" = "Q", "\u0399" = "I",
-  "\u039a" = "K", "\u039b" = "L", "\u039c" = "M", "\u039d" = "N", "\u039e" = "X",
-  "\u039f" = "O", "\u03a0" = "P", "\u03a1" = "R", "\u03a3" = "S", "\u03a4" = "T",
-  "\u03a5" = "U", "\u03a6" = "F", "\u03a7" = "C", "\u03a8" = "Y", "\u03a9" = "W",
+  "\u0391" = "A",
+  "\u0392" = "B",
+  "\u0393" = "G",
+  "\u0394" = "D",
+  "\u2206" = "D",
+  "\u0395" = "E",
+  "\u0396" = "Z",
+  "\u0397" = "H",
+  "\u0398" = "Q",
+  "\u0399" = "I",
+  "\u039a" = "K",
+  "\u039b" = "L",
+  "\u039c" = "M",
+  "\u039d" = "N",
+  "\u039e" = "X",
+  "\u039f" = "O",
+  "\u03a0" = "P",
+  "\u03a1" = "R",
+  "\u03a3" = "S",
+  "\u03a4" = "T",
+  "\u03a5" = "U",
+  "\u03a6" = "F",
+  "\u03a7" = "C",
+  "\u03a8" = "Y",
+  "\u03a9" = "W",
   "\u2126" = "W",
-  "\u03b1" = "a", "\u03b2" = "b", "\u03b3" = "g", "\u03b4" = "d", "\u03b5" = "e",
-  "\u03b6" = "z", "\u03b7" = "h", "\u03b8" = "q", "\u03b9" = "i", "\u03ba" = "k",
-  "\u03bb" = "l", "\u03bc" = "m", "\u03bd" = "n", "\u03be" = "x", "\u03bf" = "o",
-  "\u03c0" = "p", "\u03c1" = "r", "\u03c2" = "V", "\u03c3" = "s", "\u03c4" = "t",
-  "\u03c5" = "u", "\u03c6" = "f", "\u03c7" = "c", "\u03c8" = "y", "\u03c9" = "w",
-  "\u03d1" = "J", "\u03d5" = "j", "\u03d6" = "v"
+  "\u03b1" = "a",
+  "\u03b2" = "b",
+  "\u03b3" = "g",
+  "\u03b4" = "d",
+  "\u03b5" = "e",
+  "\u03b6" = "z",
+  "\u03b7" = "h",
+  "\u03b8" = "q",
+  "\u03b9" = "i",
+  "\u03ba" = "k",
+  "\u03bb" = "l",
+  "\u03bc" = "m",
+  "\u03bd" = "n",
+  "\u03be" = "x",
+  "\u03bf" = "o",
+  "\u03c0" = "p",
+  "\u03c1" = "r",
+  "\u03c2" = "V",
+  "\u03c3" = "s",
+  "\u03c4" = "t",
+  "\u03c5" = "u",
+  "\u03c6" = "f",
+  "\u03c7" = "c",
+  "\u03c8" = "y",
+  "\u03c9" = "w",
+  "\u03d1" = "J",
+  "\u03d5" = "j",
+  "\u03d6" = "v"
 )
 
 # Non-Latin-1 punctuation base pdf() can't draw -> ASCII stand-ins (PDF only).
 .pdf_ascii_map <- c(
-  "\u2212" = "-", "\u2013" = "-", "\u2014" = "-", "\u2018" = "'",
-  "\u2019" = "'", "\u201c" = "\"", "\u201d" = "\"", "\u2026" = "...",
-  "\u2192" = "->", "\u2190" = "<-"
+  "\u2212" = "-",
+  "\u2013" = "-",
+  "\u2014" = "-",
+  "\u2018" = "'",
+  "\u2019" = "'",
+  "\u201c" = "\"",
+  "\u201d" = "\"",
+  "\u2026" = "...",
+  "\u2192" = "->",
+  "\u2190" = "<-"
 )
 
 .pdf_symbol_family <- "GreekSym"
@@ -85,25 +183,43 @@ escape_label_markdown <- function(x) {
 #' @param x Character vector.
 #' @export
 decode_label_entities <- function(x) {
-  vapply(x, function(s) {
-    if (is.na(s) || !grepl("&", s, fixed = TRUE)) return(s)
-    m <- gregexpr("&(#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z]+);", s)
-    regmatches(s, m) <- list(vapply(regmatches(s, m)[[1]], function(e) {
-      body <- substr(e, 2, nchar(e) - 1)
-      if (startsWith(body, "#x") || startsWith(body, "#X")) {
-        return(intToUtf8(strtoi(substring(body, 3), 16L)))
+  vapply(
+    x,
+    function(s) {
+      if (is.na(s) || !grepl("&", s, fixed = TRUE)) {
+        return(s)
       }
-      if (startsWith(body, "#")) return(intToUtf8(as.integer(substring(body, 2))))
-      if (body %in% names(.label_entities)) return(.label_entities[[body]])
-      # Any other named HTML entity (&iuml;, &eacute;, ...): let libxml2 decode
-      # it; unknown names stay as typed.
-      tryCatch({
-        d <- xml2::xml_text(xml2::read_html(paste0("<p>", e, "</p>")))
-        if (nzchar(d)) d else e
-      }, error = function(err) e)
-    }, character(1)))
-    s
-  }, character(1), USE.NAMES = FALSE)
+      m <- gregexpr("&(#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z]+);", s)
+      regmatches(s, m) <- list(vapply(
+        regmatches(s, m)[[1]],
+        function(e) {
+          body <- substr(e, 2, nchar(e) - 1)
+          if (startsWith(body, "#x") || startsWith(body, "#X")) {
+            return(intToUtf8(strtoi(substring(body, 3), 16L)))
+          }
+          if (startsWith(body, "#")) {
+            return(intToUtf8(as.integer(substring(body, 2))))
+          }
+          if (body %in% names(.label_entities)) {
+            return(.label_entities[[body]])
+          }
+          # Any other named HTML entity (&iuml;, &eacute;, ...): let libxml2 decode
+          # it; unknown names stay as typed.
+          tryCatch(
+            {
+              d <- xml2::xml_text(xml2::read_html(paste0("<p>", e, "</p>")))
+              if (nzchar(d)) d else e
+            },
+            error = function(err) e
+          )
+        },
+        character(1)
+      ))
+      s
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 #' Parse one user-typed level label into rich (ggtext) and plain renderings
@@ -128,7 +244,7 @@ parse_level_label <- function(x) {
       tag <- tolower(sub(.label_tag_pattern, "\\1", p, perl = TRUE))
       if (tag %in% .label_allowed_tags) {
         closing <- grepl("^<\\s*/", p)
-        rich[i]  <- if (tag == "br") "<br>" else paste0("<", if (closing) "/", tag, ">")
+        rich[i] <- if (tag == "br") "<br>" else paste0("<", if (closing) "/", tag, ">")
         plain[i] <- if (tag == "br") "\n" else ""
         next
       }
@@ -140,20 +256,25 @@ parse_level_label <- function(x) {
     # spaces keeps it; symbolise_rich_labels() swaps those for a PDF-safe
     # anchor, since U+200B isn't Latin-1.
     if (i > 1 && i < length(parts) && grepl("^\\s+$", txt)) {
-      rich[i]  <- "\u200b \u200b"
+      rich[i] <- "\u200b \u200b"
       plain[i] <- " "
       next
     }
-    rich[i]  <- escape_label_markdown(txt)
+    rich[i] <- escape_label_markdown(txt)
     plain[i] <- txt
   }
   rich <- paste(rich, collapse = "")
   plain <- paste(plain, collapse = "")
-  ok <- tryCatch({
-    gridtext::richtext_grob(rich)
-    TRUE
-  }, error = function(e) FALSE)
-  if (!ok) rich <- gsub("\n", "<br>", escape_label_markdown(plain), fixed = TRUE)
+  ok <- tryCatch(
+    {
+      gridtext::richtext_grob(rich)
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+  if (!ok) {
+    rich <- gsub("\n", "<br>", escape_label_markdown(plain), fixed = TRUE)
+  }
   list(rich = rich, plain = plain, ok = ok)
 }
 
@@ -177,32 +298,46 @@ rich_labels_available <- function() {
 #' @return Character vector named by the raw levels, with attribute
 #'   `rich = TRUE` when it must be drawn with element_markdown().
 #' @export
-level_labels <- function(input, fname, levels, mode = c("rich", "plain"),
-                         wrap = FALSE, force_rich = FALSE) {
+level_labels <- function(input, fname, levels, mode = c("rich", "plain"), wrap = FALSE, force_rich = FALSE) {
   mode <- match.arg(mode)
   levels <- as.character(levels)
-  custom <- vapply(levels, function(l) {
-    v <- if (is.null(fname) || is.null(input)) NULL else input[[paste0("GroupLabel", fname, l)]]
-    if (is.null(v) || is.na(v[1]) || !nzchar(trimws(v[1]))) NA_character_ else trimws(v[1])
-  }, character(1), USE.NAMES = FALSE)
+  custom <- vapply(
+    levels,
+    function(l) {
+      v <- if (is.null(fname) || is.null(input)) NULL else input[[paste0("GroupLabel", fname, l)]]
+      if (is.null(v) || is.na(v[1]) || !nzchar(trimws(v[1]))) NA_character_ else trimws(v[1])
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
   has_custom <- !is.na(custom)
   # Wrap BEFORE escaping (via a placeholder), or the escapes on "_" "." "/"
   # would be left dangling in front of the <br>.
   wrap_raw <- function(x, br, escape = FALSE) {
-    if (wrap) x <- gsub("\\_|\\.|\\ |\\/", "\001", x)
-    if (escape) x <- escape_label_markdown(x)
+    if (wrap) {
+      x <- gsub("\\_|\\.|\\ |\\/", "\001", x)
+    }
+    if (escape) {
+      x <- escape_label_markdown(x)
+    }
     gsub("\001", br, x, fixed = TRUE)
   }
 
   rich <- mode == "rich" && (any(has_custom) || force_rich) && rich_labels_available()
-  out <- vapply(seq_along(levels), function(i) {
-    if (!has_custom[i]) {
-      if (!rich) return(wrap_raw(levels[i], "\n"))
-      return(wrap_raw(levels[i], "<br>", escape = TRUE))
-    }
-    p <- parse_level_label(custom[i])
-    if (rich) p$rich else p$plain
-  }, character(1))
+  out <- vapply(
+    seq_along(levels),
+    function(i) {
+      if (!has_custom[i]) {
+        if (!rich) {
+          return(wrap_raw(levels[i], "\n"))
+        }
+        return(wrap_raw(levels[i], "<br>", escape = TRUE))
+      }
+      p <- parse_level_label(custom[i])
+      if (rich) p$rich else p$plain
+    },
+    character(1)
+  )
   names(out) <- levels
   attr(out, "rich") <- rich
   out
@@ -219,11 +354,19 @@ is_rich_labels <- function(x) isTRUE(attr(x, "rich"))
 #'
 #' @export
 rich_label_theme <- function(axis_x = FALSE, axis_y = FALSE, legend = FALSE, strip = FALSE) {
-  if (!rich_labels_available()) return(ggplot2::theme())
+  if (!rich_labels_available()) {
+    return(ggplot2::theme())
+  }
   els <- list()
-  if (axis_x) els$axis.text.x <- ggtext::element_markdown()
-  if (axis_y) els$axis.text.y <- ggtext::element_markdown()
-  if (legend) els$legend.text <- ggtext::element_markdown()
+  if (axis_x) {
+    els$axis.text.x <- ggtext::element_markdown()
+  }
+  if (axis_y) {
+    els$axis.text.y <- ggtext::element_markdown()
+  }
+  if (legend) {
+    els$legend.text <- ggtext::element_markdown()
+  }
   # strip.text.x/.y explicitly: theme_prism() styles those, which would
   # otherwise shadow a markdown strip.text parent.
   if (strip) {
@@ -241,7 +384,9 @@ rich_label_theme <- function(axis_x = FALSE, axis_y = FALSE, legend = FALSE, str
 #' @export
 label_pdf_unsupported_chars <- function(x) {
   x <- x[!is.na(x)]
-  if (!length(x)) return(character(0))
+  if (!length(x)) {
+    return(character(0))
+  }
   chars <- unique(unlist(strsplit(enc2utf8(x), "")))
   chars <- setdiff(chars, c(names(.symbol_font_map), names(.pdf_ascii_map)))
   chars[is.na(iconv(chars, "UTF-8", "latin1"))]
@@ -278,8 +423,12 @@ symbolise_rich_labels <- function(x) {
     x <- gsub(ch, escape_label_markdown(.pdf_ascii_map[[ch]]), x, fixed = TRUE)
   }
   for (ch in names(.symbol_font_map)) {
-    x <- gsub(ch, sprintf("<span style='font-family:%s'>%s</span>",
-                          .pdf_symbol_family, .symbol_font_map[[ch]]), x, fixed = TRUE)
+    x <- gsub(
+      ch,
+      sprintf("<span style='font-family:%s'>%s</span>", .pdf_symbol_family, .symbol_font_map[[ch]]),
+      x,
+      fixed = TRUE
+    )
   }
   names(x) <- nm
   x
@@ -304,10 +453,14 @@ symbolise_rich_labels <- function(x) {
 #' @param p A plot object; non-ggplots are returned unchanged.
 #' @export
 prepare_plot_for_pdf <- function(p) {
-  if (!inherits(p, "ggplot") || !rich_labels_available()) return(p)
+  if (!inherits(p, "ggplot") || !rich_labels_available()) {
+    return(p)
+  }
   els <- c("axis.text.x", "axis.text.y", "legend.text", "strip.text.x", "strip.text.y")
   rich <- any(vapply(els, function(e) inherits(p$theme[[e]], "element_markdown"), logical(1)))
-  if (!rich) return(p)
+  if (!rich) {
+    return(p)
+  }
   ensure_pdf_symbol_font()
   p$scales <- p$scales$clone()
   for (s in p$scales$scales) {
@@ -343,12 +496,22 @@ prepare_plot_for_pdf <- function(p) {
 #' @param fill Colours, named by level.
 #' @param title_gp,labels_gp grid gpar for the title and labels.
 #' @export
-heatmap_legend_spec <- function(title, labels, fill,
-                                title_gp = grid::gpar(fontsize = 10, fontface = "bold"),
-                                labels_gp = grid::gpar(fontsize = 10)) {
+heatmap_legend_spec <- function(
+  title,
+  labels,
+  fill,
+  title_gp = grid::gpar(fontsize = 10, fontface = "bold"),
+  labels_gp = grid::gpar(fontsize = 10)
+) {
   at <- names(labels)
-  list(title = title, at = at, labels = unname(labels), fill = unname(fill[at]),
-       title_gp = title_gp, labels_gp = labels_gp)
+  list(
+    title = title,
+    at = at,
+    labels = unname(labels),
+    fill = unname(fill[at]),
+    title_gp = title_gp,
+    labels_gp = labels_gp
+  )
 }
 
 #' Build a rich ComplexHeatmap legend with a correctly measured width
@@ -364,18 +527,26 @@ build_rich_heatmap_legend <- function(spec, pdf = FALSE) {
     labels <- symbolise_rich_labels(labels)
   }
   lgd <- ComplexHeatmap::Legend(
-    at = spec$at, labels = ComplexHeatmap::gt_render(labels),
-    legend_gp = grid::gpar(fill = spec$fill), title = spec$title,
-    title_gp = spec$title_gp, labels_gp = spec$labels_gp
+    at = spec$at,
+    labels = ComplexHeatmap::gt_render(labels),
+    legend_gp = grid::gpar(fill = spec$fill),
+    title = spec$title,
+    title_gp = spec$title_gp,
+    labels_gp = spec$labels_gp
   )
   # Legend() measured the labels as raw markup: re-measure the rendered text
   # and correct the three places the (inflated) width is stored.
   g <- lgd@grob
   body <- which(vapply(g$children, inherits, logical(1), "legend_body"))
-  if (length(body) != 1) return(lgd)
-  lab_w <- max(do.call(grid::unit.c, lapply(labels, function(x) {
-    grid::grobWidth(gridtext::richtext_grob(x, gp = spec$labels_gp))
-  })))
+  if (length(body) != 1) {
+    return(lgd)
+  }
+  lab_w <- max(do.call(
+    grid::unit.c,
+    lapply(labels, function(x) {
+      grid::grobWidth(gridtext::richtext_grob(x, gp = spec$labels_gp))
+    })
+  ))
   # key (4 mm default) + ComplexHeatmap's 1 mm label padding + slack
   body_w <- grid::convertWidth(grid::unit(4, "mm") + grid::unit(2, "mm") + lab_w, "mm")
   others <- setdiff(seq_along(g$children), body)
@@ -387,7 +558,9 @@ build_rich_heatmap_legend <- function(spec, pdf = FALSE) {
   w <- max(body_w, title_w)
   attr(g$children[[body]], "width") <- body_w
   attr(g, "width") <- w
-  if (!is.null(g$vp)) g$vp$width <- w
+  if (!is.null(g$vp)) {
+    g$vp$width <- w
+  }
   lgd@grob <- g
   lgd
 }
@@ -402,12 +575,18 @@ build_rich_heatmap_legend <- function(spec, pdf = FALSE) {
     }
     return(ht)
   }
-  if (!inherits(ht, "Heatmap")) return(ht)
+  if (!inherits(ht, "Heatmap")) {
+    return(ht)
+  }
   a <- ht@column_names_param$anno
-  if (is.null(a) || !inherits(a, "AnnotationFunction")) return(ht)
+  if (is.null(a) || !inherits(a, "AnnotationFunction")) {
+    return(ht)
+  }
   e <- a@var_env
   v <- e$value
-  if (!inherits(v, "gridtext")) return(ht)
+  if (!inherits(v, "gridtext")) {
+    return(ht)
+  }
   ne <- list2env(as.list(e, all.names = TRUE), parent = parent.env(e))
   ne$value <- structure(symbolise_rich_labels(as.character(v)), class = class(v), param = attr(v, "param"))
   a@var_env <- ne
@@ -419,10 +598,15 @@ build_rich_heatmap_legend <- function(spec, pdf = FALSE) {
 # Rich legend specs attached to a Heatmap / HeatmapList's top annotations.
 .heatmap_rich_legend_specs <- function(ht) {
   hts <- if (inherits(ht, "HeatmapList")) ht@ht_list else list(ht)
-  unlist(lapply(hts, function(h) {
-    if (!inherits(h, "Heatmap") || is.null(h@top_annotation)) return(NULL)
-    attr(h@top_annotation, "rich_legends")
-  }), recursive = FALSE)
+  unlist(
+    lapply(hts, function(h) {
+      if (!inherits(h, "Heatmap") || is.null(h@top_annotation)) {
+        return(NULL)
+      }
+      attr(h@top_annotation, "rich_legends")
+    }),
+    recursive = FALSE
+  )
 }
 
 #' Prepare a heatmap + draw() args for rich level labels on the current device
@@ -435,9 +619,10 @@ prepare_rich_heatmap <- function(ht, args) {
   pdf <- identical(names(grDevices::dev.cur()), "pdf")
   specs <- .heatmap_rich_legend_specs(ht)
   if (length(specs)) {
-    args$annotation_legend_list <- c(args$annotation_legend_list,
-                                     lapply(specs, build_rich_heatmap_legend, pdf = pdf))
+    args$annotation_legend_list <- c(args$annotation_legend_list, lapply(specs, build_rich_heatmap_legend, pdf = pdf))
   }
-  if (pdf && rich_labels_available()) ht <- .symbolise_heatmap_column_labels(ht)
+  if (pdf && rich_labels_available()) {
+    ht <- .symbolise_heatmap_column_labels(ht)
+  }
   list(ht = ht, args = args)
 }

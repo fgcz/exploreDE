@@ -17,7 +17,9 @@ schema_path <- system.file("schema", "exploreDE_mapping.schema.json", package = 
 
 .mapping_validator <- function() {
   testthat::skip_if_not_installed("jsonvalidate")
-  if (!nzchar(schema_path)) testthat::skip("exploreDE_mapping.schema.json not found")
+  if (!nzchar(schema_path)) {
+    testthat::skip("exploreDE_mapping.schema.json not found")
+  }
   jsonvalidate::json_validator(schema_path, engine = "ajv")
 }
 
@@ -41,13 +43,18 @@ validate_mapping_json <- function(json_text) {
 
 test_that("default-only DE mapping (generic, non-canonical column names) conforms", {
   testthat::skip_if_not_installed("anndataR")
-  p <- make_toy_pieces()                                 # de_df has LFC / P / Q
+  p <- make_toy_pieces() # de_df has LFC / P / Q
   out <- withr::local_tempfile(fileext = ".h5ad")
 
-  build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata,
-                     rowdata = p$rowdata, de = list(treated_vs_control = p$de_df),
-                     de_columns = list(effect_log2fc = "LFC", score_pvalue = "P",
-                                       score_fdr = "Q"))
+  build_explore_h5ad(
+    p$counts,
+    out = out,
+    omics = "rnaseq",
+    coldata = p$coldata,
+    rowdata = p$rowdata,
+    de = list(treated_vs_control = p$de_df),
+    de_columns = list(effect_log2fc = "LFC", score_pvalue = "P", score_fdr = "Q")
+  )
 
   eds <- new_explore_dataset(out)
   mp <- eds$backend()$uns$exploreDE$mapping
@@ -63,36 +70,60 @@ test_that("retired / unknown override keys warn instead of being silently ignore
   p <- make_toy_pieces()
   out <- withr::local_tempfile(fileext = ".h5ad")
   expect_warning(
-    build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata,
-                       rowdata = p$rowdata, de = list(treated_vs_control = p$de_df),
-                       de_columns = list(effect_log2fc = "LFC", score_pvalue = "P",
-                                         score_fdr = "Q", score = "P")),
-    regexp = "unknown de_columns key\\(s\\): score")
+    build_explore_h5ad(
+      p$counts,
+      out = out,
+      omics = "rnaseq",
+      coldata = p$coldata,
+      rowdata = p$rowdata,
+      de = list(treated_vs_control = p$de_df),
+      de_columns = list(effect_log2fc = "LFC", score_pvalue = "P", score_fdr = "Q", score = "P")
+    ),
+    regexp = "unknown de_columns key\\(s\\): score"
+  )
   expect_warning(
-    build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata,
-                       rowdata = p$rowdata,
-                       rowdata_columns = list(description_col = "whatever")),
-    regexp = "unknown rowdata_columns key\\(s\\): description_col")
+    build_explore_h5ad(
+      p$counts,
+      out = out,
+      omics = "rnaseq",
+      coldata = p$coldata,
+      rowdata = p$rowdata,
+      rowdata_columns = list(description_col = "whatever")
+    ),
+    regexp = "unknown rowdata_columns key\\(s\\): description_col"
+  )
 })
 
 test_that("per-contrast override mapping (no shared default) conforms", {
   testthat::skip_if_not_installed("anndataR")
-  n <- 12L; ns <- 8L
+  n <- 12L
+  ns <- 8L
   m <- matrix(seq_len(n * ns) + 0.5, nrow = n, ncol = ns)
-  rownames(m) <- sprintf("F%02d", seq_len(n)); colnames(m) <- sprintf("S%02d", seq_len(ns))
-  coldata <- data.frame(row.names = colnames(m),
-                        group = rep(c("A", "B", "C", "ctrl"), each = ns / 4L))
-  mk_de <- function(seed) data.frame(row.names = rownames(m),
-                                     lfc = seq(-2, 2, length.out = n) + seed,
-                                     fdrcol = seq(0, 0.9, length.out = n),
-                                     extra = seq(0, 1, length.out = n))
+  rownames(m) <- sprintf("F%02d", seq_len(n))
+  colnames(m) <- sprintf("S%02d", seq_len(ns))
+  coldata <- data.frame(row.names = colnames(m), group = rep(c("A", "B", "C", "ctrl"), each = ns / 4L))
+  mk_de <- function(seed) {
+    data.frame(
+      row.names = rownames(m),
+      lfc = seq(-2, 2, length.out = n) + seed,
+      fdrcol = seq(0, 0.9, length.out = n),
+      extra = seq(0, 1, length.out = n)
+    )
+  }
   de <- list(A_vs_ctrl = mk_de(0), B_vs_ctrl = mk_de(0.2))
   out <- withr::local_tempfile(fileext = ".h5ad")
 
-  build_explore_h5ad(m, out = out, omics = "rnaseq", coldata = coldata, de = de,
-                     de_columns = list(
-                       A_vs_ctrl = list(effect_log2fc = "lfc", score_fdr = "fdrcol"),
-                       B_vs_ctrl = list(effect_log2fc = "fdrcol", score_fdr = "fdrcol")))
+  build_explore_h5ad(
+    m,
+    out = out,
+    omics = "rnaseq",
+    coldata = coldata,
+    de = de,
+    de_columns = list(
+      A_vs_ctrl = list(effect_log2fc = "lfc", score_fdr = "fdrcol"),
+      B_vs_ctrl = list(effect_log2fc = "fdrcol", score_fdr = "fdrcol")
+    )
+  )
 
   eds <- new_explore_dataset(out)
   mp <- eds$backend()$uns$exploreDE$mapping
@@ -108,8 +139,14 @@ test_that("no declared mapping -> uns$exploreDE is absent (canonical files stay 
   p <- make_toy_pieces()
   out <- withr::local_tempfile(fileext = ".h5ad")
 
-  build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata,
-                     rowdata = p$rowdata, de = list(treated_vs_control = p$de_df))
+  build_explore_h5ad(
+    p$counts,
+    out = out,
+    omics = "rnaseq",
+    coldata = p$coldata,
+    rowdata = p$rowdata,
+    de = list(treated_vs_control = p$de_df)
+  )
 
   eds <- new_explore_dataset(out)
   expect_null(eds$backend()$uns$exploreDE)
@@ -117,20 +154,30 @@ test_that("no declared mapping -> uns$exploreDE is absent (canonical files stay 
 
 test_that("explicit rowdata_columns override -> mapping$feature conforms, and actually drives the feature id (not just a label)", {
   testthat::skip_if_not_installed("anndataR")
-  n <- 6L; ns <- 4L
+  n <- 6L
+  ns <- 4L
   m <- matrix(seq_len(n * ns) + 0.5, nrow = n, ncol = ns)
-  rownames(m) <- sprintf("F%02d", seq_len(n)); colnames(m) <- sprintf("S%02d", seq_len(ns))
+  rownames(m) <- sprintf("F%02d", seq_len(n))
+  colnames(m) <- sprintf("S%02d", seq_len(ns))
   coldata <- data.frame(row.names = colnames(m), group = rep(c("A", "B"), each = ns / 2L))
   # Column names a foreign proteomics pipeline might use instead of the
   # built-in protein_Id/gene_name detection.
-  rowdata <- data.frame(row.names = rownames(m),
-                        UniProt_Accession = sprintf("P%05d", seq_len(n)),
-                        Display_Name = sprintf("GENE%d", seq_len(n)),
-                        stringsAsFactors = FALSE)
+  rowdata <- data.frame(
+    row.names = rownames(m),
+    UniProt_Accession = sprintf("P%05d", seq_len(n)),
+    Display_Name = sprintf("GENE%d", seq_len(n)),
+    stringsAsFactors = FALSE
+  )
   out <- withr::local_tempfile(fileext = ".h5ad")
 
-  build_explore_h5ad(m, out = out, omics = "proteomics", coldata = coldata, rowdata = rowdata,
-                     rowdata_columns = list(id_col = "UniProt_Accession", symbol_col = "Display_Name"))
+  build_explore_h5ad(
+    m,
+    out = out,
+    omics = "proteomics",
+    coldata = coldata,
+    rowdata = rowdata,
+    rowdata_columns = list(id_col = "UniProt_Accession", symbol_col = "Display_Name")
+  )
 
   eds <- new_explore_dataset(out)
   mp <- eds$backend()$uns$exploreDE$mapping
@@ -146,13 +193,15 @@ test_that("explicit rowdata_columns override -> mapping$feature conforms, and ac
 
 test_that("schema accepts the SAINT-shaped mapping directly", {
   ok <- validate_mapping_json(
-    '{"de":{"default":{"effect_log2fc_col":"log2_EFCs","score_fdr_col":"BFDR"},"contrasts":{"baita_vs_egfp":{"score_col":"SaintScore","score_label":"SaintScore"}}}}')
+    '{"de":{"default":{"effect_log2fc_col":"log2_EFCs","score_fdr_col":"BFDR"},"contrasts":{"baita_vs_egfp":{"score_col":"SaintScore","score_label":"SaintScore"}}}}'
+  )
   expect_true(ok)
 })
 
 test_that("schema accepts a feature mapping alongside de", {
   ok <- validate_mapping_json(
-    '{"de":{"default":{"score_label":"x"}},"feature":{"id_col":"UniProt_Accession"}}')
+    '{"de":{"default":{"score_label":"x"}},"feature":{"id_col":"UniProt_Accession"}}'
+  )
   expect_true(ok)
 })
 
@@ -163,7 +212,8 @@ test_that("schema rejects the retired score_kind / fdr_kind tokens", {
 
 test_that("schema rejects an undeclared top-level key (e.g. a not-yet-built 'assay' block)", {
   ok <- validate_mapping_json(
-    '{"de":{"default":{"score_label":"x"}},"assay":{"counts_layer":"raw"}}')
+    '{"de":{"default":{"score_label":"x"}},"assay":{"counts_layer":"raw"}}'
+  )
   expect_false(ok)
 })
 

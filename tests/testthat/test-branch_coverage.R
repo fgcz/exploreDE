@@ -3,33 +3,37 @@
 # covr identifies in R/helperFunctions.R.
 # ============================================================================
 
-
 # --- plot_ordination_samples: toggle permutations -----------------------------
 test_that("plot_ordination_samples renders with every toggle combination enabled", {
-  m <- matrix(rnorm(200), nrow = 10,
-              dimnames = list(paste0("s", 1:10), paste0("g", 1:20)))
+  m <- matrix(rnorm(200), nrow = 10, dimnames = list(paste0("s", 1:10), paste0("g", 1:20)))
   pca <- calculate_pca(m)
   scores <- dplyr::left_join(
     pca$scores,
-    tibble::tibble(Name = paste0("s", 1:10),
-                   cond = rep(c("A", "B"), each = 5),
-                   shape = rep(c("X", "Y"), times = 5)),
+    tibble::tibble(Name = paste0("s", 1:10), cond = rep(c("A", "B"), each = 5), shape = rep(c("X", "Y"), times = 5)),
     by = "Name"
   )
   coloursPCA <- c(A = "red", B = "blue")
 
   # Every visual toggle enabled, including pcaFactor2 as a separate factor
   input <- list(
-    pcaX = "PC1", pcaY = "PC2",
-    pcaFactor1 = "cond", pcaFactor2 = "shape",
-    pcaAddEllipses = TRUE, pcaEllipsesAlpha = 0.3,
-    dotSizePCA = 3, alphaPCA = 0.8, dotBorderPCA = 0.3,
+    pcaX = "PC1",
+    pcaY = "PC2",
+    pcaFactor1 = "cond",
+    pcaFactor2 = "shape",
+    pcaAddEllipses = TRUE,
+    pcaEllipsesAlpha = 0.3,
+    dotSizePCA = 3,
+    alphaPCA = 0.8,
+    dotBorderPCA = 0.3,
     pcaShowNames = TRUE,
-    geneLabelNudgePCAY = 0.1, geneLabelNudgePCAX = 0.1,
-    textSizePCA = 12, pcaLabelMaxOverlap = 10,
+    geneLabelNudgePCAY = 0.1,
+    geneLabelNudgePCAX = 0.1,
+    textSizePCA = 12,
+    pcaLabelMaxOverlap = 10,
     pcaAxesProp = TRUE,
     boldPCA = "TRUE",
-    showLinesPCA = FALSE, showAxesPCA = FALSE
+    showLinesPCA = FALSE,
+    showAxesPCA = FALSE
   )
 
   p <- plot_ordination_samples(pca, scores, input, coloursPCA)
@@ -39,8 +43,7 @@ test_that("plot_ordination_samples renders with every toggle combination enabled
 
 # --- plot_ordination_biplot: per_pc colour branch -----------------------------
 test_that("plot_ordination_biplot handles per_pc selection with list arrow_colour", {
-  m <- matrix(rnorm(200), nrow = 10,
-              dimnames = list(paste0("s", 1:10), paste0("g", 1:20)))
+  m <- matrix(rnorm(200), nrow = 10, dimnames = list(paste0("s", 1:10), paste0("g", 1:20)))
   pca <- calculate_pca(m)
   scores <- dplyr::left_join(
     pca$scores,
@@ -51,14 +54,23 @@ test_that("plot_ordination_biplot handles per_pc selection with list arrow_colou
   bp <- prepare_biplot_data(pca, top_n = 3, selection_method = "per_pc")
 
   input <- list(
-    pcaX = "PC1", pcaY = "PC2", pcaFactor1 = "cond",
-    dotSizePCA = 3, alphaPCA = 0.8, dotBorderPCA = 0.3,
+    pcaX = "PC1",
+    pcaY = "PC2",
+    pcaFactor1 = "cond",
+    dotSizePCA = 3,
+    alphaPCA = 0.8,
+    dotBorderPCA = 0.3,
     textSizePCA = 12,
     boldPCA = "TRUE",
-    showLinesPCA = FALSE, showAxesPCA = FALSE
+    showLinesPCA = FALSE,
+    showAxesPCA = FALSE
   )
   p <- plot_ordination_biplot(
-    pca, scores, input, coloursPCA, bp,
+    pca,
+    scores,
+    input,
+    coloursPCA,
+    bp,
     arrow_scale = 1,
     arrow_colour = list(x = "red", y = "blue"),
     selection_method = "per_pc"
@@ -99,7 +111,7 @@ test_that("calculate_glmpca handles the NULL family parameter gracefully", {
 # --- apply_batch_correction: fallback when batch_correction_design skips ----
 test_that("apply_batch_correction skips cleanly when the design column is missing", {
   counts <- matrix(runif(20), nrow = 5, dimnames = list(NULL, paste0("s", 1:4)))
-  ds <- data.frame(batch = c("x", "x", "y", "y"))  # No 'cond' column
+  ds <- data.frame(batch = c("x", "x", "y", "y")) # No 'cond' column
   # batch_correction_design returns skip=TRUE with a message → apply returns counts
   expect_warning(out <- apply_batch_correction(counts, ds, "batch", "nonexistent"))
   expect_identical(out, counts)
@@ -109,8 +121,7 @@ test_that("apply_batch_correction skips cleanly when the design column is missin
 # --- generateMethodsText: FeatureCounts / default aligner branches -----------
 test_that("generateMethodsText picks the FeatureCounts wording when configured that way", {
   sections <- generateMethodsText(
-    param = list(refBuild = "GRCh38", runGO = FALSE,
-                 featureLevel = "gene", transcriptTypes = "protein-coding"),
+    param = list(refBuild = "GRCh38", runGO = FALSE, featureLevel = "gene", transcriptTypes = "protein-coding"),
     aligner = "FeatureCounts",
     de_method = "DESeq2",
     fastp_version = NULL,
@@ -151,16 +162,14 @@ test_that("getFastpVersion returns NULL when the log exists but contains no vers
   td <- tempfile("fastp_no_version_")
   dir.create(file.path(td, "sub"), recursive = TRUE)
   on.exit(unlink(td, recursive = TRUE))
-  writeLines(c("doing stuff", "no version info"),
-             file.path(td, "sample_preprocessing.log"))
+  writeLines(c("doing stuff", "no version info"), file.path(td, "sample_preprocessing.log"))
   expect_null(getFastpVersion(file.path(td, "sub")))
 })
 
 
 # --- prepare_biplot_data: manual selection with NULL custom_genes ------------
 test_that("prepare_biplot_data manual mode with NULL custom_genes returns empty gene_data", {
-  m <- matrix(rnorm(200), nrow = 10,
-              dimnames = list(paste0("s", 1:10), paste0("g", 1:20)))
+  m <- matrix(rnorm(200), nrow = 10, dimnames = list(paste0("s", 1:10), paste0("g", 1:20)))
   pca <- calculate_pca(m)
   bp <- prepare_biplot_data(pca, custom_genes = NULL, selection_method = "manual")
   expect_equal(nrow(bp$gene_data), 0)
@@ -170,9 +179,7 @@ test_that("prepare_biplot_data manual mode with NULL custom_genes returns empty 
 # --- step_batch_correction: NA batch column warns and returns counts ---------
 test_that("step_batch_correction warns and skips when batch column contains NAs", {
   counts <- matrix(runif(20), nrow = 5, dimnames = list(NULL, paste0("s", 1:4)))
-  ds <- data.frame(row.names = paste0("s", 1:4),
-                   batch = c("x", NA, "y", "y"),
-                   cond = c("A", "A", "B", "B"))
+  ds <- data.frame(row.names = paste0("s", 1:4), batch = c("x", NA, "y", "y"), cond = c("A", "A", "B", "B"))
   # Uses showNotification unguarded; outside a session it errors.
   # Wrap in tryCatch so we can assert the function attempted the NA branch.
   result <- tryCatch(
@@ -224,10 +231,10 @@ test_that("batch_correction_design confounded check triggers when combined rank 
   # batch and design perfectly collinear but both have 2 levels each
   ds <- data.frame(
     batch = c("x", "x", "y", "y"),
-    cond  = c("A", "A", "B", "B")
+    cond = c("A", "A", "B", "B")
   )
   out <- batch_correction_design(ds, designColumn = "cond", batchColumn = "batch")
   expect_match(out$msg, "confounded")
   expect_null(out$design)
-  expect_false(out$skip)  # 'warned' not 'skipped'
+  expect_false(out$skip) # 'warned' not 'skipped'
 })

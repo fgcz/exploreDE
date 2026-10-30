@@ -60,14 +60,16 @@ bucket_clear <- function(source = "unknown") {
 }
 
 parse_gene_text <- function(text) {
-  if (is.null(text) || text == "") return(character(0))
+  if (is.null(text) || text == "") {
+    return(character(0))
+  }
   genes <- strsplit(text, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
   genes[genes != ""]
 }
 
 # Resolve gene symbols / protein IDs to feature_ids when not in feature_id mode
 resolve_features <- function(input_genes, search_mode = "feature_id") {
-  gene_lookup    <- eds$proteomics_choices("gene")$lookup
+  gene_lookup <- eds$proteomics_choices("gene")$lookup
   protein_lookup <- eds$proteomics_choices("protein")$lookup
   if (search_mode == "gene_name" && !is.null(gene_lookup)) {
     expanded <- unlist(gene_lookup[input_genes], use.names = FALSE)
@@ -109,7 +111,8 @@ lapply(fb_tabs, function(tab) {
         hidden_bucket <- div(style = "display:none;", hidden_bucket)
         tagList(
           div(
-            class = "text-muted text-center", style = "padding: 20px;",
+            class = "text-muted text-center",
+            style = "padding: 20px;",
             icon("hand-pointer"),
             " Select features from any tab to populate the bucket."
           ),
@@ -163,16 +166,19 @@ lapply(fb_tabs, function(tab) {
 # contributed, so a feature removed from the selectize (its "x") or deleted
 # from the text box also leaves the bucket, not just the input.
 lapply(c("boxplot", "volcano", "heatmap"), function(tab) {
-  sel_id  <- paste0("fb_select_", tab)
+  sel_id <- paste0("fb_select_", tab)
   text_id <- paste0("fb_text_", tab)
   contributed <- character(0)
   observeEvent(
-    { input[[sel_id]]; input[[text_id]] },
-    ignoreNULL = FALSE, ignoreInit = TRUE,
+    {
+      input[[sel_id]]
+      input[[text_id]]
+    },
+    ignoreNULL = FALSE,
+    ignoreInit = TRUE,
     {
       search_mode <- input[[paste0("fb_search_by_", tab)]] %||% "feature_id"
-      genes <- c(input[[sel_id]] %||% character(0),
-                 parse_gene_text(input[[text_id]]))
+      genes <- c(input[[sel_id]] %||% character(0), parse_gene_text(input[[text_id]]))
       genes <- resolve_features(genes, search_mode)
       bucket_remove(setdiff(contributed, genes), source = tab)
       bucket_add(genes, source = tab)
@@ -197,7 +203,8 @@ observeEvent(input$fb_add_brushed, ignoreInit = TRUE, {
   bucket_add(volcanoStagedGenes$brushGenes, source = "volcano_brush")
   showNotification(
     paste0("Added ", length(volcanoStagedGenes$brushGenes), " features to bucket"),
-    type = "message", duration = 3
+    type = "message",
+    duration = 3
   )
 })
 
@@ -211,7 +218,7 @@ lapply(fb_reset_tabs, function(tab) {
     # Clear ALL selectize and textarea inputs across ALL tabs,
     # respecting the current search mode so choices stay consistent
     mode <- input[[paste0("fb_search_by_", tab)]] %||% "feature_id"
-    gene_ch    <- eds$proteomics_choices("gene")$choices
+    gene_ch <- eds$proteomics_choices("gene")$choices
     protein_ch <- eds$proteomics_choices("protein")$choices
     choices <- if (mode == "gene_name" && !is.null(gene_ch)) {
       gene_ch
@@ -221,8 +228,7 @@ lapply(fb_reset_tabs, function(tab) {
       eds$feature_ids()
     }
     for (t in fb_input_tabs) {
-      updateSelectizeInput(session, paste0("fb_select_", t),
-                           choices = choices, selected = NULL, server = TRUE)
+      updateSelectizeInput(session, paste0("fb_select_", t), choices = choices, selected = NULL, server = TRUE)
       updateTextAreaInput(session, paste0("fb_text_", t), value = "")
     }
     # Clear volcano staged genes
@@ -245,9 +251,13 @@ lapply(fb_reset_tabs, function(tab) {
 
 feature_label_map <- function(mode = "feature_id") {
   kind <- switch(mode, gene_name = "gene", protein_Id = "protein", NULL)
-  if (is.null(kind)) return(NULL)
+  if (is.null(kind)) {
+    return(NULL)
+  }
   lookup <- eds$proteomics_choices(kind)$lookup
-  if (is.null(lookup)) return(NULL)
+  if (is.null(lookup)) {
+    return(NULL)
+  }
   setNames(rep(names(lookup), lengths(lookup)), unlist(lookup, use.names = FALSE))
 }
 
@@ -255,7 +265,9 @@ feature_label_map <- function(mode = "feature_id") {
 # feature has no label in the chosen mode.
 label_features <- function(ids, mode = "feature_id") {
   map <- feature_label_map(mode %||% "feature_id")
-  if (is.null(map)) return(ids)
+  if (is.null(map)) {
+    return(ids)
+  }
   labs <- unname(map[ids])
   ifelse(is.na(labs) | !nzchar(labs), ids, labs)
 }
@@ -264,22 +276,30 @@ label_features <- function(ids, mode = "feature_id") {
 # rownames rather than passing Heatmap(row_labels = ...) because ComplexHeatmap
 # errors on any explicit row_labels for a 0-row matrix (e.g. empty custom bucket).
 label_rows <- function(mat, mode = "feature_id", width = NULL) {
-  if (!NROW(mat)) return(mat)
+  if (!NROW(mat)) {
+    return(mat)
+  }
   labs <- label_features(rownames(mat), mode)
-  if (!is.null(width)) labs <- substr(labs, 1, width)
+  if (!is.null(width)) {
+    labs <- substr(labs, 1, width)
+  }
   rownames(mat) <- labs
   mat
 }
 
 lapply(c("heatmap", "ordination", "volcano", "multiTile"), function(tab) {
   output[[paste0("fb_label_mode_", tab)]] <- renderUI({
-    has_gene    <- !is.null(eds$proteomics_choices("gene")$lookup)
+    has_gene <- !is.null(eds$proteomics_choices("gene")$lookup)
     has_protein <- !is.null(eds$proteomics_choices("protein")$lookup)
     req(has_gene || has_protein)
 
     choices <- c("Feature ID" = "feature_id")
-    if (has_protein) choices <- c(choices, "Protein ID" = "protein_Id")
-    if (has_gene) choices <- c(choices, "Gene Symbol" = "gene_name")
+    if (has_protein) {
+      choices <- c(choices, "Protein ID" = "protein_Id")
+    }
+    if (has_gene) {
+      choices <- c(choices, "Gene Symbol" = "gene_name")
+    }
 
     radioButtons(
       inputId = paste0("fb_label_by_", tab),
@@ -302,10 +322,14 @@ lapply(c("heatmap", "ordination", "volcano", "multiTile"), function(tab) {
 # Selectize choices for a "Search by" mode; `default` is used in feature_id mode
 # (or when the chosen lookup is absent).
 search_mode_choices <- function(mode, default) {
-  gene_ch    <- eds$proteomics_choices("gene")$choices
+  gene_ch <- eds$proteomics_choices("gene")$choices
   protein_ch <- eds$proteomics_choices("protein")$choices
-  if (identical(mode, "gene_name") && !is.null(gene_ch)) return(gene_ch)
-  if (identical(mode, "protein_Id") && !is.null(protein_ch)) return(protein_ch)
+  if (identical(mode, "gene_name") && !is.null(gene_ch)) {
+    return(gene_ch)
+  }
+  if (identical(mode, "protein_Id") && !is.null(protein_ch)) {
+    return(protein_ch)
+  }
   default
 }
 
@@ -313,13 +337,17 @@ search_mode_choices <- function(mode, default) {
 lapply(c(fb_input_tabs, "correlation", "multiBoxplot", "multiTile"), function(tab) {
   output[[paste0("fb_search_mode_", tab)]] <- renderUI({
     # Only show radio when at least one alternative lookup exists
-    has_gene    <- !is.null(eds$proteomics_choices("gene")$lookup)
+    has_gene <- !is.null(eds$proteomics_choices("gene")$lookup)
     has_protein <- !is.null(eds$proteomics_choices("protein")$lookup)
     req(has_gene || has_protein)
 
     choices <- c("Feature ID" = "feature_id")
-    if (has_protein) choices <- c(choices, "Protein ID" = "protein_Id")
-    if (has_gene) choices <- c(choices, "Gene Symbol" = "gene_name")
+    if (has_protein) {
+      choices <- c(choices, "Protein ID" = "protein_Id")
+    }
+    if (has_gene) {
+      choices <- c(choices, "Gene Symbol" = "gene_name")
+    }
 
     radioButtons(
       inputId = paste0("fb_search_by_", tab),
@@ -333,7 +361,9 @@ lapply(c(fb_input_tabs, "correlation", "multiBoxplot", "multiTile"), function(ta
 
 lapply(fb_input_tabs, function(tab) {
   observeEvent(input[[paste0("fb_search_by_", tab)]], ignoreInit = TRUE, {
-    if (isTRUE(restoring())) return()  # save-state restore guard
+    if (isTRUE(restoring())) {
+      return()
+    } # save-state restore guard
     mode <- input[[paste0("fb_search_by_", tab)]]
 
     # Clear everything — search mode change invalidates bucket contents
@@ -349,7 +379,7 @@ lapply(fb_input_tabs, function(tab) {
     figuresDataReactive$heatmapCustom <- NULL
 
     # Update selectize choices for the new mode across all tabs
-    gene_ch    <- eds$proteomics_choices("gene")$choices
+    gene_ch <- eds$proteomics_choices("gene")$choices
     protein_ch <- eds$proteomics_choices("protein")$choices
     choices <- if (mode == "gene_name" && !is.null(gene_ch)) {
       gene_ch
@@ -359,8 +389,7 @@ lapply(fb_input_tabs, function(tab) {
       eds$feature_ids()
     }
     for (t in fb_input_tabs) {
-      updateSelectizeInput(session, paste0("fb_select_", t),
-                           choices = choices, selected = NULL, server = TRUE)
+      updateSelectizeInput(session, paste0("fb_select_", t), choices = choices, selected = NULL, server = TRUE)
     }
   })
 })

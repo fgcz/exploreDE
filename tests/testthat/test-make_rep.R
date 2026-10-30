@@ -11,31 +11,31 @@
 # helperFunctions.R calls functions from these packages without namespace
 # qualifiers (it was written for a Shiny app context where all are attached).
 # Attach them explicitly here since devtools::load_all() doesn't attach Imports.
-library(grid)           # gpar()
-library(dendextend)     # labels_colors<-
+library(grid) # gpar()
+library(dendextend) # labels_colors<-
 library(ComplexHeatmap) # HeatmapAnnotation, Heatmap, draw
-library(circlize)       # colorRamp2
-library(RColorBrewer)   # brewer.pal
+library(circlize) # colorRamp2
+library(RColorBrewer) # brewer.pal
 
 make_rep_input <- function(overrides = list()) {
   base <- list(
-    replicabilityTextSize      = 12,
-    replicabilityFactors       = NULL,  # start simple: no factor annotations
-    replicabilityPalette       = "None",
-    replicabilityPaletteRev    = FALSE,
-    replicabilityAtLow         = -1,
-    replicabilityAtMid         = 0,
-    replicabilityAtHigh        = 1,
-    replicabilityColorLow      = "#1F78B4",
-    replicabilityColorMid      = "white",
-    replicabilityColorHigh     = "#E31A1C",
-    replicabilityBorderColor1  = "black",
-    replicabilityBorderColor2  = "black",
-    replicabilityBorderSize1   = 2,
-    replicabilityBorderSize2   = 2,
-    replicabilityShowNames     = TRUE,
-    replicabilityDistMethod    = "euclidean",
-    replicabilityClustMethod   = "complete"
+    replicabilityTextSize = 12,
+    replicabilityFactors = NULL, # start simple: no factor annotations
+    replicabilityPalette = "None",
+    replicabilityPaletteRev = FALSE,
+    replicabilityAtLow = -1,
+    replicabilityAtMid = 0,
+    replicabilityAtHigh = 1,
+    replicabilityColorLow = "#1F78B4",
+    replicabilityColorMid = "white",
+    replicabilityColorHigh = "#E31A1C",
+    replicabilityBorderColor1 = "black",
+    replicabilityBorderColor2 = "black",
+    replicabilityBorderSize1 = 2,
+    replicabilityBorderSize2 = 2,
+    replicabilityShowNames = TRUE,
+    replicabilityDistMethod = "euclidean",
+    replicabilityClustMethod = "complete"
   )
   modifyList(base, overrides)
 }
@@ -49,8 +49,8 @@ make_rep_data <- function(n = 5) {
   rownames(corr) <- colnames(corr) <- paste0("s", seq_len(n))
 
   list(
-    corr    = corr,
-    hclust  = hclust(as.dist(1 - abs(corr))),
+    corr = corr,
+    hclust = hclust(as.dist(1 - abs(corr))),
     dataset = data.frame(
       Name = paste0("s", seq_len(n)),
       cond = rep(c("A", "B"), length.out = n),
@@ -71,7 +71,7 @@ test_that("make_rep_heatmap runs without error when replicabilityFactors is NULL
   pdf(tempfile(fileext = ".pdf"))
   on.exit(dev.off(), add = TRUE)
 
-  expect_error(fn(data, title_suffix = "Smoke"), NA)  # NA = no error
+  expect_error(fn(data, title_suffix = "Smoke"), NA) # NA = no error
 })
 
 test_that("make_rep_heatmap runs with replicabilityFactors and GroupColour inputs", {
@@ -79,8 +79,8 @@ test_that("make_rep_heatmap runs with replicabilityFactors and GroupColour input
   data <- make_rep_data()
   input <- make_rep_input(list(
     replicabilityFactors = "cond",
-    GroupColourcondA     = "red",
-    GroupColourcondB     = "blue"
+    GroupColourcondA = "red",
+    GroupColourcondB = "blue"
   ))
   fn <- with_mock_env(make_rep_heatmap, input = input)
 
@@ -95,9 +95,9 @@ test_that("make_rep_heatmap runs with Colours-tab level labels", {
   data <- make_rep_data()
   input <- make_rep_input(list(
     replicabilityFactors = "cond",
-    GroupColourcondA     = "red",
-    GroupColourcondB     = "blue",
-    GroupLabelcondA      = "<i>Il4ra</i><sup>fl/fl</sup> &Delta;"
+    GroupColourcondA = "red",
+    GroupColourcondB = "blue",
+    GroupLabelcondA = "<i>Il4ra</i><sup>fl/fl</sup> &Delta;"
   ))
   fn <- with_mock_env(make_rep_heatmap, input = input)
 
@@ -138,8 +138,8 @@ test_that("make_rep_dendrogram runs with replicabilityFactors and GroupColour in
   data <- make_rep_data()
   input <- make_rep_input(list(
     replicabilityFactors = "cond",
-    GroupColourcondA     = "red",
-    GroupColourcondB     = "blue"
+    GroupColourcondA = "red",
+    GroupColourcondB = "blue"
   ))
   fn <- with_mock_env(make_rep_dendrogram, input = input)
 

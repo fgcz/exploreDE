@@ -15,7 +15,8 @@ tabItem(
             selections, and the Multi DE datasets and their settings. The file stays on your
             machine; nothing is uploaded to the server. It is a .json file, so it can be opened
             in any text editor. Re-upload it later (below) to pick up exactly where you left off.",
-            br(), br(),
+            br(),
+            br(),
             tags$b("Note: "),
             "a saved session can only be restored on the exact same dataset it was made from —
             open the app with the original data link before restoring, or the upload will be
@@ -23,7 +24,8 @@ tabItem(
             or that you can no longer access, are skipped."
           ),
           downloadButton(outputId = "download_state_json", label = "Save session (.json)", class = "btn-primary"),
-          br(), br(),
+          br(),
+          br(),
           verbatimTextOutput("save_state_status")
         )
       )

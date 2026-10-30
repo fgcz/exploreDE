@@ -15,13 +15,11 @@
 #' @return `"Human"`, `"Mouse"`, `"Rat"`, or `NULL`.
 #' @export
 kegg_species_label <- function(ref_build) {
-  if (is.null(ref_build) || is.na(ref_build) || !nzchar(ref_build)) return(NULL)
+  if (is.null(ref_build) || is.na(ref_build) || !nzchar(ref_build)) {
+    return(NULL)
+  }
   genus_species <- strsplit(ref_build, "/", fixed = TRUE)[[1]][1]
-  switch(genus_species,
-    Homo_sapiens      = "Human",
-    Mus_musculus      = "Mouse",
-    Rattus_norvegicus = "Rat",
-    NULL)
+  switch(genus_species, Homo_sapiens = "Human", Mus_musculus = "Mouse", Rattus_norvegicus = "Rat", NULL)
 }
 
 #' go_annotation_columns
@@ -76,8 +74,8 @@ features_in_go_term <- function(df, go_id) {
 #' @export
 batch_correction_design <- function(dataset, designColumn, batchColumn) {
   null_design <- list(design = NULL, skip = FALSE, msg = NULL)
-  skipped     <- function(msg) list(design = NULL, skip = TRUE,  msg = msg)
-  warned      <- function(msg) list(design = NULL, skip = FALSE, msg = msg)
+  skipped <- function(msg) list(design = NULL, skip = TRUE, msg = msg)
+  warned <- function(msg) list(design = NULL, skip = FALSE, msg = msg)
 
   if (is.null(designColumn) || !nzchar(designColumn) || designColumn == "None") {
     return(null_design)
@@ -101,12 +99,12 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
   if (inherits(design, "error")) {
     return(skipped(sprintf(
       "Could not build design matrix from '%s': %s \u2014 batch correction skipped.",
-      designColumn, conditionMessage(design)
+      designColumn,
+      conditionMessage(design)
     )))
   }
 
-  if (!is.null(batchColumn) && nzchar(batchColumn) && batchColumn != "None" &&
-      batchColumn %in% colnames(dataset)) {
+  if (!is.null(batchColumn) && nzchar(batchColumn) && batchColumn != "None" && batchColumn %in% colnames(dataset)) {
     batch <- factor(dataset[[batchColumn]])
     if (nlevels(batch) >= 2) {
       batch_mm <- tryCatch(stats::model.matrix(~batch), error = function(e) NULL)
@@ -115,7 +113,8 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
         if (qr(combined)$rank < ncol(combined)) {
           return(warned(sprintf(
             "Batch ('%s') and design ('%s') are confounded \u2014 batch correction applied without a design matrix.",
-            batchColumn, designColumn
+            batchColumn,
+            designColumn
           )))
         }
       }
@@ -137,19 +136,25 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
 #' @return The (possibly batch-corrected) counts matrix
 #' @export
 apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
-  if (is.null(batchCol) || !nzchar(batchCol) || batchCol == "None") return(counts)
+  if (is.null(batchCol) || !nzchar(batchCol) || batchCol == "None") {
+    return(counts)
+  }
 
   notify <- function(msg, type = "warning") {
-    if (requireNamespace("shiny", quietly = TRUE) &&
-        !is.null(shiny::getDefaultReactiveDomain())) {
+    if (
+      requireNamespace("shiny", quietly = TRUE) &&
+        !is.null(shiny::getDefaultReactiveDomain())
+    ) {
       shiny::showNotification(msg, type = type, duration = 8)
     } else {
       warning(msg, call. = FALSE)
     }
   }
 
-  if (!batchCol %in% colnames(dataset) ||
-      nlevels(factor(dataset[[batchCol]])) < 2) {
+  if (
+    !batchCol %in% colnames(dataset) ||
+      nlevels(factor(dataset[[batchCol]])) < 2
+  ) {
     notify(sprintf("Batch factor '%s' has <2 levels \u2014 batch correction skipped.", batchCol))
     return(counts)
   }
@@ -158,17 +163,22 @@ apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
   if (!is.null(info$msg)) {
     notify(info$msg, type = if (isTRUE(info$skip)) "error" else "warning")
   }
-  if (isTRUE(info$skip)) return(counts)
+  if (isTRUE(info$skip)) {
+    return(counts)
+  }
 
   args <- list(x = counts, batch = dataset[[batchCol]])
-  if (!is.null(info$design)) args$design <- info$design
+  if (!is.null(info$design)) {
+    args$design <- info$design
+  }
 
   tryCatch(
     do.call(limma::removeBatchEffect, args),
     error = function(e) {
-      notify(sprintf("Batch correction failed: %s \u2014 showing uncorrected counts.",
-                     conditionMessage(e)),
-             type = "error")
+      notify(
+        sprintf("Batch correction failed: %s \u2014 showing uncorrected counts.", conditionMessage(e)),
+        type = "error"
+      )
       counts
     }
   )
@@ -187,18 +197,30 @@ apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
 #' @export
 standardise_columns <- function(df) {
   # dictionary concept -> legacy column name it is renamed to
-  rowdata_concepts <- c("protein_Id", "peptide_Id", "site", "gene_name", "description",
-                        "fasta.id", "modelName", "nrPeptides")
+  rowdata_concepts <- c(
+    "protein_Id",
+    "peptide_Id",
+    "site",
+    "gene_name",
+    "description",
+    "fasta.id",
+    "modelName",
+    "nrPeptides"
+  )
   de_concepts <- c(effect_log2fc = "log2Ratio", score_pvalue = "pValue", score_fdr = "fdr")
 
-  orig    <- colnames(df)
+  orig <- colnames(df)
   current <- orig
   rename <- function(patterns, to) {
     src <- eds_match_col(orig, patterns, unique = TRUE)
     if (!is.null(src)) current[match(src, orig)] <<- to
   }
-  for (concept in rowdata_concepts) rename(eds_rowdata_column_patterns[[concept]], concept)
-  for (concept in names(de_concepts)) rename(eds_de_column_patterns[[concept]], de_concepts[[concept]])
+  for (concept in rowdata_concepts) {
+    rename(eds_rowdata_column_patterns[[concept]], concept)
+  }
+  for (concept in names(de_concepts)) {
+    rename(eds_de_column_patterns[[concept]], de_concepts[[concept]])
+  }
   colnames(df) <- current
   df
 }
@@ -213,7 +235,9 @@ build_feature_id <- function(df) {
   pid <- df$protein_Id
 
   # If protein_Id is already unique, use it directly
-  if (!anyDuplicated(pid)) return(pid)
+  if (!anyDuplicated(pid)) {
+    return(pid)
+  }
 
   # Try known sub-feature columns (canonical names) in priority order
   # Always prepend protein_Id so users see which protein a sub-feature belongs to
@@ -268,10 +292,18 @@ convert_proteomics_se <- function(se) {
 #' generateParams
 #' @export
 generateParams <- function(
-  sampleGroup = "diff", refGroup = "undiff", groupingName = "Condition",
-  comparison = "diff--over--undiff", featureLevel = "gene",
-  runGO = TRUE, fdrThreshORA = 0.05, fdrThreshGSEA = 0.05, pValThreshGO = 0.01,
-  log2RatioThreshGO = 0, backgroundExpression = 10, refBuild = "GRCh38"
+  sampleGroup = "diff",
+  refGroup = "undiff",
+  groupingName = "Condition",
+  comparison = "diff--over--undiff",
+  featureLevel = "gene",
+  runGO = TRUE,
+  fdrThreshORA = 0.05,
+  fdrThreshGSEA = 0.05,
+  pValThreshGO = 0.01,
+  log2RatioThreshGO = 0,
+  backgroundExpression = 10,
+  refBuild = "GRCh38"
 ) {
   return(list(
     sampleGroup = sampleGroup,
@@ -319,8 +351,10 @@ dataSummary <- function(data, varname, groupnames) {
     )
   }
   data_sum <- plyr::ddply(
-    data, groupnames,
-    .fun = summary_func, varname
+    data,
+    groupnames,
+    .fun = summary_func,
+    varname
   )
   data_sum <- plyr::rename(data_sum, c("mean" = varname))
   return(data_sum)
@@ -401,7 +435,9 @@ bucket_clear <- function(source = "unknown") {
 #' @return Character vector of non-empty tokens
 #' @export
 parse_gene_text <- function(text) {
-  if (is.null(text) || text == "") return(character(0))
+  if (is.null(text) || text == "") {
+    return(character(0))
+  }
   genes <- strsplit(text, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
   genes[genes != ""]
 }
@@ -438,109 +474,122 @@ resolve_features <- function(input_genes, search_mode = "feature_id") {
 #' @param title_suffix String appended to heatmap title
 #' @export
 make_rep_heatmap <- function(data, title_suffix = "") {
-    req(data)
+  req(data)
 
-    # Prepare annotations
-    ha_top <- NULL
-    ha_left <- NULL
-    row_names_gp <- gpar(fontsize = input$replicabilityTextSize)
-    column_names_gp <- gpar(fontsize = input$replicabilityTextSize)
+  # Prepare annotations
+  ha_top <- NULL
+  ha_left <- NULL
+  row_names_gp <- gpar(fontsize = input$replicabilityTextSize)
+  column_names_gp <- gpar(fontsize = input$replicabilityTextSize)
 
-    if (!is.null(input$replicabilityFactors)) {
-        dataset <- data$dataset
-        sample_names <- rownames(data$corr)
-        dataset <- dataset[match(sample_names, dataset$Name), ]
+  if (!is.null(input$replicabilityFactors)) {
+    dataset <- data$dataset
+    sample_names <- rownames(data$corr)
+    dataset <- dataset[match(sample_names, dataset$Name), ]
 
-        # Get colors
-        colourList <- lapply(input$replicabilityFactors, function(f) {
-            levs <- levels(as.factor(dataset[[f]]))
-            colors <- vapply(levs, function(l) {
-                col_input <- input[[paste0("GroupColour", f, l)]]
-                if (is.null(col_input)) {
-                    return("#808080FF")
-                }
-                tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
-            }, character(1))
-            names(colors) <- levs
-            return(colors)
-        }) %>% setNames(input$replicabilityFactors)
+    # Get colors
+    colourList <- lapply(input$replicabilityFactors, function(f) {
+      levs <- levels(as.factor(dataset[[f]]))
+      colors <- vapply(
+        levs,
+        function(l) {
+          col_input <- input[[paste0("GroupColour", f, l)]]
+          if (is.null(col_input)) {
+            return("#808080FF")
+          }
+          tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
+        },
+        character(1)
+      )
+      names(colors) <- levs
+      return(colors)
+    }) %>%
+      setNames(input$replicabilityFactors)
 
-        # Color labels based on the first selected factor
-        factor_col <- input$replicabilityFactors[1]
-        factor_levels <- levels(as.factor(dataset[[factor_col]]))
-        colors <- vapply(factor_levels, function(l) {
-            col_input <- input[[paste0("GroupColour", factor_col, l)]]
-            if (is.null(col_input)) {
-                return("#808080FF")
-            }
-            tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
-        }, character(1))
-
-        sample_colors <- colors[as.character(dataset[[factor_col]])]
-        names(sample_colors) <- dataset$Name
-
-        row_names_gp <- gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
-        column_names_gp <- gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
-
-        anno_df <- dataset[, input$replicabilityFactors, drop = FALSE]
-
-        # Legend shows the Colours-tab display labels (plain text)
-        annoLegendParam <- lapply(input$replicabilityFactors, function(f) {
-            levs <- names(colourList[[f]])
-            list(at = levs, labels = unname(level_labels(input, f, levs, mode = "plain")))
-        }) %>% setNames(input$replicabilityFactors)
-
-        ha_top <- HeatmapAnnotation(
-            df = anno_df,
-            col = colourList,
-            show_legend = TRUE,
-            annotation_legend_param = annoLegendParam,
-            annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-            gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
-        )
-
-        ha_left <- rowAnnotation(
-            df = anno_df,
-            col = colourList,
-            show_legend = FALSE,
-            annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-            gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
-        )
-    }
-
-    # Get color breaks
-    at <- c(input$replicabilityAtLow, input$replicabilityAtMid, input$replicabilityAtHigh)
-
-    # Determine color scheme - use palette if selected, otherwise use manual colors
-    if (!is.null(input$replicabilityPalette) && input$replicabilityPalette != "None") {
-        palette_colours <- brewer.pal(9, input$replicabilityPalette)
-        selected_colours <- palette_colours[c(1, 5, 9)]
-        if (input$replicabilityPaletteRev) {
-            heatmap_colours <- colorRamp2(at, selected_colours)
-        } else {
-            heatmap_colours <- colorRamp2(at, rev(selected_colours))
+    # Color labels based on the first selected factor
+    factor_col <- input$replicabilityFactors[1]
+    factor_levels <- levels(as.factor(dataset[[factor_col]]))
+    colors <- vapply(
+      factor_levels,
+      function(l) {
+        col_input <- input[[paste0("GroupColour", factor_col, l)]]
+        if (is.null(col_input)) {
+          return("#808080FF")
         }
-    } else {
-        heatmap_colours <- colorRamp2(at, c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh))
-    }
-
-    hm <- ComplexHeatmap::Heatmap(
-        data$corr,
-        name = "Correlation",
-        col = heatmap_colours,
-        top_annotation = ha_top,
-        left_annotation = ha_left,
-        show_row_names = input$replicabilityShowNames,
-        show_column_names = input$replicabilityShowNames,
-        row_names_gp = row_names_gp,
-        column_names_gp = column_names_gp,
-        heatmap_legend_param = list(title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold")),
-        rect_gp = gpar(col = input$replicabilityBorderColor2, lwd = input$replicabilityBorderSize2 / 10),
-        column_title = paste0("Correlation Heatmap: ", title_suffix),
-        column_title_gp = gpar(fontsize = input$replicabilityTextSize + 2, fontface = "bold")
+        tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
+      },
+      character(1)
     )
 
-    draw(hm, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
+    sample_colors <- colors[as.character(dataset[[factor_col]])]
+    names(sample_colors) <- dataset$Name
+
+    row_names_gp <- gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
+    column_names_gp <- gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
+
+    anno_df <- dataset[, input$replicabilityFactors, drop = FALSE]
+
+    # Legend shows the Colours-tab display labels (plain text)
+    annoLegendParam <- lapply(input$replicabilityFactors, function(f) {
+      levs <- names(colourList[[f]])
+      list(at = levs, labels = unname(level_labels(input, f, levs, mode = "plain")))
+    }) %>%
+      setNames(input$replicabilityFactors)
+
+    ha_top <- HeatmapAnnotation(
+      df = anno_df,
+      col = colourList,
+      show_legend = TRUE,
+      annotation_legend_param = annoLegendParam,
+      annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
+      gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
+    )
+
+    ha_left <- rowAnnotation(
+      df = anno_df,
+      col = colourList,
+      show_legend = FALSE,
+      annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
+      gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
+    )
+  }
+
+  # Get color breaks
+  at <- c(input$replicabilityAtLow, input$replicabilityAtMid, input$replicabilityAtHigh)
+
+  # Determine color scheme - use palette if selected, otherwise use manual colors
+  if (!is.null(input$replicabilityPalette) && input$replicabilityPalette != "None") {
+    palette_colours <- brewer.pal(9, input$replicabilityPalette)
+    selected_colours <- palette_colours[c(1, 5, 9)]
+    if (input$replicabilityPaletteRev) {
+      heatmap_colours <- colorRamp2(at, selected_colours)
+    } else {
+      heatmap_colours <- colorRamp2(at, rev(selected_colours))
+    }
+  } else {
+    heatmap_colours <- colorRamp2(
+      at,
+      c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh)
+    )
+  }
+
+  hm <- ComplexHeatmap::Heatmap(
+    data$corr,
+    name = "Correlation",
+    col = heatmap_colours,
+    top_annotation = ha_top,
+    left_annotation = ha_left,
+    show_row_names = input$replicabilityShowNames,
+    show_column_names = input$replicabilityShowNames,
+    row_names_gp = row_names_gp,
+    column_names_gp = column_names_gp,
+    heatmap_legend_param = list(title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold")),
+    rect_gp = gpar(col = input$replicabilityBorderColor2, lwd = input$replicabilityBorderSize2 / 10),
+    column_title = paste0("Correlation Heatmap: ", title_suffix),
+    column_title_gp = gpar(fontsize = input$replicabilityTextSize + 2, fontface = "bold")
+  )
+
+  draw(hm, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
 }
 
 #' make_rep_dendrogram
@@ -549,47 +598,65 @@ make_rep_heatmap <- function(data, title_suffix = "") {
 #' @param title_suffix String appended to title
 #' @export
 make_rep_dendrogram <- function(data, title_suffix = "") {
-    req(data)
-    dend <- as.dendrogram(data$hclust)
+  req(data)
+  dend <- as.dendrogram(data$hclust)
 
-    if (!is.null(input$replicabilityFactors)) {
-        dataset <- data$dataset
-        factor_col <- input$replicabilityFactors[1]
-        factor_levels <- levels(as.factor(dataset[[factor_col]]))
-        colors <- vapply(factor_levels, function(l) {
-            col_input <- input[[paste0("GroupColour", factor_col, l)]]
-            if (is.null(col_input)) {
-                return("#808080FF")
-            }
-            tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
-        }, character(1))
-
-        sample_colors <- colors[as.character(dataset[[factor_col]])]
-        names(sample_colors) <- dataset$Name
-        labels_colors(dend) <- sample_colors[labels(dend)]
-
-        colors_mat <- as.data.frame(dataset[, input$replicabilityFactors, drop = FALSE])
-        for (f in input$replicabilityFactors) {
-            colors_mat[[f]] <- vapply(colors_mat[[f]], function(l) {
-                col_input <- input[[paste0("GroupColour", f, l)]]
-                if (is.null(col_input)) {
-                    return("#808080FF")
-                }
-                tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
-            }, character(1))
+  if (!is.null(input$replicabilityFactors)) {
+    dataset <- data$dataset
+    factor_col <- input$replicabilityFactors[1]
+    factor_levels <- levels(as.factor(dataset[[factor_col]]))
+    colors <- vapply(
+      factor_levels,
+      function(l) {
+        col_input <- input[[paste0("GroupColour", factor_col, l)]]
+        if (is.null(col_input)) {
+          return("#808080FF")
         }
-        colors_mat <- colors_mat[match(labels(dend), dataset$Name), , drop = FALSE]
-    }
-
-    par(mar = c(20, 8, 6, 4))
-    plot(dend,
-        main = paste0("Cluster Dendrogram (", input$replicabilityDistMethod, "/", input$replicabilityClustMethod, "): ", title_suffix),
-        xlab = "", sub = "", cex = input$replicabilityTextSize / 10
+        tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
+      },
+      character(1)
     )
 
-    if (!is.null(input$replicabilityFactors)) {
-        colored_bars(colors = colors_mat, dend = dend, sort_by_labels_order = FALSE)
+    sample_colors <- colors[as.character(dataset[[factor_col]])]
+    names(sample_colors) <- dataset$Name
+    labels_colors(dend) <- sample_colors[labels(dend)]
+
+    colors_mat <- as.data.frame(dataset[, input$replicabilityFactors, drop = FALSE])
+    for (f in input$replicabilityFactors) {
+      colors_mat[[f]] <- vapply(
+        colors_mat[[f]],
+        function(l) {
+          col_input <- input[[paste0("GroupColour", f, l)]]
+          if (is.null(col_input)) {
+            return("#808080FF")
+          }
+          tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
+        },
+        character(1)
+      )
     }
+    colors_mat <- colors_mat[match(labels(dend), dataset$Name), , drop = FALSE]
+  }
+
+  par(mar = c(20, 8, 6, 4))
+  plot(
+    dend,
+    main = paste0(
+      "Cluster Dendrogram (",
+      input$replicabilityDistMethod,
+      "/",
+      input$replicabilityClustMethod,
+      "): ",
+      title_suffix
+    ),
+    xlab = "",
+    sub = "",
+    cex = input$replicabilityTextSize / 10
+  )
+
+  if (!is.null(input$replicabilityFactors)) {
+    colored_bars(colors = colors_mat, dend = dend, sort_by_labels_order = FALSE)
+  }
 }
 
 
@@ -614,12 +681,15 @@ count_result_summary <- function(param, se) {
   settings["Data Column Used:"] <- md$countName
   settings["Method:"] <- md$method
   if (specified(param$sampleGroupBaseline) && specified(param$refGroupBaseline)) {
-    settings["Baseline correction:"] <- paste(param$sampleGroupBaseline, "and",
-                                              param$refGroupBaseline)
+    settings["Baseline correction:"] <- paste(param$sampleGroupBaseline, "and", param$refGroupBaseline)
   }
   settings["Comparison:"] <- param$comparison
-  if (!is.null(param$normMethod)) settings["Normalization:"] <- param$normMethod
-  if (!is.null(param$deTest)) settings["Differential expression test:"] <- param$deTest
+  if (!is.null(param$normMethod)) {
+    settings["Normalization:"] <- param$normMethod
+  }
+  if (!is.null(param$deTest)) {
+    settings["Differential expression test:"] <- param$deTest
+  }
   if (isTRUE(param$useSigThresh)) {
     settings["Log2 signal threshold:"] <- signif(log2(param$sigThresh), digits = 4)
     settings["Linear signal threshold:"] <- signif(param$sigThresh, digits = 4)
@@ -633,32 +703,35 @@ count_result_summary <- function(param, se) {
 #' @return Character: one of "STAR", "Kallisto", "FeatureCounts", "Unknown"
 #' @export
 detectAligner <- function(dataDir) {
-  tryCatch({
-    dataset_path <- file.path(dataDir, "../input_dataset.tsv")
-    if (file.exists(dataset_path)) {
-      dataset <- readr::read_tsv(dataset_path, show_col_types = FALSE)
+  tryCatch(
+    {
+      dataset_path <- file.path(dataDir, "../input_dataset.tsv")
+      if (file.exists(dataset_path)) {
+        dataset <- readr::read_tsv(dataset_path, show_col_types = FALSE)
 
-      # Check Count [File] column for patterns
-      count_col_name <- grep("Count.*File", names(dataset), value = TRUE, ignore.case = TRUE)
-      if (length(count_col_name) > 0) {
-        count_col <- dataset[[count_col_name[1]]][1]
+        # Check Count [File] column for patterns
+        count_col_name <- grep("Count.*File", names(dataset), value = TRUE, ignore.case = TRUE)
+        if (length(count_col_name) > 0) {
+          count_col <- dataset[[count_col_name[1]]][1]
 
-        if (grepl("Kallisto", count_col, ignore.case = TRUE)) {
-          return("Kallisto")
-        } else if (grepl("FeatureCounts", count_col, ignore.case = TRUE)) {
-          return("FeatureCounts")
+          if (grepl("Kallisto", count_col, ignore.case = TRUE)) {
+            return("Kallisto")
+          } else if (grepl("FeatureCounts", count_col, ignore.case = TRUE)) {
+            return("FeatureCounts")
+          }
+        }
+
+        # Check if BAM column exists (indicates STAR was used)
+        if (any(grepl("BAM.*File", names(dataset), ignore.case = TRUE))) {
+          return("STAR")
         }
       }
-
-      # Check if BAM column exists (indicates STAR was used)
-      if (any(grepl("BAM.*File", names(dataset), ignore.case = TRUE))) {
-        return("STAR")
-      }
+      return("Unknown")
+    },
+    error = function(e) {
+      return("Unknown")
     }
-    return("Unknown")
-  }, error = function(e) {
-    return("Unknown")
-  })
+  )
 }
 
 #' detectDEMethod
@@ -700,7 +773,7 @@ detectDEMethod <- function(dataDir, param) {
     }
   }
 
-  return("DESeq2")  # Default assumption
+  return("DESeq2") # Default assumption
 }
 
 #' formatRefBuild
@@ -753,22 +826,25 @@ formatRefBuild <- function(ref_build) {
 #' @return Version string or NULL
 #' @export
 getFastpVersion <- function(dataDir) {
-  tryCatch({
-    parent_dir <- dirname(dataDir)
-    log_files <- list.files(parent_dir, pattern = "_preprocessing\\.log$", full.names = TRUE)
+  tryCatch(
+    {
+      parent_dir <- dirname(dataDir)
+      log_files <- list.files(parent_dir, pattern = "_preprocessing\\.log$", full.names = TRUE)
 
-    if (length(log_files) > 0) {
-      log_content <- readLines(log_files[1], n = 100, warn = FALSE)
-      version_line <- grep("fastp v", log_content, value = TRUE)
-      if (length(version_line) > 0) {
-        version <- sub(".*fastp v([0-9.]+).*", "\\1", version_line[1])
-        return(version)
+      if (length(log_files) > 0) {
+        log_content <- readLines(log_files[1], n = 100, warn = FALSE)
+        version_line <- grep("fastp v", log_content, value = TRUE)
+        if (length(version_line) > 0) {
+          version <- sub(".*fastp v([0-9.]+).*", "\\1", version_line[1])
+          return(version)
+        }
       }
+      return(NULL)
+    },
+    error = function(e) {
+      return(NULL)
     }
-    return(NULL)
-  }, error = function(e) {
-    return(NULL)
-  })
+  )
 }
 
 #' getPackageVersions
@@ -778,11 +854,14 @@ getFastpVersion <- function(dataDir) {
 #' @export
 getPackageVersions <- function(packages) {
   versions <- sapply(packages, function(pkg) {
-    tryCatch({
-      as.character(packageVersion(pkg))
-    }, error = function(e) {
-      "version unavailable"
-    })
+    tryCatch(
+      {
+        as.character(packageVersion(pkg))
+      },
+      error = function(e) {
+        "version unavailable"
+      }
+    )
   })
   return(versions)
 }
@@ -861,14 +940,23 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
   # Final Mapped/Counted Reads (from SE)
   final_reads_info <- ""
   if (!is.null(se)) {
-    tryCatch({
-      lib_sizes <- colSums(assay(se, "counts"))
-      min_size <- round(min(lib_sizes) / 1e6, 1)
-      max_size <- round(max(lib_sizes) / 1e6, 1)
-      final_reads_info <- paste0("Final library sizes ranged from ", min_size, " million to ", max_size, " million reads. ")
-    }, error = function(e) {
-      final_reads_info <- ""
-    })
+    tryCatch(
+      {
+        lib_sizes <- colSums(assay(se, "counts"))
+        min_size <- round(min(lib_sizes) / 1e6, 1)
+        max_size <- round(max(lib_sizes) / 1e6, 1)
+        final_reads_info <- paste0(
+          "Final library sizes ranged from ",
+          min_size,
+          " million to ",
+          max_size,
+          " million reads. "
+        )
+      },
+      error = function(e) {
+        final_reads_info <- ""
+      }
+    )
   }
 
   # Read trimming section
@@ -891,32 +979,52 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
   if (aligner == "Kallisto") {
     sections$mapping <- paste0(
       "Transcript-level abundance was estimated using Kallisto ",
-      "(Bray et al., 2016), which performs pseudo-alignment of reads to the ", ref_build, " reference transcriptome. ",
+      "(Bray et al., 2016), which performs pseudo-alignment of reads to the ",
+      ref_build,
+      " reference transcriptome. ",
       "Kallisto uses an expectation-maximisation algorithm to quantify transcript abundances. ",
-      "Only ", transcript_types, " transcripts were retained for downstream analysis."
+      "Only ",
+      transcript_types,
+      " transcripts were retained for downstream analysis."
     )
   } else if (aligner == "STAR") {
     sections$mapping <- paste0(
       "Alignment of the RNA-seq reads was performed using the STAR aligner ",
-      "(Dobin et al., 2013) with the ", ref_build, " reference genome as the reference. ",
+      "(Dobin et al., 2013) with the ",
+      ref_build,
+      " reference genome as the reference. ",
       "STAR employs a seed-and-extend approach optimised for RNA-seq data, ",
       "enabling accurate detection of splice junctions. ",
-      "Only ", transcript_types, " genes were retained for downstream analysis."
+      "Only ",
+      transcript_types,
+      " genes were retained for downstream analysis."
     )
   } else if (aligner == "FeatureCounts") {
     sections$mapping <- paste0(
       "Alignment of the RNA-seq reads was performed using the STAR aligner ",
-      "(Dobin et al., 2013) with the ", ref_build, " reference genome as the reference. ",
-      "The counting of ", feature_level, "-level expression values was performed using the 'featureCounts' function ",
+      "(Dobin et al., 2013) with the ",
+      ref_build,
+      " reference genome as the reference. ",
+      "The counting of ",
+      feature_level,
+      "-level expression values was performed using the 'featureCounts' function ",
       "of the R package Rsubread (Liao et al., 2013). ",
-      "Only ", transcript_types, " genes were retained for downstream analysis."
+      "Only ",
+      transcript_types,
+      " genes were retained for downstream analysis."
     )
   } else {
     sections$mapping <- paste0(
-      "Reads were aligned to the ", ref_build, " reference genome and ",
-      "quantified at the ", feature_level, " level using standard RNA-seq ",
+      "Reads were aligned to the ",
+      ref_build,
+      " reference genome and ",
+      "quantified at the ",
+      feature_level,
+      " level using standard RNA-seq ",
       "alignment and quantification methods, ",
-      "with only ", transcript_types, " genes retained for downstream analysis."
+      "with only ",
+      transcript_types,
+      " genes retained for downstream analysis."
     )
   }
 
@@ -925,14 +1033,24 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 
   # Filter, Normalisation and Differential Expression section
 
-  deseq2_ver <- if (pkg_versions["DESeq2"] != "version unavailable") paste0(" (version ", pkg_versions["DESeq2"], ")") else ""
-  edger_ver <- if (pkg_versions["edgeR"] != "version unavailable") paste0(" (version ", pkg_versions["edgeR"], ")") else ""
+  deseq2_ver <- if (pkg_versions["DESeq2"] != "version unavailable") {
+    paste0(" (version ", pkg_versions["DESeq2"], ")")
+  } else {
+    ""
+  }
+  edger_ver <- if (pkg_versions["edgeR"] != "version unavailable") {
+    paste0(" (version ", pkg_versions["edgeR"], ")")
+  } else {
+    ""
+  }
 
   if (de_method == "DESeq2") {
     sections$de_analysis <- paste0(
       "Count data were normalised using DESeq2's median-of-ratios method, which accounts for differences in library size ",
       "and RNA composition bias between samples. ",
-      "Differential expression was performed using the DESeq2 Bioconductor R package", deseq2_ver, " ",
+      "Differential expression was performed using the DESeq2 Bioconductor R package",
+      deseq2_ver,
+      " ",
       "(Love et al., 2014), which implements a generalised linear model with a negative binomial distribution ",
       "to account for technical and biological variability. ",
       "Dispersion and log2 fold change estimates were moderated using shrinkage methods to improve stability. ",
@@ -943,7 +1061,9 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
     sections$de_analysis <- paste0(
       "Count data were normalised using the trimmed mean of M-values (TMM) method implemented in edgeR, ",
       "which corrects for differences in library size and RNA composition between samples. ",
-      "Differential expression was performed using the edgeR Bioconductor R package", edger_ver, " ",
+      "Differential expression was performed using the edgeR Bioconductor R package",
+      edger_ver,
+      " ",
       "(Robinson et al., 2010), which implements a generalised linear model with a negative binomial distribution ",
       "to account for technical and biological variability. ",
       "Dispersion estimates were moderated using empirical Bayes shrinkage to improve reliability for genes with low counts. ",
@@ -954,16 +1074,26 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 
   # Gene ontology section (if applicable)
   if (!is.null(param$runGO) && param$runGO) {
-    cluster_ver <- if (pkg_versions["clusterProfiler"] != "version unavailable") paste0(" (version ", pkg_versions["clusterProfiler"], ")") else ""
+    cluster_ver <- if (pkg_versions["clusterProfiler"] != "version unavailable") {
+      paste0(" (version ", pkg_versions["clusterProfiler"], ")")
+    } else {
+      ""
+    }
     fdr_ora <- if (!is.null(param$fdrThreshORA)) param$fdrThreshORA else 0.05
     fdr_gsea <- if (!is.null(param$fdrThreshGSEA)) param$fdrThreshGSEA else 0.05
 
     sections$go_analysis <- paste0(
       "Gene Ontology (GO) term pathway analysis was performed using both the hypergeometric over-representation test ",
       "via the 'enricher' function, and gene-set enrichment analysis via the 'GSEA' function, ",
-      "of the clusterProfiler Bioconductor R package", cluster_ver, " ",
+      "of the clusterProfiler Bioconductor R package",
+      cluster_ver,
+      " ",
       "(Yu et al., 2012), ",
-      "with FDR thresholds of ", fdr_ora, " and ", fdr_gsea, ", respectively."
+      "with FDR thresholds of ",
+      fdr_ora,
+      " and ",
+      fdr_gsea,
+      ", respectively."
     )
   }
 
@@ -973,19 +1103,25 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 
   # Get Bioconductor version if available
   bioc_version <- ""
-  tryCatch({
-    if (requireNamespace("BiocManager", quietly = TRUE)) {
-      bv <- as.character(BiocManager::version())
-      bioc_version <- paste0(" and Bioconductor version ", bv)
+  tryCatch(
+    {
+      if (requireNamespace("BiocManager", quietly = TRUE)) {
+        bv <- as.character(BiocManager::version())
+        bioc_version <- paste0(" and Bioconductor version ", bv)
+      }
+    },
+    error = function(e) {
+      bioc_version <- ""
     }
-  }, error = function(e) {
-    bioc_version <- ""
-  })
+  )
 
   sections$data_processing <- paste0(
     "All analyses were conducted using the SUSHI framework (Hatakeyama et al., 2016), ",
     "which provides a reproducible and documented workflow for NGS data analysis. ",
-    "All R functions were executed on ", r_version, bioc_version, " (R Core Team, 2020). ",
+    "All R functions were executed on ",
+    r_version,
+    bioc_version,
+    " (R Core Team, 2020). ",
     "Figures were generated using the exploreDE Shiny application using the data generated from the above steps (Leary and Rehrauer, 2024)."
   )
 
@@ -1212,9 +1348,14 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
 #' @param selection_method One of "overall", "per_pc", "manual"
 #' @return List with sample_data, gene_data, pc_x_name, pc_y_name
 #' @export
-prepare_biplot_data <- function(ordination_result, top_n = 10,
-                                custom_genes = NULL, pc_x = 1, pc_y = 2,
-                                selection_method = "overall") {
+prepare_biplot_data <- function(
+  ordination_result,
+  top_n = 10,
+  custom_genes = NULL,
+  pc_x = 1,
+  pc_y = 2,
+  selection_method = "overall"
+) {
   if (is.null(ordination_result$loadings)) {
     # Return NULL gracefully instead of stopping - biplot not available for distance-based methods
     return(NULL)
@@ -1306,13 +1447,12 @@ step_log2 <- function(counts, dataset, counts_type) {
 step_batch_correction <- function(counts, dataset, batch_column, design_column = "None") {
   if (!is.null(batch_column) && nzchar(batch_column) && batch_column != "None") {
     if (any(is.na(dataset[[batch_column]]))) {
-      showNotification("Batch correction skipped: batch column contains NA values",
-        type = "warning", duration = 8)
+      showNotification("Batch correction skipped: batch column contains NA values", type = "warning", duration = 8)
     } else {
       counts <- apply_batch_correction(
-        counts    = counts,
-        dataset   = dataset,
-        batchCol  = batch_column,
+        counts = counts,
+        dataset = dataset,
+        batchCol = batch_column,
         designCol = design_column
       )
     }
@@ -1337,7 +1477,7 @@ step_top_n_sd <- function(counts, dataset, top_n) {
 #' Render the sample-only ordination scatter plot (no gene arrows).
 #' @export
 plot_ordination_samples <- function(ordination_result, pc_scores, input, coloursPCA, levelLabels = NULL) {
-  fillLabels  <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
+  fillLabels <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
   shapeLabels <- if (is.null(levelLabels$shape)) ggplot2::waiver() else levelLabels$shape
   pc_x <- input$pcaX
   pc_y <- input$pcaY
@@ -1346,29 +1486,42 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
   p <- ggplot(pc_scores, aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]))
 
   if (input$pcaAddEllipses) {
-    p <- p + stat_ellipse(aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]),
-      geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE
-    )
+    p <- p +
+      stat_ellipse(
+        aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]),
+        geom = "polygon",
+        alpha = input$pcaEllipsesAlpha,
+        show.legend = FALSE
+      )
     p <- p + scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
   }
 
   if (input$pcaFactor2 == "None") {
     p <- p + geom_point(size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA)
   } else {
-    p <- p + geom_point(aes(shape = .data[[input$pcaFactor2]]),
-      size = input$dotSizePCA,
-      alpha = input$alphaPCA, stroke = input$dotBorderPCA
-    )
+    p <- p +
+      geom_point(
+        aes(shape = .data[[input$pcaFactor2]]),
+        size = input$dotSizePCA,
+        alpha = input$alphaPCA,
+        stroke = input$dotBorderPCA
+      )
     p <- p + scale_shape_manual(values = c(21, 22, 23, 24, 25, 8, 3, 4), labels = shapeLabels)
   }
 
   if (input$pcaShowNames) {
-    p <- p + geom_label_repel(aes(label = Name, fill = .data[[input$pcaFactor1]]),
-      force = 2, nudge_y = as.numeric(input$geneLabelNudgePCAY) / 10,
-      nudge_x = as.numeric(input$geneLabelNudgePCAX) / 10,
-      size = (input$textSizePCA / 3), max.overlaps = input$pcaLabelMaxOverlap,
-      fontface = "bold", show.legend = FALSE, na.rm = TRUE
-    )
+    p <- p +
+      geom_label_repel(
+        aes(label = Name, fill = .data[[input$pcaFactor1]]),
+        force = 2,
+        nudge_y = as.numeric(input$geneLabelNudgePCAY) / 10,
+        nudge_x = as.numeric(input$geneLabelNudgePCAX) / 10,
+        size = (input$textSizePCA / 3),
+        max.overlaps = input$pcaLabelMaxOverlap,
+        fontface = "bold",
+        show.legend = FALSE,
+        na.rm = TRUE
+      )
   }
 
   # Axis labels
@@ -1395,34 +1548,35 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
 
   p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
   p <- p + theme_bw(base_size = input$textSizePCA)
-  face <- switch(input$boldPCA,
-    "TRUE" = "bold",
-    "FALSE" = "plain"
-  )
+  face <- switch(input$boldPCA, "TRUE" = "bold", "FALSE" = "plain")
   p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
-  if (isTRUE(levelLabels$rich)) p <- p + rich_label_theme(legend = TRUE)
+  if (isTRUE(levelLabels$rich)) {
+    p <- p + rich_label_theme(legend = TRUE)
+  }
 
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {
-    p <- p + theme(
-      panel.grid.major.x = element_blank(),
-      panel.grid.minor.x = element_blank(),
-      panel.grid.major.y = element_blank(),
-      panel.grid.minor.y = element_blank()
-    )
+    p <- p +
+      theme(
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()
+      )
   }
 
   # Conditionally hide axes
   if (!input$showAxesPCA) {
-    p <- p + theme(
-      axis.line = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks = element_blank(),
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
-      panel.border = element_blank()
-    )
+    p <- p +
+      theme(
+        axis.line = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.border = element_blank()
+      )
   }
 
   return(p)
@@ -1431,7 +1585,17 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
 #' plot_ordination_biplot
 #' Render the ordination biplot (samples + feature arrows).
 #' @export
-plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursPCA, biplot_data, arrow_scale = 1, arrow_colour = "red", selection_method = "overall", levelLabels = NULL) {
+plot_ordination_biplot <- function(
+  ordination_result,
+  pc_scores,
+  input,
+  coloursPCA,
+  biplot_data,
+  arrow_scale = 1,
+  arrow_colour = "red",
+  selection_method = "overall",
+  levelLabels = NULL
+) {
   fillLabels <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
   pc_x <- biplot_data$pc_x_name
   pc_y <- biplot_data$pc_y_name
@@ -1454,18 +1618,31 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
   }
 
   p <- ggplot()
-  p <- p + geom_point(
-    data = pc_scores, aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]),
-    size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA
-  )
-  p <- p + geom_segment(
-    data = biplot_data$gene_data, aes(x = 0, y = 0, xend = pc_x_scaled, yend = pc_y_scaled, colour = arrow_color),
-    arrow = arrow(length = unit(0.2, "cm"), type = "closed"), linewidth = 0.5, alpha = 0.7
-  )
-  p <- p + geom_text_repel(
-    data = biplot_data$gene_data, aes(x = pc_x_scaled, y = pc_y_scaled, label = gene, colour = arrow_color),
-    size = input$textSizePCA / 4, fontface = "bold", max.overlaps = 20
-  )
+  p <- p +
+    geom_point(
+      data = pc_scores,
+      aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]),
+      size = input$dotSizePCA,
+      alpha = input$alphaPCA,
+      shape = 21,
+      stroke = input$dotBorderPCA
+    )
+  p <- p +
+    geom_segment(
+      data = biplot_data$gene_data,
+      aes(x = 0, y = 0, xend = pc_x_scaled, yend = pc_y_scaled, colour = arrow_color),
+      arrow = arrow(length = unit(0.2, "cm"), type = "closed"),
+      linewidth = 0.5,
+      alpha = 0.7
+    )
+  p <- p +
+    geom_text_repel(
+      data = biplot_data$gene_data,
+      aes(x = pc_x_scaled, y = pc_y_scaled, label = gene, colour = arrow_color),
+      size = input$textSizePCA / 4,
+      fontface = "bold",
+      max.overlaps = 20
+    )
   p <- p + scale_colour_identity() # Use the actual color values
 
   # Axes
@@ -1482,34 +1659,35 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
   p <- p + labs(x = x_lab, y = y_lab, fill = input$pcaFactor1)
   p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
   p <- p + theme_bw(base_size = input$textSizePCA)
-  face <- switch(input$boldPCA,
-    "TRUE" = "bold",
-    "FALSE" = "plain"
-  )
+  face <- switch(input$boldPCA, "TRUE" = "bold", "FALSE" = "plain")
   p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
-  if (isTRUE(levelLabels$rich)) p <- p + rich_label_theme(legend = TRUE)
+  if (isTRUE(levelLabels$rich)) {
+    p <- p + rich_label_theme(legend = TRUE)
+  }
 
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {
-    p <- p + theme(
-      panel.grid.major.x = element_blank(),
-      panel.grid.minor.x = element_blank(),
-      panel.grid.major.y = element_blank(),
-      panel.grid.minor.y = element_blank()
-    )
+    p <- p +
+      theme(
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()
+      )
   }
 
   # Conditionally hide axes
   if (!input$showAxesPCA) {
-    p <- p + theme(
-      axis.line = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks = element_blank(),
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
-      panel.border = element_blank()
-    )
+    p <- p +
+      theme(
+        axis.line = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.border = element_blank()
+      )
   }
 
   return(p)
@@ -1540,22 +1718,33 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
 #'   Default TRUE.
 #' @return ggplot object
 #' @export
-make_qc_scatter <- function(x, y, types_vec, types_colours,
-                            xlab, ylab, title = NULL,
-                            point_size = 1, alpha = 0.6,
-                            base_size = 12, draw_order = NULL,
-                            guide_colour = "blue",
-                            guide_fold = 2,
-                            show_identity = TRUE,
-                            show_fold_bands = TRUE,
-                            log_scale = TRUE) {
+make_qc_scatter <- function(
+  x,
+  y,
+  types_vec,
+  types_colours,
+  xlab,
+  ylab,
+  title = NULL,
+  point_size = 1,
+  alpha = 0.6,
+  base_size = 12,
+  draw_order = NULL,
+  guide_colour = "blue",
+  guide_fold = 2,
+  show_identity = TRUE,
+  show_fold_bands = TRUE,
+  log_scale = TRUE
+) {
   # log_scale = TRUE: x/y are LINEAR values (e.g. RNA-seq group-mean counts)
   #   plotted on log10 axes; a `guide_fold`-fold band is log10(guide_fold) apart.
   # log_scale = FALSE: x/y are ALREADY in log space (e.g. proteomics log2
   #   intensities, centred near 0, can be negative) — plot on linear axes and
   #   space the fold band by log2(guide_fold). Applying log10 to already-log
   #   data drops negatives and mislocates the identity/fold guides.
-  if (is.null(draw_order)) draw_order <- names(types_colours)
+  if (is.null(draw_order)) {
+    draw_order <- names(types_colours)
+  }
   df <- tibble::tibble(x = x, y = y, types = types_vec)
   df$types <- factor(df$types, levels = draw_order)
   df <- df[order(df$types), , drop = FALSE]
@@ -1573,16 +1762,18 @@ make_qc_scatter <- function(x, y, types_vec, types_colours,
   if (isTRUE(show_fold_bands) && is.numeric(guide_fold) && guide_fold > 1) {
     off <- if (isTRUE(log_scale)) log10(guide_fold) else log2(guide_fold)
     p <- p +
-      ggplot2::geom_abline(intercept =  off, colour = guide_colour, linetype = "dashed") +
+      ggplot2::geom_abline(intercept = off, colour = guide_colour, linetype = "dashed") +
       ggplot2::geom_abline(intercept = -off, colour = guide_colour, linetype = "dashed")
   }
 
   p +
     ggprism::theme_prism(base_size = base_size) +
     ggplot2::theme(legend.title = ggplot2::element_blank()) +
-    ggplot2::guides(colour = ggplot2::guide_legend(
-      override.aes = list(size = 3, alpha = 1)
-    )) +
+    ggplot2::guides(
+      colour = ggplot2::guide_legend(
+        override.aes = list(size = 3, alpha = 1)
+      )
+    ) +
     ggplot2::labs(x = xlab, y = ylab, title = title)
 }
 
@@ -1608,40 +1799,39 @@ make_qc_scatter <- function(x, y, types_vec, types_colours,
 #' @return A list with `types` (character vector), `colours` (named char),
 #'   and `draw_order` (level order for z-ordering).
 #' @export
-build_qc_scatter_types <- function(rd, mode, present_mask,
-                                   p_thresh = 0.05, lfc_thresh = 1,
-                                   gc_lo = 0.4, gc_hi = 0.6,
-                                   w_lo = 500, w_hi = 5000,
-                                   std_cols = list(Absent = "grey70",
-                                                   Present = "black",
-                                                   Significants = "#A6CEE3"),
-                                   gc_cols = list(low = "#1F78B4",
-                                                  mid = "black",
-                                                  high = "#FF7F00"),
-                                   width_cols = list(low = "#B15928",
-                                                     mid = "black",
-                                                     high = "#33A02C")) {
+build_qc_scatter_types <- function(
+  rd,
+  mode,
+  present_mask,
+  p_thresh = 0.05,
+  lfc_thresh = 1,
+  gc_lo = 0.4,
+  gc_hi = 0.6,
+  w_lo = 500,
+  w_hi = 5000,
+  std_cols = list(Absent = "grey70", Present = "black", Significants = "#A6CEE3"),
+  gc_cols = list(low = "#1F78B4", mid = "black", high = "#FF7F00"),
+  width_cols = list(low = "#B15928", mid = "black", high = "#33A02C")
+) {
   n <- nrow(rd)
-  if (is.null(present_mask)) present_mask <- rep(TRUE, n)
+  if (is.null(present_mask)) {
+    present_mask <- rep(TRUE, n)
+  }
 
   if (mode == "Standard") {
     types <- ifelse(present_mask, "Present", "Absent")
     if ("log2Ratio" %in% colnames(rd) && "pValue" %in% colnames(rd)) {
-      is_sig <- !is.na(rd$pValue) & rd$pValue < p_thresh &
-                !is.na(rd$log2Ratio) & abs(rd$log2Ratio) >= lfc_thresh
+      is_sig <- !is.na(rd$pValue) & rd$pValue < p_thresh & !is.na(rd$log2Ratio) & abs(rd$log2Ratio) >= lfc_thresh
       types[is_sig] <- "Significants"
     }
-    colours <- c(Absent = std_cols$Absent,
-                 Present = std_cols$Present,
-                 Significants = std_cols$Significants)
-    return(list(types = types, colours = colours,
-                draw_order = c("Absent", "Present", "Significants")))
+    colours <- c(Absent = std_cols$Absent, Present = std_cols$Present, Significants = std_cols$Significants)
+    return(list(types = types, colours = colours, draw_order = c("Absent", "Present", "Significants")))
   }
 
   if (mode == "GC content") {
     mid_lab <- sprintf("%.2f-%.2f", gc_lo, gc_hi)
-    lo_lab  <- sprintf("GC < %.2f", gc_lo)
-    hi_lab  <- sprintf("GC > %.2f", gc_hi)
+    lo_lab <- sprintf("GC < %.2f", gc_lo)
+    hi_lab <- sprintf("GC > %.2f", gc_hi)
     types <- rep(mid_lab, n)
     types[!is.na(rd$gc) & rd$gc < gc_lo] <- lo_lab
     types[!is.na(rd$gc) & rd$gc > gc_hi] <- hi_lab
@@ -1649,14 +1839,13 @@ build_qc_scatter_types <- function(rd, mode, present_mask,
       c(gc_cols$low, gc_cols$mid, gc_cols$high),
       c(lo_lab, mid_lab, hi_lab)
     )
-    return(list(types = types, colours = colours,
-                draw_order = c(mid_lab, lo_lab, hi_lab)))
+    return(list(types = types, colours = colours, draw_order = c(mid_lab, lo_lab, hi_lab)))
   }
 
   if (mode == "Gene width") {
     mid_lab <- sprintf("%d-%d nt", as.integer(w_lo), as.integer(w_hi))
-    lo_lab  <- sprintf("< %d nt", as.integer(w_lo))
-    hi_lab  <- sprintf("> %d nt", as.integer(w_hi))
+    lo_lab <- sprintf("< %d nt", as.integer(w_lo))
+    hi_lab <- sprintf("> %d nt", as.integer(w_hi))
     types <- rep(mid_lab, n)
     types[!is.na(rd$featWidth) & rd$featWidth < w_lo] <- lo_lab
     types[!is.na(rd$featWidth) & rd$featWidth > w_hi] <- hi_lab
@@ -1664,8 +1853,7 @@ build_qc_scatter_types <- function(rd, mode, present_mask,
       c(width_cols$low, width_cols$mid, width_cols$high),
       c(lo_lab, mid_lab, hi_lab)
     )
-    return(list(types = types, colours = colours,
-                draw_order = c(mid_lab, lo_lab, hi_lab)))
+    return(list(types = types, colours = colours, draw_order = c(mid_lab, lo_lab, hi_lab)))
   }
 
   list(types = rep("All", n), colours = c(All = "black"), draw_order = "All")
@@ -1702,6 +1890,6 @@ align_signal_to_seqanno <- function(signal, rd) {
   keep <- !is.na(align)
   list(
     signal = signal[align[keep], , drop = FALSE],
-    rd     = rd[keep, , drop = FALSE]
+    rd = rd[keep, , drop = FALSE]
   )
 }

@@ -12,18 +12,16 @@
 #' @export
 ExploreDatasetSE_RNASeq <- R6::R6Class(
   classname = "ExploreDatasetSE_RNASeq",
-  inherit   = ExploreDatasetSE,
+  inherit = ExploreDatasetSE,
 
   private = list(
-
     .build_config = function(se) {
       param <- S4Vectors::metadata(se)$param %||% list()
-      cd    <- data.frame(SummarizedExperiment::colData(se),
-                          check.names = FALSE, stringsAsFactors = FALSE)
+      cd <- data.frame(SummarizedExperiment::colData(se), check.names = FALSE, stringsAsFactors = FALSE)
 
-      factor_cols  <- grep("\\[Factor]", colnames(cd), value = TRUE)
-      factor_names <- gsub(" \\[.*", "",  factor_cols)
-      factor_names <- gsub(" ",      "_", factor_names)
+      factor_cols <- grep("\\[Factor]", colnames(cd), value = TRUE)
+      factor_names <- gsub(" \\[.*", "", factor_cols)
+      factor_names <- gsub(" ", "_", factor_names)
       factor_levels <- setNames(
         lapply(factor_cols, function(fc) {
           v <- cd[[fc]]
@@ -35,31 +33,32 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
       comp <- param$comparison %||% "test--over--reference"
       parts <- strsplit(comp, "--over--", fixed = TRUE)[[1]]
       test_grp <- parts[1] %||% "test"
-      ref_grp  <- parts[2] %||% "reference"
+      ref_grp <- parts[2] %||% "reference"
       contrast_name <- paste0(eds_safe(test_grp), "_vs_", eds_safe(ref_grp))
 
       cm <- list()
       cm[[contrast_name]] <- list(
-        test_group      = test_grp,
+        test_group = test_grp,
         reference_group = ref_grp,
-        factor_name     = param$groupingName,
-        method          = "DESeq2",
-        thresholds      = list(
-          fdr    = param$fdrThreshORA      %||% 0.05,
+        factor_name = param$groupingName,
+        method = "DESeq2",
+        thresholds = list(
+          fdr = param$fdrThreshORA %||% 0.05,
           log2fc = param$log2RatioThreshGO %||% 0,
-          go_p   = param$pValThreshGO      %||% 0.01
+          go_p = param$pValThreshGO %||% 0.01
         )
       )
 
       enrichment_kinds <- character()
       md <- S4Vectors::metadata(se)
       if (isTRUE(param$runGO)) {
-        if (!is.null(md$enrichResult))     enrichment_kinds <- c(enrichment_kinds, "ora")
+        if (!is.null(md$enrichResult)) {
+          enrichment_kinds <- c(enrichment_kinds, "ora")
+        }
         if (!is.null(md$enrichResultGSEA)) enrichment_kinds <- c(enrichment_kinds, "gsea")
       }
 
-      norm_key <- intersect(c("signal", "xNorm", "normalizedCounts"),
-                            SummarizedExperiment::assayNames(se))
+      norm_key <- intersect(c("signal", "xNorm", "normalizedCounts"), SummarizedExperiment::assayNames(se))
       norm_key <- if (length(norm_key)) norm_key[1] else NA_character_
       has_refbuild <- !is.null(param$refBuild) && nzchar(as.character(param$refBuild))
 
@@ -72,58 +71,59 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
         if (has_refbuild) list(fpkm = NULL, tpm = NULL)
       )
       assay_labels_l <- c(
-        counts          = "Raw",
-        normalised      = "Normalised",
+        counts = "Raw",
+        normalised = "Normalised",
         normalised_log2 = "Normalised + Log2",
-        vst             = "VST",
-        fpkm            = "FPKM",
-        tpm             = "TPM"
+        vst = "VST",
+        fpkm = "FPKM",
+        tpm = "TPM"
       )
 
       list(
-        schema_version        = "exploreDE/config/1.0",
-        omics_class           = "genomics",
-        data_type             = "RNASeq",
-        organism              = eds_infer_organism(param),
-        ref_build             = param$refBuild %||% NA_character_,
-        feature_id_kind       = param$featureLevel %||% "gene",
-        factors               = factor_names,
-        factor_levels         = factor_levels,
-        primary_grouping      = param$groupingName %||%
+        schema_version = "exploreDE/config/1.0",
+        omics_class = "genomics",
+        data_type = "RNASeq",
+        organism = eds_infer_organism(param),
+        ref_build = param$refBuild %||% NA_character_,
+        feature_id_kind = param$featureLevel %||% "gene",
+        factors = factor_names,
+        factor_levels = factor_levels,
+        primary_grouping = param$groupingName %||%
           (if (length(factor_names)) factor_names[[1]] else NA_character_),
-        secondary_grouping    = if (nzchar(param$grouping2Name %||% "")) {
+        secondary_grouping = if (nzchar(param$grouping2Name %||% "")) {
           param$grouping2Name
-        } else NA_character_,
-        assay_map             = assay_map_l,
-        assay_labels          = assay_labels_l,
+        } else {
+          NA_character_
+        },
+        assay_map = assay_map_l,
+        assay_labels = assay_labels_l,
         background_expression = param$backgroundExpression %||% 10,
-        raw_assay_name        = "counts",
-        primary_assay_name    = if (!is.na(norm_key)) "normalised_log2" else "counts",
-        display_name_field    = "gene_name",
-        description_field     = "description",
-        primary_contrast      = contrast_name,
-        contrast_meta         = cm,
-        enrichment_kinds      = enrichment_kinds,
-        enrichment_locator    = list(
-          ora  = list(se = "enrichResult"),
+        raw_assay_name = "counts",
+        primary_assay_name = if (!is.na(norm_key)) "normalised_log2" else "counts",
+        display_name_field = "gene_name",
+        description_field = "description",
+        primary_contrast = contrast_name,
+        contrast_meta = cm,
+        enrichment_kinds = enrichment_kinds,
+        enrichment_locator = list(
+          ora = list(se = "enrichResult"),
           gsea = list(se = "enrichResultGSEA")
         ),
-        sgrna_to_gene         = NULL,
-        proteomics            = NULL,
+        sgrna_to_gene = NULL,
+        proteomics = NULL,
         source = list(
-          backend_kind   = "se",
+          backend_kind = "se",
           schema_version = "exploreDE/config/1.0",
-          built_at       = Sys.time()
+          built_at = Sys.time()
         )
       )
     },
 
     .prep = function() {
-      se  <- private$.se
+      se <- private$.se
       cfg <- private$.config
 
-      rd <- data.frame(SummarizedExperiment::rowData(se),
-                       check.names = FALSE, stringsAsFactors = FALSE)
+      rd <- data.frame(SummarizedExperiment::rowData(se), check.names = FALSE, stringsAsFactors = FALSE)
       rownames(rd) <- rownames(se)
 
       # Build feature_id via scuttle::uniquifyFeatureNames so the new API
@@ -168,8 +168,7 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
       # which sorts gs$seqAnno (and therefore gs$countList rownames and
       # gs$genes) by pValue ascending. Users see most-significant features
       # first in autocompletes and top-N filters.
-      pval_col <- grep("^p[._]?value$", colnames(rd),
-                       value = TRUE, ignore.case = TRUE)
+      pval_col <- grep("^p[._]?value$", colnames(rd), value = TRUE, ignore.case = TRUE)
       if (length(pval_col) >= 1) {
         rd <- rd[order(rd[[pval_col[1]]], na.last = TRUE), , drop = FALSE]
       }

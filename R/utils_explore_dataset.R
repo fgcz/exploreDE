@@ -17,7 +17,10 @@
   ofile <- NULL
   for (fr in sys.frames()) {
     cand <- fr$ofile
-    if (is.character(cand) && grepl("utils_explore_dataset\\.R$", cand)) { ofile <- cand; break }
+    if (is.character(cand) && grepl("utils_explore_dataset\\.R$", cand)) {
+      ofile <- cand
+      break
+    }
   }
   if (is.null(ofile)) NULL else normalizePath(ofile, mustWork = FALSE)
 })
@@ -39,7 +42,9 @@ eds_load_column_patterns <- function() {
     cand_path <- file.path(dirname(dirname(.eds_source_file)), "inst", "dictionaries", "column_patterns.json")
     if (file.exists(cand_path)) path <- cand_path
   }
-  if (!nzchar(path)) path <- system.file("dictionaries", "column_patterns.json", package = "exploreDE")
+  if (!nzchar(path)) {
+    path <- system.file("dictionaries", "column_patterns.json", package = "exploreDE")
+  }
   if (!nzchar(path)) {
     # Last resort: a few plausible getwd()-relative locations (devtools::
     # load_all()/testthat with cwd == package root or tests/testthat/, or
@@ -52,12 +57,15 @@ eds_load_column_patterns <- function() {
     hit <- candidates[file.exists(candidates)]
     if (length(hit)) path <- hit[[1]]
   }
-  if (!nzchar(path) || !file.exists(path))
-    stop("exploreDE: inst/dictionaries/column_patterns.json not found ",
-        "(checked this file's own checkout, the installed package location, ",
-        "and dev-mode relative paths). Only the column-standardising helpers ",
-        "need it; if you are running a cut-down build that does not import ",
-        "arbitrary column names, nothing should be reaching this.")
+  if (!nzchar(path) || !file.exists(path)) {
+    stop(
+      "exploreDE: inst/dictionaries/column_patterns.json not found ",
+      "(checked this file's own checkout, the installed package location, ",
+      "and dev-mode relative paths). Only the column-standardising helpers ",
+      "need it; if you are running a cut-down build that does not import ",
+      "arbitrary column names, nothing should be reaching this."
+    )
+  }
   raw <- jsonlite::fromJSON(path, simplifyVector = FALSE)
   # Keep each concept's patterns as an ORDERED vector, not one alternation:
   # eds_match_col() tries them in priority order, so the anchored patterns
@@ -71,7 +79,9 @@ eds_load_column_patterns <- function() {
 # writers can store booleans as integers), and "TRUE"/"true"/"1" text. Unknown
 # or missing counts as not tested.
 eds_as_flag <- function(x) {
-  if (is.factor(x)) x <- as.character(x)
+  if (is.factor(x)) {
+    x <- as.character(x)
+  }
   out <- if (is.logical(x)) {
     x
   } else if (is.numeric(x)) {
@@ -98,7 +108,9 @@ eds_as_flag <- function(x) {
 eds_match_col <- function(cols, patterns, unique = FALSE) {
   for (p in patterns) {
     hit <- cols[grepl(p, cols, ignore.case = TRUE)]
-    if (length(hit) > 1L && unique) return(NULL)
+    if (length(hit) > 1L && unique) {
+      return(NULL)
+    }
     if (length(hit)) return(hit[[1]])
   }
   NULL
@@ -147,7 +159,9 @@ eds_standardise_de_columns <- function(df) {
   current <- colnames(df)
   sources <- attr(df, "de_sources") %||% character()
   for (canon in names(eds_de_column_patterns)) {
-    if (canon %in% colnames(df)) next
+    if (canon %in% colnames(df)) {
+      next
+    }
     src <- eds_match_col(current, eds_de_column_patterns[[canon]])
     if (!is.null(src)) {
       df[[canon]] <- df[[src]]
@@ -162,11 +176,17 @@ eds_standardise_de_columns <- function(df) {
 # refBuild ("Homo_sapiens/GENCODE/..." → "Homo sapiens").
 eds_infer_organism <- function(param) {
   sp <- param$species
-  if (!is.null(sp) && !is.na(sp) && nzchar(sp)) return(sp)
+  if (!is.null(sp) && !is.na(sp) && nzchar(sp)) {
+    return(sp)
+  }
   rb <- param$refBuild
-  if (is.null(rb) || is.na(rb) || !nzchar(rb)) return(NA_character_)
+  if (is.null(rb) || is.na(rb) || !nzchar(rb)) {
+    return(NA_character_)
+  }
   parts <- strsplit(rb, "/", fixed = TRUE)[[1]]
-  if (!length(parts)) return(NA_character_)
+  if (!length(parts)) {
+    return(NA_character_)
+  }
   gsub("_", " ", parts[1], fixed = TRUE)
 }
 
@@ -207,15 +227,18 @@ eds_safe <- function(x) gsub("[^A-Za-z0-9_]+", "_", x)
 eds_compute_vst <- function(se) {
   forVST <- as.matrix(SummarizedExperiment::assay(se, "counts"))
   mode(forVST) <- "integer"
-  tryCatch({
-    if (nrow(forVST) < 1000) {
+  tryCatch(
+    {
+      if (nrow(forVST) < 1000) {
+        DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
+      } else {
+        DESeq2::vst(forVST, blind = FALSE)
+      }
+    },
+    error = function(e) {
       DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
-    } else {
-      DESeq2::vst(forVST, blind = FALSE)
     }
-  }, error = function(e) {
-    DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
-  })
+  )
 }
 
 # Compute RPKM/TPM on a genomics SE from raw counts + rowData()$featWidth.
@@ -243,10 +266,12 @@ eds_compute_tpm <- function(se) {
 # Apply fid_lookup remap to a matrix's rownames. Drops rows whose source
 # rowname isn't in the lookup.
 .eds_remap_rownames <- function(m, lk) {
-  if (is.null(lk)) return(m)
+  if (is.null(lk)) {
+    return(m)
+  }
   new_rn <- unname(lk[rownames(m)])
-  keep   <- !is.na(new_rn)
-  m      <- m[keep, , drop = FALSE]
+  keep <- !is.na(new_rn)
+  m <- m[keep, , drop = FALSE]
   rownames(m) <- new_rn[keep]
   m
 }
@@ -273,12 +298,19 @@ eds_load_se <- function(input) {
     return(qs2::qs_read(input, nthreads = 4))
   }
   if (dir.exists(input)) {
-    for (fname in c("deResult.rds",      "deResult.qs2",
-                    "rawData_final.rds", "rawData_final.qs2",
-                    "rawData.rds",       "rawData.qs2")) {
+    for (fname in c(
+      "deResult.rds",
+      "deResult.qs2",
+      "rawData_final.rds",
+      "rawData_final.qs2",
+      "rawData.rds",
+      "rawData.qs2"
+    )) {
       fp <- file.path(input, fname)
       if (file.exists(fp)) {
-        if (grepl("\\.qs2$", fname)) return(qs2::qs_read(fp, nthreads = 4))
+        if (grepl("\\.qs2$", fname)) {
+          return(qs2::qs_read(fp, nthreads = 4))
+        }
         return(readRDS(fp))
       }
     }
@@ -308,13 +340,14 @@ eds_load_se <- function(input) {
 # Reads the result table via attributes(), never `@` or as.data.frame(): both
 # of those are fine on the cluster but as.data.frame() is S4 dispatch and dies
 # where DOSE is absent, and this helper must work in both places.
-.enr_tidy_from_native <- function(obj, method = NA_character_, padj_max = NULL,
-                                  prefix = "") {
+.enr_tidy_from_native <- function(obj, method = NA_character_, padj_max = NULL, prefix = "") {
   # `prefix` matters when the caller already flattened: eds_flatten_cp_results()
   # on a bare leaf names it "default", which would throw away the ontology the
   # caller knows (e.g. "BP/upGenes"). Pass it back in.
   leaves <- eds_flatten_cp_results(obj, prefix)
-  if (!length(leaves)) return(NULL)
+  if (!length(leaves)) {
+    return(NULL)
+  }
   tabs <- lapply(names(leaves), function(nm) {
     leaf <- leaves[[nm]]
     # A leaf is either a real clusterProfiler S4 object (result lives in its
@@ -322,19 +355,26 @@ eds_load_se <- function(input) {
     # already a plain tidy data.frame (a BYO producer's own table) -- use it
     # directly rather than looking for a non-existent "result" attribute on it.
     r <- if (is.data.frame(leaf)) leaf else attributes(leaf)[["result"]]
-    if (is.null(r) || !is.data.frame(r) || !nrow(r)) return(NULL)
-    r$method   <- method
+    if (is.null(r) || !is.data.frame(r) || !nrow(r)) {
+      return(NULL)
+    }
+    r$method <- method
     r$ontology <- nm
     r
   })
   tabs <- Filter(Negate(is.null), tabs)
-  if (!length(tabs)) return(NULL)
+  if (!length(tabs)) {
+    return(NULL)
+  }
   # rbind.fill, not rbind: ORA and GSEA result frames carry different columns
   # (GeneRatio/Count vs NES/enrichmentScore) and both must survive.
   out <- plyr::rbind.fill(tabs)
-  if (!is.null(padj_max) && "p.adjust" %in% colnames(out))
+  if (!is.null(padj_max) && "p.adjust" %in% colnames(out)) {
     out <- out[!is.na(out$p.adjust) & out$p.adjust <= padj_max, , drop = FALSE]
-  if (!nrow(out)) return(NULL)
+  }
+  if (!nrow(out)) {
+    return(NULL)
+  }
   rownames(out) <- NULL
   out
 }
@@ -353,20 +393,29 @@ eds_load_se <- function(input) {
 # Class is read with oldClass(), and slots via attributes(), so building this
 # never needs DOSE loaded.
 .enr_support_from_native <- function(obj, tidy) {
-  leaves <- Filter(function(x) any(oldClass(x) %in% c("enrichResult", "gseaResult")),
-                   eds_flatten_cp_results(obj))
-  if (!length(leaves)) return(NULL)
+  leaves <- Filter(function(x) any(oldClass(x) %in% c("enrichResult", "gseaResult")), eds_flatten_cp_results(obj))
+  if (!length(leaves)) {
+    return(NULL)
+  }
   cls <- intersect(oldClass(leaves[[1]]), c("enrichResult", "gseaResult"))[1]
   out <- list(class = cls)
-  if (cls != "gseaResult") return(out)
+  if (cls != "gseaResult") {
+    return(out)
+  }
 
   sets <- lapply(names(leaves), function(ont) {
     ids <- tidy$ID[tidy$ontology == ont]
-    gs  <- attributes(leaves[[ont]])[["geneSets"]][ids]
-    gs  <- gs[!vapply(gs, is.null, logical(1))]
-    if (!length(gs)) return(NULL)
-    data.frame(ontology = ont, ID = rep(names(gs), lengths(gs)),
-               gene = unlist(gs, use.names = FALSE), stringsAsFactors = FALSE)
+    gs <- attributes(leaves[[ont]])[["geneSets"]][ids]
+    gs <- gs[!vapply(gs, is.null, logical(1))]
+    if (!length(gs)) {
+      return(NULL)
+    }
+    data.frame(
+      ontology = ont,
+      ID = rep(names(gs), lengths(gs)),
+      gene = unlist(gs, use.names = FALSE),
+      stringsAsFactors = FALSE
+    )
   })
   out$gene_sets <- do.call(rbind, Filter(Negate(is.null), sets))
 
@@ -375,9 +424,12 @@ eds_load_se <- function(input) {
   if (length(lists)) {
     shared <- all(vapply(lists, identical, logical(1), lists[[1]]))
     use <- if (shared) setNames(lists[1], "*") else lists
-    out$gene_list <- do.call(rbind, lapply(names(use), function(ont)
-      data.frame(ontology = ont, gene = names(use[[ont]]), value = unname(use[[ont]]),
-                 stringsAsFactors = FALSE)))
+    out$gene_list <- do.call(
+      rbind,
+      lapply(names(use), function(ont) {
+        data.frame(ontology = ont, gene = names(use[[ont]]), value = unname(use[[ont]]), stringsAsFactors = FALSE)
+      })
+    )
   }
   out$exponent <- (attributes(leaves[[1]])[["params"]] %||% list())$exponent %||% 1
   out
@@ -389,27 +441,48 @@ eds_load_se <- function(input) {
 # not installed (exploreDElight / wasm), in which case the three set-level
 # plots are simply unavailable and everything else runs off the tidy table.
 .enr_rebuild <- function(tidy, support) {
-  if (is.null(tidy) || !nrow(tidy) || is.null(support$class)) return(list())
-  if (!requireNamespace("DOSE", quietly = TRUE)) return(list())
+  if (is.null(tidy) || !nrow(tidy) || is.null(support$class)) {
+    return(list())
+  }
+  if (!requireNamespace("DOSE", quietly = TRUE)) {
+    return(list())
+  }
   gsea <- identical(support$class, "gseaResult")
   onts <- unique(tidy$ontology)
-  setNames(lapply(onts, function(ont) {
-    r <- tidy[tidy$ontology == ont, setdiff(colnames(tidy), c("method", "ontology")), drop = FALSE]
-    r <- r[, vapply(r, function(col) !all(is.na(col)), logical(1)), drop = FALSE]  # rbind.fill padding
-    rownames(r) <- r$ID
-    if (!gsea) {
-      return(methods::new("enrichResult", result = r, readable = FALSE,
-                          keytype = "UNKNOWN", ontology = "UNKNOWN", organism = "UNKNOWN",
-                          pAdjustMethod = "BH", pvalueCutoff = 1, qvalueCutoff = 1))
-    }
-    gs <- support$gene_sets
-    gs <- gs[gs$ontology == ont, , drop = FALSE]
-    gl <- support$gene_list
-    gl <- gl[gl$ontology %in% c(ont, "*"), , drop = FALSE]
-    methods::new("gseaResult", result = r, readable = FALSE,
-                 geneSets = split(gs$gene, factor(gs$ID, levels = unique(gs$ID))),
-                 geneList = stats::setNames(gl$value, gl$gene),
-                 params = list(exponent = support$exponent %||% 1, pAdjustMethod = "BH"),
-                 keytype = "UNKNOWN", setType = "UNKNOWN", organism = "UNKNOWN")
-  }), onts)
+  setNames(
+    lapply(onts, function(ont) {
+      r <- tidy[tidy$ontology == ont, setdiff(colnames(tidy), c("method", "ontology")), drop = FALSE]
+      r <- r[, vapply(r, function(col) !all(is.na(col)), logical(1)), drop = FALSE] # rbind.fill padding
+      rownames(r) <- r$ID
+      if (!gsea) {
+        return(methods::new(
+          "enrichResult",
+          result = r,
+          readable = FALSE,
+          keytype = "UNKNOWN",
+          ontology = "UNKNOWN",
+          organism = "UNKNOWN",
+          pAdjustMethod = "BH",
+          pvalueCutoff = 1,
+          qvalueCutoff = 1
+        ))
+      }
+      gs <- support$gene_sets
+      gs <- gs[gs$ontology == ont, , drop = FALSE]
+      gl <- support$gene_list
+      gl <- gl[gl$ontology %in% c(ont, "*"), , drop = FALSE]
+      methods::new(
+        "gseaResult",
+        result = r,
+        readable = FALSE,
+        geneSets = split(gs$gene, factor(gs$ID, levels = unique(gs$ID))),
+        geneList = stats::setNames(gl$value, gl$gene),
+        params = list(exponent = support$exponent %||% 1, pAdjustMethod = "BH"),
+        keytype = "UNKNOWN",
+        setType = "UNKNOWN",
+        organism = "UNKNOWN"
+      )
+    }),
+    onts
+  )
 }

@@ -33,7 +33,10 @@ tabItem(
             choices = NULL,
             multiple = TRUE,
             label = "Enter the GO Term(s) you wish to plot",
-            options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
+            options = list(
+              placeholder = 'Select features',
+              plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button')
+            )
           )
         ),
         # KEGG pathway tile — RNASeq + supported species (hsa/mmu/rno) only.
@@ -64,7 +67,10 @@ tabItem(
         numericInput(
           inputId = "tileLimitColour",
           label = "Scale limit for colours (+/-)",
-          value = 4, min = 1, max = 20, step = 0.5
+          value = 4,
+          min = 1,
+          max = 20,
+          step = 0.5
         ),
         checkboxInput(
           inputId = "degOnlyGoTile",
@@ -75,10 +81,22 @@ tabItem(
         # (mirrors the heatmap KEGG significance panel).
         conditionalPanel(
           condition = "input.degOnlyGoTile == true",
-          numericInput(inputId = "lfcGoTile", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25),
-          selectInput(inputId = "pThresholdGoTile", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001), label = "P-Value Threshold:", selected = 0.05)
+          numericInput(
+            inputId = "lfcGoTile",
+            label = "Log2 Fold Change Threshold:",
+            value = 0,
+            min = 0,
+            max = 10,
+            step = 0.25
+          ),
+          selectInput(
+            inputId = "pThresholdGoTile",
+            choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001),
+            label = "P-Value Threshold:",
+            selected = 0.05
+          )
         ),
-        hr(style = "border-top: 1px solid #000000;"), 
+        hr(style = "border-top: 1px solid #000000;"),
         h4("Pathway Tile Plot display settings"),
         # Select whether to cluster the rows (features):
         checkboxInput(
@@ -101,31 +119,43 @@ tabItem(
         ),
         # GoTile colour picker
         colourpicker::colourInput(
-          inputId = "GoTileColourRed", label = "Tile Plot Red (+)",
+          inputId = "GoTileColourRed",
+          label = "Tile Plot Red (+)",
           value = "#801717"
         ),
         colourpicker::colourInput(
-          inputId = "GoTileColourWhite", label = "Tile Plot White (0)",
+          inputId = "GoTileColourWhite",
+          label = "Tile Plot White (0)",
           value = "#FFFFFF"
         ),
         colourpicker::colourInput(
-          inputId = "GoTileColourBlue", label = "Tile Plot Blue (-)",
+          inputId = "GoTileColourBlue",
+          label = "Tile Plot Blue (-)",
           value = "#113D69"
         ),
         numericInput(
           inputId = "textSizeGoTile",
-          label = "Figure Font Size", min = 4, max = 30,
-          value = 12, step = 0.5
+          label = "Figure Font Size",
+          min = 4,
+          max = 30,
+          value = 12,
+          step = 0.5
         ),
         numericInput(
           inputId = "figWidthGoTile",
-          label = "Figure Width", min = 100, max = 2000,
-          value = 400, step = 10
+          label = "Figure Width",
+          min = 100,
+          max = 2000,
+          value = 400,
+          step = 10
         ),
         numericInput(
           inputId = "figHeightGoTile",
-          label = "Figure Height", min = 100, max = 2000,
-          value = 1600, step = 10
+          label = "Figure Height",
+          min = 100,
+          max = 2000,
+          value = 1600,
+          step = 10
         ),
         legend_offset_ui("goTile")
       ) # end of box
@@ -137,11 +167,17 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        textOutput("goTilePlotDesign"), br(),
+        textOutput("goTilePlotDesign"),
+        br(),
         h4("Download Settings"),
         splitLayout(
-            selectInput(inputId = "downloadFormatGoTile", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
-            selectInput(inputId = "dpiGoTile", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
+          selectInput(
+            inputId = "downloadFormatGoTile",
+            label = "Select format",
+            choices = c("PDF", "SVG", "PNG"),
+            selected = "PDF"
+          ),
+          selectInput(inputId = "dpiGoTile", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
         ),
         textInput(inputId = "filename_goTile", label = "Enter filename", value = "Pathway_Tile"),
         downloadButton(outputId = "dlGoTilePlot", label = "Download Pathway Tile Plot"),

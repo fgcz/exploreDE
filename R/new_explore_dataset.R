@@ -12,7 +12,7 @@
 #'   `"crispr_count_qc"`, `"proteomics"`.
 #' @export
 detect_se_shape <- function(se) {
-  param  <- S4Vectors::metadata(se)$param %||% list()
+  param <- S4Vectors::metadata(se)$param %||% list()
   rd_nms <- names(SummarizedExperiment::rowData(se))
 
   has_real_comparison <- !is.null(param$comparison) &&
@@ -23,15 +23,21 @@ detect_se_shape <- function(se) {
     grepl("--over--", param$comparison, fixed = TRUE)
   has_nested_contrasts <- any(grepl("^constrast_", rd_nms))
 
-  if (has_nested_contrasts && !has_real_comparison) return("proteomics")
-  if (has_real_comparison) return("rna_seq")
+  if (has_nested_contrasts && !has_real_comparison) {
+    return("proteomics")
+  }
+  if (has_real_comparison) {
+    return("rna_seq")
+  }
 
   rn <- rownames(se) %||% character()
   # Guide feature IDs, two known conventions, both ending in the protospacer:
   #   GENE_<n>_<SEQ>                       (Mageck: GENE_1_ACGT… / GENE_sgrna1_ACGT…)
   #   GENE_<strand>_<locus>_<SEQ>          (e.g. Ptplad2_-_88439147.23-P1P2_GATCC…)
-  if (any(grepl("_(sgrna)?[0-9]+_[ACGTN]+$", rn, ignore.case = TRUE)) ||
-      any(grepl("_[+-]_[^_]+_[ACGTN]+$", rn, ignore.case = TRUE))) {
+  if (
+    any(grepl("_(sgrna)?[0-9]+_[ACGTN]+$", rn, ignore.case = TRUE)) ||
+      any(grepl("_[+-]_[^_]+_[ACGTN]+$", rn, ignore.case = TRUE))
+  ) {
     return("crispr_count_qc")
   }
   "count_qc"
@@ -60,9 +66,10 @@ new_explore_dataset <- function(input, config = NULL) {
   # AnnData is rebuilt into its proteomics SE (see prolfquapp_h5ad.R); any other
   # AnnData is canonical and routes to the H5AD backend — the "bring your own
   # data" path.
-  if (inherits(input, "AbstractAnnData") ||
-      (is.character(input) && length(input) == 1L &&
-       grepl("\\.h5ad$", input, ignore.case = TRUE))) {
+  if (
+    inherits(input, "AbstractAnnData") ||
+      (is.character(input) && length(input) == 1L && grepl("\\.h5ad$", input, ignore.case = TRUE))
+  ) {
     adata <- if (inherits(input, "AbstractAnnData")) input else .h5ad_read(input)
     if (is_prolfquapp_anndata(adata)) {
       return(new_explore_dataset(se_from_prolfquapp_anndata(adata), config = config))
@@ -74,9 +81,13 @@ new_explore_dataset <- function(input, config = NULL) {
   # bridge in exploreDElight). Checked BEFORE the SE branch, because that one
   # also accepts a directory — eds_load_se() would go looking for deResult.rds
   # and report a confusing "no SUSHI artefact" rather than the real shape.
-  if (is.character(input) && length(input) == 1L && dir.exists(input) &&
+  if (
+    is.character(input) &&
+      length(input) == 1L &&
+      dir.exists(input) &&
       file.exists(file.path(input, "manifest.json")) &&
-      file.exists(file.path(input, "obs.parquet"))) {
+      file.exists(file.path(input, "obs.parquet"))
+  ) {
     return(ExploreDatasetParquet$new(input, config = config))
   }
 
@@ -90,11 +101,12 @@ new_explore_dataset <- function(input, config = NULL) {
   # prolfquapp >= 2.10 keeps the feature annotation in its own rowData frame.
   se <- .prolfquapp_legacy_layout(se)
 
-  cls <- switch(detect_se_shape(se),
-    rna_seq         = ExploreDatasetSE_RNASeq,
-    count_qc        = ExploreDatasetSE_CountQC,
+  cls <- switch(
+    detect_se_shape(se),
+    rna_seq = ExploreDatasetSE_RNASeq,
+    count_qc = ExploreDatasetSE_CountQC,
     crispr_count_qc = ExploreDatasetSE_CrisprCountQC,
-    proteomics      = ExploreDatasetSE_Proteomics,
+    proteomics = ExploreDatasetSE_Proteomics,
     stop("Unknown SE shape")
   )
   cls$new(se, config = config)

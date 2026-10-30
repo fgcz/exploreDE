@@ -16,8 +16,10 @@ test_that("the lazily loaded dictionary comes from the checkout, not the working
   env <- new.env()
   withr::with_dir(tempdir(), source(f, local = env))
   pats <- withr::with_dir(tempdir(), env$eds_load_column_patterns())
-  json <- jsonlite::fromJSON(file.path(dirname(dirname(f)), "inst", "dictionaries", "column_patterns.json"),
-                             simplifyVector = FALSE)
+  json <- jsonlite::fromJSON(
+    file.path(dirname(dirname(f)), "inst", "dictionaries", "column_patterns.json"),
+    simplifyVector = FALSE
+  )
   expect_identical(names(pats$de), names(json$de))
   expect_identical(pats$de$score_fdr, as.character(unlist(json$de$score_fdr)))
 })

@@ -205,9 +205,14 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
 #' @param pc_y Y axis component number or name
 #' @param selection_method Gene selection method: "overall", "per_pc", or "manual"
 #' @return List with sample_data and gene_data for plotting
-prepare_biplot_data <- function(ordination_result, top_n = 10,
-                                custom_genes = NULL, pc_x = 1, pc_y = 2,
-                                selection_method = "overall") {
+prepare_biplot_data <- function(
+  ordination_result,
+  top_n = 10,
+  custom_genes = NULL,
+  pc_x = 1,
+  pc_y = 2,
+  selection_method = "overall"
+) {
   if (is.null(ordination_result$loadings)) {
     # Return NULL gracefully instead of stopping - biplot not available for distance-based methods
     return(NULL)
@@ -291,13 +296,12 @@ step_log2 <- function(counts, dataset, counts_type) {
 step_batch_correction <- function(counts, dataset, batch_column, design_column = "None") {
   if (!is.null(batch_column) && nzchar(batch_column) && batch_column != "None") {
     if (any(is.na(dataset[[batch_column]]))) {
-      showNotification("Batch correction skipped: batch column contains NA values",
-        type = "warning", duration = 8)
+      showNotification("Batch correction skipped: batch column contains NA values", type = "warning", duration = 8)
     } else {
       counts <- apply_batch_correction(
-        counts    = counts,
-        dataset   = dataset,
-        batchCol  = batch_column,
+        counts = counts,
+        dataset = dataset,
+        batchCol = batch_column,
         designCol = design_column
       )
     }
@@ -317,7 +321,7 @@ step_top_n_sd <- function(counts, dataset, top_n) {
 
 #' Plot ordination (samples only)
 plot_ordination_samples <- function(ordination_result, pc_scores, input, coloursPCA, levelLabels = NULL) {
-  fillLabels  <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
+  fillLabels <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
   shapeLabels <- if (is.null(levelLabels$shape)) ggplot2::waiver() else levelLabels$shape
   pc_x <- input$pcaX
   pc_y <- input$pcaY
@@ -326,29 +330,42 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
   p <- ggplot(pc_scores, aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]))
 
   if (input$pcaAddEllipses) {
-    p <- p + stat_ellipse(aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]),
-      geom = "polygon", alpha = input$pcaEllipsesAlpha, show.legend = FALSE
-    )
+    p <- p +
+      stat_ellipse(
+        aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]),
+        geom = "polygon",
+        alpha = input$pcaEllipsesAlpha,
+        show.legend = FALSE
+      )
     p <- p + scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
   }
 
   if (input$pcaFactor2 == "None") {
     p <- p + geom_point(size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA)
   } else {
-    p <- p + geom_point(aes(shape = .data[[input$pcaFactor2]]),
-      size = input$dotSizePCA,
-      alpha = input$alphaPCA, stroke = input$dotBorderPCA
-    )
+    p <- p +
+      geom_point(
+        aes(shape = .data[[input$pcaFactor2]]),
+        size = input$dotSizePCA,
+        alpha = input$alphaPCA,
+        stroke = input$dotBorderPCA
+      )
     p <- p + scale_shape_manual(values = c(21, 22, 23, 24, 25, 8, 3, 4), labels = shapeLabels)
   }
 
   if (input$pcaShowNames) {
-    p <- p + geom_label_repel(aes(label = Name, fill = .data[[input$pcaFactor1]]),
-      force = 2, nudge_y = as.numeric(input$geneLabelNudgePCAY) / 10,
-      nudge_x = as.numeric(input$geneLabelNudgePCAX) / 10,
-      size = (input$textSizePCA / 3), max.overlaps = input$pcaLabelMaxOverlap,
-      fontface = "bold", show.legend = FALSE, na.rm = TRUE
-    )
+    p <- p +
+      geom_label_repel(
+        aes(label = Name, fill = .data[[input$pcaFactor1]]),
+        force = 2,
+        nudge_y = as.numeric(input$geneLabelNudgePCAY) / 10,
+        nudge_x = as.numeric(input$geneLabelNudgePCAX) / 10,
+        size = (input$textSizePCA / 3),
+        max.overlaps = input$pcaLabelMaxOverlap,
+        fontface = "bold",
+        show.legend = FALSE,
+        na.rm = TRUE
+      )
   }
 
   # Axis labels
@@ -375,41 +392,52 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
 
   p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
   p <- p + theme_bw(base_size = input$textSizePCA)
-  face <- switch(input$boldPCA,
-    "TRUE" = "bold",
-    "FALSE" = "plain"
-  )
+  face <- switch(input$boldPCA, "TRUE" = "bold", "FALSE" = "plain")
   p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
-  if (isTRUE(levelLabels$rich)) p <- p + rich_label_theme(legend = TRUE)
+  if (isTRUE(levelLabels$rich)) {
+    p <- p + rich_label_theme(legend = TRUE)
+  }
 
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {
-    p <- p + theme(
-      panel.grid.major.x = element_blank(),
-      panel.grid.minor.x = element_blank(),
-      panel.grid.major.y = element_blank(),
-      panel.grid.minor.y = element_blank()
-    )
+    p <- p +
+      theme(
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()
+      )
   }
 
   # Conditionally hide axes
   if (!input$showAxesPCA) {
-    p <- p + theme(
-      axis.line = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks = element_blank(),
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
-      panel.border = element_blank()
-    )
+    p <- p +
+      theme(
+        axis.line = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.border = element_blank()
+      )
   }
 
   return(p)
 }
 
 #' Plot biplot (samples + genes)
-plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursPCA, biplot_data, arrow_scale = 1, arrow_colour = "red", selection_method = "overall", levelLabels = NULL) {
+plot_ordination_biplot <- function(
+  ordination_result,
+  pc_scores,
+  input,
+  coloursPCA,
+  biplot_data,
+  arrow_scale = 1,
+  arrow_colour = "red",
+  selection_method = "overall",
+  levelLabels = NULL
+) {
   fillLabels <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
   pc_x <- biplot_data$pc_x_name
   pc_y <- biplot_data$pc_y_name
@@ -432,20 +460,35 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
   }
 
   p <- ggplot()
-  p <- p + geom_point(
-    data = pc_scores, aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]),
-    size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA
-  )
-  p <- p + geom_segment(
-    data = biplot_data$gene_data, aes(x = 0, y = 0, xend = pc_x_scaled, yend = pc_y_scaled, colour = arrow_color),
-    arrow = arrow(length = unit(0.2, "cm"), type = "closed"), linewidth = 0.5, alpha = 0.7
-  )
+  p <- p +
+    geom_point(
+      data = pc_scores,
+      aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]),
+      size = input$dotSizePCA,
+      alpha = input$alphaPCA,
+      shape = 21,
+      stroke = input$dotBorderPCA
+    )
+  p <- p +
+    geom_segment(
+      data = biplot_data$gene_data,
+      aes(x = 0, y = 0, xend = pc_x_scaled, yend = pc_y_scaled, colour = arrow_color),
+      arrow = arrow(length = unit(0.2, "cm"), type = "closed"),
+      linewidth = 0.5,
+      alpha = 0.7
+    )
   # Arrow labels: optional display label (e.g. gene symbol), else the feature_id
-  if (!"label" %in% names(biplot_data$gene_data)) biplot_data$gene_data$label <- biplot_data$gene_data$gene
-  p <- p + geom_text_repel(
-    data = biplot_data$gene_data, aes(x = pc_x_scaled, y = pc_y_scaled, label = label, colour = arrow_color),
-    size = input$textSizePCA / 4, fontface = "bold", max.overlaps = 20
-  )
+  if (!"label" %in% names(biplot_data$gene_data)) {
+    biplot_data$gene_data$label <- biplot_data$gene_data$gene
+  }
+  p <- p +
+    geom_text_repel(
+      data = biplot_data$gene_data,
+      aes(x = pc_x_scaled, y = pc_y_scaled, label = label, colour = arrow_color),
+      size = input$textSizePCA / 4,
+      fontface = "bold",
+      max.overlaps = 20
+    )
   p <- p + scale_colour_identity() # Use the actual color values
 
   # Axes
@@ -462,34 +505,35 @@ plot_ordination_biplot <- function(ordination_result, pc_scores, input, coloursP
   p <- p + labs(x = x_lab, y = y_lab, fill = input$pcaFactor1)
   p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
   p <- p + theme_bw(base_size = input$textSizePCA)
-  face <- switch(input$boldPCA,
-    "TRUE" = "bold",
-    "FALSE" = "plain"
-  )
+  face <- switch(input$boldPCA, "TRUE" = "bold", "FALSE" = "plain")
   p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
-  if (isTRUE(levelLabels$rich)) p <- p + rich_label_theme(legend = TRUE)
+  if (isTRUE(levelLabels$rich)) {
+    p <- p + rich_label_theme(legend = TRUE)
+  }
 
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {
-    p <- p + theme(
-      panel.grid.major.x = element_blank(),
-      panel.grid.minor.x = element_blank(),
-      panel.grid.major.y = element_blank(),
-      panel.grid.minor.y = element_blank()
-    )
+    p <- p +
+      theme(
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()
+      )
   }
 
   # Conditionally hide axes
   if (!input$showAxesPCA) {
-    p <- p + theme(
-      axis.line = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks = element_blank(),
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
-      panel.border = element_blank()
-    )
+    p <- p +
+      theme(
+        axis.line = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.border = element_blank()
+      )
   }
 
   return(p)
@@ -501,8 +545,10 @@ req(eds)
 # Create reactive for design to use across all outputs and download handlers
 designReactive <- reactive({
   if (eds$data_type() == "RNASeq") {
-    if (eds$has_de()) return(eds$contrast_label(selectedContrast()))
-    return("")   # counts-only upload: no contrast to label
+    if (eds$has_de()) {
+      return(eds$contrast_label(selectedContrast()))
+    }
+    return("") # counts-only upload: no contrast to label
   } else if (eds$omics_class() == "proteomics") {
     if (isTruthy(selectedContrast())) {
       return(selectedContrast())
@@ -553,10 +599,9 @@ ordinationResults <- reactive({
 
   # Build cascade step map
   # Track whether counts are in log space (needed for batch correction)
-  batch_col    <- if (input$pcaBatch != "None") input$pcaBatch else NULL
-  design_col   <- input$pcaBatchDesign  # read here so ordinationResults() tracks it as a dep even if the cascade step short-circuits
-  is_logged <- input$pcaCounts %in% c("normalised_log2", "vst") ||
-    eds$omics_class() == "proteomics"
+  batch_col <- if (input$pcaBatch != "None") input$pcaBatch else NULL
+  design_col <- input$pcaBatchDesign # read here so ordinationResults() tracks it as a dep even if the cascade step short-circuits
+  is_logged <- input$pcaCounts %in% c("normalised_log2", "vst") || eds$omics_class() == "proteomics"
 
   step_map <- list(
     "Group subsetting" = function(cd) step_group_subset(cd$counts, cd$dataset, input$pcaFactor1, valid_groups),
@@ -569,7 +614,7 @@ ordinationResults <- reactive({
     },
     "Log2 transform" = function(cd) {
       if (input$ordinationMethod == "glmpca") {
-        cd  # GLM-PCA requires untransformed counts
+        cd # GLM-PCA requires untransformed counts
       } else if (input$pcaLog2) {
         result <- step_log2(cd$counts, cd$dataset, input$pcaCounts)
         is_logged <<- TRUE
@@ -580,14 +625,16 @@ ordinationResults <- reactive({
     },
     "Batch correction" = function(cd) {
       if (input$ordinationMethod == "glmpca") {
-        cd  # GLM-PCA handles batch via X covariate, not removeBatchEffect
+        cd # GLM-PCA handles batch via X covariate, not removeBatchEffect
       } else if (!is_logged) {
-        showNotification("Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
-          type = "warning", duration = 8)
+        showNotification(
+          "Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
+          type = "warning",
+          duration = 8
+        )
         cd
       } else {
-        step_batch_correction(cd$counts, cd$dataset, batch_col,
-                              design_column = design_col)
+        step_batch_correction(cd$counts, cd$dataset, batch_col, design_column = design_col)
       }
     },
     "Top N features (SD)" = function(cd) step_top_n_sd(cd$counts, cd$dataset, input$pcaTopN)
@@ -596,7 +643,13 @@ ordinationResults <- reactive({
   # Execute cascade in user-defined order
   cascade_order <- input$pcaCascadeOrder
   if (is.null(cascade_order) || length(cascade_order) == 0) {
-    cascade_order <- c("Peptide filter", "Log2 transform", "Batch correction", "Group subsetting", "Top N features (SD)")
+    cascade_order <- c(
+      "Peptide filter",
+      "Log2 transform",
+      "Batch correction",
+      "Group subsetting",
+      "Top N features (SD)"
+    )
   }
 
   cd <- list(counts = countsOrd, dataset = datasetOrd)
@@ -628,7 +681,9 @@ ordinationResults <- reactive({
   if (ncol(countsPrepared) < 3) {
     showNotification(
       paste0(
-        "Not enough features for ordination (", ncol(countsPrepared), " features available). ",
+        "Not enough features for ordination (",
+        ncol(countsPrepared),
+        " features available). ",
         "Please try reducing the 'Use top n features' setting or adjust other filters."
       ),
       type = "warning",
@@ -689,7 +744,7 @@ ordinationResults <- reactive({
     if (!is.null(batch_col) && batch_col %in% colnames(datasetOrd)) {
       batch_factor <- as.factor(datasetOrd[[batch_col]])
       if (nlevels(batch_factor) > 1) {
-        X_covariates <- model.matrix(~ batch_factor)[, -1, drop = FALSE]
+        X_covariates <- model.matrix(~batch_factor)[, -1, drop = FALSE]
       }
     }
 
@@ -729,11 +784,12 @@ ordinationResults <- reactive({
 
 observe({
   # Build labelled choices for the count selector: key → human-readable label
-  assay_keys    <- eds$assay_names()
-  count_choices <- setNames(assay_keys,
-                            vapply(assay_keys, eds$assay_label, character(1)))
+  assay_keys <- eds$assay_names()
+  count_choices <- setNames(assay_keys, vapply(assay_keys, eds$assay_label, character(1)))
 
-  output$pcaDesign <- renderText({ designReactive() })
+  output$pcaDesign <- renderText({
+    designReactive()
+  })
 
   if (eds$data_type() == "RNASeq") {
     default_count <- if ("normalised_log2" %in% assay_keys) "normalised_log2" else assay_keys[1]
@@ -748,15 +804,17 @@ observe({
   # Batch + design dropdowns — see server-boxplot.R for the decision table.
   # NB: the design input is `pcaBatchDesign` because `pcaDesign` is already a
   # textOutput on this tab (the DE design-formula string).
-  .dt        <- eds$data_type()
-  .factors   <- eds$factor_names()
-  .grouping  <- eds$primary_grouping()
+  .dt <- eds$data_type()
+  .factors <- eds$factor_names()
+  .grouping <- eds$primary_grouping()
   .secondary <- eds$secondary_grouping()
   .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
   .deDesignCol <- switch(.dt, "RNASeq" = .grouping, NA_character_)
   # Proteomics grouping: SUSHI "G_" if present, else the primary grouping (h5ad).
   .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
-  if (eds$omics_class() == "proteomics") .deDesignCol <- .protGroup
+  if (eds$omics_class() == "proteomics") {
+    .deDesignCol <- .protGroup
+  }
 
   batchChoices <- c("None", .factors)
   batchDefault <- if (.twoFactor) .secondary else "None"
@@ -809,10 +867,7 @@ observe({
   })
 
   lapply(c(1:2), function(i) {
-    selected <- switch(i,
-      "1" = eds$primary_grouping(),
-      "2" = "None"
-    )
+    selected <- switch(i, "1" = eds$primary_grouping(), "2" = "None")
     updateSelectInput(
       session = session,
       inputId = paste0("pcaFactor", i),
@@ -840,10 +895,20 @@ observe({
   )
   if (eds$omics_class() == "proteomics") {
     # Handle nrPeptides slider — check the primary contrast's DE table for nrPeptides column
-    if (length(eds$contrasts()) > 0 &&
-        "nrPeptides" %in% colnames(eds$de(eds$contrasts()[[1]]))) {
+    if (
+      length(eds$contrasts()) > 0 &&
+        "nrPeptides" %in% colnames(eds$de(eds$contrasts()[[1]]))
+    ) {
       output$nrPeptidesPCAUI <- renderUI({
-        sliderInput(inputId = "nrPeptidePCA", label = "Minimum number of peptides", min = 0, max = 20, value = 2, step = 1, width = "85%")
+        sliderInput(
+          inputId = "nrPeptidePCA",
+          label = "Minimum number of peptides",
+          min = 0,
+          max = 20,
+          value = 2,
+          step = 1,
+          width = "85%"
+        )
       })
       outputOptions(output, "nrPeptidesPCAUI", suspendWhenHidden = FALSE)
     } else {
@@ -878,7 +943,8 @@ observeEvent(input$ordinationMethod, {
 
 # Separate observer to update biplot gene choices only when ordination results change
 # This prevents resetting the selection when user picks genes
-observeEvent(list(ordinationResults(), input$fb_label_by_ordination),
+observeEvent(
+  list(ordinationResults(), input$fb_label_by_ordination),
   {
     ord_res <- ordinationResults()
     if (!is.null(ord_res) && !is.null(ord_res$loadings)) {
@@ -962,9 +1028,12 @@ observeEvent(
     available_groups <- levels(as.factor(eds$samples()[[input$pcaFactor1]]))
     valid_groups <- input$pcaGroups[input$pcaGroups %in% available_groups]
 
-    coloursPCA <- setNames(lapply(valid_groups, function(k) {
-      paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, k)]]), "FF")
-    }), valid_groups)
+    coloursPCA <- setNames(
+      lapply(valid_groups, function(k) {
+        paste0(col2hex(input[[paste0("GroupColour", input$pcaFactor1, k)]]), "FF")
+      }),
+      valid_groups
+    )
 
     # Display labels from the Colours tab (fill factor, and shape factor).
     # If either is rich, both are, as they share the markdown legend text.
@@ -977,7 +1046,9 @@ observeEvent(
     pcaLevelLabels$rich <- is_rich_labels(pcaLevelLabels$fill) || is_rich_labels(pcaLevelLabels$shape)
     if (pcaLevelLabels$rich) {
       pcaLevelLabels$fill <- level_labels(input, input$pcaFactor1, valid_groups, force_rich = TRUE)
-      if (!is.null(pcaShapeFactor)) pcaLevelLabels$shape <- level_labels(input, pcaShapeFactor, pcaShapeLevels, force_rich = TRUE)
+      if (!is.null(pcaShapeFactor)) {
+        pcaLevelLabels$shape <- level_labels(input, pcaShapeFactor, pcaShapeLevels, force_rich = TRUE)
+      }
     }
 
     # Extract results from ordination
@@ -1012,7 +1083,11 @@ observeEvent(
     # If the old selection doesn't exist in new choices, reset to first two components
     new_choices <- as.character(pc_eigenvalues$PC)
     x_selected <- if (!is.null(input$pcaX) && input$pcaX %in% new_choices) input$pcaX else new_choices[1]
-    y_selected <- if (!is.null(input$pcaY) && input$pcaY %in% new_choices) input$pcaY else new_choices[min(2, length(new_choices))]
+    y_selected <- if (!is.null(input$pcaY) && input$pcaY %in% new_choices) {
+      input$pcaY
+    } else {
+      new_choices[min(2, length(new_choices))]
+    }
 
     updateSelectInput(session = session, inputId = "pcaX", choices = new_choices, selected = x_selected)
     updateSelectInput(session = session, inputId = "pcaY", choices = new_choices, selected = y_selected)
@@ -1058,9 +1133,11 @@ observeEvent(
         genes_from_text <- strsplit(input$biplotCustomGenesText, "\\s+|/+|,+|\n+|\r+|\t+")[[1]]
         genes_from_text <- genes_from_text[genes_from_text != ""]
         # Proteomics: also accept pasted gene symbols / protein IDs
-        genes_from_text <- unique(c(genes_from_text,
-                                    resolve_features(genes_from_text, "gene_name"),
-                                    resolve_features(genes_from_text, "protein_Id")))
+        genes_from_text <- unique(c(
+          genes_from_text,
+          resolve_features(genes_from_text, "gene_name"),
+          resolve_features(genes_from_text, "protein_Id")
+        ))
       }
 
       # Combine and deduplicate
@@ -1114,23 +1191,18 @@ observeEvent(
     # Output the variance table
     output$pcaVars <- DT::renderDataTable({
       if (!is.null(ord_res$variance)) {
-        datatable(pc_eigenvalues[, c("PC", "pct", "pct_cum")],
+        datatable(
+          pc_eigenvalues[, c("PC", "pct", "pct_cum")],
           rownames = FALSE,
           colnames = c("Component", "Variance explained", "Cumulative variance")
         ) %>%
           formatRound(c("pct", "pct_cum"), digits = 3)
       } else if (!is.null(ord_res$stress)) {
         # For NMDS
-        datatable(pc_eigenvalues[, c("PC", "stress")],
-          rownames = FALSE,
-          colnames = c("Component", "Stress")
-        )
+        datatable(pc_eigenvalues[, c("PC", "stress")], rownames = FALSE, colnames = c("Component", "Stress"))
       } else {
         # For GLM-PCA (no variance metrics)
-        datatable(pc_eigenvalues[, "PC", drop = FALSE],
-          rownames = FALSE,
-          colnames = c("Component")
-        )
+        datatable(pc_eigenvalues[, "PC", drop = FALSE], rownames = FALSE, colnames = c("Component"))
       }
     })
 
@@ -1259,14 +1331,32 @@ observeEvent(
 
     # Paired Plot
     dim_cols <- grep("^(PC|PCo|NMDS|dim)\\d+", colnames(pc_scores))
-    dim_cols <- head(dim_cols, 5)  # max 5 dimensions
+    dim_cols <- head(dim_cols, 5) # max 5 dimensions
     req(length(dim_cols) >= 2)
     pairedPlot <- ggpairs(
       data = pc_scores,
       columns = dim_cols,
       aes(fill = .data[[input$pcaFactor1]], alpha = input$alphaPCA),
-      upper = list(continuous = wrap("points", alpha = input$alphaPCA, size = input$dotSizePCA, alpha = input$alphaPCA, pch = 21, stroke = input$dotBorderPCA)),
-      lower = list(continuous = wrap("points", alpha = input$alphaPCA, size = input$dotSizePCA, alpha = input$alphaPCA, pch = 21, stroke = input$dotBorderPCA)),
+      upper = list(
+        continuous = wrap(
+          "points",
+          alpha = input$alphaPCA,
+          size = input$dotSizePCA,
+          alpha = input$alphaPCA,
+          pch = 21,
+          stroke = input$dotBorderPCA
+        )
+      ),
+      lower = list(
+        continuous = wrap(
+          "points",
+          alpha = input$alphaPCA,
+          size = input$dotSizePCA,
+          alpha = input$alphaPCA,
+          pch = 21,
+          stroke = input$dotBorderPCA
+        )
+      ),
       diag = list(continuous = wrap("densityDiag", size = 0.3), discrete = "barDiag", na = "naDiag")
     ) +
       theme_bw(base_size = input$textSizePCA) +

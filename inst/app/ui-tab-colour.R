@@ -18,16 +18,24 @@ tabItem(
             Hopefully this is a much easier way to set colours once."
           ),
           helpText(
-            HTML("You can also give any group a <b>plot label</b> in the box under its colour picker. Leave it empty to keep the original name.
+            HTML(
+              "You can also give any group a <b>plot label</b> in the box under its colour picker. Leave it empty to keep the original name.
             Labels accept a few HTML tags: <code>&lt;i&gt;</code> italics, <code>&lt;b&gt;</code> bold, <code>&lt;sup&gt;</code> superscript,
             <code>&lt;sub&gt;</code> subscript and <code>&lt;br&gt;</code> line break, plus entities like <code>&amp;Delta;</code> or <code>&amp;alpha;</code>
             for Greek letters. For example, <code>&lt;i&gt;Cxcr4&lt;/i&gt;&lt;sup&gt;fl/fl&lt;/sup&gt; (Treated)</code> gives <i>Cxcr4</i><sup>fl/fl</sup> (Treated).
             Labels are saved in the colour template too.
-            Note: the plots shown in the app may display italics as upright text, but the downloaded figures will have them.")
+            Note: the plots shown in the app may display italics as upright text, but the downloaded figures will have them."
+            )
           ),
           splitLayout(
             downloadButton(outputId = "dlColourTemplate", label = paste("Download Colour Template")),
-            fileInput(inputId = "importColourFile", accept = ".xlsx", width = "85%", label = NULL, placeholder = "Upload Colour Template")
+            fileInput(
+              inputId = "importColourFile",
+              accept = ".xlsx",
+              width = "85%",
+              label = NULL,
+              placeholder = "Upload Colour Template"
+            )
           ),
           uiOutput("colourPaletteUI"),
           uiOutput("groupLabelWarningsUI"),

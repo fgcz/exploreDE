@@ -1,4 +1,3 @@
-
 dataSummary <- function(data, varname, groupnames) {
   summary_func <- function(x, col) {
     c(
@@ -8,8 +7,10 @@ dataSummary <- function(data, varname, groupnames) {
     )
   }
   data_sum <- plyr::ddply(
-    data, groupnames,
-    .fun = summary_func, varname
+    data,
+    groupnames,
+    .fun = summary_func,
+    varname
   )
   data_sum <- plyr::rename(data_sum, c("mean" = varname))
   return(data_sum)
@@ -17,11 +18,11 @@ dataSummary <- function(data, varname, groupnames) {
 
 # Proxy Data Reactive for Single-Dataset Emulation
 multiBoxplotDataReactive <- reactive({
-    req(multiDeReactive$results)
-    req(length(multiDeReactive$results) >= 1)
-    # Return the first result as the primary dataset source
-    # This tricks the boxplot logic into thinking it has a standard single input
-    multiDeReactive$results[[1]]
+  req(multiDeReactive$results)
+  req(length(multiDeReactive$results) >= 1)
+  # Return the first result as the primary dataset source
+  # This tricks the boxplot logic into thinking it has a standard single input
+  multiDeReactive$results[[1]]
 })
 
 
@@ -31,71 +32,74 @@ output$multiBoxplotStatic <- renderPlot({
 })
 
 observe({
-    req(multiBoxplotDataReactive())
-    d <- multiBoxplotDataReactive()
-    
-    updateSelectInput(
-      session = session,
-      inputId = "multiBoxplotCounts",
-      choices = names(d$countList),
-      selected = switch(d$dataType,
-        "RNASeq" = "Normalised + Log2",
-        "CountQC" = "Normalised + Log2",
-        "CrisprCountQC" = "Normalised + Log2",
-        "proteomics" = "transformedData",
-        "Normalised + Log2" # Fallback
-      )
-    )
-    
-    updateSelectizeInput(
-      session = session,
-      inputId = "multiBoxplotGenes",
-      choices = d$genes,
-      selected = "",
-      server = TRUE
-    )
-    
-    updateSelectInput(
-      session = session,
-      inputId = "multiBoxplotFactor1",
-      choices = d$factors,
-      selected = d$groupingName
-    )
-    updateSelectInput(
-      session = session,
-      inputId = "multiBoxplotFactor2",
-      choices = c("None", "Feature", d$factors),
-      selected = "None"
-    )
-    
-    # Batch + design dropdowns — see server-boxplot.R for the decision table.
-    .twoFactor <- !is.null(d$param$grouping2Name) && nzchar(d$param$grouping2Name) &&
-                  !is.null(d$factors) && d$param$grouping2Name %in% d$factors
-    # Proteomics grouping: SUSHI "G_" if present, else the dataset's grouping.
-    .protGroup <- if ("G_" %in% d$factors) "G_" else d$groupingName
-    .deDesignCol <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = .protGroup, NA_character_)
+  req(multiBoxplotDataReactive())
+  d <- multiBoxplotDataReactive()
 
-    batchChoices <- c("None", d$factors)
-    batchDefault <- if (.twoFactor) d$param$grouping2Name else "None"
-    updateSelectInput(
-      session = session,
-      inputId = "multiBoxplotBatch",
-      choices = batchChoices,
-      selected = batchDefault
+  updateSelectInput(
+    session = session,
+    inputId = "multiBoxplotCounts",
+    choices = names(d$countList),
+    selected = switch(
+      d$dataType,
+      "RNASeq" = "Normalised + Log2",
+      "CountQC" = "Normalised + Log2",
+      "CrisprCountQC" = "Normalised + Log2",
+      "proteomics" = "transformedData",
+      "Normalised + Log2" # Fallback
     )
+  )
 
-    designChoices <- if (d$dataType %in% c("RNASeq", "proteomics") && .twoFactor) {
-      c("None", .deDesignCol)
-    } else {
-      c("None", d$factors)
-    }
-    designDefault <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = .protGroup, "None")
-    updateSelectInput(
-      session = session,
-      inputId = "multiBoxplotDesign",
-      choices = designChoices,
-      selected = designDefault
-    )
+  updateSelectizeInput(
+    session = session,
+    inputId = "multiBoxplotGenes",
+    choices = d$genes,
+    selected = "",
+    server = TRUE
+  )
+
+  updateSelectInput(
+    session = session,
+    inputId = "multiBoxplotFactor1",
+    choices = d$factors,
+    selected = d$groupingName
+  )
+  updateSelectInput(
+    session = session,
+    inputId = "multiBoxplotFactor2",
+    choices = c("None", "Feature", d$factors),
+    selected = "None"
+  )
+
+  # Batch + design dropdowns — see server-boxplot.R for the decision table.
+  .twoFactor <- !is.null(d$param$grouping2Name) &&
+    nzchar(d$param$grouping2Name) &&
+    !is.null(d$factors) &&
+    d$param$grouping2Name %in% d$factors
+  # Proteomics grouping: SUSHI "G_" if present, else the dataset's grouping.
+  .protGroup <- if ("G_" %in% d$factors) "G_" else d$groupingName
+  .deDesignCol <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = .protGroup, NA_character_)
+
+  batchChoices <- c("None", d$factors)
+  batchDefault <- if (.twoFactor) d$param$grouping2Name else "None"
+  updateSelectInput(
+    session = session,
+    inputId = "multiBoxplotBatch",
+    choices = batchChoices,
+    selected = batchDefault
+  )
+
+  designChoices <- if (d$dataType %in% c("RNASeq", "proteomics") && .twoFactor) {
+    c("None", .deDesignCol)
+  } else {
+    c("None", d$factors)
+  }
+  designDefault <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = .protGroup, "None")
+  updateSelectInput(
+    session = session,
+    inputId = "multiBoxplotDesign",
+    choices = designChoices,
+    selected = designDefault
+  )
 })
 
 observeEvent(
@@ -107,7 +111,7 @@ observeEvent(
       req(multiBoxplotDataReactive())
       d <- multiBoxplotDataReactive()
       req(input$multiBoxplotFactor1 %in% colnames(d$dataset))
-      
+
       bucket_list(
         header = "Drag and drop groups in order to be plotted (Ctrl/Cmd to select multiple)",
         group_name = "multi_gemini_bucket_list_group",
@@ -133,28 +137,31 @@ observeEvent(
 # Extract the appropriate data ----
 # Using proxy, mostly for "design" text or simple access
 observe({
-    req(multiBoxplotDataReactive())
-    d <- multiBoxplotDataReactive()
-    output$multiBoxplotDesign <- renderText({
-       # Just show info about number of contrasts loaded
-       paste("Plots based on", length(multiDeReactive$results), "loaded contrasts.")
-    })
+  req(multiBoxplotDataReactive())
+  d <- multiBoxplotDataReactive()
+  output$multiBoxplotDesign <- renderText({
+    # Just show info about number of contrasts loaded
+    paste("Plots based on", length(multiDeReactive$results), "loaded contrasts.")
+  })
 })
 # Note: Legacy seqAnnoReactive block removed as we handle multi-seqAnno differently.
-
 
 # The main part of the gene bucket lives here ----
 multiGenesReactive <- reactiveValues(genes = NULL)
 
 # "Search by" radio (proteomics): swap the selectize choices, clear the picks
 observeEvent(input$fb_search_by_multiBoxplot, ignoreInit = TRUE, {
-    d <- multiBoxplotDataReactive()
-    req(d)
-    updateSelectizeInput(session, "multiBoxplotGenes",
-                         choices = search_mode_choices(input$fb_search_by_multiBoxplot, d$genes),
-                         selected = NULL, server = TRUE)
-    updateTextAreaInput(session, "multiBoxplotGenesText", value = "")
-    multiGenesReactive$genes <- NULL
+  d <- multiBoxplotDataReactive()
+  req(d)
+  updateSelectizeInput(
+    session,
+    "multiBoxplotGenes",
+    choices = search_mode_choices(input$fb_search_by_multiBoxplot, d$genes),
+    selected = NULL,
+    server = TRUE
+  )
+  updateTextAreaInput(session, "multiBoxplotGenesText", value = "")
+  multiGenesReactive$genes <- NULL
 })
 
 observeEvent(
@@ -167,15 +174,15 @@ observeEvent(
   {
     d <- multiBoxplotDataReactive()
     req(d)
-    
+
     # Get all the genes that have been selected from the drop-downs
     genesList1 <- if (!is.null(input$multiBoxplotGenes)) input$multiBoxplotGenes else character(0)
 
     # Get all the genes that have been typed into the textbox
     genesList2 <- if (!is.null(input$multiBoxplotGenesText)) {
-        strsplit(input$multiBoxplotGenesText, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
+      strsplit(input$multiBoxplotGenesText, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
     } else {
-        character(0)
+      character(0)
     }
 
     genesUnlist <- unique(c(genesList1, genesList2))
@@ -184,12 +191,13 @@ observeEvent(
     genesUnlist <- resolve_features(genesUnlist, input$fb_search_by_multiBoxplot %||% "feature_id")
     # Verify against first contrast genes
     genesUnlist <- genesUnlist[genesUnlist %in% d$genes]
-    
+
     multiGenesReactive$genes <- genesUnlist
   }
 )
 
-observeEvent(input$resetGeneBucketMultiBoxplot,
+observeEvent(
+  input$resetGeneBucketMultiBoxplot,
   {
     multiGenesReactive$genes <- NULL
     updateSelectizeInput(session, inputId = "multiBoxplotGenes", selected = NULL)
@@ -232,21 +240,18 @@ observeEvent(
 
 # Define catalyst colour palette (from exploreDE) ----
 
-
 # Create colour pickers for each group ----
-
-
-
 
 # Generate a reactive list of the count data to be plotted ----
 debouncedMultiBoxplotFactor1 <- reactive({
   input$multiBoxFeatureKeepBucket
-}) %>% debounce(200)
+}) %>%
+  debounce(200)
 
 multiBoxplotCountsReactive <- eventReactive(
   {
     debouncedMultiBoxplotFactor1()
-    bananaMode()  # rebuild significance markers when banana mode toggles
+    bananaMode() # rebuild significance markers when banana mode toggles
     input$multiBoxplotFactor1
     input$multiBoxKeepBucket
     input$multiBoxplotFactor2
@@ -262,13 +267,16 @@ multiBoxplotCountsReactive <- eventReactive(
   {
     req(length(debouncedMultiBoxplotFactor1()) >= 1)
     req(!is.null(input$multiBoxplotFactor1))
-    
+
     # DATA HYGIENE CHECKING
     validate(
-        need(length(debouncedMultiBoxplotFactor1()) >= 1, "No genes selected. Please select genes to plot."),
-        need(input$multiBoxplotFactor1 %in% colnames(multiBoxplotDataReactive()$dataset), "Selected grouping factor is not present in the dataset.")
+      need(length(debouncedMultiBoxplotFactor1()) >= 1, "No genes selected. Please select genes to plot."),
+      need(
+        input$multiBoxplotFactor1 %in% colnames(multiBoxplotDataReactive()$dataset),
+        "Selected grouping factor is not present in the dataset."
+      )
     )
-    
+
     d <- multiBoxplotDataReactive() # Proxy
     req(input$multiBoxKeepBucket[[1]] %in% d$dataset[[input$multiBoxplotFactor1]])
 
@@ -285,27 +293,29 @@ multiBoxplotCountsReactive <- eventReactive(
     countsBoxplot <- d$countList[[input$multiBoxplotCounts]]
 
     # Transformations
-    is_logged <- input$multiBoxplotCounts %in% c("Normalised + Log2", "VST") ||
-      d$dataType == "proteomics"
+    is_logged <- input$multiBoxplotCounts %in% c("Normalised + Log2", "VST") || d$dataType == "proteomics"
     if (input$multiBoxplotCountsLog) {
-       if (d$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
-         if (input$multiBoxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
-            countsBoxplot <- log2(countsBoxplot + 1)
-            is_logged <- TRUE
-         }
-       }
+      if (d$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
+        if (input$multiBoxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
+          countsBoxplot <- log2(countsBoxplot + 1)
+          is_logged <- TRUE
+        }
+      }
     }
     if (input$multiBoxplotBatch != "None") {
       if (is_logged) {
         countsBoxplot <- apply_batch_correction(
-          counts    = countsBoxplot,
-          dataset   = datasetBoxplot,
-          batchCol  = input$multiBoxplotBatch,
+          counts = countsBoxplot,
+          dataset = datasetBoxplot,
+          batchCol = input$multiBoxplotBatch,
           designCol = input$multiBoxplotDesign
         )
       } else {
-        showNotification("Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
-          type = "warning", duration = 8)
+        showNotification(
+          "Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
+          type = "warning",
+          duration = 8
+        )
       }
     }
     if (input$multiBoxplotZScore) {
@@ -329,16 +339,26 @@ multiBoxplotCountsReactive <- eventReactive(
     )
     countsBoxplot[["Name"]] <- factor(countsBoxplot[["Name"]], levels = countsBoxplot[["Name"]])
 
-    countsBoxplotMelt <- reshape2::melt(data = countsBoxplot, id.vars = c("Name", d$factors), value.name = "Counts", variable.name = "Feature")
+    countsBoxplotMelt <- reshape2::melt(
+      data = countsBoxplot,
+      id.vars = c("Name", d$factors),
+      value.name = "Counts",
+      variable.name = "Feature"
+    )
     countsBoxplotMelt$Feature <- as.factor(x = countsBoxplotMelt$Feature)
 
     # Strictly force feature order
     countsBoxplotMelt$Feature <- factor(countsBoxplotMelt$Feature, genesToPlot)
 
     if (!input$multiBoxplotFactor2 == "None" & !input$multiBoxplotFactor2 == "Feature") {
-      shapes <- c(rep(c(15, 16, 17, 18, 8), times = 10))[1:nlevels(as.factor(countsBoxplot[[input$multiBoxplotFactor2]]))]
+      shapes <- c(rep(c(15, 16, 17, 18, 8), times = 10))[
+        1:nlevels(as.factor(countsBoxplot[[input$multiBoxplotFactor2]]))
+      ]
       names(shapes) <- levels(as.factor(countsBoxplot[[input$multiBoxplotFactor2]]))
-      countsBoxplotMelt$shapes <- shapes[match(as.character(countsBoxplotMelt[[input$multiBoxplotFactor2]]), names(shapes))]
+      countsBoxplotMelt$shapes <- shapes[match(
+        as.character(countsBoxplotMelt[[input$multiBoxplotFactor2]]),
+        names(shapes)
+      )]
     }
 
     # NEW MULTI-CONTRAST P-VALUE LOGIC
@@ -353,94 +373,100 @@ multiBoxplotCountsReactive <- eventReactive(
     # is unambiguous — so a well-labelled contrast is untouched and an ambiguous
     # one is skipped rather than mis-bracketed.
     .resolveLevel <- function(g, levels) {
-        if (g %in% levels) return(g)
-        hit <- unique(levels[endsWith(levels, g) | startsWith(levels, g) |
-                             endsWith(g, levels) | startsWith(g, levels)])
-        if (length(hit) == 1L) hit else NA_character_
+      if (g %in% levels) {
+        return(g)
+      }
+      hit <- unique(levels[endsWith(levels, g) | startsWith(levels, g) | endsWith(g, levels) | startsWith(g, levels)])
+      if (length(hit) == 1L) hit else NA_character_
     }
 
     for (nm in names(multiDeReactive$results)) {
-        res <- multiDeReactive$results[[nm]]
-        if (!is.null(res$seqAnno)) {
-            # Find comparison groups
-            group1 <- NULL
-            group2 <- NULL
+      res <- multiDeReactive$results[[nm]]
+      if (!is.null(res$seqAnno)) {
+        # Find comparison groups
+        group1 <- NULL
+        group2 <- NULL
 
-            # Helper to parse param$comparison or design string
-            designStr <- if (!is.null(res$param$comparison)) res$param$comparison else if (!is.null(res$design)) res$design else ""
-
-            if (grepl("--over--", designStr)) {
-                parts <- strsplit(designStr, "--over--")[[1]]
-                group1 <- parts[1]
-                group2 <- parts[2]
-            } else if (grepl("_vs_", designStr)) {
-                 parts <- strsplit(designStr, "_vs_")[[1]]
-                 group1 <- parts[1]
-                 group2 <- parts[2]
-            } else if (grepl(" vs ", designStr)) {
-                 parts <- strsplit(designStr, " vs ")[[1]]
-                 group1 <- parts[1]
-                 group2 <- parts[2]
-            }
-
-            # If we successfully parsed groups, and genes match
-            if (!is.null(group1) && !is.null(group2)) {
-
-                 # Filtering Step: only show P-values if BOTH contrast groups
-                 # map to a level in the currently plotted factor. Resolve the
-                 # parsed labels to real levels first (handles shorthand names);
-                 # an unresolved / off-plot group skips this contrast's bracket.
-                 currentFactorLevels <- unique(as.character(datasetBoxplot[[input$multiBoxplotFactor1]]))
-                 group1 <- .resolveLevel(group1, currentFactorLevels)
-                 group2 <- .resolveLevel(group2, currentFactorLevels)
-                 if (is.na(group1) || is.na(group2)) {
-                     next
-                 }
-
-                 sa <- res$seqAnno
-                 # Ensure unique Gene ID matching if possible, or use gene_name
-                 # Assuming feature level gene_name
-                 matched <- sa[sa$feature_id %in% genesToPlot, ]
-
-                 if (nrow(matched) > 0) {
-                     df <- data.frame(
-                         Feature = matched$feature_id,
-                         fdr = matched$fdr,
-                         log2Ratio = matched$log2Ratio,
-                         Contrast = nm,
-                         group1 = group1,
-                         group2 = group2,
-                         stringsAsFactors = FALSE
-                     )
-                     pvalueDF[[nm]] <- df
-                 }
-            }
+        # Helper to parse param$comparison or design string
+        designStr <- if (!is.null(res$param$comparison)) {
+          res$param$comparison
+        } else if (!is.null(res$design)) {
+          res$design
+        } else {
+          ""
         }
+
+        if (grepl("--over--", designStr)) {
+          parts <- strsplit(designStr, "--over--")[[1]]
+          group1 <- parts[1]
+          group2 <- parts[2]
+        } else if (grepl("_vs_", designStr)) {
+          parts <- strsplit(designStr, "_vs_")[[1]]
+          group1 <- parts[1]
+          group2 <- parts[2]
+        } else if (grepl(" vs ", designStr)) {
+          parts <- strsplit(designStr, " vs ")[[1]]
+          group1 <- parts[1]
+          group2 <- parts[2]
+        }
+
+        # If we successfully parsed groups, and genes match
+        if (!is.null(group1) && !is.null(group2)) {
+          # Filtering Step: only show P-values if BOTH contrast groups
+          # map to a level in the currently plotted factor. Resolve the
+          # parsed labels to real levels first (handles shorthand names);
+          # an unresolved / off-plot group skips this contrast's bracket.
+          currentFactorLevels <- unique(as.character(datasetBoxplot[[input$multiBoxplotFactor1]]))
+          group1 <- .resolveLevel(group1, currentFactorLevels)
+          group2 <- .resolveLevel(group2, currentFactorLevels)
+          if (is.na(group1) || is.na(group2)) {
+            next
+          }
+
+          sa <- res$seqAnno
+          # Ensure unique Gene ID matching if possible, or use gene_name
+          # Assuming feature level gene_name
+          matched <- sa[sa$feature_id %in% genesToPlot, ]
+
+          if (nrow(matched) > 0) {
+            df <- data.frame(
+              Feature = matched$feature_id,
+              fdr = matched$fdr,
+              log2Ratio = matched$log2Ratio,
+              Contrast = nm,
+              group1 = group1,
+              group2 = group2,
+              stringsAsFactors = FALSE
+            )
+            pvalueDF[[nm]] <- df
+          }
+        }
+      }
     }
     pvalueDF <- do.call(rbind, pvalueDF)
 
     if (!is.null(pvalueDF)) {
-         pvalueDF$Feature <- factor(pvalueDF$Feature, levels = genesToPlot)
-         pvalueDF <- rstatix::add_significance(
-            pvalueDF,
-            p.col = "fdr",
-            output.col = "stars",
-            cutpoints = c(0, 1e-04, 0.001, 0.01, 0.05, 1),
-            symbols = c("****", "***", "**", "*", "ns")
-         )
+      pvalueDF$Feature <- factor(pvalueDF$Feature, levels = genesToPlot)
+      pvalueDF <- rstatix::add_significance(
+        pvalueDF,
+        p.col = "fdr",
+        output.col = "stars",
+        cutpoints = c(0, 1e-04, 0.001, 0.01, 0.05, 1),
+        symbols = c("****", "***", "**", "*", "ns")
+      )
 
-         # Calculate y.positions based on max counts
-         # When y-axis is fixed (free_x), use global max so brackets don't clip
-         maxC <- tapply(countsBoxplotMelt$Counts, countsBoxplotMelt$Feature, max, na.rm=TRUE)
-         globalMaxC <- max(countsBoxplotMelt$Counts, na.rm = TRUE)
+      # Calculate y.positions based on max counts
+      # When y-axis is fixed (free_x), use global max so brackets don't clip
+      maxC <- tapply(countsBoxplotMelt$Counts, countsBoxplotMelt$Feature, max, na.rm = TRUE)
+      globalMaxC <- max(countsBoxplotMelt$Counts, na.rm = TRUE)
 
-         pvalueDF$y.position <- 0
-         for (i in 1:nrow(pvalueDF)) {
-             ft <- as.character(pvalueDF$Feature[i])
-             if (ft %in% names(maxC)) {
-                 pvalueDF$y.position[i] <- if (input$multiBoxplotYScaleFree) globalMaxC else maxC[ft]
-             }
-         }
+      pvalueDF$y.position <- 0
+      for (i in 1:nrow(pvalueDF)) {
+        ft <- as.character(pvalueDF$Feature[i])
+        if (ft %in% names(maxC)) {
+          pvalueDF$y.position[i] <- if (input$multiBoxplotYScaleFree) globalMaxC else maxC[ft]
+        }
+      }
     }
 
     # Barplot Summary
@@ -449,7 +475,10 @@ multiBoxplotCountsReactive <- eventReactive(
       varname = "Counts",
       groupnames = c(input$multiBoxplotFactor1, "Feature")
     )
-    countsBarplot[[input$multiBoxplotFactor1]] <- factor(countsBarplot[[input$multiBoxplotFactor1]], levels = input$multiBoxKeepBucket)
+    countsBarplot[[input$multiBoxplotFactor1]] <- factor(
+      countsBarplot[[input$multiBoxplotFactor1]],
+      levels = input$multiBoxKeepBucket
+    )
     countsBarplot$Feature <- factor(countsBarplot$Feature, genesToPlot)
 
     return(list(
@@ -465,7 +494,7 @@ multiBoxplotCountsReactive <- eventReactive(
 observeEvent(
   {
     multiBoxplotCountsReactive()
-    bananaMode()  # redraw with bananas / asterisks when banana mode toggles
+    bananaMode() # redraw with bananas / asterisks when banana mode toggles
     input$multiBoxplotYScaleFree
     input$textSizeMultiBoxplot
     input$multiBoxplotNCol
@@ -506,21 +535,23 @@ observeEvent(
     lapply(names(multiDeReactive$results), function(n) {
       input[[paste0("multiGroupColour", gsub(" ", "_", n))]]
     })
-    
+
     # Watch for changes in Group Colours (for Boxplot/Dots)
     # We need to access the current dataset levels to know which inputs to watch
     if (!is.null(multiBoxplotCountsReactive())) {
-        d_melt <- multiBoxplotCountsReactive()$datasetBoxplot
-        levels_to_watch <- unique(d_melt[[input$multiBoxplotFactor1]])
-        lapply(levels_to_watch, function(lvl) {
-            list(input[[paste0("GroupColour", input$multiBoxplotFactor1, lvl)]],
-                 input[[paste0("GroupLabel", input$multiBoxplotFactor1, lvl)]])
+      d_melt <- multiBoxplotCountsReactive()$datasetBoxplot
+      levels_to_watch <- unique(d_melt[[input$multiBoxplotFactor1]])
+      lapply(levels_to_watch, function(lvl) {
+        list(
+          input[[paste0("GroupColour", input$multiBoxplotFactor1, lvl)]],
+          input[[paste0("GroupLabel", input$multiBoxplotFactor1, lvl)]]
+        )
+      })
+      if (isTRUE(!input$multiBoxplotFactor2 %in% c("None", "Feature"))) {
+        lapply(unique(d_melt[[input$multiBoxplotFactor2]]), function(lvl) {
+          input[[paste0("GroupLabel", input$multiBoxplotFactor2, lvl)]]
         })
-        if (isTRUE(!input$multiBoxplotFactor2 %in% c("None", "Feature"))) {
-            lapply(unique(d_melt[[input$multiBoxplotFactor2]]), function(lvl) {
-                input[[paste0("GroupLabel", input$multiBoxplotFactor2, lvl)]]
-            })
-        }
+      }
     }
   },
   ignoreNULL = FALSE,
@@ -538,8 +569,8 @@ observeEvent(
 
     # Fetch Group Colours
     groupLevels <- levels(as.factor(countsBoxplotMelt[[input$multiBoxplotFactor1]]))
-    cols <- setNames(lapply(groupLevels, function(lvl) {
-
+    cols <- setNames(
+      lapply(groupLevels, function(lvl) {
         # Check Main App Group Colours (from Colours Tab)
         # ID format from server-summary.R: paste0("GroupColour", FactorName, LevelName)
         # We need to construct this ID using the selected factor and the current level.
@@ -548,12 +579,14 @@ observeEvent(
         col <- input[[inputId]]
 
         if (is.null(col)) {
-             # Fallback if input not ready
-             "grey50"
+          # Fallback if input not ready
+          "grey50"
         } else {
-             paste0(gplots::col2hex(col), "FF")
+          paste0(gplots::col2hex(col), "FF")
         }
-    }), groupLevels)
+      }),
+      groupLevels
+    )
 
     cols <- unlist(cols)
 
@@ -565,37 +598,99 @@ observeEvent(
     mbShapeLabels <- if (is.null(mbShapeFactor)) NULL else level_labels(input, mbShapeFactor, mbShapeLevels)
     mbRich <- is_rich_labels(mbLabels) || is_rich_labels(mbShapeLabels)
     if (mbRich) {
-      mbLabels <- level_labels(input, input$multiBoxplotFactor1, groupLevels, wrap = input$multiBoxplotConditionFormat, force_rich = TRUE)
+      mbLabels <- level_labels(
+        input,
+        input$multiBoxplotFactor1,
+        groupLevels,
+        wrap = input$multiBoxplotConditionFormat,
+        force_rich = TRUE
+      )
       if (!is.null(mbShapeFactor)) mbShapeLabels <- level_labels(input, mbShapeFactor, mbShapeLevels, force_rich = TRUE)
     }
 
-
     facetFree <- "free"
     if (input$multiBoxplotYScaleFree) {
-        facetFree <- "free_x"
+      facetFree <- "free_x"
     }
 
     # Boxplot ----
     boxplot <- ggplot(data = countsBoxplotMelt, aes(x = .data[[input$multiBoxplotFactor1]], y = Counts))
     if (input$multiBoxplotShowBox & !input$multiBoxplotShowViolin) {
-      boxplot <- boxplot + geom_boxplot(aes(fill = .data[[input$multiBoxplotFactor1]]), alpha = input$multiBoxplotBoxAlpha, outlier.shape = NA, show.legend = FALSE)
+      boxplot <- boxplot +
+        geom_boxplot(
+          aes(fill = .data[[input$multiBoxplotFactor1]]),
+          alpha = input$multiBoxplotBoxAlpha,
+          outlier.shape = NA,
+          show.legend = FALSE
+        )
     }
     if (!input$multiBoxplotShowBox & input$multiBoxplotShowViolin) {
-      boxplot <- boxplot + geom_violin(aes(fill = .data[[input$multiBoxplotFactor1]]), alpha = input$multiBoxplotBoxAlpha, draw_quantiles = 0.5, show.legend = FALSE)
+      boxplot <- boxplot +
+        geom_violin(
+          aes(fill = .data[[input$multiBoxplotFactor1]]),
+          alpha = input$multiBoxplotBoxAlpha,
+          draw_quantiles = 0.5,
+          show.legend = FALSE
+        )
     }
     if (input$multiBoxplotShowMeanBar & !input$multiBoxplotMeanBarFront) {
-      boxplot <- boxplot + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$multiBoxplotMeanLine, show.legend = FALSE)
+      boxplot <- boxplot +
+        stat_summary(
+          geom = "crossbar",
+          fun = mean,
+          position = position_dodge(0.9),
+          colour = "black",
+          size = 0.4,
+          width = input$multiBoxplotMeanLine,
+          show.legend = FALSE
+        )
     }
     if (input$multiBoxplotShowPoint) {
-       if (input$multiBoxplotFactor2 == "None" | input$multiBoxplotFactor2 == "Feature") {
-        boxplot <- boxplot + geom_beeswarm(aes(fill = .data[[input$multiBoxplotFactor1]]), size = input$multiBoxplotPointSize, alpha = input$multiBoxplotPointAlpha, shape = 21, cex = input$multiBoxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$multiBoxplotPointBorder)
-       } else {
-        boxplot <- boxplot + geom_beeswarm(aes(fill = .data[[input$multiBoxplotFactor1]], shape = .data[[input$multiBoxplotFactor2]]), size = input$multiBoxplotPointSize, alpha = input$multiBoxplotPointAlpha, cex = input$multiBoxplotPointDodge, method = "swarm", corral = "none", corral.width = 0.9, stroke = input$multiBoxplotPointBorder)
-        boxplot <- boxplot + scale_shape_manual(values = c(rep(c(21, 22, 23, 24, 25), times = 10))[1:nlevels(as.factor(countsBoxplotMelt[[input$multiBoxplotFactor2]]))], labels = mbShapeLabels)
-       }
+      if (input$multiBoxplotFactor2 == "None" | input$multiBoxplotFactor2 == "Feature") {
+        boxplot <- boxplot +
+          geom_beeswarm(
+            aes(fill = .data[[input$multiBoxplotFactor1]]),
+            size = input$multiBoxplotPointSize,
+            alpha = input$multiBoxplotPointAlpha,
+            shape = 21,
+            cex = input$multiBoxplotPointDodge,
+            method = "swarm",
+            corral = "none",
+            corral.width = 0.9,
+            stroke = input$multiBoxplotPointBorder
+          )
+      } else {
+        boxplot <- boxplot +
+          geom_beeswarm(
+            aes(fill = .data[[input$multiBoxplotFactor1]], shape = .data[[input$multiBoxplotFactor2]]),
+            size = input$multiBoxplotPointSize,
+            alpha = input$multiBoxplotPointAlpha,
+            cex = input$multiBoxplotPointDodge,
+            method = "swarm",
+            corral = "none",
+            corral.width = 0.9,
+            stroke = input$multiBoxplotPointBorder
+          )
+        boxplot <- boxplot +
+          scale_shape_manual(
+            values = c(rep(c(21, 22, 23, 24, 25), times = 10))[
+              1:nlevels(as.factor(countsBoxplotMelt[[input$multiBoxplotFactor2]]))
+            ],
+            labels = mbShapeLabels
+          )
+      }
     }
     if (input$multiBoxplotShowMeanBar & input$multiBoxplotMeanBarFront) {
-      boxplot <- boxplot + stat_summary(geom = "crossbar", fun = mean, position = position_dodge(0.9), colour = "black", size = 0.4, width = input$multiBoxplotMeanLine, show.legend = FALSE)
+      boxplot <- boxplot +
+        stat_summary(
+          geom = "crossbar",
+          fun = mean,
+          position = position_dodge(0.9),
+          colour = "black",
+          size = 0.4,
+          width = input$multiBoxplotMeanLine,
+          show.legend = FALSE
+        )
     }
 
     if (input$multiBoxplotGrey) {
@@ -615,123 +710,149 @@ observeEvent(
     })
 
     ylabToPlot <- paste(input$multiBoxplotCounts, "Counts")
-    if (input$multiBoxplotCountsLog) ylabToPlot <- paste(ylabToPlot, "(Log2)")
-    if (input$multiBoxplotZScore) ylabToPlot <- paste(ylabToPlot, "[Z-score]")
+    if (input$multiBoxplotCountsLog) {
+      ylabToPlot <- paste(ylabToPlot, "(Log2)")
+    }
+    if (input$multiBoxplotZScore) {
+      ylabToPlot <- paste(ylabToPlot, "[Z-score]")
+    }
     boxplot <- boxplot + labs(y = ylabToPlot)
 
-    boxplot <- boxplot + facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol, labeller = facetLabeller)
+    boxplot <- boxplot +
+      facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol, labeller = facetLabeller)
 
     if (input$multiBoxplotVertLines) {
-      boxplot <- boxplot + geom_vline(xintercept = seq_along(input$multiBoxKeepBucket)[-length(seq_along(input$multiBoxKeepBucket))] + 0.5, linetype = "dashed", alpha = 0.7)
+      boxplot <- boxplot +
+        geom_vline(
+          xintercept = seq_along(input$multiBoxKeepBucket)[-length(seq_along(input$multiBoxKeepBucket))] + 0.5,
+          linetype = "dashed",
+          alpha = 0.7
+        )
     }
 
     # MULTI-CONTRAST P-VALUE PLOTTING
     if (input$multiBoxplotShowP && !is.null(pvalueDF) && nrow(pvalueDF) > 0) {
+      # Get unique contrasts
+      contrasts <- unique(pvalueDF$Contrast)
 
-        # Get unique contrasts
-        contrasts <- unique(pvalueDF$Contrast)
+      for (i in seq_along(contrasts)) {
+        con <- contrasts[i]
+        dat <- pvalueDF[pvalueDF$Contrast == con, ]
 
-        for (i in seq_along(contrasts)) {
-            con <- contrasts[i]
-            dat <- pvalueDF[pvalueDF$Contrast == con, ]
-
-            # Stacking offset
-            # If stack is ON, add offset * i.
-            # Base Y is already set to max(count).
-            offset <- 0
-            if (input$multiBoxplotPStack) {
-                offset <- (i - 1) * (max(countsBoxplotMelt$Counts, na.rm=TRUE) * (input$multiBoxplotPStackOffset / 10))
-            }
-
-            # Check if y.position exists and add offset
-            if (!is.null(dat$y.position)) {
-                # P Height (Dodge) controls the buffer above the boxplot default y
-                buffer <- if (input$multiBoxplotShowPDodge > 0) (input$multiBoxplotShowPDodge / 20) else 0
-                dat$y.position <- dat$y.position + (dat$y.position * buffer) + offset
-            }
-
-            # Fetch colour from Data Selection inputs
-            colInput <- input[[paste0("multiGroupColour", gsub(" ", "_", con))]]
-            if (is.null(colInput)) colInput <- "black"
-
-            # User option to force black P-values
-            if (!input$multiBoxplotColourP) {
-                colInput <- "black"
-            }
-
-            # Manual Bracket Shortening
-            # Map group1/group2 to x-coordinates
-            # We must use the exact levels used in the plot
-            x_levels <- levels(as.factor(countsBoxplotMelt[[input$multiBoxplotFactor1]]))
-            dat$x1 <- match(dat$group1, x_levels)
-            dat$x2 <- match(dat$group2, x_levels)
-
-            # Apply shortening symmetrically
-            # Logic: Center = (x1 + x2) / 2. Original Width = abs(x1 - x2).
-            # New Width = Original Width * (1 - shorten_fraction)
-            # xmin = Center - (New Width / 2)
-            # xmax = Center + (New Width / 2)
-            bananaOK <- banana_on(bananaMode())
-            datB <- dat
-            if (bananaOK) datB$stars <- ""   # keep the bracket, blank its label
-
-            if (input$multiBoxplotShowPBracketShorten > 0) {
-                center <- (datB$x1 + datB$x2) / 2
-                width <- abs(datB$x1 - datB$x2)
-                new_width <- width * (1 - input$multiBoxplotShowPBracketShorten)
-                datB$xmin <- center - (new_width / 2)
-                datB$xmax <- center + (new_width / 2)
-
-                # Use xmin/xmax mapping
-                boxplot <- boxplot + stat_pvalue_manual(
-                    data = datB,
-                    y.position = "y.position",
-                    xmin = "xmin",
-                    xmax = "xmax",
-                    label = "stars",
-                    size = input$multiBoxplotShowPLabelSize * 2,
-                    label.size = input$multiBoxplotShowPLabelSize * 2,
-                    bracket.size = input$multiBoxplotShowPBracketSize / 6,
-                    tip.length = c(input$multiBoxplotShowPTipSizeA / 50, input$multiBoxplotShowPTipSizeB / 50),
-                    color = colInput,
-                    bracket.nudge.y = input$multiBoxplotShowPJust
-                )
-            } else {
-                # Standard plotting if shortening is 0 (to stay safe)
-                boxplot <- boxplot + stat_pvalue_manual(
-                    data = datB,
-                    y.position = "y.position",
-                    label = "stars",
-                    size = input$multiBoxplotShowPLabelSize * 2,
-                    label.size = input$multiBoxplotShowPLabelSize * 2,
-                    bracket.size = input$multiBoxplotShowPBracketSize / 6,
-                    tip.length = c(input$multiBoxplotShowPTipSizeA / 50, input$multiBoxplotShowPTipSizeB / 50),
-                    color = colInput,
-                    bracket.nudge.y = input$multiBoxplotShowPJust
-                )
-            }
-
-            if (bananaOK) {
-                # Bananas bottom-anchored just above this contrast's bracket line
-                # (vjust = 0 in banana_layer), so they can't fall under it
-                # regardless of the gene's count scale or the stacking offset.
-                boxplot <- boxplot + banana_layer(
-                    dat, x = (dat$x1[1] + dat$x2[1]) / 2,
-                    y = dat$y.position + input$multiBoxplotShowPJust, fdr_col = "fdr",
-                    px = max(12L, round(input$multiBoxplotShowPLabelSize * 8))
-                )
-            }
+        # Stacking offset
+        # If stack is ON, add offset * i.
+        # Base Y is already set to max(count).
+        offset <- 0
+        if (input$multiBoxplotPStack) {
+          offset <- (i - 1) * (max(countsBoxplotMelt$Counts, na.rm = TRUE) * (input$multiBoxplotPStackOffset / 10))
         }
 
-        if (banana_on(bananaMode())) {
-            boxplot <- boxplot +
-                scale_y_continuous(expand = expansion(mult = c(0.05, 0.18))) +
-                coord_cartesian(clip = "off")
+        # Check if y.position exists and add offset
+        if (!is.null(dat$y.position)) {
+          # P Height (Dodge) controls the buffer above the boxplot default y
+          buffer <- if (input$multiBoxplotShowPDodge > 0) (input$multiBoxplotShowPDodge / 20) else 0
+          dat$y.position <- dat$y.position + (dat$y.position * buffer) + offset
         }
+
+        # Fetch colour from Data Selection inputs
+        colInput <- input[[paste0("multiGroupColour", gsub(" ", "_", con))]]
+        if (is.null(colInput)) {
+          colInput <- "black"
+        }
+
+        # User option to force black P-values
+        if (!input$multiBoxplotColourP) {
+          colInput <- "black"
+        }
+
+        # Manual Bracket Shortening
+        # Map group1/group2 to x-coordinates
+        # We must use the exact levels used in the plot
+        x_levels <- levels(as.factor(countsBoxplotMelt[[input$multiBoxplotFactor1]]))
+        dat$x1 <- match(dat$group1, x_levels)
+        dat$x2 <- match(dat$group2, x_levels)
+
+        # Apply shortening symmetrically
+        # Logic: Center = (x1 + x2) / 2. Original Width = abs(x1 - x2).
+        # New Width = Original Width * (1 - shorten_fraction)
+        # xmin = Center - (New Width / 2)
+        # xmax = Center + (New Width / 2)
+        bananaOK <- banana_on(bananaMode())
+        datB <- dat
+        if (bananaOK) {
+          datB$stars <- ""
+        } # keep the bracket, blank its label
+
+        if (input$multiBoxplotShowPBracketShorten > 0) {
+          center <- (datB$x1 + datB$x2) / 2
+          width <- abs(datB$x1 - datB$x2)
+          new_width <- width * (1 - input$multiBoxplotShowPBracketShorten)
+          datB$xmin <- center - (new_width / 2)
+          datB$xmax <- center + (new_width / 2)
+
+          # Use xmin/xmax mapping
+          boxplot <- boxplot +
+            stat_pvalue_manual(
+              data = datB,
+              y.position = "y.position",
+              xmin = "xmin",
+              xmax = "xmax",
+              label = "stars",
+              size = input$multiBoxplotShowPLabelSize * 2,
+              label.size = input$multiBoxplotShowPLabelSize * 2,
+              bracket.size = input$multiBoxplotShowPBracketSize / 6,
+              tip.length = c(input$multiBoxplotShowPTipSizeA / 50, input$multiBoxplotShowPTipSizeB / 50),
+              color = colInput,
+              bracket.nudge.y = input$multiBoxplotShowPJust
+            )
+        } else {
+          # Standard plotting if shortening is 0 (to stay safe)
+          boxplot <- boxplot +
+            stat_pvalue_manual(
+              data = datB,
+              y.position = "y.position",
+              label = "stars",
+              size = input$multiBoxplotShowPLabelSize * 2,
+              label.size = input$multiBoxplotShowPLabelSize * 2,
+              bracket.size = input$multiBoxplotShowPBracketSize / 6,
+              tip.length = c(input$multiBoxplotShowPTipSizeA / 50, input$multiBoxplotShowPTipSizeB / 50),
+              color = colInput,
+              bracket.nudge.y = input$multiBoxplotShowPJust
+            )
+        }
+
+        if (bananaOK) {
+          # Bananas bottom-anchored just above this contrast's bracket line
+          # (vjust = 0 in banana_layer), so they can't fall under it
+          # regardless of the gene's count scale or the stacking offset.
+          boxplot <- boxplot +
+            banana_layer(
+              dat,
+              x = (dat$x1[1] + dat$x2[1]) / 2,
+              y = dat$y.position + input$multiBoxplotShowPJust,
+              fdr_col = "fdr",
+              px = max(12L, round(input$multiBoxplotShowPLabelSize * 8))
+            )
+        }
+      }
+
+      if (banana_on(bananaMode())) {
+        boxplot <- boxplot +
+          scale_y_continuous(expand = expansion(mult = c(0.05, 0.18))) +
+          coord_cartesian(clip = "off")
+      }
     }
 
-    boxplot <- boxplot + theme_prism(base_size = input$textSizeMultiBoxplot, axis_text_angle = input$multiBoxplotConditionAngle, base_family = input$multiBoxplotFont, border = input$multiBoxplotPlotBorder)
-    if (mbRich) boxplot <- boxplot + rich_label_theme(axis_x = TRUE, legend = TRUE)
+    boxplot <- boxplot +
+      theme_prism(
+        base_size = input$textSizeMultiBoxplot,
+        axis_text_angle = input$multiBoxplotConditionAngle,
+        base_family = input$multiBoxplotFont,
+        border = input$multiBoxplotPlotBorder
+      )
+    if (mbRich) {
+      boxplot <- boxplot + rich_label_theme(axis_x = TRUE, legend = TRUE)
+    }
 
     if (!input$multiBoxplotShowConditions) {
       boxplot <- boxplot + theme(axis.text.x = element_blank())
@@ -739,16 +860,29 @@ observeEvent(
 
     multiBoxplotFiguresReactive$boxplot <- boxplot
 
-
     # Barplot logic can follow similar pattern if needed (omitted for brevity, focus on boxplot)
     # Just copying minimal barplot
-    countsBarplot <- countsBarplot %>% tidyr::complete(!!sym(input$multiBoxplotFactor1), Feature, fill = list(Counts = 0))
-    barplot <- ggplot(data = countsBarplot, aes(x = .data[[input$multiBoxplotFactor1]], y = Counts, fill = .data[[input$multiBoxplotFactor1]]))
-    barplot <- barplot + facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol, labeller = facetLabeller)
-    barplot <- barplot + geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = input$multiBoxplotBoxAlpha, show.legend = FALSE)
+    countsBarplot <- countsBarplot %>%
+      tidyr::complete(!!sym(input$multiBoxplotFactor1), Feature, fill = list(Counts = 0))
+    barplot <- ggplot(
+      data = countsBarplot,
+      aes(x = .data[[input$multiBoxplotFactor1]], y = Counts, fill = .data[[input$multiBoxplotFactor1]])
+    )
+    barplot <- barplot +
+      facet_wrap(~Feature, scales = facetFree, ncol = input$multiBoxplotNCol, labeller = facetLabeller)
+    barplot <- barplot +
+      geom_bar(
+        stat = "identity",
+        color = "black",
+        position = position_dodge(),
+        alpha = input$multiBoxplotBoxAlpha,
+        show.legend = FALSE
+      )
     barplot <- barplot + scale_x_discrete(labels = mbLabels)
     barplot <- barplot + theme_prism(base_size = input$textSizeMultiBoxplot)
-    if (mbRich) barplot <- barplot + rich_label_theme(axis_x = TRUE)
+    if (mbRich) {
+      barplot <- barplot + rich_label_theme(axis_x = TRUE)
+    }
 
     multiBoxplotFiguresReactive$barplot <- barplot
   }
@@ -788,19 +922,19 @@ output$dlTable_multiBoxplotCounts <- downloadHandler(
   content = function(file) {
     req(multiBoxplotCountsReactive()$countsBoxplot)
     d <- multiBoxplotCountsReactive()
-    
+
     data_to_export <- d$countsBoxplot
-    
+
     # If stats are requested
     if (input$includeDEStatsMultiBoxplot && !is.null(d$pvalueDF)) {
-       wb <- openxlsx::createWorkbook()
-       addWorksheet(wb, "Counts")
-       writeDataTable(wb, "Counts", data_to_export, tableStyle = "TableStyleMedium9", withFilter = TRUE)
-       
-       addWorksheet(wb, "Statistics")
-       writeDataTable(wb, "Statistics", d$pvalueDF, tableStyle = "TableStyleMedium9", withFilter = TRUE)
-       
-       saveWorkbook(wb, file, overwrite = TRUE)
+      wb <- openxlsx::createWorkbook()
+      addWorksheet(wb, "Counts")
+      writeDataTable(wb, "Counts", data_to_export, tableStyle = "TableStyleMedium9", withFilter = TRUE)
+
+      addWorksheet(wb, "Statistics")
+      writeDataTable(wb, "Statistics", d$pvalueDF, tableStyle = "TableStyleMedium9", withFilter = TRUE)
+
+      saveWorkbook(wb, file, overwrite = TRUE)
     } else {
       export_excel_standard(
         df = data_to_export,

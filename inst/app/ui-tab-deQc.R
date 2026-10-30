@@ -53,21 +53,30 @@ tabItem(
               inputId = "deQcScatterColourBy",
               label = "Colour by:",
               choices = c("Standard", "GC content", "Gene width"),
-              selected = "Standard", inline = TRUE
+              selected = "Standard",
+              inline = TRUE
             ),
-            helpText("GC and Gene-width modes require 'gc' and 'featWidth' in
-                     seqAnno (RNASeq only)."),
+            helpText(
+              "GC and Gene-width modes require 'gc' and 'featWidth' in
+                     seqAnno (RNASeq only)."
+            ),
             conditionalPanel(
               condition = "input.deQcScatterColourBy == 'Standard'",
               numericInput(
                 inputId = "deQcScatterPval",
                 label = "P-value threshold for 'Significants'",
-                value = 0.05, min = 0, max = 1, step = 0.01
+                value = 0.05,
+                min = 0,
+                max = 1,
+                step = 0.01
               ),
               numericInput(
                 inputId = "deQcScatterLFC",
                 label = "Log2 fold-change threshold for 'Significants'",
-                value = 1, min = 0, max = 10, step = 0.25
+                value = 1,
+                min = 0,
+                max = 10,
+                step = 0.25
               ),
               splitLayout(
                 colourpicker::colourInput("deQcColAbsent", "Absent", value = "grey70"),
@@ -79,15 +88,13 @@ tabItem(
             conditionalPanel(
               condition = "input.deQcScatterColourBy == 'GC content'",
               splitLayout(
-                numericInput("deQcScatterGCLow",  "GC low",  value = 0.4,
-                             min = 0, max = 1, step = 0.05, width = "85%"),
-                numericInput("deQcScatterGCHigh", "GC high", value = 0.6,
-                             min = 0, max = 1, step = 0.05, width = "85%"),
+                numericInput("deQcScatterGCLow", "GC low", value = 0.4, min = 0, max = 1, step = 0.05, width = "85%"),
+                numericInput("deQcScatterGCHigh", "GC high", value = 0.6, min = 0, max = 1, step = 0.05, width = "85%"),
                 cellArgs = list(style = "overflow: visible;")
               ),
               splitLayout(
-                colourpicker::colourInput("deQcColGCLow",  "GC low bin",  value = "#1F78B4"),
-                colourpicker::colourInput("deQcColGCMid",  "GC mid bin",  value = "black"),
+                colourpicker::colourInput("deQcColGCLow", "GC low bin", value = "#1F78B4"),
+                colourpicker::colourInput("deQcColGCMid", "GC mid bin", value = "black"),
                 colourpicker::colourInput("deQcColGCHigh", "GC high bin", value = "#FF7F00"),
                 cellArgs = list(style = "overflow: visible;")
               )
@@ -95,37 +102,62 @@ tabItem(
             conditionalPanel(
               condition = "input.deQcScatterColourBy == 'Gene width'",
               splitLayout(
-                numericInput("deQcScatterWidthLow",  "Width low (nt)",  value = 500,
-                             min = 0, step = 100, width = "85%"),
-                numericInput("deQcScatterWidthHigh", "Width high (nt)", value = 5000,
-                             min = 0, step = 100, width = "85%"),
+                numericInput("deQcScatterWidthLow", "Width low (nt)", value = 500, min = 0, step = 100, width = "85%"),
+                numericInput(
+                  "deQcScatterWidthHigh",
+                  "Width high (nt)",
+                  value = 5000,
+                  min = 0,
+                  step = 100,
+                  width = "85%"
+                ),
                 cellArgs = list(style = "overflow: visible;")
               ),
               splitLayout(
-                colourpicker::colourInput("deQcColWidthLow",  "Width low bin",  value = "#B15928"),
-                colourpicker::colourInput("deQcColWidthMid",  "Width mid bin",  value = "black"),
+                colourpicker::colourInput("deQcColWidthLow", "Width low bin", value = "#B15928"),
+                colourpicker::colourInput("deQcColWidthMid", "Width mid bin", value = "black"),
                 colourpicker::colourInput("deQcColWidthHigh", "Width high bin", value = "#33A02C"),
                 cellArgs = list(style = "overflow: visible;")
               )
             ),
             hr(),
             splitLayout(
-              sliderInput("deQcScatterPointSize", "Point size",
-                          min = 0.1, max = 5, value = 1, step = 0.1,
-                          width = "85%", ticks = FALSE),
-              sliderInput("deQcScatterAlpha", "Alpha",
-                          min = 0.1, max = 1, value = 0.6, step = 0.05,
-                          width = "85%", ticks = FALSE),
+              sliderInput(
+                "deQcScatterPointSize",
+                "Point size",
+                min = 0.1,
+                max = 5,
+                value = 1,
+                step = 0.1,
+                width = "85%",
+                ticks = FALSE
+              ),
+              sliderInput(
+                "deQcScatterAlpha",
+                "Alpha",
+                min = 0.1,
+                max = 1,
+                value = 0.6,
+                step = 0.05,
+                width = "85%",
+                ticks = FALSE
+              ),
               cellArgs = list(style = "overflow: visible;")
             ),
             hr(),
             h5("Guide lines"),
             helpText("Solid line: 1:1 identity. Dashed lines: N-fold change bands."),
             splitLayout(
-              colourpicker::colourInput("deQcColGuide", "Guide colour",
-                                        value = "blue", width = "85%"),
-              numericInput("deQcGuideFold", "Fold-change threshold",
-                           value = 2, min = 1, max = 20, step = 0.5, width = "85%"),
+              colourpicker::colourInput("deQcColGuide", "Guide colour", value = "blue", width = "85%"),
+              numericInput(
+                "deQcGuideFold",
+                "Fold-change threshold",
+                value = 2,
+                min = 1,
+                max = 20,
+                step = 0.5,
+                width = "85%"
+              ),
               cellArgs = list(style = "overflow: visible;")
             ),
             splitLayout(
@@ -137,8 +169,13 @@ tabItem(
             title = "P-value hist",
             sliderInput(
               inputId = "deQcPhistBins",
-              label = "Number of bins", min = 50, max = 500, value = 200, step = 10,
-              width = "85%", ticks = FALSE
+              label = "Number of bins",
+              min = 50,
+              max = 500,
+              value = 200,
+              step = 10,
+              width = "85%",
+              ticks = FALSE
             ),
             radioButtons(
               inputId = "deQcPhistType",
@@ -157,12 +194,18 @@ tabItem(
             numericInput(
               inputId = "deQcBiasPval",
               label = "P-value threshold for 'Significants'",
-              value = 0.05, min = 0, max = 1, step = 0.01
+              value = 0.05,
+              min = 0,
+              max = 1,
+              step = 0.01
             ),
             numericInput(
               inputId = "deQcBiasLFC",
               label = "Log2 fold-change threshold for 'Significants'",
-              value = 1, min = 0, max = 10, step = 0.25
+              value = 1,
+              min = 0,
+              max = 10,
+              step = 0.25
             ),
             checkboxInput(
               inputId = "deQcBiasLoess",
@@ -175,12 +218,26 @@ tabItem(
               cellArgs = list(style = "overflow: visible;")
             ),
             splitLayout(
-              sliderInput("deQcBiasPointSize", "Point size",
-                          min = 0.1, max = 3, value = 0.8, step = 0.1,
-                          width = "85%", ticks = FALSE),
-              sliderInput("deQcBiasAlpha", "Alpha",
-                          min = 0.05, max = 1, value = 0.3, step = 0.05,
-                          width = "85%", ticks = FALSE),
+              sliderInput(
+                "deQcBiasPointSize",
+                "Point size",
+                min = 0.1,
+                max = 3,
+                value = 0.8,
+                step = 0.1,
+                width = "85%",
+                ticks = FALSE
+              ),
+              sliderInput(
+                "deQcBiasAlpha",
+                "Alpha",
+                min = 0.05,
+                max = 1,
+                value = 0.3,
+                step = 0.05,
+                width = "85%",
+                ticks = FALSE
+              ),
               cellArgs = list(style = "overflow: visible;")
             )
           ),
@@ -194,7 +251,9 @@ tabItem(
             selectizeInput(
               inputId = "deQcHighlightSelect",
               label = "Select features to highlight",
-              choices = NULL, selected = NULL, multiple = TRUE,
+              choices = NULL,
+              selected = NULL,
+              multiple = TRUE,
               options = list(
                 placeholder = "Select features",
                 plugins = list("remove_button", "drag_drop", "restore_on_backspace", "clear_button")
@@ -207,32 +266,64 @@ tabItem(
               cols = 1
             ),
             splitLayout(
-              colourpicker::colourInput("deQcColHighlight", "Highlight colour",
-                                        value = "goldenrod3", width = "85%"),
-              sliderInput("deQcHighlightSize", "Highlight point size",
-                          min = 1, max = 8, value = 3, step = 0.5,
-                          width = "85%", ticks = FALSE),
+              colourpicker::colourInput("deQcColHighlight", "Highlight colour", value = "goldenrod3", width = "85%"),
+              sliderInput(
+                "deQcHighlightSize",
+                "Highlight point size",
+                min = 1,
+                max = 8,
+                value = 3,
+                step = 0.5,
+                width = "85%",
+                ticks = FALSE
+              ),
               cellArgs = list(style = "overflow: visible;")
             ),
             checkboxInput("deQcHighlightLabel", "Label highlighted features", value = TRUE),
             sliderInput(
               inputId = "deQcHighlightLabelSize",
-              label = "Label size", min = 2, max = 14, value = 4, step = 0.5,
-              width = "85%", ticks = FALSE
+              label = "Label size",
+              min = 2,
+              max = 14,
+              value = 4,
+              step = 0.5,
+              width = "85%",
+              ticks = FALSE
             )
           ),
           tabPanel(
             title = "Figure",
             splitLayout(
-              sliderInput("deQcTextSize", "Font size",
-                          min = 4, max = 30, value = 12, step = 0.5,
-                          width = "85%", ticks = FALSE),
-              sliderInput("deQcFigWidth", "Figure width (px)",
-                          min = 300, max = 2000, value = 700, step = 10,
-                          width = "85%", ticks = FALSE),
-              sliderInput("deQcFigHeight", "Figure height (px)",
-                          min = 300, max = 2000, value = 500, step = 10,
-                          width = "85%", ticks = FALSE),
+              sliderInput(
+                "deQcTextSize",
+                "Font size",
+                min = 4,
+                max = 30,
+                value = 12,
+                step = 0.5,
+                width = "85%",
+                ticks = FALSE
+              ),
+              sliderInput(
+                "deQcFigWidth",
+                "Figure width (px)",
+                min = 300,
+                max = 2000,
+                value = 700,
+                step = 10,
+                width = "85%",
+                ticks = FALSE
+              ),
+              sliderInput(
+                "deQcFigHeight",
+                "Figure height (px)",
+                min = 300,
+                max = 2000,
+                value = 500,
+                step = 10,
+                width = "85%",
+                ticks = FALSE
+              ),
               cellArgs = list(style = "overflow: visible;")
             )
           ),
@@ -256,11 +347,14 @@ tabItem(
               value = "DE_QC"
             ),
             downloadButton("dlPlot_betweenGroupScatter", "Download between-group scatter"),
-            br(), br(),
+            br(),
+            br(),
             downloadButton("dlPlot_pvalHistogram", "Download p-value histogram"),
-            br(), br(),
+            br(),
+            br(),
             downloadButton("dlPlot_gcBias", "Download GC bias"),
-            br(), br(),
+            br(),
+            br(),
             downloadButton("dlPlot_lengthBias", "Download length bias")
           )
         )
@@ -278,11 +372,14 @@ tabItem(
           tabPanel(
             title = "Between-group Scatter",
             textOutput("deQcScatterDesign"),
-            helpText("Click and drag to select features; the table below lists
-                     the selected points."),
-            withSpinner(plotOutput("betweenGroupScatter", inline = TRUE,
-                                    brush = brushOpts(id = "deQcScatterBrush")),
-                        color = "#6E8D9E"),
+            helpText(
+              "Click and drag to select features; the table below lists
+                     the selected points."
+            ),
+            withSpinner(
+              plotOutput("betweenGroupScatter", inline = TRUE, brush = brushOpts(id = "deQcScatterBrush")),
+              color = "#6E8D9E"
+            ),
             br(),
             DT::dataTableOutput("deQcScatterBrushTable")
           ),
@@ -293,18 +390,20 @@ tabItem(
           tabPanel(
             title = "GC Bias",
             helpText("Click and drag to select features; table below lists the selection."),
-            withSpinner(plotOutput("gcBiasPlot", inline = TRUE,
-                                    brush = brushOpts(id = "deQcGCBrush")),
-                        color = "#6E8D9E"),
+            withSpinner(
+              plotOutput("gcBiasPlot", inline = TRUE, brush = brushOpts(id = "deQcGCBrush")),
+              color = "#6E8D9E"
+            ),
             br(),
             DT::dataTableOutput("deQcGCBrushTable")
           ),
           tabPanel(
             title = "Length Bias",
             helpText("Click and drag to select features; table below lists the selection."),
-            withSpinner(plotOutput("lengthBiasPlot", inline = TRUE,
-                                    brush = brushOpts(id = "deQcLengthBrush")),
-                        color = "#6E8D9E"),
+            withSpinner(
+              plotOutput("lengthBiasPlot", inline = TRUE, brush = brushOpts(id = "deQcLengthBrush")),
+              color = "#6E8D9E"
+            ),
             br(),
             DT::dataTableOutput("deQcLengthBrushTable")
           )

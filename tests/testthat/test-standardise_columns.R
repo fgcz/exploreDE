@@ -1,21 +1,20 @@
 test_that("standardise_columns maps canonical names for common proteomics columns", {
   df <- data.frame(
-    "Protein.Id"   = c("P1", "P2"),
-    "Peptide"      = c("AAA", "BBB"),
-    "site"         = c("S1", "S2"),
-    "gene_symbol"  = c("G1", "G2"),
-    "description"  = c("d1", "d2"),
-    "nrPeptides"   = c(3, 4),
-    "diff"         = c(1.1, -0.8),
-    "p.value"      = c(0.01, 0.5),
-    "FDR"          = c(0.02, 0.6),
+    "Protein.Id" = c("P1", "P2"),
+    "Peptide" = c("AAA", "BBB"),
+    "site" = c("S1", "S2"),
+    "gene_symbol" = c("G1", "G2"),
+    "description" = c("d1", "d2"),
+    "nrPeptides" = c(3, 4),
+    "diff" = c(1.1, -0.8),
+    "p.value" = c(0.01, 0.5),
+    "FDR" = c(0.02, 0.6),
     check.names = FALSE
   )
   out <- standardise_columns(df)
   expect_setequal(
     colnames(out),
-    c("protein_Id", "peptide_Id", "site", "gene_name",
-      "description", "nrPeptides", "log2Ratio", "pValue", "fdr")
+    c("protein_Id", "peptide_Id", "site", "gene_name", "description", "nrPeptides", "log2Ratio", "pValue", "fdr")
   )
 })
 
@@ -35,7 +34,7 @@ test_that("standardise_columns does not rename when pattern matches multiple col
   # (the function only acts when exactly one column matches).
   df <- data.frame(
     p_value = 0.01,
-    pValue  = 0.02,
+    pValue = 0.02,
     check.names = FALSE
   )
   out <- standardise_columns(df)
@@ -46,8 +45,8 @@ test_that("standardise_columns does not rename when pattern matches multiple col
 test_that("standardise_columns is case-insensitive", {
   df <- data.frame(
     PROTEIN_ID = "P1",
-    GENE_NAME  = "G1",
-    PADJ       = 0.01,
+    GENE_NAME = "G1",
+    PADJ = 0.01,
     check.names = FALSE
   )
   out <- standardise_columns(df)

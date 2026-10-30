@@ -32,44 +32,50 @@ validate_explore_dataset <- function(eds, strict = TRUE) {
   abstract <- c("ExploreDataset", "ExploreDatasetSE")
   rt_class <- class(eds)[1]
   if (rt_class %in% abstract) {
-    add(sprintf("Runtime class '%s' is abstract; expected a concrete subclass.",
-                rt_class))
+    add(sprintf("Runtime class '%s' is abstract; expected a concrete subclass.", rt_class))
   }
 
   # 2. Cross-references
   fnames <- tryCatch(eds$factor_names(), error = function(e) {
-    add(paste0("factor_names() failed: ", conditionMessage(e))); character()
+    add(paste0("factor_names() failed: ", conditionMessage(e)))
+    character()
   })
   samples_df <- tryCatch(eds$samples(), error = function(e) {
-    add(paste0("samples() failed: ", conditionMessage(e))); data.frame()
+    add(paste0("samples() failed: ", conditionMessage(e)))
+    data.frame()
   })
   missing_factors <- setdiff(fnames, colnames(samples_df))
   if (length(missing_factors)) {
-    add(sprintf("factor_names not in samples() columns: %s",
-                paste(missing_factors, collapse = ", ")))
+    add(sprintf("factor_names not in samples() columns: %s", paste(missing_factors, collapse = ", ")))
   }
 
   pg <- tryCatch(eds$primary_grouping(), error = function(e) {
-    add(paste0("primary_grouping() failed: ", conditionMessage(e))); NA_character_
+    add(paste0("primary_grouping() failed: ", conditionMessage(e)))
+    NA_character_
   })
   if (!is.na(pg) && !pg %in% fnames) {
     add(sprintf("primary_grouping '%s' is not a member of factor_names.", pg))
   }
 
   cs <- tryCatch(eds$contrasts(), error = function(e) {
-    add(paste0("contrasts() failed: ", conditionMessage(e))); character()
+    add(paste0("contrasts() failed: ", conditionMessage(e)))
+    character()
   })
   pc <- tryCatch(eds$primary_contrast(), error = function(e) {
-    add(paste0("primary_contrast() failed: ", conditionMessage(e))); NA_character_
+    add(paste0("primary_contrast() failed: ", conditionMessage(e)))
+    NA_character_
   })
   if (!is.na(pc) && !pc %in% cs) {
     add(sprintf("primary_contrast '%s' is not a member of contrasts().", pc))
   }
   for (c in cs) {
     de <- tryCatch(eds$de(c), error = function(e) {
-      add(sprintf("de('%s') failed: %s", c, conditionMessage(e))); NULL
+      add(sprintf("de('%s') failed: %s", c, conditionMessage(e)))
+      NULL
     })
-    if (is.null(de)) next
+    if (is.null(de)) {
+      next
+    }
     if (!is.data.frame(de)) {
       add(sprintf("de('%s') is not a data.frame.", c))
     }
@@ -77,11 +83,13 @@ validate_explore_dataset <- function(eds, strict = TRUE) {
 
   # 3. Sample / feature alignment (against raw assay)
   raw_name <- tryCatch(eds$raw_assay_name(), error = function(e) {
-    add(paste0("raw_assay_name() failed: ", conditionMessage(e))); NA_character_
+    add(paste0("raw_assay_name() failed: ", conditionMessage(e)))
+    NA_character_
   })
   if (!is.na(raw_name) && raw_name %in% (tryCatch(eds$assay_names(), error = function(e) character()))) {
     a <- tryCatch(eds$raw_assay(), error = function(e) {
-      add(paste0("raw_assay() failed: ", conditionMessage(e))); NULL
+      add(paste0("raw_assay() failed: ", conditionMessage(e)))
+      NULL
     })
     if (!is.null(a)) {
       sids <- eds$sample_ids()
@@ -97,9 +105,16 @@ validate_explore_dataset <- function(eds, strict = TRUE) {
 
   ok <- length(errors) == 0L
   if (strict && !ok) {
-    stop("validate_explore_dataset(): ", length(errors), " failure(s)\n  ",
-         paste(errors, collapse = "\n  "), call. = FALSE)
+    stop(
+      "validate_explore_dataset(): ",
+      length(errors),
+      " failure(s)\n  ",
+      paste(errors, collapse = "\n  "),
+      call. = FALSE
+    )
   }
-  if (strict) return(invisible(TRUE))
+  if (strict) {
+    return(invisible(TRUE))
+  }
   list(ok = ok, errors = errors)
 }

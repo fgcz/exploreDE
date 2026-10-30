@@ -14,13 +14,29 @@ tabItem(
             colourpicker::colourInput(
               inputId = paste0("GroupColour", i),
               label = "",
-              value =  rep(c(
-                "indianred", "steelblue", "chartreuse4", "gray30", 
-                "goldenrod3", "indianred4", "royalblue4", "mediumorchid3",
-                "turquoise4", "darkolivegreen", "thistle4", "darkorange3", 
-                "hotpink2", "burlywood3", "cadetblue4", "chocolate4", "firebrick"
-                ), times = 5)[i],
-                palette = "square",
+              value = rep(
+                c(
+                  "indianred",
+                  "steelblue",
+                  "chartreuse4",
+                  "gray30",
+                  "goldenrod3",
+                  "indianred4",
+                  "royalblue4",
+                  "mediumorchid3",
+                  "turquoise4",
+                  "darkolivegreen",
+                  "thistle4",
+                  "darkorange3",
+                  "hotpink2",
+                  "burlywood3",
+                  "cadetblue4",
+                  "chocolate4",
+                  "firebrick"
+                ),
+                times = 5
+              )[i],
+              palette = "square",
               closeOnClick = TRUE,
               returnName = TRUE
             )

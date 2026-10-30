@@ -8,7 +8,7 @@ test_that("batch_correction_design treats 'None' / empty designColumn as null-de
   expect_false(out$skip)
   expect_null(out$msg)
 
-  out <- batch_correction_design(ds, designColumn = "",     batchColumn = "batch")
+  out <- batch_correction_design(ds, designColumn = "", batchColumn = "batch")
   expect_null(out$design)
   expect_false(out$skip)
 })
@@ -36,7 +36,7 @@ test_that("batch_correction_design returns a valid design matrix for a 2-level f
   expect_false(out$skip)
   expect_true(is.matrix(out$design))
   expect_equal(nrow(out$design), 4)
-  expect_gte(ncol(out$design), 2)  # intercept + one treatment column
+  expect_gte(ncol(out$design), 2) # intercept + one treatment column
 })
 
 test_that("batch_correction_design warns when batch and design are confounded", {
@@ -58,9 +58,9 @@ test_that("apply_batch_correction is a no-op when batchCol is 'None' / empty / N
   counts <- matrix(runif(20), nrow = 5, dimnames = list(NULL, paste0("s", 1:4)))
   ds <- data.frame(cond = c("A", "A", "B", "B"))
 
-  expect_identical(apply_batch_correction(counts, ds, "None",  "cond"), counts)
-  expect_identical(apply_batch_correction(counts, ds, "",      "cond"), counts)
-  expect_identical(apply_batch_correction(counts, ds, NULL,    "cond"), counts)
+  expect_identical(apply_batch_correction(counts, ds, "None", "cond"), counts)
+  expect_identical(apply_batch_correction(counts, ds, "", "cond"), counts)
+  expect_identical(apply_batch_correction(counts, ds, NULL, "cond"), counts)
 })
 
 test_that("apply_batch_correction warns and returns counts when batch factor has <2 levels", {
@@ -77,14 +77,18 @@ test_that("apply_batch_correction warns and returns counts when batch factor has
 test_that("apply_batch_correction applies limma::removeBatchEffect when inputs are valid", {
   set.seed(1)
   counts <- matrix(
-    c(rnorm(5, mean = 10), rnorm(5, mean = 11),   # batch x
-      rnorm(5, mean = 20), rnorm(5, mean = 21)),  # batch y
+    c(
+      rnorm(5, mean = 10),
+      rnorm(5, mean = 11), # batch x
+      rnorm(5, mean = 20),
+      rnorm(5, mean = 21)
+    ), # batch y
     nrow = 5,
     dimnames = list(paste0("g", 1:5), paste0("s", 1:4))
   )
   ds <- data.frame(
     batch = c("x", "x", "y", "y"),
-    cond  = c("A", "B", "A", "B")
+    cond = c("A", "B", "A", "B")
   )
   out <- apply_batch_correction(counts, ds, "batch", "cond")
   expect_equal(dim(out), dim(counts))
@@ -102,7 +106,7 @@ test_that("apply_batch_correction warns and returns counts when limma errors", {
   counts <- matrix(runif(30), nrow = 5, dimnames = list(NULL, paste0("s", 1:6)))
   ds <- data.frame(
     batch = c("x", "x", "x", "y", "y", "y"),
-    cond  = c("A", "A", "A", "A", "A", "A")  # single-level design → no design cols
+    cond = c("A", "A", "A", "A", "A", "A") # single-level design → no design cols
   )
   # With a valid 2-level batch and a 1-level design column, batch_correction_design
   # warns about the single-level design but still runs. We verify the function

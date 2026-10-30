@@ -23,9 +23,10 @@ save_state_filter_inputs <- function(x) {
     "|fb_reset_|fb_add_|resetGeneBucket|resetDEGTableSelectRows|multi",
     "|contrastSelected_)",
     "|(_btn|_cell_edit|_cell_clicked|_rows_selected|_row_last_clicked",
-    "|_state|_search|_hover|_click|_relayout|_brush|_selected)$")
+    "|_state|_search|_hover|_click|_relayout|_brush|_selected)$"
+  )
   keep <- !grepl(skip_pat, ids)
-  nv_exact  <- c("download_state", "sidebarMenu", "load_settings_file")
+  nv_exact <- c("download_state", "sidebarMenu", "load_settings_file")
   nv_prefix <- grepl("^(dl|download)", ids)
   nv_suffix <- grepl("(Go|Button|Brush)$", ids)
   keep <- keep & !(ids %in% nv_exact) & !nv_prefix & !nv_suffix
@@ -46,15 +47,17 @@ save_state_filter_inputs <- function(x) {
 #' @return A named list of identity fields, or `NULL` if `eds` is `NULL`.
 #' @export
 save_state_fingerprint <- function(eds, dataDir = NULL) {
-  if (is.null(eds)) return(NULL)
+  if (is.null(eds)) {
+    return(NULL)
+  }
   list(
-    dataDir   = if (is.null(dataDir)) NA_character_ else as.character(dataDir),
-    dataType  = tryCatch(as.character(eds$data_type()),         error = function(e) NA_character_),
-    omics     = tryCatch(as.character(eds$omics_class()),       error = function(e) NA_character_),
-    nSamples  = tryCatch(as.integer(eds$n_samples()),           error = function(e) NA_integer_),
+    dataDir = if (is.null(dataDir)) NA_character_ else as.character(dataDir),
+    dataType = tryCatch(as.character(eds$data_type()), error = function(e) NA_character_),
+    omics = tryCatch(as.character(eds$omics_class()), error = function(e) NA_character_),
+    nSamples = tryCatch(as.integer(eds$n_samples()), error = function(e) NA_integer_),
     nFeatures = tryCatch(as.integer(length(eds$feature_ids())), error = function(e) NA_integer_),
-    factors   = tryCatch(sort(as.character(eds$factor_names())), error = function(e) character()),
-    contrasts = tryCatch(sort(as.character(eds$contrasts())),    error = function(e) character())
+    factors = tryCatch(sort(as.character(eds$factor_names())), error = function(e) character()),
+    contrasts = tryCatch(sort(as.character(eds$contrasts())), error = function(e) character())
   )
 }
 
@@ -68,15 +71,20 @@ save_state_fingerprint <- function(eds, dataDir = NULL) {
 #' @return `TRUE` only if the two denote the same dataset.
 #' @export
 save_state_fp_match <- function(a, b) {
-  if (is.null(a) || is.null(b)) return(FALSE)
-  da <- a$dataDir; db <- b$dataDir
-  if (!is.null(da) && !is.null(db) && !is.na(da) && !is.na(db) && !identical(da, db)) return(FALSE)
-  identical(a$dataType,  b$dataType)  &&
-  identical(a$omics,     b$omics)     &&
-  identical(a$nSamples,  b$nSamples)  &&
-  identical(a$nFeatures, b$nFeatures) &&
-  identical(a$factors,   b$factors)   &&
-  identical(a$contrasts, b$contrasts)
+  if (is.null(a) || is.null(b)) {
+    return(FALSE)
+  }
+  da <- a$dataDir
+  db <- b$dataDir
+  if (!is.null(da) && !is.null(db) && !is.na(da) && !is.na(db) && !identical(da, db)) {
+    return(FALSE)
+  }
+  identical(a$dataType, b$dataType) &&
+    identical(a$omics, b$omics) &&
+    identical(a$nSamples, b$nSamples) &&
+    identical(a$nFeatures, b$nFeatures) &&
+    identical(a$factors, b$factors) &&
+    identical(a$contrasts, b$contrasts)
 }
 
 #' Resolve a widget default during a session-state restore
@@ -95,9 +103,13 @@ save_state_fp_match <- function(a, b) {
 #' @return The saved value while restoring (if valid), else `computed_default`.
 #' @export
 restore_default_value <- function(id, computed_default, valid = NULL, restoring, restore_seed) {
-  if (!isTRUE(shiny::isolate(restoring()))) return(computed_default)
+  if (!isTRUE(shiny::isolate(restoring()))) {
+    return(computed_default)
+  }
   v <- shiny::isolate(restore_seed[[id]])
-  if (is.null(v)) return(computed_default)
+  if (is.null(v)) {
+    return(computed_default)
+  }
   if (!is.null(valid)) {
     v <- v[v %in% valid]
     if (!length(v)) return(computed_default)
@@ -120,10 +132,12 @@ restore_default_value <- function(id, computed_default, valid = NULL, restoring,
 save_state_multi_inputs <- function(x) {
   ids <- names(x)
   keep <- grepl("^multi", ids) &
-    !ids %in% c("multiImportFile", "multiImportColourFile", "multiDatasetsCheckbox",
-                "multiContrastOrder") &
+    !ids %in% c("multiImportFile", "multiImportColourFile", "multiDatasetsCheckbox", "multiContrastOrder") &
     !grepl("^multiDl", ids) &
-    !grepl("(_rows_selected|_rows_current|_rows_all|_row_last_clicked|_state|_search|_cell_clicked|_cell_edit|_cells_selected)$", ids)
+    !grepl(
+      "(_rows_selected|_rows_current|_rows_all|_row_last_clicked|_state|_search|_cell_clicked|_cell_edit|_cells_selected)$",
+      ids
+    )
   x <- x[keep]
   Filter(function(v) !inherits(v, "shinyActionButtonValue"), x)
 }
@@ -169,10 +183,19 @@ SAVE_STATE_JSON_FORMAT <- "exploreDE-session/2"
 save_state_to_json <- function(bundle) {
   drop_buttons <- function(x) Filter(function(v) !inherits(v, "shinyActionButtonValue"), x)
   bundle$inputs <- drop_buttons(bundle$inputs %||% list())
-  if (!is.null(bundle$multi$inputs)) bundle$multi$inputs <- drop_buttons(bundle$multi$inputs)
+  if (!is.null(bundle$multi$inputs)) {
+    bundle$multi$inputs <- drop_buttons(bundle$multi$inputs)
+  }
   bundle$meta$format <- SAVE_STATE_JSON_FORMAT
-  as.character(jsonlite::toJSON(bundle, auto_unbox = FALSE, null = "null", na = "null",
-                                digits = NA, POSIXt = "ISO8601", pretty = TRUE))
+  as.character(jsonlite::toJSON(
+    bundle,
+    auto_unbox = FALSE,
+    null = "null",
+    na = "null",
+    digits = NA,
+    POSIXt = "ISO8601",
+    pretty = TRUE
+  ))
 }
 
 #' Read a JSON saved-session file
@@ -189,63 +212,81 @@ save_state_to_json <- function(bundle) {
 #' @export
 save_state_from_json <- function(path, max_bytes = 5 * 1024^2) {
   size <- file.size(path)
-  if (is.na(size) || size > max_bytes)
+  if (is.na(size) || size > max_bytes) {
     stop(sprintf("the file is larger than %d MB", max_bytes %/% 1024^2))
+  }
   txt <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  x <- tryCatch(jsonlite::fromJSON(txt, simplifyVector = TRUE, simplifyDataFrame = FALSE,
-                                   simplifyMatrix = FALSE),
-                error = function(e) stop("not valid JSON"))
+  x <- tryCatch(
+    jsonlite::fromJSON(txt, simplifyVector = TRUE, simplifyDataFrame = FALSE, simplifyMatrix = FALSE),
+    error = function(e) stop("not valid JSON")
+  )
   depth <- function(v) if (is.list(v) && length(v)) 1L + max(vapply(v, depth, integer(1))) else 0L
-  if (!is.list(x) || is.null(names(x)) || depth(x) > 6L) stop("not an exploreDE session file")
+  if (!is.list(x) || is.null(names(x)) || depth(x) > 6L) {
+    stop("not an exploreDE session file")
+  }
   meta <- x[["meta"]]
-  if (!identical(meta[["app"]], "exploreDE")) stop("not an exploreDE session file")
-  if (!identical(meta[["format"]], SAVE_STATE_JSON_FORMAT))
+  if (!identical(meta[["app"]], "exploreDE")) {
+    stop("not an exploreDE session file")
+  }
+  if (!identical(meta[["format"]], SAVE_STATE_JSON_FORMAT)) {
     stop(sprintf("unsupported session format (expected %s)", SAVE_STATE_JSON_FORMAT))
+  }
 
   # [] reads back as list(); the restore expects character(0) there.
   empty_to_chr <- function(v) {
-    if (is.list(v) && !length(v) && is.null(names(v))) return(character())
-    if (is.list(v)) v[] <- lapply(v, empty_to_chr)
+    if (is.list(v) && !length(v) && is.null(names(v))) {
+      return(character())
+    }
+    if (is.list(v)) {
+      v[] <- lapply(v, empty_to_chr)
+    }
     v
   }
-  chr  <- function(v) as.character(unlist(v))
-  one  <- function(v, as = as.character) if (length(v)) as(unlist(v))[1] else as(NA)
+  chr <- function(v) as.character(unlist(v))
+  one <- function(v, as = as.character) if (length(v)) as(unlist(v))[1] else as(NA)
 
   fp <- meta[["fingerprint"]]
   if (!is.null(fp)) {
     meta$fingerprint <- list(
-      dataDir   = one(fp[["dataDir"]]),
-      dataType  = one(fp[["dataType"]]),
-      omics     = one(fp[["omics"]]),
-      nSamples  = one(fp[["nSamples"]], as.integer),
+      dataDir = one(fp[["dataDir"]]),
+      dataType = one(fp[["dataType"]]),
+      omics = one(fp[["omics"]]),
+      nSamples = one(fp[["nSamples"]], as.integer),
       nFeatures = one(fp[["nFeatures"]], as.integer),
-      factors   = chr(fp[["factors"]]),
-      contrasts = chr(fp[["contrasts"]]))
+      factors = chr(fp[["factors"]]),
+      contrasts = chr(fp[["contrasts"]])
+    )
   }
-  meta$saved_at <- tryCatch(as.POSIXct(one(meta[["saved_at"]]), format = "%Y-%m-%dT%H:%M:%S"),
-                            error = function(e) NA)
+  meta$saved_at <- tryCatch(as.POSIXct(one(meta[["saved_at"]]), format = "%Y-%m-%dT%H:%M:%S"), error = function(e) NA)
 
   inputs <- x[["inputs"]]
   inputs <- if (is.list(inputs) && length(inputs) && !is.null(names(inputs))) empty_to_chr(inputs) else list()
 
   rv <- x[["rv"]] %||% list()
-  if (!is.null(rv[["featureBucket"]])) rv$featureBucket <- chr(rv[["featureBucket"]])
-  for (k in c("oraSelected", "gseaSelected"))
+  if (!is.null(rv[["featureBucket"]])) {
+    rv$featureBucket <- chr(rv[["featureBucket"]])
+  }
+  for (k in c("oraSelected", "gseaSelected")) {
     if (!is.null(rv[[k]])) rv[[k]] <- as.integer(unlist(rv[[k]]))
+  }
 
   multi <- x[["multi"]]
   if (!is.null(multi)) {
     ds <- lapply(multi[["datasets"]] %||% list(), function(d) {
       kind <- one(d[["source"]])
-      ref  <- if (identical(kind, "link")) one(d[["link"]]) else one(d[["contrast"]])
-      if (!kind %in% c("link", "contrast") || is.na(ref) || is.na(one(d[["name"]]))) return(NULL)
+      ref <- if (identical(kind, "link")) one(d[["link"]]) else one(d[["contrast"]])
+      if (!kind %in% c("link", "contrast") || is.na(ref) || is.na(one(d[["name"]]))) {
+        return(NULL)
+      }
       out <- list(name = one(d[["name"]]), source = kind)
       out[[if (kind == "link") "link" else "contrast"]] <- ref
       out
     })
     mi <- multi[["inputs"]]
-    multi <- list(datasets = Filter(Negate(is.null), ds),
-                  inputs   = if (is.list(mi) && length(mi) && !is.null(names(mi))) empty_to_chr(mi) else list())
+    multi <- list(
+      datasets = Filter(Negate(is.null), ds),
+      inputs = if (is.list(mi) && length(mi) && !is.null(names(mi))) empty_to_chr(mi) else list()
+    )
   }
 
   list(meta = meta, inputs = inputs, rv = rv, multi = multi)

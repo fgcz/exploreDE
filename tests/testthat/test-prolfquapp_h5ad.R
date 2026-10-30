@@ -6,14 +6,14 @@
 prolfquapp_h5ad <- function() {
   testthat::skip_if_not_installed("prolfquapp")
   dea <- prolfquapp::example_deanalyse(Nprot = 30)
-  se  <- prolfquapp::DEAReportGenerator$new(dea, dea$prolfq_app_config, name = "")$make_SummarizedExperiment()
+  se <- prolfquapp::DEAReportGenerator$new(dea, dea$prolfq_app_config, name = "")$make_SummarizedExperiment()
   path <- file.path(withr::local_tempdir(.local_envir = parent.frame()), "AnnData.h5ad")
   prolfquapp:::write_summarized_experiment_h5ad(se, path)
   list(se = se, path = path)
 }
 
 test_that("a prolfquapp h5ad loads as proteomics with annotated contrasts", {
-  fx  <- prolfquapp_h5ad()
+  fx <- prolfquapp_h5ad()
   eds <- new_explore_dataset(fx$path)
 
   expect_s3_class(eds, "ExploreDatasetSE_Proteomics")
@@ -30,15 +30,14 @@ test_that("a prolfquapp h5ad loads as proteomics with annotated contrasts", {
 test_that("the rebuilt contrast frame puts the annotation in front of the stats", {
   fx <- prolfquapp_h5ad()
   se <- .prolfquapp_legacy_layout(se_from_prolfquapp_anndata(.h5ad_read(fx$path)))
-  rd_in  <- SummarizedExperiment::rowData(fx$se)
+  rd_in <- SummarizedExperiment::rowData(fx$se)
   rd_out <- SummarizedExperiment::rowData(se)
   con <- grep("^constrast_", names(rd_in), value = TRUE)[1]
 
   annotation <- as.data.frame(rd_in$annotation)
-  stats      <- as.data.frame(rd_in[[con]])
-  rebuilt    <- as.data.frame(rd_out[[con]])
-  expect_identical(colnames(rebuilt),
-                   c(colnames(annotation), setdiff(colnames(stats), colnames(annotation))))
+  stats <- as.data.frame(rd_in[[con]])
+  rebuilt <- as.data.frame(rd_out[[con]])
+  expect_identical(colnames(rebuilt), c(colnames(annotation), setdiff(colnames(stats), colnames(annotation))))
   expect_equal(rebuilt$description, annotation$description)
   expect_equal(rebuilt$diff, stats$diff)
 })

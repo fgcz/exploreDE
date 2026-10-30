@@ -17,9 +17,12 @@ test_that("select_genes_by_sd returns all rownames when top_n >= nrow", {
 })
 
 test_that("select_genes_by_sd ignores NA values when computing SD", {
-  m <- matrix(c(1, 2, 3, 4,  NA, 10, NA, 20,  5, 5, 5, 5),
-              nrow = 3, byrow = TRUE,
-              dimnames = list(c("g1", "g2", "g3"), paste0("s", 1:4)))
+  m <- matrix(
+    c(1, 2, 3, 4, NA, 10, NA, 20, 5, 5, 5, 5),
+    nrow = 3,
+    byrow = TRUE,
+    dimnames = list(c("g1", "g2", "g3"), paste0("s", 1:4))
+  )
   # SDs (with na.rm): g1 ≈ 1.29, g2 ≈ 7.07, g3 = 0
   top1 <- select_genes_by_sd(m, top_n = 1)
   expect_equal(top1, "g2")

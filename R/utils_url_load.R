@@ -17,9 +17,10 @@
 #' @export
 url_load_sources <- function() {
   env <- Sys.getenv("EXPLOREDE_URL_SOURCES", "")
-  if (nzchar(env)) return(trimws(strsplit(env, ",", fixed = TRUE)[[1]]))
-  c("https://apps-dev.bfabric.org/apb-export/api/jobs/",
-    "https://fgcz-ms.uzh.ch/public/pStore/")
+  if (nzchar(env)) {
+    return(trimws(strsplit(env, ",", fixed = TRUE)[[1]]))
+  }
+  c("https://apps-dev.bfabric.org/apb-export/api/jobs/", "https://fgcz-ms.uzh.ch/public/pStore/")
 }
 
 #' May exploreDE load this URL?
@@ -35,15 +36,24 @@ url_load_sources <- function() {
 #' @export
 url_load_allowed <- function(url, sources = url_load_sources()) {
   no <- function(reason) structure(FALSE, reason = reason)
-  if (!is.character(url) || length(url) != 1L || is.na(url)) return(no("not a URL"))
+  if (!is.character(url) || length(url) != 1L || is.na(url)) {
+    return(no("not a URL"))
+  }
   m <- regmatches(url, regexec("^https://([A-Za-z0-9.-]+)(:[0-9]+)?(/[^?#]*)$", url))[[1]]
-  if (!length(m)) return(no("only plain https:// links to a file are accepted"))
+  if (!length(m)) {
+    return(no("only plain https:// links to a file are accepted"))
+  }
   path <- m[[4]]
-  if (grepl("(^|/)\\.\\.?(/|$)|%2e|%2f|%5c|\\\\", path, ignore.case = TRUE))
+  if (grepl("(^|/)\\.\\.?(/|$)|%2e|%2f|%5c|\\\\", path, ignore.case = TRUE)) {
     return(no("the link contains a relative path"))
-  if (!grepl("\\.h5ad$", path, ignore.case = TRUE)) return(no("only .h5ad files can be loaded from a link"))
+  }
+  if (!grepl("\\.h5ad$", path, ignore.case = TRUE)) {
+    return(no("only .h5ad files can be loaded from a link"))
+  }
   sources <- sources[startsWith(sources, "https://") & endsWith(sources, "/")]
-  if (!any(startsWith(url, sources))) return(no("this site is not on exploreDE's list of data sources"))
+  if (!any(startsWith(url, sources))) {
+    return(no("this site is not on exploreDE's list of data sources"))
+  }
   TRUE
 }
 
@@ -60,11 +70,18 @@ url_load_allowed <- function(url, sources = url_load_sources()) {
 #' @export
 url_load_fetch <- function(url, dest, max_bytes = 1000 * 1024^2, timeout = 600) {
   ok <- url_load_allowed(url)
-  if (!isTRUE(ok)) stop(attr(ok, "reason"))
-  h <- curl::new_handle(followlocation = FALSE, timeout = timeout,
-                        maxfilesize_large = max_bytes, protocols_str = "https")
-  res <- tryCatch(curl::curl_fetch_disk(url, dest, handle = h),
-                  error = function(e) stop("download failed: ", conditionMessage(e)))
+  if (!isTRUE(ok)) {
+    stop(attr(ok, "reason"))
+  }
+  h <- curl::new_handle(
+    followlocation = FALSE,
+    timeout = timeout,
+    maxfilesize_large = max_bytes,
+    protocols_str = "https"
+  )
+  res <- tryCatch(curl::curl_fetch_disk(url, dest, handle = h), error = function(e) {
+    stop("download failed: ", conditionMessage(e))
+  })
   if (res$status_code != 200L) {
     unlink(dest)
     stop(sprintf("the server answered %d", res$status_code))

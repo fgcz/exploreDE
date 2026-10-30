@@ -9,13 +9,12 @@
 #' @export
 ExploreDatasetSE_CrisprCountQC <- R6::R6Class(
   classname = "ExploreDatasetSE_CrisprCountQC",
-  inherit   = ExploreDatasetSE_CountQC,
+  inherit = ExploreDatasetSE_CountQC,
 
   private = list(
-
     .build_config = function(se) {
       cfg <- super$.build_config(se)
-      cfg$data_type       <- "CrisprCountQC"
+      cfg$data_type <- "CrisprCountQC"
       cfg$feature_id_kind <- "guide"
       rn <- rownames(se) %||% character()
       # Strip the guide suffix to recover the gene. Two conventions supported,

@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("validator: non-strict returns list(ok, errors)", {
-  fx  <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene()
   eds <- new_explore_dataset(fx$se)
   out <- validate_explore_dataset(eds, strict = FALSE)
   expect_type(out, "list")
@@ -22,7 +22,7 @@ test_that("validator: rejects non-ExploreDataset input", {
 })
 
 test_that("validator: catches mismatched primary_grouping", {
-  fx  <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene()
   eds <- new_explore_dataset(fx$se)
 
   # Patch the private config to introduce a deliberate mismatch.

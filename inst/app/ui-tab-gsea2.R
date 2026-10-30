@@ -93,16 +93,19 @@ tabItem(
         solidHeader = TRUE,
         status = "primary",
         uiOutput(outputId = "contrastSelectorUI_gsea"),
-        textOutput("gseaDesign"), br(),
+        textOutput("gseaDesign"),
+        br(),
         downloadButton(
           outputId = "dlTable_GSEA",
           label = "Download GSEA Results File"
         ),
-        br(), br(),
+        br(),
+        br(),
         selectInput(inputId = "gseaType", label = "Select result to view", choices = NA, selected = NA, width = "25%"),
         DT::dataTableOutput(outputId = "selectedTable_GSEA"),
         style = "overflow-y: scroll;"
-      )),
+      )
+    ),
     column(
       width = 7,
       box(
@@ -114,40 +117,59 @@ tabItem(
           tabPanel(
             title = "Network plot",
             downloadButton(outputId = "dlPlot_cnetGSEA", label = paste("Download Network Plot")),
-            br(), br(),
+            br(),
+            br(),
             withSpinner(plotOutput(outputId = "cnetPlot_GSEA", inline = TRUE), color = "#6E8D9E"),
             checkboxInput(inputId = "showGeneLabelsGSEA", label = "Show gene names?", value = TRUE)
           ),
           tabPanel(
             title = "Heatmap",
             downloadButton(outputId = "dlPlot_heatmapGSEA", label = paste("Download Heatmap")),
-            br(), br(),
+            br(),
+            br(),
             withSpinner(plotOutput(outputId = "heatmap_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Running Score",
             downloadButton(outputId = "dlPlot_runningScoreGSEA", label = paste("Download Running Score Plot")),
-            br(), br(),
+            br(),
+            br(),
             withSpinner(plotOutput(outputId = "runningScore_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Ridge Plot",
-            selectInput(inputId = "ridgePlotColourByGSEA", label = "Colour plot by", choices = c("p.adjust", "enrichmentScore", "NES"), selected = "NES"),
+            selectInput(
+              inputId = "ridgePlotColourByGSEA",
+              label = "Colour plot by",
+              choices = c("p.adjust", "enrichmentScore", "NES"),
+              selected = "NES"
+            ),
             downloadButton(outputId = "dlPlot_ridgeGSEA", label = paste("Download Ridge Plot")),
-            br(), br(),
+            br(),
+            br(),
             withSpinner(plotOutput(outputId = "ridgePlot_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Upset plot",
             downloadButton(outputId = "dlPlot_upsetGSEA", label = paste("Download Upset Plot")),
-            br(), br(),
+            br(),
+            br(),
             withSpinner(plotOutput(outputId = "upsetPlot_GSEA", inline = TRUE), color = "#6E8D9E")
           ),
           tabPanel(
             title = "Lollipop plot",
             downloadButton(outputId = "dlPlot_lollipopGSEA", label = paste("Download Lollipop Plot")),
-            br(), br(),
-            sliderInput(inputId = "gseaLollipopScale", label = "Lollipop scale", min = 0.25, max = 5, value = 1, step = 0.25, width = "85%"),
+            br(),
+            br(),
+            sliderInput(
+              inputId = "gseaLollipopScale",
+              label = "Lollipop scale",
+              min = 0.25,
+              max = 5,
+              value = 1,
+              step = 0.25,
+              width = "85%"
+            ),
             withSpinner(plotOutput(outputId = "lollipopPlot_GSEA", inline = TRUE), color = "#6E8D9E")
           )
         )
@@ -163,27 +185,119 @@ tabItem(
         column(
           width = 4,
           h4("Network Plot Settings"),
-          sliderInput(inputId = "scaleLimGSEA", label = "Scale colour limit (+/-)", min = 1, max = 10, value = 5, step = 0.5, width = "85%"),
-          sliderInput(inputId = "nodeSizeGSEA", label = "Network Plot Node Size", min = 1, max = 30, value = 9, step = 0.5, width = "85%"),
-          sliderInput(inputId = "nodeBorderGSEA", label = "Node border", min = 0, max = 2, value = 0.3, step = 0.1, width = "80%"),
+          sliderInput(
+            inputId = "scaleLimGSEA",
+            label = "Scale colour limit (+/-)",
+            min = 1,
+            max = 10,
+            value = 5,
+            step = 0.5,
+            width = "85%"
+          ),
+          sliderInput(
+            inputId = "nodeSizeGSEA",
+            label = "Network Plot Node Size",
+            min = 1,
+            max = 30,
+            value = 9,
+            step = 0.5,
+            width = "85%"
+          ),
+          sliderInput(
+            inputId = "nodeBorderGSEA",
+            label = "Node border",
+            min = 0,
+            max = 2,
+            value = 0.3,
+            step = 0.1,
+            width = "80%"
+          ),
         ),
         column(
           width = 4,
           h4("Label Settings"),
-          sliderInput(inputId = "gseaMaxOver", label = "Label max overlaps", min = 0, max = 100, value = 10, step = 1, width = "85%"),
-          sliderInput(inputId = "gseaDodgeY", label = "Label dodge y", min = -10, max = 10, value = 0, step = 1, width = "85%"),
-          sliderInput(inputId = "gseaDodgeX", label = "Label dodge x", min = -10, max = 10, value = 0, step = 1, width = "85%"),
-          sliderInput(inputId = "gseaLabelAlpha", label = "Label alpha", min = 0, max = 1, value = 0.7, step = 0.1, width = "85%")
+          sliderInput(
+            inputId = "gseaMaxOver",
+            label = "Label max overlaps",
+            min = 0,
+            max = 100,
+            value = 10,
+            step = 1,
+            width = "85%"
+          ),
+          sliderInput(
+            inputId = "gseaDodgeY",
+            label = "Label dodge y",
+            min = -10,
+            max = 10,
+            value = 0,
+            step = 1,
+            width = "85%"
+          ),
+          sliderInput(
+            inputId = "gseaDodgeX",
+            label = "Label dodge x",
+            min = -10,
+            max = 10,
+            value = 0,
+            step = 1,
+            width = "85%"
+          ),
+          sliderInput(
+            inputId = "gseaLabelAlpha",
+            label = "Label alpha",
+            min = 0,
+            max = 1,
+            value = 0.7,
+            step = 0.1,
+            width = "85%"
+          )
         ),
         column(
           width = 4,
           h4("Size & Download Settings"),
-          sliderInput(inputId = "textSizeGSEA", label = "Figure Font Size", min = 4, max = 30, value = 10, step = 0.5, width = "85%"),
-          sliderInput(inputId = "figHeightGSEA", label = "Figure Height", min = 100, max = 2000, value = 400, step = 10, width = "85%"),
-          sliderInput(inputId = "figWidthGSEA", label = "Figure Width", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
+          sliderInput(
+            inputId = "textSizeGSEA",
+            label = "Figure Font Size",
+            min = 4,
+            max = 30,
+            value = 10,
+            step = 0.5,
+            width = "85%"
+          ),
+          sliderInput(
+            inputId = "figHeightGSEA",
+            label = "Figure Height",
+            min = 100,
+            max = 2000,
+            value = 400,
+            step = 10,
+            width = "85%"
+          ),
+          sliderInput(
+            inputId = "figWidthGSEA",
+            label = "Figure Width",
+            min = 100,
+            max = 2000,
+            value = 600,
+            step = 10,
+            width = "85%"
+          ),
           legend_offset_ui("GSEA"),
-          selectInput(inputId = "downloadFormatGSEA", label = "Select format", choices = c("PDF", "SVG", "PNG"), selected = "PDF", width = "85%"),
-          selectInput(inputId = "dpiGSEA", label = "PNG DPI", choices = c(72, 150, 300, 600, 1000), selected = 600, width = "85%"),
+          selectInput(
+            inputId = "downloadFormatGSEA",
+            label = "Select format",
+            choices = c("PDF", "SVG", "PNG"),
+            selected = "PDF",
+            width = "85%"
+          ),
+          selectInput(
+            inputId = "dpiGSEA",
+            label = "PNG DPI",
+            choices = c(72, 150, 300, 600, 1000),
+            selected = 600,
+            width = "85%"
+          ),
           textInput(inputId = "filename_GSEA", label = "Enter filename", value = "GSEA", width = "85%")
         )
       ),
@@ -194,13 +308,37 @@ tabItem(
         collapsible = TRUE,
         collapsed = TRUE,
         status = "warning",
-        helpText("IMPORTANT: These thresholds only affect visualisation (network plots and heatmaps). They do NOT change the GSEA results, which were pre-calculated."),
+        helpText(
+          "IMPORTANT: These thresholds only affect visualisation (network plots and heatmaps). They do NOT change the GSEA results, which were pre-calculated."
+        ),
         column(
           width = 6,
           h4("Threshold Settings"),
-          selectInput(inputId = "gseaVisPType", label = "P-Value Type:", choices = c("FDR", "Raw"), selected = "Raw", width = "85%"),
-          numericInput(inputId = "gseaVisPThreshold", label = "P-Value Threshold:", value = 0.05, min = 0, max = 1, step = 0.01, width = "85%"),
-          numericInput(inputId = "gseaVisLFC", label = "Log2 Fold Change Threshold:", value = 0, min = 0, max = 10, step = 0.25, width = "85%")
+          selectInput(
+            inputId = "gseaVisPType",
+            label = "P-Value Type:",
+            choices = c("FDR", "Raw"),
+            selected = "Raw",
+            width = "85%"
+          ),
+          numericInput(
+            inputId = "gseaVisPThreshold",
+            label = "P-Value Threshold:",
+            value = 0.05,
+            min = 0,
+            max = 1,
+            step = 0.01,
+            width = "85%"
+          ),
+          numericInput(
+            inputId = "gseaVisLFC",
+            label = "Log2 Fold Change Threshold:",
+            value = 0,
+            min = 0,
+            max = 10,
+            step = 0.25,
+            width = "85%"
+          )
         ),
         column(
           width = 6,

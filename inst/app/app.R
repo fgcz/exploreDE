@@ -5,11 +5,44 @@ username <- Sys.getenv("SHINYPROXY_USERNAME")
 
 cat("loading packages...\n\n")
 packagesToLoad <- c(
-  "shiny", "shinydashboard", "tidyverse", "ggpubr", "plotly", "DESeq2", "RColorBrewer",
-  "ComplexHeatmap", "clusterProfiler", "DT", "colourpicker", "writexl", "circlize",
-  "kableExtra", "ggrepel", "gplots", "sortable", "waiter", "ggprism", "ggbeeswarm",
-  "rstatix", "gridExtra", "shinylogs", "parallel", "plyr", "reshape2", "shinycssloaders", "shinyjs", "GGally", "patchwork",
-  "Matrix", "matrixStats", "SingleCellExperiment", "fresh", "pathview", "openxlsx", "dendextend", "officer"
+  "shiny",
+  "shinydashboard",
+  "tidyverse",
+  "ggpubr",
+  "plotly",
+  "DESeq2",
+  "RColorBrewer",
+  "ComplexHeatmap",
+  "clusterProfiler",
+  "DT",
+  "colourpicker",
+  "writexl",
+  "circlize",
+  "kableExtra",
+  "ggrepel",
+  "gplots",
+  "sortable",
+  "waiter",
+  "ggprism",
+  "ggbeeswarm",
+  "rstatix",
+  "gridExtra",
+  "shinylogs",
+  "parallel",
+  "plyr",
+  "reshape2",
+  "shinycssloaders",
+  "shinyjs",
+  "GGally",
+  "patchwork",
+  "Matrix",
+  "matrixStats",
+  "SingleCellExperiment",
+  "fresh",
+  "pathview",
+  "openxlsx",
+  "dendextend",
+  "officer"
 )
 invisible(lapply(packagesToLoad, function(pkg) {
   suppressPackageStartupMessages(suppressWarnings(library(pkg, character.only = TRUE, quietly = TRUE)))
@@ -20,13 +53,21 @@ validate <- shiny::validate
 reactiveConsole(TRUE)
 # Allow larger uploads for user-supplied .h5ad datasets (BYO data, M2).
 options(shiny.maxRequestSize = 1000 * 1024^2)
-if (file.exists("/srv/shiny-server/fgcz_apps/telemetry_module.R")) source("/srv/shiny-server/fgcz_apps/telemetry_module.R")
+if (file.exists("/srv/shiny-server/fgcz_apps/telemetry_module.R")) {
+  source("/srv/shiny-server/fgcz_apps/telemetry_module.R")
+}
 
 # Source package R/ helpers at startup (dev mode — no install required).
 # Provides global definitions of the conversion / plotting helpers.
 # server-*.R files source() with local = TRUE to redefine reactive-coupled
 # helpers (bucket_*, resolve_features, etc.) inside the server scope.
-r_dir <- if (dir.exists("../../R")) "../../R" else if (dir.exists("R")) "R" else NULL
+r_dir <- if (dir.exists("../../R")) {
+  "../../R"
+} else if (dir.exists("R")) {
+  "R"
+} else {
+  NULL
+}
 if (!is.null(r_dir)) {
   r_files <- list.files(r_dir, pattern = "\\.R$", full.names = TRUE)
   invisible(lapply(r_files, source))
@@ -39,7 +80,9 @@ if (!is.null(r_dir)) {
 
 #' First line of a file, or NULL when it cannot be read.
 first_line <- function(file) {
-  if (!file.exists(file)) return(NULL)
+  if (!file.exists(file)) {
+    return(NULL)
+  }
   tryCatch(readLines(file, n = 1L, warn = FALSE), error = function(e) NULL)
 }
 
@@ -47,44 +90,74 @@ first_line <- function(file) {
 keyed_value <- function(file, key) {
   lines <- tryCatch(readLines(file, warn = FALSE), error = function(e) character(0))
   hit <- grep(paste0("^", key, " "), lines, value = TRUE)
-  if (length(hit) == 0) return(NA_real_)
+  if (length(hit) == 0) {
+    return(NA_real_)
+  }
   suppressWarnings(as.numeric(sub(paste0("^", key, " "), "", hit[1])))
 }
 
 #' Number of CPUs in a cpuset list such as "0-7,16-23".
 cpuset_count <- function(x) {
-  if (is.null(x) || !nzchar(x)) return(NA_real_)
+  if (is.null(x) || !nzchar(x)) {
+    return(NA_real_)
+  }
   parts <- strsplit(strsplit(x, ",", fixed = TRUE)[[1]], "-", fixed = TRUE)
-  sum(vapply(parts, function(p) {
-    p <- as.integer(p)
-    if (length(p) == 2) p[2] - p[1] + 1 else 1
-  }, numeric(1)))
+  sum(vapply(
+    parts,
+    function(p) {
+      p <- as.integer(p)
+      if (length(p) == 2) p[2] - p[1] + 1 else 1
+    },
+    numeric(1)
+  ))
 }
 
 #' One cgroup v2 sample of this container's memory and CPU; NULL outside a container.
 container_usage_sample <- function(root = "/sys/fs/cgroup") {
   current <- suppressWarnings(as.numeric(first_line(file.path(root, "memory.current"))))
-  if (length(current) == 0 || is.na(current)) return(NULL)
+  if (length(current) == 0 || is.na(current)) {
+    return(NULL)
+  }
   inactive <- keyed_value(file.path(root, "memory.stat"), "inactive_file")
   used <- if (is.na(inactive)) current else max(0, current - inactive)
   limit <- suppressWarnings(as.numeric(first_line(file.path(root, "memory.max"))))
   limited <- length(limit) == 1 && !is.na(limit)
   if (!limited) {
     total <- first_line("/proc/meminfo")
-    limit <- if (is.null(total)) NA_real_
-             else suppressWarnings(as.numeric(sub("^MemTotal:\\s+(\\d+).*$", "\\1", total))) * 1024
+    limit <- if (is.null(total)) {
+      NA_real_
+    } else {
+      suppressWarnings(as.numeric(sub("^MemTotal:\\s+(\\d+).*$", "\\1", total))) * 1024
+    }
   }
   quota <- strsplit(first_line(file.path(root, "cpu.max")) %||% "max", " ", fixed = TRUE)[[1]]
-  cores <- if (length(quota) == 2 && quota[1] != "max") as.numeric(quota[1]) / as.numeric(quota[2])
-           else cpuset_count(first_line(file.path(root, "cpuset.cpus.effective")))
-  if (is.na(cores) || cores <= 0) cores <- parallel::detectCores()
-  list(time = Sys.time(), used = used, limit = limit, limited = limited,
-       cpu_usec = keyed_value(file.path(root, "cpu.stat"), "usage_usec"), cores = cores)
+  cores <- if (length(quota) == 2 && quota[1] != "max") {
+    as.numeric(quota[1]) / as.numeric(quota[2])
+  } else {
+    cpuset_count(first_line(file.path(root, "cpuset.cpus.effective")))
+  }
+  if (is.na(cores) || cores <= 0) {
+    cores <- parallel::detectCores()
+  }
+  list(
+    time = Sys.time(),
+    used = used,
+    limit = limit,
+    limited = limited,
+    cpu_usec = keyed_value(file.path(root, "cpu.stat"), "usage_usec"),
+    cores = cores
+  )
 }
 
 format_gb <- function(bytes) {
   gb <- bytes / 1024^3
-  if (is.na(gb)) "?" else if (gb < 10) sprintf("%.1f", gb) else sprintf("%.0f", gb)
+  if (is.na(gb)) {
+    "?"
+  } else if (gb < 10) {
+    sprintf("%.1f", gb)
+  } else {
+    sprintf("%.0f", gb)
+  }
 }
 
 
@@ -145,7 +218,8 @@ ui <- dashboardPage(
       tags$link(rel = "shortcut icon", href = "sushi.png"),
       tags$head(
         tags$style(
-          HTML("
+          HTML(
+            "
             .shiny-split-layout > div {
               overflow: visible;
             }
@@ -239,9 +313,11 @@ ui <- dashboardPage(
             body.multi-active.skin-blue .main-header .navbar {
               background: linear-gradient(135deg, #2d7a3e 0%, #3a9950 100%) !important;
             }
-            ")
+            "
+          )
         ),
-        tags$script(HTML("
+        tags$script(HTML(
+          "
           $(document).on('shiny:inputchanged', function(event) {
             if (event.name === 'tabs') {
               var multiTabs = ['multiDataSelectionTab', 'multiDETableTab', 'multiBoxplotTab',
@@ -266,7 +342,8 @@ ui <- dashboardPage(
             });
             console.log('%c🍌  …there is a banana in here somewhere', 'font-size:13px');
           })();
-        "))
+        "
+        ))
       )
     ),
     use_waiter(),
@@ -331,7 +408,9 @@ server <- function(input, output, session) {
   output$container_usage <- renderUI({
     invalidateLater(5000, session)
     now <- container_usage_sample()
-    if (is.null(now)) return(NULL)
+    if (is.null(now)) {
+      return(NULL)
+    }
     prev <- usage_prev
     usage_prev <<- now
     cpu <- NA_real_
@@ -342,16 +421,24 @@ server <- function(input, output, session) {
     mem_pct <- 100 * now$used / now$limit
     high <- isTRUE(mem_pct >= 85) || isTRUE(cpu >= 90)
     tags$span(
-      style = paste0("display:block; padding:15px 12px; line-height:20px; font-size:13px; color:#fff;",
-                     if (high) " background:#a93226; font-weight:bold;" else ""),
+      style = paste0(
+        "display:block; padding:15px 12px; line-height:20px; font-size:13px; color:#fff;",
+        if (high) " background:#a93226; font-weight:bold;" else ""
+      ),
       title = paste0(
         "This app's container, all its open sessions together, refreshed every 5 s. ",
         "Memory leaves out reclaimable file cache",
         if (now$limited) "." else ", and the container has no memory limit, so it is shown against the host's RAM.",
-        " CPU is the share of the ", format(round(now$cores, 1)), " cores available to it."),
-      icon("memory"), sprintf(" RAM %s of %s GB", format_gb(now$used), format_gb(now$limit)),
-      HTML("&nbsp;&nbsp;"), icon("microchip"),
-      if (is.na(cpu)) " CPU \u2026" else sprintf(" CPU %.0f%%", max(0, cpu)))
+        " CPU is the share of the ",
+        format(round(now$cores, 1)),
+        " cores available to it."
+      ),
+      icon("memory"),
+      sprintf(" RAM %s of %s GB", format_gb(now$used), format_gb(now$limit)),
+      HTML("&nbsp;&nbsp;"),
+      icon("microchip"),
+      if (is.na(cpu)) " CPU \u2026" else sprintf(" CPU %.0f%%", max(0, cpu))
+    )
   })
 
   # ── Session save/restore primitives ────────────────────────────────────────
@@ -362,7 +449,7 @@ server <- function(input, output, session) {
   # (optionally intersected with `valid` = the widget's current choices), else the
   # computed default — a no-op outside restore, so live behaviour is unchanged.
   # isolate() so reading the store never adds a reactive dependency to the caller.
-  restoring    <- reactiveVal(FALSE)
+  restoring <- reactiveVal(FALSE)
   restore_seed <- reactiveValues()
   # Thin closure over this session's reactives; logic lives in the exported,
   # unit-tested restore_default_value() (R/utils_savestate.R).
@@ -376,13 +463,19 @@ server <- function(input, output, session) {
   # dashboardBody) or append ?banana=1. Defined here so it's in scope for every
   # lazily-source()d server-*.R module. Rendering logic: R/banana_mode.R.
   bananaMode <- reactiveVal(FALSE)
-  observeEvent(input$bananaToggle, {
-    on <- !bananaMode(); bananaMode(on)
-    showNotification(
-      if (on) "\U0001F34C Banana mode engaged" else "Banana mode off",
-      duration = 2, type = "message"
-    )
-  }, ignoreInit = TRUE)
+  observeEvent(
+    input$bananaToggle,
+    {
+      on <- !bananaMode()
+      bananaMode(on)
+      showNotification(
+        if (on) "\U0001F34C Banana mode engaged" else "Banana mode off",
+        duration = 2,
+        type = "message"
+      )
+    },
+    ignoreInit = TRUE
+  )
   observe({
     q <- parseQueryString(session$clientData$url_search)
     if (identical(q[["banana"]], "1")) bananaMode(TRUE)
@@ -403,14 +496,17 @@ server <- function(input, output, session) {
   telemetry_ready <- dir.exists(telemetry_db_dir) ||
     dir.create(telemetry_db_dir, recursive = TRUE, showWarnings = FALSE)
   if (exists("setup_telemetry_global") && telemetry_ready) {
-    telemetry <- setup_telemetry_global(telemetry_app_name, data_dir = "/srv/shiny-server/fgcz_apps/telemetry_reader/apps_data")
+    telemetry <- setup_telemetry_global(
+      telemetry_app_name,
+      data_dir = "/srv/shiny-server/fgcz_apps/telemetry_reader/apps_data"
+    )
     start_telemetry_server(input, session, telemetry)
   }
   # Source download helpers (adjust path as needed for deployment structure)
   if (file.exists("../../R/downloadHelpers.R")) {
     source("../../R/downloadHelpers.R")
   } else if (file.exists("R/downloadHelpers.R")) {
-     source("R/downloadHelpers.R")
+    source("R/downloadHelpers.R")
   }
   # Data-dependent server modules run `eds <- inputDataReactive()$.eds; req(eds)`
   # at source time, so they can only be sourced once a dataset exists (otherwise
@@ -420,53 +516,61 @@ server <- function(input, output, session) {
   # handler environment so cross-module references resolve, and into a scope that
   # still sees the server's output/input/session and the reactives below.
   .dataModulesSourced <- FALSE
-  observeEvent(edsState(), {
-    if (.dataModulesSourced || is.null(edsState())) return()
-    .dataModulesSourced <<- TRUE
-    # Keep the loading spinner up across module sourcing (the landing observers
-    # show it on click; a ?data= URL has no click, so ensure it's shown here).
-    waiter::waiter_show(
-      html  = tagList(waiter::spin_fading_circles(),
-                      tags$h4("Preparing your dataset…", style = "color:#fff; margin-top:1em;")),
-      color = "#527085"
-    )
-    # NB: the spinner is hidden client-side by the waiter_hide_on_render() helper
-    # wired into the UI (see dashboardBody) — it fires when settingsTable paints,
-    # which is exactly "summary is ready". Nothing to hide here: hiding on exit
-    # would drop the overlay the instant module-sourcing finishes (several
-    # flushes before any output renders), flashing the landing screen through.
-    source("server-featureBucket.R", local = TRUE)
-    source("server-summary.R", local = TRUE)
-    source("server-DEGTable.R", local = TRUE)
-    source("server-volcano2.R", local = TRUE)
-    source("server-deQc.R", local = TRUE)
-    source("server-heatmap2.R", local = TRUE)
-    source("server-ordination.R", local = TRUE)
-    source("server-boxplot.R", local = TRUE)
-    source("server-correlation.R", local = TRUE)
-    source("server-hypergeo2.R", local = TRUE)
-    source("server-gsea2.R", local = TRUE)
-    source("server-goTile.R", local = TRUE)
-    source("server-kegg.R", local = TRUE)
-    source("server-replicability.R", local = TRUE)
-    source("server-countQc.R", local = TRUE)
-    source("server-multi-data-selection.R", local = TRUE)
-    source("server-multi-de-table.R", local = TRUE)
-    source("server-multi-upset.R", local = TRUE)
-    source("server-multi-bubble.R", local = TRUE)
-    source("server-multi-pathway-select.R", local = TRUE)
-    source("server-multi-heatmap.R", local = TRUE)
-    source("server-multi-boxplot.R", local = TRUE)
-    source("server-multi-tile.R", local = TRUE)
-    source("server-multi-kegg.R", local = TRUE)
-    source("server-saveState.R", local = TRUE)
-  }, ignoreNULL = TRUE)
+  observeEvent(
+    edsState(),
+    {
+      if (.dataModulesSourced || is.null(edsState())) {
+        return()
+      }
+      .dataModulesSourced <<- TRUE
+      # Keep the loading spinner up across module sourcing (the landing observers
+      # show it on click; a ?data= URL has no click, so ensure it's shown here).
+      waiter::waiter_show(
+        html = tagList(
+          waiter::spin_fading_circles(),
+          tags$h4("Preparing your dataset…", style = "color:#fff; margin-top:1em;")
+        ),
+        color = "#527085"
+      )
+      # NB: the spinner is hidden client-side by the waiter_hide_on_render() helper
+      # wired into the UI (see dashboardBody) — it fires when settingsTable paints,
+      # which is exactly "summary is ready". Nothing to hide here: hiding on exit
+      # would drop the overlay the instant module-sourcing finishes (several
+      # flushes before any output renders), flashing the landing screen through.
+      source("server-featureBucket.R", local = TRUE)
+      source("server-summary.R", local = TRUE)
+      source("server-DEGTable.R", local = TRUE)
+      source("server-volcano2.R", local = TRUE)
+      source("server-deQc.R", local = TRUE)
+      source("server-heatmap2.R", local = TRUE)
+      source("server-ordination.R", local = TRUE)
+      source("server-boxplot.R", local = TRUE)
+      source("server-correlation.R", local = TRUE)
+      source("server-hypergeo2.R", local = TRUE)
+      source("server-gsea2.R", local = TRUE)
+      source("server-goTile.R", local = TRUE)
+      source("server-kegg.R", local = TRUE)
+      source("server-replicability.R", local = TRUE)
+      source("server-countQc.R", local = TRUE)
+      source("server-multi-data-selection.R", local = TRUE)
+      source("server-multi-de-table.R", local = TRUE)
+      source("server-multi-upset.R", local = TRUE)
+      source("server-multi-bubble.R", local = TRUE)
+      source("server-multi-pathway-select.R", local = TRUE)
+      source("server-multi-heatmap.R", local = TRUE)
+      source("server-multi-boxplot.R", local = TRUE)
+      source("server-multi-tile.R", local = TRUE)
+      source("server-multi-kegg.R", local = TRUE)
+      source("server-saveState.R", local = TRUE)
+    },
+    ignoreNULL = TRUE
+  )
 
   # Multi DE Reactive
   multiDeReactive <- reactiveValues(
     results = list(),
     available = NULL,
-    menuUpdateTrigger = 0  # Add trigger to reactive values so it's accessible everywhere
+    menuUpdateTrigger = 0 # Add trigger to reactive values so it's accessible everywhere
   )
 
   # Reactive to track if we have multi-DE results
@@ -482,11 +586,11 @@ server <- function(input, output, session) {
         menuItem(text = "Load data", tabName = "landingTab", icon = icon("upload"))
       ))
     }
-    eds      <- inputDataReactive()$.eds
+    eds <- inputDataReactive()$.eds
     dataType <- eds$data_type()
     # Column-presence check: cheap, no DB lookup. True when the features carry
     # any GO annotation column (GO BP / MF / CC).
-    has_go   <- length(go_annotation_columns(eds$features())) > 0
+    has_go <- length(go_annotation_columns(eds$features())) > 0
     # Create dependency on menuUpdateTrigger for manual updates
     multiDeReactive$menuUpdateTrigger
     # Use isolate to check hasMultiData without automatic re-rendering
@@ -494,7 +598,6 @@ server <- function(input, output, session) {
 
     # 0. Tabs
     menuItems <- list(
-
       # 0. Session (always shown, all data types)
       tags$li(class = "header", "Session"),
       menuItem(text = "Results Summary", tabName = "summaryTab", icon = icon("list")),
@@ -511,9 +614,12 @@ server <- function(input, output, session) {
     )
     # Count QC — RNASeq / CountQC / CrisprCountQC only (hidden for proteomics)
     if (dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
-      menuItems <- c(menuItems, list(
-        menuItem(text = "Count QC", tabName = "countQcTab", icon = icon("chart-bar"))
-      ))
+      menuItems <- c(
+        menuItems,
+        list(
+          menuItem(text = "Count QC", tabName = "countQcTab", icon = icon("chart-bar"))
+        )
+      )
     }
 
     # 2. DE tabs (Shown if NOT CountQC, and only when DE results exist —
@@ -531,9 +637,12 @@ server <- function(input, output, session) {
     # 3. Pathway tabs (Shown ONLY if RNASeq with DE results)
     if (dataType == "RNASeq" && eds$has_de()) {
       # Check if species is supported for KEGG (human, mouse, rat)
-      keggSpeciesSupported <- tryCatch({
-        !is.null(kegg_species_label(eds$ref_build()))
-      }, error = function(e) FALSE)
+      keggSpeciesSupported <- tryCatch(
+        {
+          !is.null(kegg_species_label(eds$ref_build()))
+        },
+        error = function(e) FALSE
+      )
 
       pathwayItems <- list(
         tags$li(class = "header", "Pathway Analyses"),
@@ -542,23 +651,32 @@ server <- function(input, output, session) {
       )
       # Tiles come from GO terms and/or a KEGG pathway: Shown when either is available.
       if (has_go || keggSpeciesSupported) {
-        pathwayItems <- c(pathwayItems, list(
-          menuItem(text = "Pathway Tile Plots", tabName = "goTileTab", icon = icon("table"))
-        ))
+        pathwayItems <- c(
+          pathwayItems,
+          list(
+            menuItem(text = "Pathway Tile Plots", tabName = "goTileTab", icon = icon("table"))
+          )
+        )
       }
       if (keggSpeciesSupported) {
-        pathwayItems <- c(pathwayItems, list(
-          menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))
-        ))
+        pathwayItems <- c(
+          pathwayItems,
+          list(
+            menuItem(text = "KEGG Pathway Plots", tabName = "keggTab", icon = icon("egg"))
+          )
+        )
       }
       menuItems <- c(menuItems, pathwayItems)
     }
 
     # 4. Multi DE Analysis (NOT shown for CountQC)
     if (!dataType %in% c("CountQC", "CrisprCountQC")) {
-      menuItems <- c(menuItems, list(
-        tags$li(class = "header", "Multi DE Analysis")
-      ))
+      menuItems <- c(
+        menuItems,
+        list(
+          tags$li(class = "header", "Multi DE Analysis")
+        )
+      )
 
       # Add multi menu items with custom class attribute
       multiDataItem <- menuItem(text = "Data Selection", tabName = "multiDataSelectionTab", icon = icon("database"))
@@ -570,7 +688,11 @@ server <- function(input, output, session) {
         multiDETableItem <- menuItem(text = "Integrated DE Table", tabName = "multiDETableTab", icon = icon("table"))
         multiDETableItem$attribs$class <- paste(multiDETableItem$attribs$class, "multi-menu-item")
 
-        multiBoxplotItem <- menuItem(text = "Multi-Contrast Boxplots", tabName = "multiBoxplotTab", icon = icon("chart-bar"))
+        multiBoxplotItem <- menuItem(
+          text = "Multi-Contrast Boxplots",
+          tabName = "multiBoxplotTab",
+          icon = icon("chart-bar")
+        )
         multiBoxplotItem$attribs$class <- paste(multiBoxplotItem$attribs$class, "multi-menu-item")
 
         multiUpsetItem <- menuItem(text = "Upset/Venn Plots", tabName = "multiUpsetPlotTab", icon = icon("ellipsis-h"))
@@ -586,7 +708,11 @@ server <- function(input, output, session) {
           multiBubbleItem <- menuItem(text = "Pathway Bubble Plots", tabName = "multiBubbleTab", icon = icon("circle"))
           multiBubbleItem$attribs$class <- paste(multiBubbleItem$attribs$class, "multi-menu-item")
 
-          multiPathwaySelectItem <- menuItem(text = "Pathway Selection", tabName = "multiPathwaySelectTab", icon = icon("diagram-project"))
+          multiPathwaySelectItem <- menuItem(
+            text = "Pathway Selection",
+            tabName = "multiPathwaySelectTab",
+            icon = icon("diagram-project")
+          )
           multiPathwaySelectItem$attribs$class <- paste(multiPathwaySelectItem$attribs$class, "multi-menu-item")
 
           multiHeatmapItem <- menuItem(text = "Pathway Heatmaps", tabName = "multiHeatmapTab", icon = icon("fire"))
@@ -608,7 +734,9 @@ server <- function(input, output, session) {
     # Use isolate(input$tabs) to preserve selection without creating a dependency loop.
     # Arriving from the landing screen (or first load): land on the summary tab.
     currentTab <- isolate(input$tabs)
-    if (is.null(currentTab) || currentTab == "landingTab") currentTab <- "summaryTab"
+    if (is.null(currentTab) || currentTab == "landingTab") {
+      currentTab <- "summaryTab"
+    }
     sidebarMenu(id = "tabs", .list = menuItems, selected = currentTab)
   })
 }

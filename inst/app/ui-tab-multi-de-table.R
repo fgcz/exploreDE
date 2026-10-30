@@ -8,7 +8,9 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "success",
-        helpText("Combined differential expression results from all loaded contrasts. Search and filter across all datasets."),
+        helpText(
+          "Combined differential expression results from all loaded contrasts. Search and filter across all datasets."
+        ),
         DT::dataTableOutput("multiDETable"),
         br(),
         div(

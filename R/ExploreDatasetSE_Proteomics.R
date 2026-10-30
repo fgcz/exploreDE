@@ -19,12 +19,18 @@
 # by the ExploreDataset backend and the legacy gStoreList glue so they can't
 # drift. Delete alongside the rest of the SAINT hack once h5ad is universal.
 .saint_standardise_de <- function(d) {
-  if (!.se_is_saint(d)) return(d)
-  if ("log2_EFCs" %in% colnames(d) && !"log2Ratio" %in% colnames(d))
+  if (!.se_is_saint(d)) {
+    return(d)
+  }
+  if ("log2_EFCs" %in% colnames(d) && !"log2Ratio" %in% colnames(d)) {
     d$log2Ratio <- suppressWarnings(as.numeric(d$log2_EFCs))
-  if ("BFDR" %in% colnames(d) && !"fdr" %in% colnames(d))
+  }
+  if ("BFDR" %in% colnames(d) && !"fdr" %in% colnames(d)) {
     d$fdr <- suppressWarnings(as.numeric(d$BFDR))
-  if (!"pValue" %in% colnames(d)) d$pValue <- NA_real_
+  }
+  if (!"pValue" %in% colnames(d)) {
+    d$pValue <- NA_real_
+  }
   d
 }
 
@@ -32,8 +38,13 @@
 # carries usable values, else by fdr, else the identity order. Guards against
 # order(NULL) (missing column) and all-NA p-value producers (SAINTexpress).
 .de_order_idx <- function(d) {
-  col <- if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) "pValue"
-    else if ("fdr" %in% colnames(d)) "fdr" else NULL
+  col <- if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) {
+    "pValue"
+  } else if ("fdr" %in% colnames(d)) {
+    "fdr"
+  } else {
+    NULL
+  }
   if (is.null(col)) seq_len(nrow(d)) else order(d[[col]], na.last = TRUE)
 }
 
@@ -54,20 +65,22 @@
 #' @export
 ExploreDatasetSE_Proteomics <- R6::R6Class(
   classname = "ExploreDatasetSE_Proteomics",
-  inherit   = ExploreDatasetSE,
+  inherit = ExploreDatasetSE,
 
   private = list(
-
     .build_config = function(se) {
-      cd <- data.frame(SummarizedExperiment::colData(se),
-                       check.names = FALSE, stringsAsFactors = FALSE)
+      cd <- data.frame(SummarizedExperiment::colData(se), check.names = FALSE, stringsAsFactors = FALSE)
 
       # Factors: legacy convert_proteomics_se exclusion regex. Names are
       # taken verbatim from colData (NO `G_` stripping) to match the legacy
       # gStoreList$factors / $groupingName values that modules consume.
-      factor_cols  <- grep("Sample|Name|names|channel|raw\\.file",
-                           colnames(cd),
-                           invert = TRUE, ignore.case = TRUE, value = TRUE)
+      factor_cols <- grep(
+        "Sample|Name|names|channel|raw\\.file",
+        colnames(cd),
+        invert = TRUE,
+        ignore.case = TRUE,
+        value = TRUE
+      )
       factor_names <- factor_cols
       factor_levels <- setNames(
         lapply(factor_cols, function(fc) {
@@ -78,31 +91,37 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       )
 
       # Contrasts from rowData `^constrast_` columns (typo preserved).
-      rd_nms    <- names(SummarizedExperiment::rowData(se))
-      contrasts <- gsub("^constrast_", "",
-                        grep("^constrast_", rd_nms, value = TRUE))
+      rd_nms <- names(SummarizedExperiment::rowData(se))
+      contrasts <- gsub("^constrast_", "", grep("^constrast_", rd_nms, value = TRUE))
 
       # Inspect first contrast to determine flavour (protein/phospho/peptide).
       # Uses the package-level standardise_columns() which renames both
       # rowdata-annotation columns and DE-stat columns in a single pass.
-      feature_id_kind <- "protein"; saint <- FALSE
+      feature_id_kind <- "protein"
+      saint <- FALSE
       if (length(contrasts)) {
         df1 <- standardise_columns(
-          data.frame(SummarizedExperiment::rowData(se)[[paste0("constrast_", contrasts[1])]],
-                     check.names = FALSE, stringsAsFactors = FALSE)
+          data.frame(
+            SummarizedExperiment::rowData(se)[[paste0("constrast_", contrasts[1])]],
+            check.names = FALSE,
+            stringsAsFactors = FALSE
+          )
         )
-        if      ("site"       %in% colnames(df1)) feature_id_kind <- "phospho"
-        else if ("peptide_Id" %in% colnames(df1)) feature_id_kind <- "peptide"
-        saint <- .se_is_saint(df1)   # standardise_columns leaves SaintScore as-is
+        if ("site" %in% colnames(df1)) {
+          feature_id_kind <- "phospho"
+        } else if ("peptide_Id" %in% colnames(df1)) {
+          feature_id_kind <- "peptide"
+        }
+        saint <- .se_is_saint(df1) # standardise_columns leaves SaintScore as-is
       }
 
       # SAINTexpress reference = the grouping level flagged as control
       # (colData CONTROL == "C", e.g. eGFP); the contrast names carry no `_vs_`.
       reference_default <- NA_character_
-      if (saint && "CONTROL" %in% colnames(cd) &&
-          (factor_names[1] %||% "") %in% colnames(cd)) {
+      if (saint && "CONTROL" %in% colnames(cd) && (factor_names[1] %||% "") %in% colnames(cd)) {
         ctrl_lvls <- unique(as.character(cd[[factor_names[1]]])[
-          toupper(trimws(as.character(cd$CONTROL))) == "C"])
+          toupper(trimws(as.character(cd$CONTROL))) == "C"
+        ])
         if (length(ctrl_lvls) == 1L) reference_default <- ctrl_lvls
       }
 
@@ -110,30 +129,29 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
         lapply(contrasts, function(cn) {
           grp <- strsplit(cn, "_vs_|--over--")[[1]]
           list(
-            test_group      = grp[1] %||% NA_character_,
+            test_group = grp[1] %||% NA_character_,
             reference_group = if (saint) reference_default else (grp[2] %||% NA_character_),
-            factor_name     = factor_names[1] %||% NA_character_,
-            method          = if (saint) "SAINTexpress" else "prolfqua",
-            thresholds      = list(fdr = 0.05, log2fc = 1),
+            factor_name = factor_names[1] %||% NA_character_,
+            method = if (saint) "SAINTexpress" else "prolfqua",
+            thresholds = list(fdr = 0.05, log2fc = 1),
             # SAINT carries a second, display-only significance axis (SaintScore,
             # high = significant); mirrors the h5ad backend's score label.
-            score_label     = if (saint) "SaintScore" else NULL
+            score_label = if (saint) "SaintScore" else NULL
           )
         }),
         contrasts
       )
 
-      ass_nms     <- SummarizedExperiment::assayNames(se)
-      primary_key <- intersect(c("transformedData", "transformed",
-                                 "intensities", "log2"), ass_nms)
+      ass_nms <- SummarizedExperiment::assayNames(se)
+      primary_key <- intersect(c("transformedData", "transformed", "intensities", "log2"), ass_nms)
       primary_key <- if (length(primary_key)) primary_key[1] else ass_nms[1]
-      raw_key     <- intersect(c("intensities_raw", "raw", "intensities"),
-                               ass_nms)
-      raw_key     <- if (length(raw_key)) raw_key[1] else primary_key
+      raw_key <- intersect(c("intensities_raw", "raw", "intensities"), ass_nms)
+      raw_key <- if (length(raw_key)) raw_key[1] else primary_key
 
       # Derive data_type from feature_id_kind so server modules can dispatch
       # at the flavour level if they want; omics_class keeps the umbrella.
-      data_type_flavour <- switch(feature_id_kind,
+      data_type_flavour <- switch(
+        feature_id_kind,
         protein = "proteomics",
         peptide = "peptidomics",
         phospho = "phosphoproteomics",
@@ -141,7 +159,8 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       )
 
       has_raw <- !identical(raw_key, primary_key) &&
-                 !is.null(raw_key) && !is.na(raw_key)
+        !is.null(raw_key) &&
+        !is.na(raw_key)
       assay_map_l <- c(
         list(intensities = primary_key),
         if (has_raw) list(intensities_raw = raw_key)
@@ -154,47 +173,46 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       )
 
       list(
-        schema_version        = "exploreDE/config/1.0",
-        omics_class           = "proteomics",
-        data_type             = data_type_flavour,
-        organism              = NA_character_,
-        ref_build             = NA_character_,
-        feature_id_kind       = feature_id_kind,
-        factors               = factor_names,
-        factor_levels         = factor_levels,
-        primary_grouping      = factor_names[1] %||% NA_character_,
-        secondary_grouping    = NA_character_,
-        assay_map             = assay_map_l,
-        assay_labels          = assay_labels_l,
+        schema_version = "exploreDE/config/1.0",
+        omics_class = "proteomics",
+        data_type = data_type_flavour,
+        organism = NA_character_,
+        ref_build = NA_character_,
+        feature_id_kind = feature_id_kind,
+        factors = factor_names,
+        factor_levels = factor_levels,
+        primary_grouping = factor_names[1] %||% NA_character_,
+        secondary_grouping = NA_character_,
+        assay_map = assay_map_l,
+        assay_labels = assay_labels_l,
         background_expression = 1,
-        raw_assay_name        = "intensities",
-        primary_assay_name    = "intensities",
-        display_name_field    = NA_character_,    # handled in .prep()
-        description_field     = "description",
-        primary_contrast      = if (length(contrasts)) contrasts[1] else NA_character_,
-        contrast_meta         = cm,
-        de_display_extras     = if (saint) "SaintScore" else character(),
-        enrichment_kinds      = character(),
-        enrichment_locator    = list(),
-        sgrna_to_gene         = NULL,
-        proteomics            = NULL,             # filled by .prep()
+        raw_assay_name = "intensities",
+        primary_assay_name = "intensities",
+        display_name_field = NA_character_, # handled in .prep()
+        description_field = "description",
+        primary_contrast = if (length(contrasts)) contrasts[1] else NA_character_,
+        contrast_meta = cm,
+        de_display_extras = if (saint) "SaintScore" else character(),
+        enrichment_kinds = character(),
+        enrichment_locator = list(),
+        sgrna_to_gene = NULL,
+        proteomics = NULL, # filled by .prep()
         source = list(
-          backend_kind   = "se",
+          backend_kind = "se",
           schema_version = "exploreDE/config/1.0",
-          built_at       = Sys.time()
+          built_at = Sys.time()
         )
       )
     },
 
     .prep = function() {
-      se        <- private$.se
+      se <- private$.se
       contrasts <- self$contrasts()
 
       if (!length(contrasts)) {
-        private$.features_df <- data.frame(feature_id   = character(),
-                                           display_name = character())
-        private$.de_dfs      <- list()
-        private$.fid_lookup  <- setNames(rownames(se), rownames(se))
+        private$.features_df <- data.frame(feature_id = character(), display_name = character())
+        private$.de_dfs <- list()
+        private$.fid_lookup <- setNames(rownames(se), rownames(se))
         return(invisible(NULL))
       }
 
@@ -205,8 +223,11 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       # eds_standardise_de_columns() as aliases.
       raw_dfs <- setNames(
         lapply(contrasts, function(cn) {
-          data.frame(SummarizedExperiment::rowData(se)[[paste0("constrast_", cn)]],
-                     check.names = FALSE, stringsAsFactors = FALSE)
+          data.frame(
+            SummarizedExperiment::rowData(se)[[paste0("constrast_", cn)]],
+            check.names = FALSE,
+            stringsAsFactors = FALSE
+          )
         }),
         contrasts
       )
@@ -222,7 +243,7 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       # Reference DataFrame (first contrast, NOT yet sorted by p-value) so
       # feature_id ↔ rownames(se) alignment is preserved for the fid_lookup.
       ref_df <- std_dfs[[1]]
-      rownames(ref_df)  <- rownames(se)[seq_len(nrow(ref_df))]
+      rownames(ref_df) <- rownames(se)[seq_len(nrow(ref_df))]
       ref_df$feature_id <- build_feature_id(ref_df)
 
       # fid_lookup: SE rowname → built feature_id
@@ -232,8 +253,7 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       # convert_proteomics_se drops the redundant protein_Id column in that
       # case. Replicate so eds$proteomics_choices("protein") matches
       # gs$protein_choices behaviour (NULL for protein-level data).
-      if ("protein_Id" %in% colnames(ref_df) &&
-          identical(ref_df$feature_id, ref_df$protein_Id)) {
+      if ("protein_Id" %in% colnames(ref_df) && identical(ref_df$feature_id, ref_df$protein_Id)) {
         ref_df$protein_Id <- NULL
       }
 
@@ -244,7 +264,9 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       display <- rep(NA_character_, nrow(ref_df))
       for (col in display_priority) {
         blank <- is.na(display) | !nzchar(display)
-        if (!any(blank)) break
+        if (!any(blank)) {
+          break
+        }
         vals <- as.character(ref_df[[col]])
         display[blank] <- vals[blank]
       }
@@ -254,8 +276,7 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
 
       # Tidy description if present.
       if ("description" %in% colnames(ref_df)) {
-        ref_df$description <- gsub(" \\[.*", "",
-                                   as.character(ref_df$description))
+        ref_df$description <- gsub(" \\[.*", "", as.character(ref_df$description))
       }
       rownames(ref_df) <- ref_df$feature_id
       private$.features_df <- ref_df
@@ -268,8 +289,7 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
           d <- std_dfs[[i]]
           d$feature_id <- ref_df$feature_id[seq_len(nrow(d))]
           # Drop redundant protein_Id at protein level (mirrors above).
-          if ("protein_Id" %in% colnames(d) &&
-              identical(d$feature_id, as.character(d$protein_Id))) {
+          if ("protein_Id" %in% colnames(d) && identical(d$feature_id, as.character(d$protein_Id))) {
             d$protein_Id <- NULL
           }
           d <- eds_standardise_de_columns(d)
@@ -279,9 +299,13 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
           # frames that already carry it (standard prolfqua) are untouched.
           if (!"usedInTest" %in% colnames(d)) {
             has_p <- "pValue" %in% colnames(d) && any(!is.na(d$pValue))
-            d$usedInTest <- if (has_p) !is.na(d$pValue)
-              else if ("fdr" %in% colnames(d)) !is.na(d$fdr)
-              else TRUE
+            d$usedInTest <- if (has_p) {
+              !is.na(d$pValue)
+            } else if ("fdr" %in% colnames(d)) {
+              !is.na(d$fdr)
+            } else {
+              TRUE
+            }
           }
           if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) {
             d <- d[order(d$pValue, na.last = TRUE), , drop = FALSE]
@@ -299,21 +323,20 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       # proteomics-only feature picker UI. protein_Id will have been dropped
       # already if it was redundant.
       sa1 <- de_dfs[[1]]
-      gene_lookup     <- NULL
-      gene_choices    <- NULL
-      protein_lookup  <- NULL
+      gene_lookup <- NULL
+      gene_choices <- NULL
+      protein_lookup <- NULL
       protein_choices <- NULL
-      if ("gene_name" %in% colnames(sa1) &&
-          !identical(sa1$feature_id, sa1$gene_name)) {
-        gene_lookup  <- split(sa1$feature_id, sa1$gene_name)
+      if ("gene_name" %in% colnames(sa1) && !identical(sa1$feature_id, sa1$gene_name)) {
+        gene_lookup <- split(sa1$feature_id, sa1$gene_name)
         gene_choices <- unique(sa1$gene_name)
       }
       if ("protein_Id" %in% colnames(sa1)) {
-        protein_lookup  <- split(sa1$feature_id, sa1$protein_Id)
+        protein_lookup <- split(sa1$feature_id, sa1$protein_Id)
         protein_choices <- unique(sa1$protein_Id)
       }
       private$.config$proteomics <- list(
-        gene    = list(choices = gene_choices,    lookup = gene_lookup),
+        gene = list(choices = gene_choices, lookup = gene_lookup),
         protein = list(choices = protein_choices, lookup = protein_lookup)
       )
     }

@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("RNA-seq gene-level: accessors return populated values", {
-  fx  <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene()
   eds <- new_explore_dataset(fx$se)
 
   expect_identical(eds$omics_class(), "genomics")
@@ -21,12 +21,12 @@ test_that("RNA-seq gene-level: accessors return populated values", {
 
   f <- eds$features()
   expect_s3_class(f, "data.frame")
-  expect_true("feature_id"   %in% colnames(f))
+  expect_true("feature_id" %in% colnames(f))
   expect_true("display_name" %in% colnames(f))
 })
 
 test_that("RNA-seq gene-level: DE accessor", {
-  fx  <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene()
   eds <- new_explore_dataset(fx$se)
 
   expect_gt(length(eds$contrasts()), 0L)
@@ -39,8 +39,8 @@ test_that("RNA-seq gene-level: DE accessor", {
   expect_s3_class(de, "data.frame")
   expect_gt(nrow(de), 0L)
   expect_true("effect_log2fc" %in% colnames(de))
-  expect_true("score_pvalue"  %in% colnames(de))
-  expect_true("score_fdr"     %in% colnames(de))
+  expect_true("score_pvalue" %in% colnames(de))
+  expect_true("score_fdr" %in% colnames(de))
 
   cm <- eds$contrast_meta(c1)
   expect_identical(cm$method, "DESeq2")
@@ -49,7 +49,7 @@ test_that("RNA-seq gene-level: DE accessor", {
 })
 
 test_that("RNA-seq gene-level: assay accessor", {
-  fx  <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene()
   eds <- new_explore_dataset(fx$se)
 
   an <- eds$assay_names()
@@ -62,13 +62,13 @@ test_that("RNA-seq gene-level: assay accessor", {
 })
 
 test_that("RNA-seq gene-level: validator passes", {
-  fx  <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene()
   eds <- new_explore_dataset(fx$se)
   expect_silent(validate_explore_dataset(eds))
 })
 
 test_that("RNA-seq isoform-level: feature_id_kind = isoform", {
-  fx  <- fx_rnaseq_isoform()
+  fx <- fx_rnaseq_isoform()
   eds <- new_explore_dataset(fx$se)
   expect_identical(eds$omics_class(), "genomics")
   expect_identical(eds$data_type(), "RNASeq")

@@ -16,8 +16,7 @@
 
 .landing_spinner <- function(msg) {
   waiter::waiter_show(
-    html  = tagList(waiter::spin_fading_circles(),
-                    tags$h4(msg, style = "color:#fff; margin-top:1em;")),
+    html = tagList(waiter::spin_fading_circles(), tags$h4(msg, style = "color:#fff; margin-top:1em;")),
     color = "#527085"
   )
 }
@@ -48,10 +47,10 @@ observeEvent(input$uploadH5ad, {
   } else {
     waiter::waiter_hide()
     output$upload_h5ad_status <- renderText(paste0(
-      "Could not load this file.\n\n", res$msg,
+      "Could not load this file.\n\n",
+      res$msg,
       "\n\nMake sure it was built with build_explore_h5ad()."
     ))
-    showNotification("Upload failed — see the message on the landing screen.",
-                     type = "error", duration = 8)
+    showNotification("Upload failed — see the message on the landing screen.", type = "error", duration = 8)
   }
 })

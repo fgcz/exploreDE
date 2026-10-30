@@ -15,8 +15,8 @@
 #' @export
 batch_correction_design <- function(dataset, designColumn, batchColumn) {
   null_design <- list(design = NULL, skip = FALSE, msg = NULL)
-  skipped     <- function(msg) list(design = NULL, skip = TRUE,  msg = msg)
-  warned      <- function(msg) list(design = NULL, skip = FALSE, msg = msg)
+  skipped <- function(msg) list(design = NULL, skip = TRUE, msg = msg)
+  warned <- function(msg) list(design = NULL, skip = FALSE, msg = msg)
 
   if (is.null(designColumn) || !nzchar(designColumn) || designColumn == "None") {
     return(null_design)
@@ -40,12 +40,12 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
   if (inherits(design, "error")) {
     return(skipped(sprintf(
       "Could not build design matrix from '%s': %s — batch correction skipped.",
-      designColumn, conditionMessage(design)
+      designColumn,
+      conditionMessage(design)
     )))
   }
 
-  if (!is.null(batchColumn) && nzchar(batchColumn) && batchColumn != "None" &&
-      batchColumn %in% colnames(dataset)) {
+  if (!is.null(batchColumn) && nzchar(batchColumn) && batchColumn != "None" && batchColumn %in% colnames(dataset)) {
     batch <- factor(dataset[[batchColumn]])
     if (nlevels(batch) >= 2) {
       batch_mm <- tryCatch(stats::model.matrix(~batch), error = function(e) NULL)
@@ -54,7 +54,8 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
         if (qr(combined)$rank < ncol(combined)) {
           return(warned(sprintf(
             "Batch ('%s') and design ('%s') are confounded — batch correction applied without a design matrix.",
-            batchColumn, designColumn
+            batchColumn,
+            designColumn
           )))
         }
       }
@@ -70,7 +71,9 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
 #' and surfaces a Shiny notification.
 #' @export
 apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
-  if (is.null(batchCol) || !nzchar(batchCol) || batchCol == "None") return(counts)
+  if (is.null(batchCol) || !nzchar(batchCol) || batchCol == "None") {
+    return(counts)
+  }
 
   notify <- function(msg, type = "warning") {
     if (!is.null(shiny::getDefaultReactiveDomain())) {
@@ -80,8 +83,10 @@ apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
     }
   }
 
-  if (!batchCol %in% colnames(dataset) ||
-      nlevels(factor(dataset[[batchCol]])) < 2) {
+  if (
+    !batchCol %in% colnames(dataset) ||
+      nlevels(factor(dataset[[batchCol]])) < 2
+  ) {
     notify(sprintf("Batch factor '%s' has <2 levels — batch correction skipped.", batchCol))
     return(counts)
   }
@@ -90,17 +95,19 @@ apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
   if (!is.null(info$msg)) {
     notify(info$msg, type = if (isTRUE(info$skip)) "error" else "warning")
   }
-  if (isTRUE(info$skip)) return(counts)
+  if (isTRUE(info$skip)) {
+    return(counts)
+  }
 
   args <- list(x = counts, batch = dataset[[batchCol]])
-  if (!is.null(info$design)) args$design <- info$design
+  if (!is.null(info$design)) {
+    args$design <- info$design
+  }
 
   tryCatch(
     do.call(limma::removeBatchEffect, args),
     error = function(e) {
-      notify(sprintf("Batch correction failed: %s — showing uncorrected counts.",
-                     conditionMessage(e)),
-             type = "error")
+      notify(sprintf("Batch correction failed: %s — showing uncorrected counts.", conditionMessage(e)), type = "error")
       counts
     }
   )
@@ -156,12 +163,23 @@ inputDataReactive <- reactive({
 # Selectors render only for datasets with more than one contrast.
 activeContrast <- reactiveVal(NULL)
 
-contrast_mirror_tabs <- c("degTable", "volcano", "deQc", "heatmap", "boxplot",
-                          "ora", "gsea", "goTile", "kegg", "correlation",
-                          "replicability")
-contrast_selector_ids <- c(summary = "contrastSelected",
-                           stats::setNames(paste0("contrastSelected_", contrast_mirror_tabs),
-                                           contrast_mirror_tabs))
+contrast_mirror_tabs <- c(
+  "degTable",
+  "volcano",
+  "deQc",
+  "heatmap",
+  "boxplot",
+  "ora",
+  "gsea",
+  "goTile",
+  "kegg",
+  "correlation",
+  "replicability"
+)
+contrast_selector_ids <- c(
+  summary = "contrastSelected",
+  stats::setNames(paste0("contrastSelected_", contrast_mirror_tabs), contrast_mirror_tabs)
+)
 
 # The contrast currently selected: activeContrast(), validated against the
 # dataset and falling back to its primary contrast. Every contrast-dependent
@@ -171,8 +189,10 @@ selectedContrast <- reactive({
   eds <- inputDataReactive()$.eds
   # Counts-only datasets carry no contrasts; return NULL so DE-family
   # observeEvent(selectedContrast()) blocks (ignoreNULL = TRUE) never fire.
-  if (!eds$has_de()) return(NULL)
-  cs  <- eds$contrasts()
+  if (!eds$has_de()) {
+    return(NULL)
+  }
+  cs <- eds$contrasts()
   sel <- activeContrast()
   if (!is.null(sel) && nzchar(sel) && sel %in% cs) sel else eds$primary_contrast()
 })
@@ -181,27 +201,42 @@ base::lapply(names(contrast_selector_ids), function(tab) {
   id <- contrast_selector_ids[[tab]]
   output[[paste0("contrastSelectorUI_", tab)]] <- renderUI({
     eds <- inputDataReactive()$.eds
-    cs  <- eds$contrasts()
-    if (length(cs) < 2) return(NULL)
-    selectizeInput(inputId = id, label = "Select contrast to view",
-                   choices = cs, selected = isolate(selectedContrast()),
-                   multiple = FALSE)
+    cs <- eds$contrasts()
+    if (length(cs) < 2) {
+      return(NULL)
+    }
+    selectizeInput(
+      inputId = id,
+      label = "Select contrast to view",
+      choices = cs,
+      selected = isolate(selectedContrast()),
+      multiple = FALSE
+    )
   })
   outputOptions(output, paste0("contrastSelectorUI_", tab), suspendWhenHidden = FALSE)
-  observeEvent(input[[id]], {
-    v <- input[[id]]
-    if (nzchar(v) && !identical(v, isolate(activeContrast()))) activeContrast(v)
-  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+  observeEvent(
+    input[[id]],
+    {
+      v <- input[[id]]
+      if (nzchar(v) && !identical(v, isolate(activeContrast()))) activeContrast(v)
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = TRUE
+  )
 })
 
-observeEvent(activeContrast(), {
-  v <- activeContrast()
-  for (id in contrast_selector_ids) {
-    if (!identical(isolate(input[[id]]), v)) {
-      updateSelectizeInput(session = session, inputId = id, selected = v)
+observeEvent(
+  activeContrast(),
+  {
+    v <- activeContrast()
+    for (id in contrast_selector_ids) {
+      if (!identical(isolate(input[[id]]), v)) {
+        updateSelectizeInput(session = session, inputId = id, selected = v)
+      }
     }
-  }
-}, ignoreNULL = TRUE)
+  },
+  ignoreNULL = TRUE
+)
 
 is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))
@@ -210,7 +245,9 @@ is_url <- function(dataDir) {
 # Publish an already-built eds into the shared reactive.
 set_eds <- function(eds, seUnfiltered = NULL, dataDir = NULL) {
   res <- list(.eds = eds)
-  if (!is.null(seUnfiltered)) res$seUnfiltered <- seUnfiltered
+  if (!is.null(seUnfiltered)) {
+    res$seUnfiltered <- seUnfiltered
+  }
   attr(res, "dataDir") <- dataDir
   edsState(res)
 
@@ -239,14 +276,18 @@ resolve_from_url <- function(dataUrl) {
     showModal(modalDialog(
       title = "The file does not exist",
       "This link is not a valid dataset path. If the issue persists, email peter.leary@uzh.ch",
-      easyClose = TRUE, footer = NULL
+      easyClose = TRUE,
+      footer = NULL
     ))
     return(NULL)
   }
   proj <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
   if (grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) {
-    return(list(dataDir = paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl),
-                dataType = "proteomics", projectFromUrl = proj))
+    return(list(
+      dataDir = paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl),
+      dataType = "proteomics",
+      projectFromUrl = proj
+    ))
   }
   if (grepl("CountQC|DESeq2|EdgeR|Limma|ExploreMageckCounts", dataUrl, ignore.case = TRUE)) {
     urlDataRoot <- c("/srv/gstore/projects", "/srv/GT/analysis/course_sushi/public/gstore/projects")
@@ -264,7 +305,8 @@ resolve_from_url <- function(dataUrl) {
   showModal(modalDialog(
     title = "The file does not exist",
     "Either the analysis has not yet finished running, you have made a mistake in the URL, or you have not pointed to any dataset. Please try again! If the issue persists, email peter.leary@uzh.ch",
-    easyClose = TRUE, footer = NULL
+    easyClose = TRUE,
+    footer = NULL
   ))
   NULL
 }
@@ -272,7 +314,9 @@ resolve_from_url <- function(dataUrl) {
 # Record project dir for multi-analysis browsing.
 record_project <- function(projectFromUrl) {
   multiProjectInfo$currentDataDir <- NULL
-  if (is.null(projectFromUrl) || is.na(projectFromUrl) || projectFromUrl == "") return(invisible())
+  if (is.null(projectFromUrl) || is.na(projectFromUrl) || projectFromUrl == "") {
+    return(invisible())
+  }
   projectPath <- file.path("/srv/gstore/projects", projectFromUrl)
   if (dir.exists(projectPath)) {
     multiProjectInfo$projectDir <- projectPath
@@ -286,14 +330,21 @@ record_project <- function(projectFromUrl) {
 # LDAP. Looked up once per session and shared by the ?data= check and every
 # multi-DE dataset (ldap_allows_project() in R/utils_multi_de.R).
 ldap_lookup <- function(user) {
-  query <- paste0("ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' ",
-                  shQuote(paste0("(cn=", user, ")")), " memberof")
-  list(roles    = system(paste0(query, " | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"), intern = TRUE),
-       projects = system(paste0(query, " | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"), intern = TRUE))
+  query <- paste0(
+    "ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' ",
+    shQuote(paste0("(cn=", user, ")")),
+    " memberof"
+  )
+  list(
+    roles = system(paste0(query, " | grep Roles | sed 's/,ou=.*//g;s,.*cn=,,g'"), intern = TRUE),
+    projects = system(paste0(query, " | grep Projec | sed 's/,ou=.*//g;s,.*cn=P_,p,g' | sort | uniq"), intern = TRUE)
+  )
 }
 .ldap_cache <- NULL
 session_ldap <- function() {
-  if (is.null(.ldap_cache)) .ldap_cache <<- ldap_lookup(username)
+  if (is.null(.ldap_cache)) {
+    .ldap_cache <<- ldap_lookup(username)
+  }
   .ldap_cache
 }
 
@@ -301,7 +352,6 @@ session_ldap <- function() {
 # Returns list(se, seUnfiltered, dataDir) or NULL (after a modal). LDAP checks
 # and every load branch are preserved verbatim from the original eager block.
 load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
-
   # ---- Import proteomics data from pStore ----
   if (dataType == "proteomics") {
     se <- if (grepl("\\.h5ad$", dataDir, ignore.case = TRUE)) {
@@ -313,13 +363,20 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
         utils::download.file(dataDir, path, mode = "wb", quiet = TRUE)
       }
       se_from_prolfquapp_anndata(.h5ad_read(path))
-    } else if (is_url(dataDir)) readRDS(url(dataDir)) else readRDS(dataDir)
+    } else if (is_url(dataDir)) {
+      readRDS(url(dataDir))
+    } else {
+      readRDS(dataDir)
+    }
     return(list(se = se, seUnfiltered = NULL, dataDir = dataDir))
   }
   if (grepl("zip", dataDir)) {
     myTempFile <- tempfile(fileext = ".rds", tmpdir = ".") #
     res <- system(
-      paste("ssh fgcz-ms.uzh.ch unzip -c -qq /srv/www/htdocs/p30385/bfabric/Proteomics/DEA_FragPipe-DiaNN/2023/2023-09/2023-09-22/workunit_293901/2360252.zip '\\*rds' > ", myTempFile)
+      paste(
+        "ssh fgcz-ms.uzh.ch unzip -c -qq /srv/www/htdocs/p30385/bfabric/Proteomics/DEA_FragPipe-DiaNN/2023/2023-09/2023-09-22/workunit_293901/2360252.zip '\\*rds' > ",
+        myTempFile
+      )
     )
     if (res != 0) {
       message("download failed")
@@ -353,7 +410,16 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
       ldap_role <- "unauthorized"
       allowed <- FALSE
     }
-    message("Role: ", roles, "; LDAP: ", ldap_role, "; Allowed to all projects?: ", allowed, "; Allowed projects: ", allowedProjects)
+    message(
+      "Role: ",
+      roles,
+      "; LDAP: ",
+      ldap_role,
+      "; Allowed to all projects?: ",
+      allowed,
+      "; Allowed projects: ",
+      allowedProjects
+    )
   }
 
   if (!isTRUE(allowed)) {
@@ -412,12 +478,18 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
 # Resolve + load a ?data= URL, then publish the eds.
 load_from_url <- function(dataUrl) {
   # A full link (?data=https://...) to an .h5ad on an allowed site.
-  if (grepl("^[A-Za-z][A-Za-z0-9+.-]*://", dataUrl)) return(load_h5ad_from_link(dataUrl))
+  if (grepl("^[A-Za-z][A-Za-z0-9+.-]*://", dataUrl)) {
+    return(load_h5ad_from_link(dataUrl))
+  }
   resolved <- resolve_from_url(dataUrl)
-  if (is.null(resolved)) return(invisible())
+  if (is.null(resolved)) {
+    return(invisible())
+  }
   record_project(resolved$projectFromUrl)
   loaded <- load_sushi_se(resolved$dataDir, resolved$dataType, resolved$projectFromUrl)
-  if (is.null(loaded)) return(invisible())
+  if (is.null(loaded)) {
+    return(invisible())
+  }
   set_eds_from_se(loaded$se, loaded$seUnfiltered, loaded$dataDir)
 }
 
@@ -431,15 +503,22 @@ load_h5ad_from_link <- function(url) {
     invisible()
   }
   ok <- url_load_allowed(url)
-  if (!isTRUE(ok)) return(fail("This link can't be opened", paste0("exploreDE can't load it: ", attr(ok, "reason"), ".")))
+  if (!isTRUE(ok)) {
+    return(fail("This link can't be opened", paste0("exploreDE can't load it: ", attr(ok, "reason"), ".")))
+  }
   path <- tempfile(fileext = ".h5ad")
   on.exit(unlink(path), add = TRUE)
   fetched <- tryCatch(url_load_fetch(url, path), error = function(e) e)
-  if (inherits(fetched, "error"))
-    return(fail("Could not download this file", paste0(conditionMessage(fetched),
-      ". Links to finished jobs expire; check that the job still exists.")))
+  if (inherits(fetched, "error")) {
+    return(fail(
+      "Could not download this file",
+      paste0(conditionMessage(fetched), ". Links to finished jobs expire; check that the job still exists.")
+    ))
+  }
   res <- load_h5ad_upload(path)
-  if (!isTRUE(res$ok)) fail("Could not load this file", res$msg)
+  if (!isTRUE(res$ok)) {
+    fail("Could not load this file", res$msg)
+  }
   invisible()
 }
 
@@ -453,8 +532,7 @@ load_demo <- function() {
   record_project(NULL)
   f <- file.path(DEMO_DATADIR, "deResult.rds")
   if (!file.exists(f)) {
-    showModal(modalDialog(title = "Demo data not found",
-                          paste("Expected the demo dataset at", f), easyClose = TRUE))
+    showModal(modalDialog(title = "Demo data not found", paste("Expected the demo dataset at", f), easyClose = TRUE))
     return(invisible())
   }
   set_eds_from_se(readRDS(f), dataDir = DEMO_DATADIR)
@@ -473,8 +551,7 @@ load_local_file <- function(path) {
   }
   eds <- tryCatch(new_explore_dataset(path), error = function(e) e)
   if (inherits(eds, "error")) {
-    showModal(modalDialog(title = "Could not load this file",
-                          conditionMessage(eds), easyClose = TRUE))
+    showModal(modalDialog(title = "Could not load this file", conditionMessage(eds), easyClose = TRUE))
     return(invisible())
   }
   set_eds(eds, dataDir = if (dir.exists(path)) path else dirname(path))
@@ -487,14 +564,19 @@ load_h5ad_upload <- function(path) {
   if (inherits(eds, "error")) {
     m <- conditionMessage(eds)
     hint <- if (grepl("HDF5|link|iteration|truncat|superblock|addr", m, ignore.case = TRUE)) {
-      paste0("\n\nThe file could not be opened as HDF5. It may be corrupt or incompletely ",
-             "written — e.g. an interrupted or out-of-memory build. Try rebuilding it in a ",
-             "fresh R session (plain Rscript, rm() large objects + gc()).")
-    } else ""
+      paste0(
+        "\n\nThe file could not be opened as HDF5. It may be corrupt or incompletely ",
+        "written — e.g. an interrupted or out-of-memory build. Try rebuilding it in a ",
+        "fresh R session (plain Rscript, rm() large objects + gc())."
+      )
+    } else {
+      ""
+    }
     return(list(ok = FALSE, msg = paste0("Could not read the file: ", m, hint)))
   }
-  v <- tryCatch(validate_explore_dataset(eds, strict = FALSE),
-                error = function(e) list(ok = FALSE, errors = conditionMessage(e)))
+  v <- tryCatch(validate_explore_dataset(eds, strict = FALSE), error = function(e) {
+    list(ok = FALSE, errors = conditionMessage(e))
+  })
   if (!isTRUE(v$ok)) {
     return(list(ok = FALSE, msg = paste(v$errors, collapse = "\n")))
   }
@@ -504,7 +586,7 @@ load_h5ad_upload <- function(path) {
 
 # ---- Boot: resolve + load a ?data= URL eagerly (unchanged UX for SUSHI) ------
 queryList <- parseQueryString(session$clientData$url_search)
-dataUrl   <- if (is.list(queryList)) queryList$data else NULL
+dataUrl <- if (is.list(queryList)) queryList$data else NULL
 message(format(Sys.time(), "%Y-%m-%d--%H-%M-%S"), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
 
 if (!is.null(dataUrl)) {
@@ -518,10 +600,16 @@ if (!is.null(dataUrl)) {
 # Nothing to load → edsState stays NULL → the landing screen (server-landing.R) shows.
 
 figuresDataReactive <- reactiveValues(
-  "volcanoStatic" = NULL, "volcanoMA" = NULL, "volcanoPlotly" = NULL,
-  "heatmapDEFeatures" = NULL, "heatmapCustom" = NULL, "heatmapGO" = NULL,
-  "pcaStatic" = NULL, "pcaPaired" = NULL,
-  "boxplotStatic" = NULL, "barplotStatic" = NULL,
+  "volcanoStatic" = NULL,
+  "volcanoMA" = NULL,
+  "volcanoPlotly" = NULL,
+  "heatmapDEFeatures" = NULL,
+  "heatmapCustom" = NULL,
+  "heatmapGO" = NULL,
+  "pcaStatic" = NULL,
+  "pcaPaired" = NULL,
+  "boxplotStatic" = NULL,
+  "barplotStatic" = NULL,
   "goTilePlot" = NULL
 )
 # genesReactive removed — replaced by featureBucket in server-featureBucket.R

@@ -70,7 +70,10 @@ tabItem(
         numericInput(
           inputId = "keggLimitColour",
           label = "Scale limit for colours (+/-)",
-          value = 1, min = 1, max = 20, step = 0.5
+          value = 1,
+          min = 1,
+          max = 20,
+          step = 0.5
         )
       ) # end of box
     ), # end of settings column
@@ -91,7 +94,8 @@ tabItem(
           style = "display: inline-block; vertical-align: top; margin-top: 0px;",
           downloadButton(outputId = "dlPlot_kegg", label = "Download Pathway (PNG)")
         ),
-        br(), br(),
+        br(),
+        br(),
         withSpinner(plotOutput("keggOutput", inline = TRUE))
       )
     )

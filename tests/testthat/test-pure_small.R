@@ -12,22 +12,22 @@ test_that("is_url recognises http / https URLs and rejects paths", {
 
 # --- parse_gene_text --------------------------------------------------------
 test_that("parse_gene_text splits by whitespace, comma, slash, tab, newline", {
-  expect_equal(parse_gene_text("GENE1 GENE2"),          c("GENE1", "GENE2"))
-  expect_equal(parse_gene_text("GENE1,GENE2,GENE3"),    c("GENE1", "GENE2", "GENE3"))
-  expect_equal(parse_gene_text("GENE1/GENE2"),          c("GENE1", "GENE2"))
-  expect_equal(parse_gene_text("GENE1\tGENE2"),         c("GENE1", "GENE2"))
-  expect_equal(parse_gene_text("GENE1\nGENE2"),         c("GENE1", "GENE2"))
-  expect_equal(parse_gene_text("A, B/C\tD\nE"),         c("A", "B", "C", "D", "E"))
+  expect_equal(parse_gene_text("GENE1 GENE2"), c("GENE1", "GENE2"))
+  expect_equal(parse_gene_text("GENE1,GENE2,GENE3"), c("GENE1", "GENE2", "GENE3"))
+  expect_equal(parse_gene_text("GENE1/GENE2"), c("GENE1", "GENE2"))
+  expect_equal(parse_gene_text("GENE1\tGENE2"), c("GENE1", "GENE2"))
+  expect_equal(parse_gene_text("GENE1\nGENE2"), c("GENE1", "GENE2"))
+  expect_equal(parse_gene_text("A, B/C\tD\nE"), c("A", "B", "C", "D", "E"))
 })
 
 test_that("parse_gene_text returns character(0) for empty / NULL input", {
-  expect_equal(parse_gene_text(""),   character(0))
+  expect_equal(parse_gene_text(""), character(0))
   expect_equal(parse_gene_text(NULL), character(0))
 })
 
 test_that("parse_gene_text collapses runs of separators", {
-  expect_equal(parse_gene_text("GENE1   GENE2"),    c("GENE1", "GENE2"))
-  expect_equal(parse_gene_text("GENE1,,,GENE2"),    c("GENE1", "GENE2"))
+  expect_equal(parse_gene_text("GENE1   GENE2"), c("GENE1", "GENE2"))
+  expect_equal(parse_gene_text("GENE1,,,GENE2"), c("GENE1", "GENE2"))
 })
 
 

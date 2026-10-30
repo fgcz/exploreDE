@@ -18,8 +18,13 @@
 
 # uns$prolfquapp keys that describe the AnnData reshape, not the SE metadata.
 .prolfquapp_reshape_keys <- c(
-  "layer_names", "uns_table_columns", "varm_columns",
-  "varm_annotations", "varm_column_order", "varm_key_order", "uns_list_order"
+  "layer_names",
+  "uns_table_columns",
+  "varm_columns",
+  "varm_annotations",
+  "varm_column_order",
+  "varm_key_order",
+  "uns_list_order"
 )
 
 #' Is this an AnnData written by the prolfquapp DEA?
@@ -35,9 +40,12 @@ is_prolfquapp_anndata <- function(adata) {
 .prolfquapp_ordered_keys <- function(recorded, present, label) {
   recorded <- .prolfquapp_flat(recorded)
   if (!setequal(recorded, present)) {
-    stop("prolfquapp AnnData ", label, " does not list the keys the file carries: ",
-         paste(union(setdiff(recorded, present), setdiff(present, recorded)),
-               collapse = ", "))
+    stop(
+      "prolfquapp AnnData ",
+      label,
+      " does not list the keys the file carries: ",
+      paste(union(setdiff(recorded, present), setdiff(present, recorded)), collapse = ", ")
+    )
   }
   recorded
 }
@@ -48,15 +56,21 @@ is_prolfquapp_anndata <- function(adata) {
     value[] <- lapply(value, .prolfquapp_uns_restore)
     return(value)
   }
-  if (is.list(value)) return(lapply(value, .prolfquapp_uns_restore))
-  if (length(dim(value)) == 1L) return(as.vector(value))
+  if (is.list(value)) {
+    return(lapply(value, .prolfquapp_uns_restore))
+  }
+  if (length(dim(value)) == 1L) {
+    return(as.vector(value))
+  }
   value
 }
 
 # HDF5 hands list names back in its own order; put them back in the order
 # prolfquapp recorded (uns_list_order; absent in files written before it was).
 .prolfquapp_restore_list_order <- function(value, order) {
-  if (is.null(order) || !is.list(value) || is.data.frame(value)) return(value)
+  if (is.null(order) || !is.list(value) || is.data.frame(value)) {
+    return(value)
+  }
   recorded <- .prolfquapp_flat(order$names)
   value <- value[c(intersect(recorded, names(value)), setdiff(names(value), recorded))]
   for (name in intersect(names(order$children), names(value))) {
@@ -72,8 +86,7 @@ is_prolfquapp_anndata <- function(adata) {
   values <- .prolfquapp_uns_restore(uns[setdiff(names(uns), .prolfquapp_reshape_keys)])
   tables <- uns$uns_table_columns
   for (name in intersect(names(tables), names(values))) {
-    columns <- .prolfquapp_ordered_keys(tables[[name]], names(values[[name]]),
-                                        paste0("uns_table_columns$", name))
+    columns <- .prolfquapp_ordered_keys(tables[[name]], names(values[[name]]), paste0("uns_table_columns$", name))
     values[[name]] <- as.data.frame(values[[name]][columns], stringsAsFactors = FALSE)
   }
   .prolfquapp_restore_list_order(values, uns$uns_list_order)
@@ -82,11 +95,10 @@ is_prolfquapp_anndata <- function(adata) {
 # One nested rowData frame from a varm matrix: numeric columns from the matrix,
 # the non-numeric ones from varm_annotations, in the recorded column order.
 .prolfquapp_varm_frame <- function(values, columns, annotations, column_order, var_names) {
-  values  <- as.matrix(values)
+  values <- as.matrix(values)
   columns <- .prolfquapp_flat(columns)
   if (ncol(values) != length(columns)) {
-    stop("prolfquapp AnnData varm matrix has ", ncol(values),
-         " columns but varm_columns names ", length(columns), ".")
+    stop("prolfquapp AnnData varm matrix has ", ncol(values), " columns but varm_columns names ", length(columns), ".")
   }
   frame <- as.data.frame(values)
   names(frame) <- columns
@@ -111,7 +123,9 @@ is_prolfquapp_anndata <- function(adata) {
 # is returned unchanged.
 .prolfquapp_legacy_layout <- function(se) {
   rd <- SummarizedExperiment::rowData(se)
-  if (!"annotation" %in% names(rd)) return(se)
+  if (!"annotation" %in% names(rd)) {
+    return(se)
+  }
   md <- S4Vectors::metadata(se)
 
   cd <- SummarizedExperiment::colData(se)
@@ -149,7 +163,9 @@ is_prolfquapp_anndata <- function(adata) {
 #' @export
 se_from_prolfquapp_anndata <- function(adata) {
   uns <- adata$uns[["prolfquapp"]]
-  if (is.null(uns)) stop("AnnData has no uns$prolfquapp; it was not written by prolfquapp.")
+  if (is.null(uns)) {
+    stop("AnnData has no uns$prolfquapp; it was not written by prolfquapp.")
+  }
 
   obs <- as.data.frame(adata$obs, check.names = FALSE, stringsAsFactors = FALSE)
   var <- as.data.frame(adata$var, check.names = FALSE, stringsAsFactors = FALSE)
@@ -167,8 +183,8 @@ se_from_prolfquapp_anndata <- function(adata) {
   names(assays) <- layer_keys
 
   se <- SummarizedExperiment::SummarizedExperiment(
-    assays   = assays,
-    colData  = S4Vectors::DataFrame(obs, check.names = FALSE),
+    assays = assays,
+    colData = S4Vectors::DataFrame(obs, check.names = FALSE),
     metadata = .prolfquapp_uns_metadata(uns)
   )
   SummarizedExperiment::rowData(se)[["annotation"]] <- var
@@ -176,9 +192,13 @@ se_from_prolfquapp_anndata <- function(adata) {
   varm_keys <- .prolfquapp_ordered_keys(uns$varm_key_order, names(adata$varm), "varm_key_order")
   for (key in varm_keys) {
     SummarizedExperiment::rowData(se)[[utils::URLdecode(key)]] <-
-      .prolfquapp_varm_frame(adata$varm[[key]], uns$varm_columns[[key]],
-                             uns$varm_annotations[[key]],
-                             uns$varm_column_order[[key]], var_names)
+      .prolfquapp_varm_frame(
+        adata$varm[[key]],
+        uns$varm_columns[[key]],
+        uns$varm_annotations[[key]],
+        uns$varm_column_order[[key]],
+        var_names
+      )
   }
   se
 }

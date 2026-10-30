@@ -21,25 +21,36 @@
 #'   no DE result.
 #' @export
 multi_resolve_dataset <- function(link, roots) {
-  if (!is.character(link) || length(link) != 1L || is.na(link)) return(NULL)
+  if (!is.character(link) || length(link) != 1L || is.na(link)) {
+    return(NULL)
+  }
   link <- gsub("\\s+", "", link)
-  if (grepl("^https?://", link)) link <- sub(".*\\?data=", "", link)
-  if (!nzchar(link) || any(strsplit(link, "/", fixed = TRUE)[[1]] == "..")) return(NULL)
+  if (grepl("^https?://", link)) {
+    link <- sub(".*\\?data=", "", link)
+  }
+  if (!nzchar(link) || any(strsplit(link, "/", fixed = TRUE)[[1]] == "..")) {
+    return(NULL)
+  }
   for (root in sub("/+$", "", roots)) {
     if (startsWith(link, "/")) {
-      if (!startsWith(link, paste0(root, "/"))) next
+      if (!startsWith(link, paste0(root, "/"))) {
+        next
+      }
       rel <- substring(link, nchar(root) + 2L)
     } else {
       rel <- link
     }
     parts <- strsplit(rel, "/", fixed = TRUE)[[1]]
     parts <- parts[nzchar(parts) & parts != "."]
-    if (!length(parts) || !grepl("^p[0-9]+$", parts[[1]])) next
+    if (!length(parts) || !grepl("^p[0-9]+$", parts[[1]])) {
+      next
+    }
     path <- paste(c(root, parts), collapse = "/")
-    if (file.exists(file.path(path, "deResult.rds")) ||
-        file.exists(file.path(path, "deResult.qs2"))) {
-      return(list(path = path, root = root, project = parts[[1]],
-                  link = paste(parts, collapse = "/")))
+    if (
+      file.exists(file.path(path, "deResult.rds")) ||
+        file.exists(file.path(path, "deResult.qs2"))
+    ) {
+      return(list(path = path, root = root, project = parts[[1]], link = paste(parts, collapse = "/")))
     }
   }
   NULL
@@ -57,8 +68,12 @@ multi_resolve_dataset <- function(link, roots) {
 #' @export
 ldap_allows_project <- function(lookup, project) {
   roles <- lookup$roles %||% character()
-  if ("R_2" %in% roles) return(TRUE)
-  if ("R_3" %in% roles) return(isTRUE(project %in% (lookup$projects %||% character())))
+  if ("R_2" %in% roles) {
+    return(TRUE)
+  }
+  if ("R_3" %in% roles) {
+    return(isTRUE(project %in% (lookup$projects %||% character())))
+  }
   FALSE
 }
 
@@ -85,8 +100,12 @@ multi_load_de_result <- function(path) {
 
   # Compatibility fix: Ensure log2Ratio exists (for the multiDEG tabs)
   if (!"log2Ratio" %in% colnames(formatted$seqAnno)) {
-    lfcCol <- grep("^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc)$",
-                   colnames(formatted$seqAnno), value = TRUE, ignore.case = TRUE)
+    lfcCol <- grep(
+      "^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc)$",
+      colnames(formatted$seqAnno),
+      value = TRUE,
+      ignore.case = TRUE
+    )
     if (length(lfcCol) > 0) {
       formatted$seqAnno$log2Ratio <- formatted$seqAnno[[lfcCol[1]]]
     }

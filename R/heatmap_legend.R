@@ -18,10 +18,26 @@
 #' @export
 legend_offset_ui <- function(prefix) {
   shiny::splitLayout(
-    shiny::sliderInput(paste0(prefix, "LegendDX"), "Legend: move right (mm)",
-                       min = -100, max = 100, value = 0, step = 1, ticks = FALSE, width = "85%"),
-    shiny::sliderInput(paste0(prefix, "LegendDY"), "Legend: move up (mm)",
-                       min = -100, max = 100, value = 0, step = 1, ticks = FALSE, width = "85%")
+    shiny::sliderInput(
+      paste0(prefix, "LegendDX"),
+      "Legend: move right (mm)",
+      min = -100,
+      max = 100,
+      value = 0,
+      step = 1,
+      ticks = FALSE,
+      width = "85%"
+    ),
+    shiny::sliderInput(
+      paste0(prefix, "LegendDY"),
+      "Legend: move up (mm)",
+      min = -100,
+      max = 100,
+      value = 0,
+      step = 1,
+      ticks = FALSE,
+      width = "85%"
+    )
   )
 }
 
@@ -30,14 +46,21 @@ legend_offset_ui <- function(prefix) {
 # ".../annotation_legend/..."), which holds whatever the legend layout
 # (single legend, packed legends, right or bottom side).
 .shift_heatmap_legends <- function(g, dx, dy) {
-  move <- grid::viewport(x = grid::unit(0.5, "npc") + grid::unit(dx, "mm"),
-                         y = grid::unit(0.5, "npc") + grid::unit(dy, "mm"))
+  move <- grid::viewport(
+    x = grid::unit(0.5, "npc") + grid::unit(dx, "mm"),
+    y = grid::unit(0.5, "npc") + grid::unit(dy, "mm")
+  )
   for (i in seq_along(g$children)) {
     ch <- g$children[[i]]
-    if (inherits(ch$vp, "vpPath") &&
-        grepl("(heatmap|annotation)_legend", as.character(ch$vp))) {
-      g$children[[i]] <- grid::gTree(children = grid::gList(grid::editGrob(ch, vp = NULL)),
-                                     vp = grid::vpStack(ch$vp, move), name = ch$name)
+    if (
+      inherits(ch$vp, "vpPath") &&
+        grepl("(heatmap|annotation)_legend", as.character(ch$vp))
+    ) {
+      g$children[[i]] <- grid::gTree(
+        children = grid::gList(grid::editGrob(ch, vp = NULL)),
+        vp = grid::vpStack(ch$vp, move),
+        name = ch$name
+      )
     }
   }
   g
@@ -53,22 +76,26 @@ legend_offset_ui <- function(prefix) {
 .vp_safe <- function(x) gsub("[][(){}*+?^$|\\\\]", "_", x)
 
 .sanitise_vp <- function(vp) {
-  if (is.null(vp)) return(vp)
+  if (is.null(vp)) {
+    return(vp)
+  }
   if (inherits(vp, "vpPath")) {
     return(do.call(grid::vpPath, as.list(.vp_safe(strsplit(as.character(vp), "::", fixed = TRUE)[[1]]))))
   }
   if (inherits(vp, "vpTree")) {
-    vp$parent   <- .sanitise_vp(vp$parent)
+    vp$parent <- .sanitise_vp(vp$parent)
     vp$children <- .sanitise_vp(vp$children)
     return(vp)
   }
   if (inherits(vp, c("vpList", "vpStack"))) {
     cls <- class(vp)
-    vp  <- lapply(vp, .sanitise_vp)
+    vp <- lapply(vp, .sanitise_vp)
     class(vp) <- cls
     return(vp)
   }
-  if (inherits(vp, "viewport")) vp$name <- .vp_safe(vp$name)
+  if (inherits(vp, "viewport")) {
+    vp$name <- .vp_safe(vp$name)
+  }
   vp
 }
 
@@ -76,7 +103,9 @@ legend_offset_ui <- function(prefix) {
   g$vp <- .sanitise_vp(g$vp)
   if (inherits(g, "gTree")) {
     g$childrenvp <- .sanitise_vp(g$childrenvp)
-    for (i in seq_along(g$children)) g$children[[i]] <- .sanitise_grob_vps(g$children[[i]])
+    for (i in seq_along(g$children)) {
+      g$children[[i]] <- .sanitise_grob_vps(g$children[[i]])
+    }
   }
   g
 }
@@ -112,14 +141,17 @@ draw_heatmap <- function(ht, ..., legend_dx = 0, legend_dy = 0) {
 
   # padding is c(bottom, left, top, right)
   side <- args$heatmap_legend_side %||% "right"
-  pad  <- args$padding %||% grid::unit(c(2, 2, 2, 2), "mm")
-  if (side == "right"  && dx > 0) pad <- pad + grid::unit(c(0, 0, 0, dx), "mm")
-  if (side == "bottom" && dy < 0) pad <- pad + grid::unit(c(-dy, 0, 0, 0), "mm")
+  pad <- args$padding %||% grid::unit(c(2, 2, 2, 2), "mm")
+  if (side == "right" && dx > 0) {
+    pad <- pad + grid::unit(c(0, 0, 0, dx), "mm")
+  }
+  if (side == "bottom" && dy < 0) {
+    pad <- pad + grid::unit(c(-dy, 0, 0, 0), "mm")
+  }
   args$padding <- pad
 
   sz <- grDevices::dev.size("in")
-  g <- grid::grid.grabExpr(do.call(ComplexHeatmap::draw, c(list(ht), args)),
-                           width = sz[1], height = sz[2])
+  g <- grid::grid.grabExpr(do.call(ComplexHeatmap::draw, c(list(ht), args)), width = sz[1], height = sz[2])
   grid::grid.draw(.shift_heatmap_legends(.sanitise_grob_vps(g), dx, dy))
   invisible(NULL)
 }

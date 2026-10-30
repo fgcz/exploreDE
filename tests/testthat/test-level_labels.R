@@ -4,9 +4,9 @@
 
 lab_input <- list(
   GroupLabelCondcKO_treated = "<i>Il4a</i><sup>fl/fl</sup> N.b.",
-  GroupLabelCondKO_d        = "&Delta;<i>Il4</i> &alpha;-CD3",
-  GroupLabelCondWT          = "   ",
-  GroupLabelCondtypo        = "<u>under</u>"
+  GroupLabelCondKO_d = "&Delta;<i>Il4</i> &alpha;-CD3",
+  GroupLabelCondWT = "   ",
+  GroupLabelCondtypo = "<u>under</u>"
 )
 lab_levels <- c("WT", "cKO_treated", "KO_d", "typo", "1. odd")
 
@@ -19,8 +19,12 @@ test_that("escape_label_markdown makes every ASCII punctuation literal", {
 test_that("escaped raw levels render literally through gridtext", {
   skip_if_not_installed("gridtext")
   collect <- function(g) {
-    if (inherits(g, "text")) return(g$label)
-    if (!is.null(g$children)) return(unlist(lapply(g$children, collect)))
+    if (inherits(g, "text")) {
+      return(g$label)
+    }
+    if (!is.null(g$children)) {
+      return(unlist(lapply(g$children, collect)))
+    }
     NULL
   }
   for (s in c("cKO_treated", "*WT*", "a<b & c", "1. first", "- neg", "---", "[x](y)", "<i>x</i>")) {
@@ -30,8 +34,7 @@ test_that("escaped raw levels render literally through gridtext", {
 })
 
 test_that("decode_label_entities handles named, decimal and hex entities", {
-  expect_equal(decode_label_entities("&Delta;x &alpha; &#946; &#x3B3; &amp;"),
-               "Δx α β γ &")
+  expect_equal(decode_label_entities("&Delta;x &alpha; &#946; &#x3B3; &amp;"), "Δx α β γ &")
   expect_equal(decode_label_entities("&unknown; plain"), "&unknown; plain")
   expect_equal(decode_label_entities(c("a", NA)), c("a", NA))
 })
@@ -43,7 +46,7 @@ test_that("parse_level_label keeps whitelisted tags and escapes the rest", {
   expect_equal(p$plain, "Il4afl/fl N.b.")
 
   u <- parse_level_label("<u>under</u>")
-  expect_equal(u$plain, "<u>under</u>")          # not whitelisted: literal text
+  expect_equal(u$plain, "<u>under</u>") # not whitelisted: literal text
   expect_match(u$rich, "\\\\<u\\\\>", fixed = FALSE)
 
   br <- parse_level_label("top<br/>bottom")
@@ -65,8 +68,8 @@ test_that("level_labels rich mode escapes unlabelled levels and ignores blanks",
   skip_if_not(rich_labels_available())
   out <- level_labels(lab_input, "Cond", lab_levels)
   expect_true(is_rich_labels(out))
-  expect_equal(out[["WT"]], "WT")                   # whitespace-only label ignored
-  expect_equal(out[["1. odd"]], "1\\. odd")        # escaped raw level
+  expect_equal(out[["WT"]], "WT") # whitespace-only label ignored
+  expect_equal(out[["1. odd"]], "1\\. odd") # escaped raw level
   expect_equal(out[["cKO_treated"]], "<i>Il4a</i><sup>fl\\/fl</sup> N\\.b\\.")
   expect_equal(out[["KO_d"]], "Δ<i>Il4</i> α\\-CD3")
   wrapped <- level_labels(lab_input, "Cond", c("WT", "a_b"), wrap = TRUE, force_rich = TRUE)
@@ -106,11 +109,10 @@ test_that("symbolise_rich_labels swaps Greek for Symbol-font spans, keeping name
 test_that("prepare_plot_for_pdf rewrites a copy and leaves the on-screen plot alone", {
   skip_if_not(rich_labels_available())
   lbl <- level_labels(lab_input, "Cond", lab_levels)
-  df <- data.frame(g = factor(rep(lab_levels, each = 2), levels = lab_levels), y = seq_len(10),
-                   f = rep(c("A", "B"), 5))
-  p <- ggplot2::ggplot(df, ggplot2::aes(g, y, fill = g)) + ggplot2::geom_col() +
-    ggplot2::facet_grid(cols = ggplot2::vars(f),
-                        labeller = ggplot2::as_labeller(c(A = "β one", B = "B"))) +
+  df <- data.frame(g = factor(rep(lab_levels, each = 2), levels = lab_levels), y = seq_len(10), f = rep(c("A", "B"), 5))
+  p <- ggplot2::ggplot(df, ggplot2::aes(g, y, fill = g)) +
+    ggplot2::geom_col() +
+    ggplot2::facet_grid(cols = ggplot2::vars(f), labeller = ggplot2::as_labeller(c(A = "β one", B = "B"))) +
     ggplot2::scale_x_discrete(labels = lbl) +
     ggplot2::scale_fill_manual(values = rainbow(5), breaks = lab_levels, labels = lbl) +
     ggprism::theme_prism(axis_text_angle = 45) +
@@ -142,14 +144,30 @@ test_that("whitespace between two tags survives (zero-width anchors, PDF-safe sw
 
 test_that("build_rich_heatmap_legend corrects ComplexHeatmap's inflated width", {
   skip_if_not(rich_labels_available())
-  labs <- level_labels(list(GroupLabelCa = "<i>Vil1</i><sup>CreER</sup> <i>Il4ra</i><sup>fl/fl</sup> (N.b.)",
-                            GroupLabelCb = "&Delta;<i>Il4</i>"), "C", c("a", "b"))
+  labs <- level_labels(
+    list(
+      GroupLabelCa = "<i>Vil1</i><sup>CreER</sup> <i>Il4ra</i><sup>fl/fl</sup> (N.b.)",
+      GroupLabelCb = "&Delta;<i>Il4</i>"
+    ),
+    "C",
+    c("a", "b")
+  )
   spec <- heatmap_legend_spec("C", labs, c(a = "red", b = "blue"))
   f <- tempfile(fileext = ".pdf")
   pdf(f)
-  on.exit({ dev.off(); unlink(f) }, add = TRUE)
-  raw <- ComplexHeatmap::Legend(at = spec$at, labels = ComplexHeatmap::gt_render(spec$labels),
-                                legend_gp = grid::gpar(fill = spec$fill), title = "C")
+  on.exit(
+    {
+      dev.off()
+      unlink(f)
+    },
+    add = TRUE
+  )
+  raw <- ComplexHeatmap::Legend(
+    at = spec$at,
+    labels = ComplexHeatmap::gt_render(spec$labels),
+    legend_gp = grid::gpar(fill = spec$fill),
+    title = "C"
+  )
   fixed <- build_rich_heatmap_legend(spec, pdf = TRUE)
   w_raw <- grid::convertWidth(attr(raw@grob, "width"), "mm", valueOnly = TRUE)
   w_fix <- grid::convertWidth(attr(fixed@grob, "width"), "mm", valueOnly = TRUE)
@@ -161,11 +179,18 @@ test_that("draw_heatmap builds rich legends and PDF column labels without touchi
   skip_if_not(rich_labels_available())
   labs <- level_labels(list(GroupLabelCa = "&alpha;<i>x</i>"), "C", c("a", "b"))
   m <- matrix(rnorm(12), 3, dimnames = list(NULL, c("a", "b", "a2", "b2")))
-  ha <- ComplexHeatmap::HeatmapAnnotation(C = c("a", "b", "a", "b"),
-                                          col = list(C = c(a = "red", b = "blue")), show_legend = FALSE)
+  ha <- ComplexHeatmap::HeatmapAnnotation(
+    C = c("a", "b", "a", "b"),
+    col = list(C = c(a = "red", b = "blue")),
+    show_legend = FALSE
+  )
   attr(ha, "rich_legends") <- list(heatmap_legend_spec("C", labs, c(a = "red", b = "blue")))
-  ht <- ComplexHeatmap::Heatmap(m, name = "z", top_annotation = ha,
-                                column_labels = ComplexHeatmap::gt_render(c("α<i>x</i>", "b", "c", "d")))
+  ht <- ComplexHeatmap::Heatmap(
+    m,
+    name = "z",
+    top_annotation = ha,
+    column_labels = ComplexHeatmap::gt_render(c("α<i>x</i>", "b", "c", "d"))
+  )
   f <- tempfile(fileext = ".pdf")
   on.exit(unlink(f), add = TRUE)
   expect_no_error(export_plot_standard(function() draw_heatmap(ht, merge_legend = TRUE), f, format = "pdf"))
@@ -178,10 +203,16 @@ test_that("draw_heatmap builds rich legends and PDF column labels without touchi
 test_that("heatmap PDFs with rich legends have exactly one page", {
   skip_if_not(rich_labels_available())
   pages <- function(f) sum(grepl("/Type /Page[^s]|/Type /Page$", readLines(f, warn = FALSE)))
-  ha <- ComplexHeatmap::HeatmapAnnotation(C = c("a", "b", "a", "b"),
-                                          col = list(C = c(a = "red", b = "blue")), show_legend = FALSE)
+  ha <- ComplexHeatmap::HeatmapAnnotation(
+    C = c("a", "b", "a", "b"),
+    col = list(C = c(a = "red", b = "blue")),
+    show_legend = FALSE
+  )
   attr(ha, "rich_legends") <- list(heatmap_legend_spec(
-    "C", level_labels(list(GroupLabelCa = "<i>x</i><sup>fl</sup>"), "C", c("a", "b")), c(a = "red", b = "blue")))
+    "C",
+    level_labels(list(GroupLabelCa = "<i>x</i><sup>fl</sup>"), "C", c("a", "b")),
+    c(a = "red", b = "blue")
+  ))
   ht <- ComplexHeatmap::Heatmap(matrix(rnorm(12), 3), name = "z", top_annotation = ha)
   for (dx in c(0, 5)) {
     f <- tempfile(fileext = ".pdf")

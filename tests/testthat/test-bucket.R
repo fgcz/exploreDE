@@ -10,12 +10,10 @@
 # in shiny::isolate().
 # ============================================================================
 
-make_bucket_mocks <- function(feature_ids = c("A", "B", "C"),
-                               sgRNA_to_gene = NULL,
-                               initial = character(0)) {
+make_bucket_mocks <- function(feature_ids = c("A", "B", "C"), sgRNA_to_gene = NULL, initial = character(0)) {
   list(
-    featureBucket    = shiny::reactiveValues(features = initial, version = 0L),
-    seqAnnoReactive  = shiny::reactiveValues(sa = data.frame(feature_id = feature_ids)),
+    featureBucket = shiny::reactiveValues(features = initial, version = 0L),
+    seqAnnoReactive = shiny::reactiveValues(sa = data.frame(feature_id = feature_ids)),
     inputDataReactive = function() list(sgRNA_to_gene = sgRNA_to_gene)
   )
 }
@@ -81,7 +79,7 @@ test_that("bucket_remove is a no-op when the feature is not in the bucket", {
 
   shiny::isolate(fn("Z"))
   expect_equal(shiny::isolate(m$featureBucket$features), "A")
-  expect_equal(shiny::isolate(m$featureBucket$version), 0L)  # no bump
+  expect_equal(shiny::isolate(m$featureBucket$version), 0L) # no bump
 })
 
 

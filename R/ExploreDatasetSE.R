@@ -17,19 +17,18 @@
 #' @export
 ExploreDatasetSE <- R6::R6Class(
   classname = "ExploreDatasetSE",
-  inherit   = ExploreDataset,
+  inherit = ExploreDataset,
 
   public = list(
-
     initialize = function(se, config = NULL) {
       stopifnot(inherits(se, "SummarizedExperiment"))
-      private$.se     <- se
+      private$.se <- se
       private$.config <- config %||% private$.build_config(se)
       private$.prep()
       invisible(self)
     },
 
-    backend      = function() private$.se,
+    backend = function() private$.se,
     backend_kind = function() "se",
 
     # samples(): uniform colData read. SUSHI's `[Factor]` suffix is stripped
@@ -41,17 +40,15 @@ ExploreDatasetSE <- R6::R6Class(
     # for genomics, plain character for proteomics. Rownames are colnames(se)
     # where available, else cd$Name / cd$name fallback.
     samples = function() {
-      cd <- data.frame(SummarizedExperiment::colData(private$.se),
-                       check.names = FALSE, stringsAsFactors = FALSE)
-      colnames(cd) <- gsub(" \\[.*", "",  colnames(cd))
-      colnames(cd) <- gsub(" ",      "_", colnames(cd))
+      cd <- data.frame(SummarizedExperiment::colData(private$.se), check.names = FALSE, stringsAsFactors = FALSE)
+      colnames(cd) <- gsub(" \\[.*", "", colnames(cd))
+      colnames(cd) <- gsub(" ", "_", colnames(cd))
 
       se_cn <- colnames(private$.se)
       sample_ids <- if (!is.null(se_cn) && length(se_cn) == nrow(cd)) {
         se_cn
       } else {
-        id_col <- intersect(c("Sample", "Name", "sampleName", "name"),
-                            colnames(cd))
+        id_col <- intersect(c("Sample", "Name", "sampleName", "name"), colnames(cd))
         if (length(id_col)) as.character(cd[[id_col[1]]]) else NULL
       }
 
@@ -71,13 +68,16 @@ ExploreDatasetSE <- R6::R6Class(
           # Legacy proteomics: plain-char Name from Sample/Name/sampleName,
           # plus factor()-ize every factor column with mixedsort-derived
           # levels.
-          if (!"Name" %in% colnames(cd)) cd$Name <- sample_ids
+          if (!"Name" %in% colnames(cd)) {
+            cd$Name <- sample_ids
+          }
           factor_cols <- private$.config$factors %||% character()
           for (fc in intersect(factor_cols, colnames(cd))) {
             if (!is.factor(cd[[fc]])) {
               cd[[fc]] <- factor(
                 cd[[fc]],
-                levels = unique(gtools::mixedsort(cd[[fc]])))
+                levels = unique(gtools::mixedsort(cd[[fc]]))
+              )
             }
           }
         }
@@ -85,7 +85,7 @@ ExploreDatasetSE <- R6::R6Class(
       cd
     },
 
-    features    = function() private$.features_df,
+    features = function() private$.features_df,
 
     de = function(contrast) {
       stopifnot(contrast %in% self$contrasts())
@@ -94,11 +94,15 @@ ExploreDatasetSE <- R6::R6Class(
 
     assay_names = function() {
       backend_keys <- SummarizedExperiment::assayNames(private$.se)
-      keys         <- names(private$.config$assay_map %||% list())
-      keys[vapply(keys, function(k) {
-        v <- private$.config$assay_map[[k]]
-        is.null(v) || v %in% backend_keys
-      }, logical(1))]
+      keys <- names(private$.config$assay_map %||% list())
+      keys[vapply(
+        keys,
+        function(k) {
+          v <- private$.config$assay_map[[k]]
+          is.null(v) || v %in% backend_keys
+        },
+        logical(1)
+      )]
     },
 
     assay = function(name, features = NULL, samples = NULL) {
@@ -111,7 +115,8 @@ ExploreDatasetSE <- R6::R6Class(
         )
       } else {
         # Computed assay.
-        switch(name,
+        switch(
+          name,
           # normalised_log2 recurses into self$assay("normalised") which is
           # ALREADY remapped — don't re-apply the lookup.
           normalised_log2 = log2(
@@ -120,46 +125,52 @@ ExploreDatasetSE <- R6::R6Class(
           ),
           # vst / fpkm / tpm operate on the raw SE — output has SE rownames,
           # so apply fid_lookup remap before returning.
-          vst  = .eds_remap_rownames(eds_compute_vst(private$.se),       private$.fid_lookup),
-          fpkm = .eds_remap_rownames(eds_compute_rpkm(private$.se),      private$.fid_lookup),
-          tpm  = .eds_remap_rownames(eds_compute_tpm(private$.se),       private$.fid_lookup),
+          vst = .eds_remap_rownames(eds_compute_vst(private$.se), private$.fid_lookup),
+          fpkm = .eds_remap_rownames(eds_compute_rpkm(private$.se), private$.fid_lookup),
+          tpm = .eds_remap_rownames(eds_compute_tpm(private$.se), private$.fid_lookup),
           stop("Unknown computed assay: ", name)
         )
       }
-      if (!is.null(features)) m <- m[features, , drop = FALSE]
-      if (!is.null(samples))  m <- m[, samples,  drop = FALSE]
+      if (!is.null(features)) {
+        m <- m[features, , drop = FALSE]
+      }
+      if (!is.null(samples)) {
+        m <- m[, samples, drop = FALSE]
+      }
       m
     },
 
     enrichment = function(contrast, kind) {
       stopifnot(kind %in% c("ora", "gsea"))
       loc <- private$.config$enrichment_locator[[kind]]$se
-      if (is.null(loc)) return(list())
+      if (is.null(loc)) {
+        return(list())
+      }
       obj <- S4Vectors::metadata(private$.se)[[loc]]
-      if (is.null(obj)) return(list())
+      if (is.null(obj)) {
+        return(list())
+      }
       eds_flatten_cp_results(obj)
     },
 
     enrichment_input = function(contrast) {
       ei <- S4Vectors::metadata(private$.se)$enrichInput
       if (is.null(ei)) {
-        return(list(seq_anno    = NULL,
-                    ranked_l2fc = NULL,
-                    selections  = list()))
+        return(list(seq_anno = NULL, ranked_l2fc = NULL, selections = list()))
       }
       list(
-        seq_anno    = ei$seqAnno,
+        seq_anno = ei$seqAnno,
         ranked_l2fc = ei$log2Ratio,
-        selections  = ei$selections %||% list()
+        selections = ei$selections %||% list()
       )
     }
   ),
 
   private = list(
-    .se          = NULL,
+    .se = NULL,
     .features_df = NULL,
-    .de_dfs      = list(),
-    .fid_lookup  = NULL,    # NULL → identity inside assay()
+    .de_dfs = list(),
+    .fid_lookup = NULL, # NULL → identity inside assay()
 
     # Subclasses must override these:
     .build_config = function(se) {

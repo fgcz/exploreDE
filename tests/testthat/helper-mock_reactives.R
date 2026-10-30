@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 
 with_mock_env <- function(fn, ...) {
-  mocks <- rlang::list2(...)  # rlang::list2 supports !!! splicing
+  mocks <- rlang::list2(...) # rlang::list2 supports !!! splicing
   mock_env <- new.env(parent = environment(fn))
   list2env(mocks, envir = mock_env)
   environment(fn) <- mock_env

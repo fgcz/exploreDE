@@ -9,16 +9,20 @@
 # -----------------------------------------------------------------------------
 
 patterns_path <- system.file("dictionaries", "column_patterns.json", package = "exploreDE")
-schema_path   <- system.file("schema", "exploreDE_column_patterns.schema.json", package = "exploreDE")
+schema_path <- system.file("schema", "exploreDE_column_patterns.schema.json", package = "exploreDE")
 
 .patterns_validator <- function() {
   testthat::skip_if_not_installed("jsonvalidate")
-  if (!nzchar(schema_path)) testthat::skip("exploreDE_column_patterns.schema.json not found")
+  if (!nzchar(schema_path)) {
+    testthat::skip("exploreDE_column_patterns.schema.json not found")
+  }
   jsonvalidate::json_validator(schema_path, engine = "ajv")
 }
 
 test_that("column_patterns.json conforms to its own schema", {
-  if (!nzchar(patterns_path)) testthat::skip("column_patterns.json not found")
+  if (!nzchar(patterns_path)) {
+    testthat::skip("column_patterns.json not found")
+  }
   v <- .patterns_validator()
   expect_true(v(patterns_path))
 })
@@ -68,7 +72,7 @@ test_that("SAINTexpress's log2_EFCs/SaintScore/BFDR now auto-resolve with ZERO e
   expect_identical(out$effect_log2fc, 1.5)
   expect_identical(out$score_fdr, 0.03)
   expect_identical(out$score, 0.9)
-  expect_false("score_pvalue" %in% colnames(out))   # SAINT genuinely has no p-value
+  expect_false("score_pvalue" %in% colnames(out)) # SAINT genuinely has no p-value
 })
 
 test_that("a truly opaque column name (no textual signal at all) is left alone, not guessed", {
@@ -95,12 +99,10 @@ test_that("eds_match_col(unique = TRUE) refuses to guess when the deciding patte
 })
 
 test_that("decoy columns listed BEFORE the real one no longer win (was first-column-in-table-order)", {
-  d <- data.frame(log2_mean_intensity = 9, log2FC = 1.5,
-                  zscore = 3, SaintScore = 0.9,
-                  fdr_method = 0, padj = 0.04)
+  d <- data.frame(log2_mean_intensity = 9, log2FC = 1.5, zscore = 3, SaintScore = 0.9, fdr_method = 0, padj = 0.04)
   out <- eds_standardise_de_columns(d)
-  expect_identical(out$effect_log2fc, 1.5)   # ^log2...fc$ beats the "log2" substring
-  expect_identical(out$score_fdr, 0.04)      # ^padj$ beats the "fdr" substring
+  expect_identical(out$effect_log2fc, 1.5) # ^log2...fc$ beats the "log2" substring
+  expect_identical(out$score_fdr, 0.04) # ^padj$ beats the "fdr" substring
 })
 
 test_that("a canonical column added earlier is never re-matched by a later substring pattern", {
@@ -120,8 +122,7 @@ test_that("eds_standardise_de_columns() records which source column fed each can
 })
 
 test_that("standardise_columns() reads the same dictionary (legacy names for DE stats)", {
-  d <- data.frame(Accession = "P1", log2_EFCs = 1.5, SaintScore = 0.9, BFDR = 0.03,
-                  check.names = FALSE)
+  d <- data.frame(Accession = "P1", log2_EFCs = 1.5, SaintScore = 0.9, BFDR = 0.03, check.names = FALSE)
   out <- standardise_columns(d)
   expect_true(all(c("protein_Id", "log2Ratio", "fdr", "SaintScore") %in% colnames(out)))
   # ...and the SAINT shim still recognises the renamed frame.

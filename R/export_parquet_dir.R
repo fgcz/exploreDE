@@ -16,10 +16,12 @@
 
 # Write one data.frame to parquet, preferring the reader we actually ship.
 .pq_write <- function(df, path) {
-  if (requireNamespace("nanoparquet", quietly = TRUE))
+  if (requireNamespace("nanoparquet", quietly = TRUE)) {
     return(invisible(nanoparquet::write_parquet(df, path)))
-  if (requireNamespace("arrow", quietly = TRUE))
+  }
+  if (requireNamespace("arrow", quietly = TRUE)) {
     return(invisible(arrow::write_parquet(df, path, compression = "snappy")))
+  }
   stop("export_h5ad_to_parquet() needs nanoparquet or arrow")
 }
 
@@ -30,9 +32,14 @@
 .pq_prep_df <- function(df, idx, what = "table", quiet = TRUE) {
   df <- as.data.frame(df, check.names = FALSE, stringsAsFactors = FALSE)
   keep <- vapply(df, is.atomic, logical(1))
-  if (any(!keep) && !quiet)
-    message(sprintf("  %s: dropping %d non-atomic column(s): %s", what,
-                    sum(!keep), paste(colnames(df)[!keep], collapse = ", ")))
+  if (any(!keep) && !quiet) {
+    message(sprintf(
+      "  %s: dropping %d non-atomic column(s): %s",
+      what,
+      sum(!keep),
+      paste(colnames(df)[!keep], collapse = ", ")
+    ))
+  }
   df <- df[, keep, drop = FALSE]
   cbind(`_index` = as.character(idx), df, stringsAsFactors = FALSE)
 }
@@ -60,7 +67,7 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
   }
 
   dir.create(file.path(out, "layers"), recursive = TRUE, showWarnings = FALSE)
-  dir.create(file.path(out, "varm"),   recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(out, "varm"), recursive = TRUE, showWarnings = FALSE)
 
   obs_names <- adata$obs_names
   var_names <- adata$var_names
@@ -72,8 +79,9 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
   # ALPHABETISES every experimental group — reordering boxplots, legends and
   # contrast directions against the same data read from the .h5ad.
   factor_levels <- list()
-  for (cn in colnames(obs))
+  for (cn in colnames(obs)) {
     if (is.factor(obs[[cn]])) factor_levels[[cn]] <- levels(obs[[cn]])
+  }
 
   .pq_write(.pq_prep_df(obs, obs_names, "obs", quiet), file.path(out, "obs.parquet"))
   .pq_write(.pq_prep_df(var, var_names, "var", quiet), file.path(out, "var.parquet"))
@@ -82,18 +90,20 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
   # features is the long axis (25k vs ~25), keeping the column count sane;
   # ExploreDatasetParquet transposes once on load.
   layers <- adata$layers %||% list()
-  if (!"counts" %in% names(layers) && !is.null(adata$X)) layers[["counts"]] <- adata$X
+  if (!"counts" %in% names(layers) && !is.null(adata$X)) {
+    layers[["counts"]] <- adata$X
+  }
   layer_names <- character()
   for (nm in names(layers)) {
     m <- as.matrix(layers[[nm]])
     dimnames(m) <- list(obs_names, var_names)
     fs <- t(m)
-    d  <- cbind(`_index` = rownames(fs),
-                as.data.frame(fs, check.names = FALSE, stringsAsFactors = FALSE))
+    d <- cbind(`_index` = rownames(fs), as.data.frame(fs, check.names = FALSE, stringsAsFactors = FALSE))
     .pq_write(d, file.path(out, "layers", paste0(nm, ".parquet")))
     layer_names <- c(layer_names, nm)
-    if (!quiet)
+    if (!quiet) {
       message(sprintf("  layer %-16s %d features x %d samples", nm, nrow(fs), ncol(fs)))
+    }
   }
 
   # varm rows align to var POSITIONALLY — varm/<slot>/_index in the .h5ad holds
@@ -103,16 +113,16 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
   varm_names <- character()
   for (nm in names(varm)) {
     d <- as.data.frame(varm[[nm]], check.names = FALSE, stringsAsFactors = FALSE)
-    if (nrow(d) != length(var_names))
-      stop(sprintf("varm/%s has %d rows but var has %d - positional join unsafe",
-                   nm, nrow(d), length(var_names)))
+    if (nrow(d) != length(var_names)) {
+      stop(sprintf("varm/%s has %d rows but var has %d - positional join unsafe", nm, nrow(d), length(var_names)))
+    }
     d <- d[, setdiff(colnames(d), "_index"), drop = FALSE]
     d <- d[, vapply(d, is.atomic, logical(1)), drop = FALSE]
-    .pq_write(cbind(`_index` = as.character(var_names), d),
-              file.path(out, "varm", paste0(nm, ".parquet")))
+    .pq_write(cbind(`_index` = as.character(var_names), d), file.path(out, "varm", paste0(nm, ".parquet")))
     varm_names <- c(varm_names, nm)
-    if (!quiet)
+    if (!quiet) {
       message(sprintf("  varm  %-16s %d rows x %d cols", nm, nrow(d), ncol(d)))
+    }
   }
 
   # uns goes to JSON — except the enrichment payloads, which are hoisted out to
@@ -137,16 +147,17 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
     for (slot in names(native)) {
       for (kind in names(native[[slot]])) {
         b64 <- native[[slot]][[kind]]
-        if (!is.character(b64) || !length(b64) || !nzchar(b64[[1]])) next
+        if (!is.character(b64) || !length(b64) || !nzchar(b64[[1]])) {
+          next
+        }
         fn <- paste0(slot, "__", kind, ".b64")
         writeLines(b64[[1]], file.path(out, "enrichment", fn))
         enrichment_files[[slot]][[kind]] <- fn
-        uns$enrichment_native[[slot]][[kind]] <- ""      # keep the key, drop the payload
+        uns$enrichment_native[[slot]][[kind]] <- "" # keep the key, drop the payload
       }
     }
   }
-  write(jsonlite::toJSON(uns, auto_unbox = TRUE, null = "null", digits = NA),
-        file.path(out, "uns.json"))
+  write(jsonlite::toJSON(uns, auto_unbox = TRUE, null = "null", digits = NA), file.path(out, "uns.json"))
 
   # Source identity. A parquet directory is a DERIVED CACHE, so without this a
   # stale temp dir left over from a previous file reads as current and the user
@@ -155,11 +166,13 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
   # want certainty rather than a cheap check.
   src <- if (is.character(input) && length(input) == 1L && file.exists(input)) {
     fi <- file.info(input)
-    list(path     = normalizePath(input, mustWork = FALSE),
-         basename = basename(input),
-         size     = as.numeric(fi$size),
-         mtime    = format(fi$mtime, "%Y-%m-%dT%H:%M:%S"),
-         md5      = unname(tools::md5sum(input)))
+    list(
+      path = normalizePath(input, mustWork = FALSE),
+      basename = basename(input),
+      size = as.numeric(fi$size),
+      mtime = format(fi$mtime, "%Y-%m-%dT%H:%M:%S"),
+      md5 = unname(tools::md5sum(input))
+    )
   } else {
     # A live AnnData has no file behind it, so there is nothing to be stale
     # against. Say so rather than inventing an identity.
@@ -167,20 +180,19 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
   }
 
   manifest <- list(
-    schema_version    = uns$schema_version %||% "exploreDE/1.0",
-    writer            = "export_h5ad_to_parquet() [R reference implementation]",
-    written_at        = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-    source            = src,
-    n_obs             = length(obs_names),
-    n_var             = length(var_names),
+    schema_version = uns$schema_version %||% "exploreDE/1.0",
+    writer = "export_h5ad_to_parquet() [R reference implementation]",
+    written_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+    source = src,
+    n_obs = length(obs_names),
+    n_var = length(var_names),
     layer_orientation = "features_x_samples",
-    layers            = layer_names,
-    varm              = varm_names,
-    enrichment_files  = enrichment_files,
-    factor_levels     = factor_levels
+    layers = layer_names,
+    varm = varm_names,
+    enrichment_files = enrichment_files,
+    factor_levels = factor_levels
   )
-  write(jsonlite::toJSON(manifest, auto_unbox = TRUE, null = "null"),
-        file.path(out, "manifest.json"))
+  write(jsonlite::toJSON(manifest, auto_unbox = TRUE, null = "null"), file.path(out, "manifest.json"))
 
   invisible(out)
 }

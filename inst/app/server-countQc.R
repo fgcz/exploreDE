@@ -13,10 +13,10 @@ req(eds)
 # ---- Sync Settings tabset to the Results tabset -----------------------------
 observeEvent(input$countQcPlotsTabs, ignoreInit = TRUE, {
   mapping <- c(
-    "Total Reads"               = "Bars",
-    "Features Above Threshold"  = "Bars",
-    "Dominant Genes"            = "Dominant",
-    "Intra-group Scatter"       = "Intra-group"
+    "Total Reads" = "Bars",
+    "Features Above Threshold" = "Bars",
+    "Dominant Genes" = "Dominant",
+    "Intra-group Scatter" = "Intra-group"
   )
   target <- mapping[[input$countQcPlotsTabs]]
   if (!is.null(target)) {
@@ -25,20 +25,29 @@ observeEvent(input$countQcPlotsTabs, ignoreInit = TRUE, {
 })
 
 # ---- Safe input accessors ----------------------------------------------------
-cqW <- function() { w <- input$countQcFigWidth;  if (is.null(w)) 800 else w }
-cqH <- function() { h <- input$countQcFigHeight; if (is.null(h)) 500 else h }
-cqT <- function() { t <- input$countQcTextSize;  if (is.null(t)) 12  else t }
+cqW <- function() {
+  w <- input$countQcFigWidth
+  if (is.null(w)) 800 else w
+}
+cqH <- function() {
+  h <- input$countQcFigHeight
+  if (is.null(h)) 500 else h
+}
+cqT <- function() {
+  t <- input$countQcTextSize
+  if (is.null(t)) 12 else t
+}
 
 # ---- Gene-family presets -----------------------------------------------------
 countQcFamilyPresets <- list(
-  "Mitochondrial"    = "^MT-",
+  "Mitochondrial" = "^MT-",
   "Ribosomal (cyto)" = "^RP[LS]",
   "Ribosomal (mito)" = "^MRP[LS]",
-  "Haemoglobin"      = "^HB[ABEGMQZ]",
-  "Immunoglobulin"   = "^IG[HKL][VDJC]",
-  "TCR"              = "^TR[ABGD][VDJC]",
-  "Heat shock"       = "^HSP",
-  "Histone"          = "^HIST"
+  "Haemoglobin" = "^HB[ABEGMQZ]",
+  "Immunoglobulin" = "^IG[HKL][VDJC]",
+  "TCR" = "^TR[ABGD][VDJC]",
+  "Heat shock" = "^HSP",
+  "Histone" = "^HIST"
 )
 
 # ---- Populate the "colour bars by factor" selector ---------------------------
@@ -47,8 +56,7 @@ observe({
   req(length(factors) > 0)
   grouping <- eds$primary_grouping()
   default <- if (!is.null(grouping) && !is.na(grouping) && grouping %in% factors) grouping else factors[[1]]
-  updateSelectInput(session, "countQcBarColourBy",
-                    choices = factors, selected = default)
+  updateSelectInput(session, "countQcBarColourBy", choices = factors, selected = default)
 })
 
 # ---- Sample / group reorder bucket for bar charts ---------------------------
@@ -91,15 +99,20 @@ observeEvent(input$countQcBarColourBy, ignoreInit = FALSE, {
 observe({
   factors <- eds$factor_names()
   req(length(factors) > 0)
-  updateSelectInput(session, "countQcBarFacetBy",
-                    choices = c("(none)", factors),
-                    selected = isolate(input$countQcBarFacetBy) %||% "(none)")
+  updateSelectInput(
+    session,
+    "countQcBarFacetBy",
+    choices = c("(none)", factors),
+    selected = isolate(input$countQcBarFacetBy) %||% "(none)"
+  )
 })
 
 observeEvent(input$countQcBarFacetBy, ignoreInit = FALSE, {
   fc <- input$countQcBarFacetBy
   if (is.null(fc) || fc == "(none)") {
-    output$countQcBarFacetBucketUI <- renderUI({ NULL })
+    output$countQcBarFacetBucketUI <- renderUI({
+      NULL
+    })
     return()
   }
   dataset <- eds$samples()
@@ -136,15 +149,16 @@ observe({
   req(length(assay_keys) > 0)
   count_choices <- setNames(assay_keys, vapply(assay_keys, eds$assay_label, character(1)))
   default <- if ("normalised" %in% assay_keys) "normalised" else assay_keys[[1]]
-  updateSelectInput(session, "countQcIntraCountType",
-                    choices = count_choices, selected = default)
+  updateSelectInput(session, "countQcIntraCountType", choices = count_choices, selected = default)
 })
 
 # ---- Populate highlight selectize -------------------------------------------
 observe({
   updateSelectizeInput(
-    session = session, inputId = "countQcHighlightSelect",
-    choices = eds$feature_ids(), selected = character(0),
+    session = session,
+    inputId = "countQcHighlightSelect",
+    choices = eds$feature_ids(),
+    selected = character(0),
     server = TRUE
   )
 })
@@ -155,8 +169,7 @@ output$countQcIntraFactorUI <- renderUI({
   req(length(factors) > 0)
   grouping <- eds$primary_grouping()
   default <- if (!is.null(grouping) && !is.na(grouping) && grouping %in% factors) grouping else factors[[1]]
-  selectInput("countQcIntraFactor", "Group by factor",
-              choices = factors, selected = default)
+  selectInput("countQcIntraFactor", "Group by factor", choices = factors, selected = default)
 })
 
 output$countQcIntraGroupUI <- renderUI({
@@ -164,9 +177,12 @@ output$countQcIntraGroupUI <- renderUI({
   dataset <- eds$samples()
   req(input$countQcIntraFactor %in% colnames(dataset))
   levels_avail <- unique(as.character(dataset[[input$countQcIntraFactor]]))
-  selectInput("countQcIntraGroup", "Group level to display",
-              choices = levels_avail,
-              selected = restore_default("countQcIntraGroup", levels_avail[[1]], valid = levels_avail))
+  selectInput(
+    "countQcIntraGroup",
+    "Group level to display",
+    choices = levels_avail,
+    selected = restore_default("countQcIntraGroup", levels_avail[[1]], valid = levels_avail)
+  )
 })
 
 # ==============================================================================
@@ -197,20 +213,20 @@ countQcBarData <- reactive({
   seU <- inputDataReactive()$seUnfiltered
   if (!is.null(seU)) {
     req("counts" %in% assayNames(seU))
-    raw_counts   <- assay(seU, "counts")
+    raw_counts <- assay(seU, "counts")
     present_flag <- if ("presentFlag" %in% assayNames(seU)) assay(seU, "presentFlag") else (raw_counts > 0) * 1L
   } else if (eds$backend_kind() == "se") {
     # SUSHI SE without a separate rawData.rds (e.g. RNASeq deResult): use the
     # filtered SE directly, exactly as before.
     se <- eds$backend()
     req("counts" %in% assayNames(se))
-    raw_counts   <- assay(se, "counts")
+    raw_counts <- assay(se, "counts")
     present_flag <- if ("presentFlag" %in% assayNames(se)) assay(se, "presentFlag") else (raw_counts > 0) * 1L
   } else {
     # Uploaded h5ad: no unfiltered SE and no presentFlag assay — use the
     # dataset's own counts via the accessor.
     req(eds$has_assay("counts"))
-    raw_counts   <- eds$assay("counts")
+    raw_counts <- eds$assay("counts")
     present_flag <- (raw_counts > 0) * 1L
   }
 
@@ -241,24 +257,21 @@ countQcBarData <- reactive({
     facet_order <- NA_character_
   }
 
-  keep_samples <- group_vec %in% level_order &
-                  (!use_facet | facet_vec %in% facet_order)
-  raw_counts   <- raw_counts[, keep_samples, drop = FALSE]
+  keep_samples <- group_vec %in% level_order & (!use_facet | facet_vec %in% facet_order)
+  raw_counts <- raw_counts[, keep_samples, drop = FALSE]
   present_flag <- present_flag[, keep_samples, drop = FALSE]
-  group_vec    <- group_vec[keep_samples]
-  facet_vec    <- facet_vec[keep_samples]
+  group_vec <- group_vec[keep_samples]
+  facet_vec <- facet_vec[keep_samples]
   # Sort samples: by facet order (if set), then by group order
   if (use_facet) {
-    sort_idx <- order(match(facet_vec, facet_order),
-                      match(group_vec, level_order),
-                      seq_along(group_vec))
+    sort_idx <- order(match(facet_vec, facet_order), match(group_vec, level_order), seq_along(group_vec))
   } else {
     sort_idx <- order(match(group_vec, level_order), seq_along(group_vec))
   }
-  raw_counts   <- raw_counts[, sort_idx, drop = FALSE]
+  raw_counts <- raw_counts[, sort_idx, drop = FALSE]
   present_flag <- present_flag[, sort_idx, drop = FALSE]
-  group_vec    <- group_vec[sort_idx]
-  facet_vec    <- facet_vec[sort_idx]
+  group_vec <- group_vec[sort_idx]
+  facet_vec <- facet_vec[sort_idx]
 
   n_features <- nrow(raw_counts)
   present_count <- colSums(present_flag)
@@ -284,10 +297,14 @@ countQcGroupColours <- reactive({
   factorCol <- input$countQcBarColourBy
   df <- countQcBarData()
   lvls <- levels(df$Group)
-  cols <- vapply(lvls, function(lv) {
-    v <- input[[paste0("GroupColour", factorCol, lv)]]
-    if (is.null(v) || !nzchar(v)) "black" else v
-  }, character(1))
+  cols <- vapply(
+    lvls,
+    function(lv) {
+      v <- input[[paste0("GroupColour", factorCol, lv)]]
+      if (is.null(v) || !nzchar(v)) "black" else v
+    },
+    character(1)
+  )
   setNames(cols, lvls)
 })
 
@@ -297,44 +314,54 @@ countQcLevelLabels <- function(df) {
   groupCol <- input$countQcBarColourBy %||% eds$primary_grouping()
   facetCol <- input$countQcBarFacetBy
   has_facet <- "FacetGroup" %in% colnames(df)
-  make <- function(force) list(
-    group = level_labels(input, groupCol, levels(df$Group), force_rich = force),
-    facet = if (has_facet) level_labels(input, facetCol, levels(df$FacetGroup), force_rich = force) else NULL
-  )
+  make <- function(force) {
+    list(
+      group = level_labels(input, groupCol, levels(df$Group), force_rich = force),
+      facet = if (has_facet) level_labels(input, facetCol, levels(df$FacetGroup), force_rich = force) else NULL
+    )
+  }
   labs <- make(FALSE)
   rich <- is_rich_labels(labs$group) || is_rich_labels(labs$facet)
-  if (rich) labs <- make(TRUE)
+  if (rich) {
+    labs <- make(TRUE)
+  }
   labs$rich <- rich
   labs
 }
 
 maybe_facet <- function(p, df, lbl = NULL) {
   if (isTRUE(attr(df, "use_facet")) && "FacetGroup" %in% colnames(df)) {
-    p <- p + facet_grid(cols = vars(FacetGroup),
-                        scales = "free_x", space = "free_x",
-                        labeller = if (is.null(lbl$facet)) "label_value" else as_labeller(lbl$facet))
+    p <- p +
+      facet_grid(
+        cols = vars(FacetGroup),
+        scales = "free_x",
+        space = "free_x",
+        labeller = if (is.null(lbl$facet)) "label_value" else as_labeller(lbl$facet)
+      )
   }
-  if (isTRUE(lbl$rich)) p <- p + rich_label_theme(legend = TRUE, strip = TRUE)
+  if (isTRUE(lbl$rich)) {
+    p <- p + rich_label_theme(legend = TRUE, strip = TRUE)
+  }
   p
 }
 
 build_total_reads_plot <- function() {
-  validate(need(isTRUE(try(countQcBarVisible(), silent = TRUE)),
-                "Total-reads plot not applicable for this data type."))
+  validate(need(isTRUE(try(countQcBarVisible(), silent = TRUE)), "Total-reads plot not applicable for this data type."))
   df <- countQcBarData()
   lbl <- countQcLevelLabels(df)
   p <- ggplot(df, aes(x = Sample, y = Total_M, fill = Group)) +
     geom_col(colour = "black", linewidth = 0.3) +
     scale_fill_manual(values = countQcGroupColours(), labels = lbl$group) +
     ggprism::theme_prism(base_size = cqT(), axis_text_angle = 45) +
-    labs(title = "Total Reads per Sample",
-         y = "Counts (millions)", x = NULL)
+    labs(title = "Total Reads per Sample", y = "Counts (millions)", x = NULL)
   maybe_facet(p, df, lbl)
 }
 
 build_features_above_plot <- function() {
-  validate(need(isTRUE(try(countQcBarVisible(), silent = TRUE)),
-                "Features-above-threshold plot not applicable for this data type."))
+  validate(need(
+    isTRUE(try(countQcBarVisible(), silent = TRUE)),
+    "Features-above-threshold plot not applicable for this data type."
+  ))
   df <- countQcBarData()
   lbl <- countQcLevelLabels(df)
   p <- ggplot(df, aes(x = Sample, y = Pct_num, fill = Group)) +
@@ -342,27 +369,32 @@ build_features_above_plot <- function() {
     scale_fill_manual(values = countQcGroupColours(), labels = lbl$group) +
     scale_y_continuous(
       labels = function(v) paste0(v, "%"),
-      limits = c(0, 105), expand = expansion(mult = c(0, 0.02))
+      limits = c(0, 105),
+      expand = expansion(mult = c(0, 0.02))
     ) +
     ggprism::theme_prism(base_size = cqT(), axis_text_angle = 45) +
-    labs(title = "Features Above Threshold",
-         y = "% features present", x = NULL)
+    labs(title = "Features Above Threshold", y = "% features present", x = NULL)
   if (isTRUE(input$countQcBarShowPctLabel)) {
-    p <- p + geom_text(
-      aes(label = paste0(signif(Pct_num, 3), "%")),
-      vjust = -0.3,
-      size  = input$countQcBarPctLabelSize %||% 3.5
-    )
+    p <- p +
+      geom_text(
+        aes(label = paste0(signif(Pct_num, 3), "%")),
+        vjust = -0.3,
+        size = input$countQcBarPctLabelSize %||% 3.5
+      )
   }
   maybe_facet(p, df, lbl)
 }
 
 output$countQcTotalReads <- renderPlot(
-  build_total_reads_plot(), width = cqW, height = cqH
+  build_total_reads_plot(),
+  width = cqW,
+  height = cqH
 )
 
 output$countQcFeaturesAbove <- renderPlot(
-  build_features_above_plot(), width = cqW, height = cqH
+  build_features_above_plot(),
+  width = cqW,
+  height = cqH
 )
 
 # ==============================================================================
@@ -380,14 +412,13 @@ countQcDominantData <- reactive({
   # Keep rowData row-aligned to counts (features() is p-value sorted).
   rd <- eds$features()[rownames(counts), , drop = FALSE]
   labels <- if ("gene_name" %in% colnames(rd) && any(nzchar(rd$gene_name))) {
-    ifelse(is.na(rd$gene_name) | !nzchar(rd$gene_name),
-           rownames(counts), rd$gene_name)
+    ifelse(is.na(rd$gene_name) | !nzchar(rd$gene_name), rownames(counts), rd$gene_name)
   } else {
     rownames(counts)
   }
   labels <- make.unique(labels)
   col_sums <- colSums(counts)
-  col_sums[col_sums == 0] <- 1  # guard against zero-col (empty sample)
+  col_sums[col_sums == 0] <- 1 # guard against zero-col (empty sample)
   frac <- sweep(counts, 2, col_sums, FUN = "/")
   rownames(frac) <- labels
   df <- as.data.frame(frac)
@@ -402,14 +433,20 @@ classify_family <- function(gene, presets_used, user_regex) {
   for (fam in names(presets_used)) {
     if (grepl(presets_used[[fam]], gene, ignore.case = TRUE)) return(fam)
   }
-  if (nzchar(user_regex %||% "") &&
-      grepl(user_regex, gene, ignore.case = TRUE)) return("Custom")
+  if (
+    nzchar(user_regex %||% "") &&
+      grepl(user_regex, gene, ignore.case = TRUE)
+  ) {
+    return("Custom")
+  }
   "Other"
 }
 
 build_dominant_plot <- function() {
-  validate(need(isTRUE(try(countQcDomVisible(), silent = TRUE)),
-                "Dominant-genes plot not applicable for this data type."))
+  validate(need(
+    isTRUE(try(countQcDomVisible(), silent = TRUE)),
+    "Dominant-genes plot not applicable for this data type."
+  ))
   df <- countQcDominantData()
   n_top <- input$countQcDomTopN %||% 3
   n_top <- max(0L, as.integer(n_top))
@@ -432,10 +469,9 @@ build_dominant_plot <- function() {
   # and the always-on family-triangle layer.
   preset_names <- input$countQcDomPresets
   presets_used <- countQcFamilyPresets[preset_names]
-  user_regex   <- input$countQcDomPattern %||% ""
-  regex_parts  <- c(unname(unlist(presets_used)),
-                    if (nzchar(user_regex)) user_regex else NULL)
-  hit_regex    <- if (length(regex_parts)) paste(regex_parts, collapse = "|") else NA_character_
+  user_regex <- input$countQcDomPattern %||% ""
+  regex_parts <- c(unname(unlist(presets_used)), if (nzchar(user_regex)) user_regex else NULL)
+  hit_regex <- if (length(regex_parts)) paste(regex_parts, collapse = "|") else NA_character_
 
   family <- if (!is.na(hit_regex)) {
     df[grepl(hit_regex, df$Gene, ignore.case = TRUE), , drop = FALSE]
@@ -450,34 +486,51 @@ build_dominant_plot <- function() {
   if (nrow(topN) > 0) {
     if (colour_mode == "Rank") {
       # Interpolate three rank-colour anchors across N ranks so N > 3 works.
-      base_cols <- c(input$countQcColDomRank1 %||% "red",
-                     input$countQcColDomRank2 %||% "orange",
-                     input$countQcColDomRank3 %||% "gold")
-      rank_palette <- if (n_top == 1) base_cols[1]
-                      else if (n_top == 2) base_cols[c(1, 3)]
-                      else grDevices::colorRampPalette(base_cols)(n_top)
+      base_cols <- c(
+        input$countQcColDomRank1 %||% "red",
+        input$countQcColDomRank2 %||% "orange",
+        input$countQcColDomRank3 %||% "gold"
+      )
+      rank_palette <- if (n_top == 1) {
+        base_cols[1]
+      } else if (n_top == 2) {
+        base_cols[c(1, 3)]
+      } else {
+        grDevices::colorRampPalette(base_cols)(n_top)
+      }
       names(rank_palette) <- as.character(seq_len(n_top))
 
       p <- p +
-        geom_point(data = topN, aes(x = Sample, y = Fraction, colour = rank),
-                   size = 2, position = position_dodge(width = 0.4),
-                   inherit.aes = FALSE) +
+        geom_point(
+          data = topN,
+          aes(x = Sample, y = Fraction, colour = rank),
+          size = 2,
+          position = position_dodge(width = 0.4),
+          inherit.aes = FALSE
+        ) +
         ggrepel::geom_text_repel(
-          data = topN, aes(x = Sample, y = Fraction, label = Gene, colour = rank),
-          size = 2.8, nudge_y = 0.02, direction = "y",
-          segment.size = 0.2, segment.alpha = 0.4,
-          max.overlaps = Inf, inherit.aes = FALSE
+          data = topN,
+          aes(x = Sample, y = Fraction, label = Gene, colour = rank),
+          size = 2.8,
+          nudge_y = 0.02,
+          direction = "y",
+          segment.size = 0.2,
+          segment.alpha = 0.4,
+          max.overlaps = Inf,
+          inherit.aes = FALSE
         ) +
         scale_colour_manual(values = rank_palette, name = "Top-gene rank") +
         guides(colour = guide_legend(override.aes = list(size = 3, alpha = 1)))
     } else {
       # Family mode — classify each top-N gene and colour by membership
-      topN$family <- vapply(as.character(topN$Gene),
-                            classify_family, FUN.VALUE = character(1),
-                            presets_used, user_regex)
-      lvls <- c(names(presets_used),
-                if (nzchar(user_regex)) "Custom" else NULL,
-                "Other")
+      topN$family <- vapply(
+        as.character(topN$Gene),
+        classify_family,
+        FUN.VALUE = character(1),
+        presets_used,
+        user_regex
+      )
+      lvls <- c(names(presets_used), if (nzchar(user_regex)) "Custom" else NULL, "Other")
       topN$family <- factor(topN$family, levels = lvls)
       n_fams <- length(lvls)
       palette_base <- if (n_fams <= 8) {
@@ -486,17 +539,28 @@ build_dominant_plot <- function() {
         scales::hue_pal()(n_fams)
       }
       fam_palette <- setNames(palette_base, lvls)
-      if ("Other" %in% lvls) fam_palette["Other"] <- fam_col
+      if ("Other" %in% lvls) {
+        fam_palette["Other"] <- fam_col
+      }
 
       p <- p +
-        geom_point(data = topN, aes(x = Sample, y = Fraction, colour = family),
-                   size = 2, position = position_dodge(width = 0.4),
-                   inherit.aes = FALSE) +
+        geom_point(
+          data = topN,
+          aes(x = Sample, y = Fraction, colour = family),
+          size = 2,
+          position = position_dodge(width = 0.4),
+          inherit.aes = FALSE
+        ) +
         ggrepel::geom_text_repel(
-          data = topN, aes(x = Sample, y = Fraction, label = Gene, colour = family),
-          size = 2.8, nudge_y = 0.02, direction = "y",
-          segment.size = 0.2, segment.alpha = 0.4,
-          max.overlaps = Inf, inherit.aes = FALSE
+          data = topN,
+          aes(x = Sample, y = Fraction, label = Gene, colour = family),
+          size = 2.8,
+          nudge_y = 0.02,
+          direction = "y",
+          segment.size = 0.2,
+          segment.alpha = 0.4,
+          max.overlaps = Inf,
+          inherit.aes = FALSE
         ) +
         scale_colour_manual(values = fam_palette, name = "Gene family", drop = FALSE) +
         guides(colour = guide_legend(override.aes = list(size = 3, alpha = 1)))
@@ -519,26 +583,38 @@ build_dominant_plot <- function() {
     }
 
     p <- p +
-      geom_point(data = family, aes(x = Sample, y = Fraction),
-                 inherit.aes = FALSE, colour = fam_col,
-                 shape = 17, size = 1.4, alpha = 0.55)
-    if (nrow(family_labelled) > 0) {
-      p <- p + ggrepel::geom_text_repel(
-        data = family_labelled, aes(x = Sample, y = Fraction, label = Gene),
-        inherit.aes = FALSE, colour = fam_col,
-        size = 2.6, segment.alpha = 0.3, max.overlaps = Inf
+      geom_point(
+        data = family,
+        aes(x = Sample, y = Fraction),
+        inherit.aes = FALSE,
+        colour = fam_col,
+        shape = 17,
+        size = 1.4,
+        alpha = 0.55
       )
+    if (nrow(family_labelled) > 0) {
+      p <- p +
+        ggrepel::geom_text_repel(
+          data = family_labelled,
+          aes(x = Sample, y = Fraction, label = Gene),
+          inherit.aes = FALSE,
+          colour = fam_col,
+          size = 2.6,
+          segment.alpha = 0.3,
+          max.overlaps = Inf
+        )
     }
   }
 
   p +
     ggprism::theme_prism(base_size = cqT(), axis_text_angle = 90) +
-    labs(y = "Fraction of total expression",
-         title = "Dominant genes per sample")
+    labs(y = "Fraction of total expression", title = "Dominant genes per sample")
 }
 
 output$countQcDominant <- renderPlot(
-  build_dominant_plot(), width = cqW, height = cqH
+  build_dominant_plot(),
+  width = cqW,
+  height = cqH
 )
 
 # ==============================================================================
@@ -549,32 +625,45 @@ output$countQcDominant <- renderPlot(
   if (length(eds$contrasts()) > 0) eds$de(eds$primary_contrast()) else NULL
 }
 countQcHasGC <- reactive({
-  sa <- .countQc_seqAnno_or_null(); if (is.null(sa)) return(FALSE)
+  sa <- .countQc_seqAnno_or_null()
+  if (is.null(sa)) {
+    return(FALSE)
+  }
   "gc" %in% colnames(sa) && !all(is.na(sa$gc))
 })
 countQcHasWidth <- reactive({
-  sa <- .countQc_seqAnno_or_null(); if (is.null(sa)) return(FALSE)
+  sa <- .countQc_seqAnno_or_null()
+  if (is.null(sa)) {
+    return(FALSE)
+  }
   "featWidth" %in% colnames(sa) && !all(is.na(sa$featWidth))
 })
 
 # Hide GC/Width radio choices when the columns are absent
 observe({
   choices <- "Standard"
-  if (isTRUE(try(countQcHasGC(), silent = TRUE)))    choices <- c(choices, "GC content")
-  if (isTRUE(try(countQcHasWidth(), silent = TRUE))) choices <- c(choices, "Gene width")
+  if (isTRUE(try(countQcHasGC(), silent = TRUE))) {
+    choices <- c(choices, "GC content")
+  }
+  if (isTRUE(try(countQcHasWidth(), silent = TRUE))) {
+    choices <- c(choices, "Gene width")
+  }
   current <- isolate(input$countQcScatterColourBy)
   selected <- if (!is.null(current) && current %in% choices) current else "Standard"
-  updateRadioButtons(session, "countQcScatterColourBy",
-                     choices = choices, selected = selected, inline = TRUE)
+  updateRadioButtons(session, "countQcScatterColourBy", choices = choices, selected = selected, inline = TRUE)
 })
 
 # Resolve highlight tokens -> feature_ids
 countQcHighlightIds <- reactive({
   tokens <- c(input$countQcHighlightSelect, parse_gene_text(input$countQcHighlightText))
   tokens <- unique(tokens[nzchar(tokens)])
-  if (!length(tokens)) return(character(0))
+  if (!length(tokens)) {
+    return(character(0))
+  }
   sa <- .countQc_seqAnno_or_null()
-  if (is.null(sa)) return(character(0))
+  if (is.null(sa)) {
+    return(character(0))
+  }
   hits <- sa$feature_id[sa$feature_id %in% tokens]
   if ("gene_name" %in% colnames(sa)) {
     hits <- unique(c(hits, sa$feature_id[sa$gene_name %in% tokens]))
@@ -587,9 +676,9 @@ countQcIntraData <- reactive({
   req(input$countQcIntraFactor)
   req(input$countQcIntraGroup)
   req(input$countQcIntraCountType)
-  dataset  <- eds$samples()
+  dataset <- eds$samples()
   # SE-only escape hatch (presentFlag/isPresent assays); NULL for uploads.
-  se       <- if (eds$backend_kind() == "se") eds$backend() else NULL
+  se <- if (eds$backend_kind() == "se") eds$backend() else NULL
   dataType <- eds$data_type()
   # Proteomics: use the currently selected contrast's DE table
   seqAnno <- if (eds$omics_class() == "proteomics") {
@@ -597,7 +686,9 @@ countQcIntraData <- reactive({
     eds$de(contr)
   } else if (length(eds$contrasts()) > 0) {
     eds$de(eds$primary_contrast())
-  } else NULL
+  } else {
+    NULL
+  }
   req(!is.null(seqAnno))
 
   req(input$countQcIntraFactor %in% colnames(dataset))
@@ -611,14 +702,17 @@ countQcIntraData <- reactive({
   # Apply background offset if the count type looks linear
   offset <- if (input$countQcIntraCountType %in% c("normalised", "counts", "fpkm", "tpm")) {
     eds$background_expression()
-  } else 10
+  } else {
+    10
+  }
   signal <- cts + offset
 
   # Align signal to seqAnno by feature_id (with isoform fallback). Keeps rd
   # and signal in matching row order so the types vector and plotted x/y
   # stay aligned.
   aln <- align_signal_to_seqanno(signal, seqAnno)
-  signal <- aln$signal; rd <- aln$rd
+  signal <- aln$signal
+  rd <- aln$rd
   req(nrow(rd) > 0)
 
   samples <- colnames(signal)[idx]
@@ -632,37 +726,45 @@ countQcIntraData <- reactive({
     rd$usedInTest
   } else if (!is.null(se) && "presentFlag" %in% assayNames(se)) {
     pf <- rowMeans(assay(se, "presentFlag")) >= 0.5
-    if (!is.null(names(pf))) pf <- pf[match(rd$feature_id, names(pf))]
+    if (!is.null(names(pf))) {
+      pf <- pf[match(rd$feature_id, names(pf))]
+    }
     pf[is.na(pf)] <- FALSE
     pf
   } else if (!is.null(se) && "isPresent" %in% assayNames(se)) {
     ip <- rowMeans(assay(se, "isPresent")) >= 0.5
-    if (!is.null(names(ip))) ip <- ip[match(rd$feature_id, names(ip))]
+    if (!is.null(names(ip))) {
+      ip <- ip[match(rd$feature_id, names(ip))]
+    }
     ip[is.na(ip)] <- FALSE
     ip
-  } else rep(TRUE, nrow(rd))
+  } else {
+    rep(TRUE, nrow(rd))
+  }
 
   types_info <- build_qc_scatter_types(
-    rd, mode, present_mask,
-    p_thresh  = input$countQcScatterPval   %||% 0.05,
-    lfc_thresh = input$countQcScatterLFC   %||% 1,
-    gc_lo = input$countQcScatterGCLow  %||% 0.4,
+    rd,
+    mode,
+    present_mask,
+    p_thresh = input$countQcScatterPval %||% 0.05,
+    lfc_thresh = input$countQcScatterLFC %||% 1,
+    gc_lo = input$countQcScatterGCLow %||% 0.4,
     gc_hi = input$countQcScatterGCHigh %||% 0.6,
-    w_lo  = input$countQcScatterWidthLow  %||% 500,
-    w_hi  = input$countQcScatterWidthHigh %||% 5000,
+    w_lo = input$countQcScatterWidthLow %||% 500,
+    w_hi = input$countQcScatterWidthHigh %||% 5000,
     std_cols = list(
-      Absent       = input$countQcColAbsent  %||% "grey70",
-      Present      = input$countQcColPresent %||% "black",
-      Significants = input$countQcColSig     %||% "#A6CEE3"
+      Absent = input$countQcColAbsent %||% "grey70",
+      Present = input$countQcColPresent %||% "black",
+      Significants = input$countQcColSig %||% "#A6CEE3"
     ),
     gc_cols = list(
-      low  = input$countQcColGCLow  %||% "#1F78B4",
-      mid  = input$countQcColGCMid  %||% "black",
+      low = input$countQcColGCLow %||% "#1F78B4",
+      mid = input$countQcColGCMid %||% "black",
       high = input$countQcColGCHigh %||% "#FF7F00"
     ),
     width_cols = list(
-      low  = input$countQcColWidthLow  %||% "#B15928",
-      mid  = input$countQcColWidthMid  %||% "black",
+      low = input$countQcColWidthLow %||% "#B15928",
+      mid = input$countQcColWidthMid %||% "black",
       high = input$countQcColWidthHigh %||% "#33A02C"
     )
   )
@@ -677,9 +779,10 @@ countQcIntraData <- reactive({
     draw_order = types_info$draw_order,
     feature_id = rd$feature_id,
     label = if ("gene_name" %in% colnames(rd) && any(nzchar(rd$gene_name))) {
-      ifelse(is.na(rd$gene_name) | !nzchar(rd$gene_name),
-             rd$feature_id, rd$gene_name)
-    } else rd$feature_id
+      ifelse(is.na(rd$gene_name) | !nzchar(rd$gene_name), rd$feature_id, rd$gene_name)
+    } else {
+      rd$feature_id
+    }
   )
 })
 
@@ -687,10 +790,10 @@ build_intra_scatter_plot <- function() {
   d <- countQcIntraData()
   hl_ids <- countQcHighlightIds()
 
-  guide_col    <- input$countQcColGuide        %||% "blue"
-  guide_fold   <- input$countQcGuideFold       %||% 2
-  show_id      <- input$countQcShowIdentity    %||% TRUE
-  show_fold    <- input$countQcShowFoldBands   %||% TRUE
+  guide_col <- input$countQcColGuide %||% "blue"
+  guide_fold <- input$countQcGuideFold %||% 2
+  show_id <- input$countQcShowIdentity %||% TRUE
+  show_fold <- input$countQcShowFoldBands %||% TRUE
 
   panel_plots <- lapply(d$samples, function(s) {
     p <- make_qc_scatter(
@@ -705,33 +808,44 @@ build_intra_scatter_plot <- function() {
       alpha = input$countQcScatterAlpha %||% 0.4,
       base_size = max(cqT() - 2, 6),
       draw_order = d$draw_order,
-      guide_colour    = guide_col,
-      guide_fold      = guide_fold,
-      show_identity   = show_id,
+      guide_colour = guide_col,
+      guide_fold = guide_fold,
+      show_identity = show_id,
       show_fold_bands = show_fold
-    ) + theme(legend.position = "none")
+    ) +
+      theme(legend.position = "none")
 
     if (length(hl_ids)) {
       hl <- data.frame(
         feature_id = d$feature_id,
-        x = d$group_geomean, y = d$signal[, s],
-        label = d$label, stringsAsFactors = FALSE
+        x = d$group_geomean,
+        y = d$signal[, s],
+        label = d$label,
+        stringsAsFactors = FALSE
       )
       hl <- hl[hl$feature_id %in% hl_ids, , drop = FALSE]
       if (nrow(hl)) {
         col <- input$countQcColHighlight %||% "goldenrod3"
-        p <- p + geom_point(
-          data = hl, aes(x = x, y = y), inherit.aes = FALSE,
-          colour = col, size = input$countQcHighlightSize %||% 3
-        )
-        if (isTRUE(input$countQcHighlightLabel)) {
-          p <- p + ggrepel::geom_text_repel(
-            data = hl, aes(x = x, y = y, label = label),
-            inherit.aes = FALSE, colour = col,
-            size = input$countQcHighlightLabelSize %||% 3.5,
-            min.segment.length = 0, max.overlaps = Inf,
-            segment.alpha = 0.5
+        p <- p +
+          geom_point(
+            data = hl,
+            aes(x = x, y = y),
+            inherit.aes = FALSE,
+            colour = col,
+            size = input$countQcHighlightSize %||% 3
           )
+        if (isTRUE(input$countQcHighlightLabel)) {
+          p <- p +
+            ggrepel::geom_text_repel(
+              data = hl,
+              aes(x = x, y = y, label = label),
+              inherit.aes = FALSE,
+              colour = col,
+              size = input$countQcHighlightLabelSize %||% 3.5,
+              min.segment.length = 0,
+              max.overlaps = Inf,
+              segment.alpha = 0.5
+            )
         }
       }
     }
@@ -740,17 +854,20 @@ build_intra_scatter_plot <- function() {
 
   # Keep the legend from the first panel so users can still see it
   legend_plot <- make_qc_scatter(
-    x = d$group_geomean, y = d$signal[, d$samples[[1]]],
+    x = d$group_geomean,
+    y = d$signal[, d$samples[[1]]],
     types_vec = d$types_vec,
     types_colours = d$types_colours,
-    xlab = "", ylab = "", title = NULL,
+    xlab = "",
+    ylab = "",
+    title = NULL,
     point_size = input$countQcScatterPointSize %||% 0.6,
     alpha = input$countQcScatterAlpha %||% 0.4,
     base_size = cqT(),
     draw_order = d$draw_order,
-    guide_colour    = guide_col,
-    guide_fold      = guide_fold,
-    show_identity   = show_id,
+    guide_colour = guide_col,
+    guide_fold = guide_fold,
+    show_identity = show_id,
     show_fold_bands = show_fold
   )
   legend_grob <- cowplot::get_legend(legend_plot)
@@ -762,21 +879,25 @@ build_intra_scatter_plot <- function() {
 
 intraPlotHeight <- function() {
   d <- try(countQcIntraData(), silent = TRUE)
-  if (inherits(d, "try-error") || is.null(d)) return(cqH())
+  if (inherits(d, "try-error") || is.null(d)) {
+    return(cqH())
+  }
   ncol <- min(length(d$samples), input$countQcIntraNcol %||% 4)
   nrow <- max(1, ceiling(length(d$samples) / ncol))
   max(cqH(), nrow * 320)
 }
 intraPlotWidth <- function() {
   d <- try(countQcIntraData(), silent = TRUE)
-  if (inherits(d, "try-error") || is.null(d)) return(cqW())
+  if (inherits(d, "try-error") || is.null(d)) {
+    return(cqW())
+  }
   ncol <- min(length(d$samples), input$countQcIntraNcol %||% 4)
   max(cqW(), ncol * 300)
 }
 
 output$countQcIntraScatter <- renderPlot(
   build_intra_scatter_plot(),
-  width  = intraPlotWidth,
+  width = intraPlotWidth,
   height = intraPlotHeight
 )
 
@@ -793,28 +914,47 @@ countQcDownloadFile <- function(plot_reactive, suffix, width_in = 8, height_in =
     content = function(file) {
       fmt <- tolower(input$countQcDlFormat %||% "pdf")
       if (fmt == "png") {
-        ggsave(file, plot = plot_reactive(), device = "png",
-               width = width_in, height = height_in,
-               dpi = as.numeric(input$countQcDlDpi %||% 300), bg = "white")
+        ggsave(
+          file,
+          plot = plot_reactive(),
+          device = "png",
+          width = width_in,
+          height = height_in,
+          dpi = as.numeric(input$countQcDlDpi %||% 300),
+          bg = "white"
+        )
       } else {
         plt <- plot_reactive()
-        if (fmt == "pdf") plt <- prepare_plot_for_pdf(plt)
-        ggsave(file, plot = plt, device = fmt,
-               width = width_in, height = height_in, bg = "white")
+        if (fmt == "pdf") {
+          plt <- prepare_plot_for_pdf(plt)
+        }
+        ggsave(file, plot = plt, device = fmt, width = width_in, height = height_in, bg = "white")
       }
     }
   )
 }
 
-output$dlPlot_countQcTotalReads   <- countQcDownloadFile(
-  reactive(build_total_reads_plot()), "total_reads",
-  width_in = cqW() / 96, height_in = cqH() / 96)
+output$dlPlot_countQcTotalReads <- countQcDownloadFile(
+  reactive(build_total_reads_plot()),
+  "total_reads",
+  width_in = cqW() / 96,
+  height_in = cqH() / 96
+)
 output$dlPlot_countQcFeaturesAbove <- countQcDownloadFile(
-  reactive(build_features_above_plot()), "features_above",
-  width_in = cqW() / 96, height_in = cqH() / 96)
-output$dlPlot_countQcDominant     <- countQcDownloadFile(
-  reactive(build_dominant_plot()), "dominant_genes",
-  width_in = cqW() / 96, height_in = cqH() / 96)
-output$dlPlot_countQcIntra        <- countQcDownloadFile(
-  reactive(build_intra_scatter_plot()), "intra_group",
-  width_in = intraPlotWidth() / 96, height_in = intraPlotHeight() / 96)
+  reactive(build_features_above_plot()),
+  "features_above",
+  width_in = cqW() / 96,
+  height_in = cqH() / 96
+)
+output$dlPlot_countQcDominant <- countQcDownloadFile(
+  reactive(build_dominant_plot()),
+  "dominant_genes",
+  width_in = cqW() / 96,
+  height_in = cqH() / 96
+)
+output$dlPlot_countQcIntra <- countQcDownloadFile(
+  reactive(build_intra_scatter_plot()),
+  "intra_group",
+  width_in = intraPlotWidth() / 96,
+  height_in = intraPlotHeight() / 96
+)

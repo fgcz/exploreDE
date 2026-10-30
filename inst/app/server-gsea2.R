@@ -10,7 +10,7 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
 # EITHER a real clusterProfiler S4 object (native path, unchanged) or a plain
 # tidy data.frame (a BYO dataset with no clusterProfiler object at all).
 .is_native <- function(x) inherits(x, c("enrichResult", "gseaResult"))
-.res_df    <- function(x) if (.is_native(x)) x@result else x
+.res_df <- function(x) if (.is_native(x)) x@result else x
 
 # FDR threshold for "ora" / "gsea": the SUSHI parameter (fdrThreshORA /
 # fdrThreshGSEA) for an SE; for an h5ad, the per-method value that
@@ -29,7 +29,9 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
 # ever shows the significant ones.
 .enr_keep_sig <- function(x, thr) {
   df <- .res_df(x)
-  if (!is.data.frame(df) || !nrow(df) || !"p.adjust" %in% colnames(df)) return(x)
+  if (!is.data.frame(df) || !nrow(df) || !"p.adjust" %in% colnames(df)) {
+    return(x)
+  }
   keep <- !is.na(df$p.adjust) & df$p.adjust <= thr
   if (.is_native(x)) {
     x@result <- df[keep, , drop = FALSE]
@@ -40,7 +42,9 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
 }
 
 .gsea_raw <- function() {
-  if (is.null(contrast)) return(NULL)
+  if (is.null(contrast)) {
+    return(NULL)
+  }
   g <- list()
   flat <- eds$enrichment(contrast, "gsea")
   if (length(flat)) {
@@ -59,7 +63,9 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
     }
   }
   g <- lapply(g, .enr_keep_sig, thr = .enr_fdr_thresh("gsea"))
-  if (!length(g)) return(NULL)
+  if (!length(g)) {
+    return(NULL)
+  }
   g
 }
 
@@ -105,101 +111,145 @@ gseaToUse <- reactiveValues(er = NULL)
 # block below and read by the observers/outputs. Kept as plain module vars so the
 # deep observers see the latest without being re-registered (no stacking). For a
 # single-contrast dataset selectedContrast() is constant, so this fires once.
-gsea    <- NULL
-ei      <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
-param   <- list()
-design  <- ""
+gsea <- NULL
+ei <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
+param <- list()
+design <- ""
 .id2sym <- function(ids) ids
 
 # Higher priority than the gseaType observer below so the module vars are fresh
 # before that observer reads them on a contrast switch.
-observeEvent(selectedContrast(), {
-  contrast <<- selectedContrast()
-  gsea     <<- .gsea_raw()
-  ei       <<- if (!is.null(contrast)) {
-    eds$enrichment_input(contrast)
-  } else {
-    list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
-  }
-  design   <<- if (!is.null(contrast)) eds$contrast_label(contrast) else ""
-
-  # GSEA thresholds / featureLevel: SUSHI SE metadata$param, else defaults.
-  p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else list()
-  if (is.null(p)) p <- list()
-  if (is.null(p$featureLevel))  p$featureLevel  <- eds$feature_id_kind()
-  p$fdrThreshGSEA <- .enr_fdr_thresh("gsea")
-  param <<- p
-
-  # Backend-agnostic gene-id -> symbol remap (no-op when feature_ids are already
-  # symbols, e.g. an uploaded h5ad), so labels never blank out.
-  .id2sym <<- local({
-    sa <- ei$seq_anno
-    gid <- gsym <- NULL
-    if (!is.null(sa)) {
-      gid  <- if ("gene_id" %in% colnames(sa)) sa$gene_id else if ("label_gene_id" %in% colnames(sa)) sa$label_gene_id else NULL
-      gsym <- if ("gene_name" %in% colnames(sa)) sa$gene_name else if ("label_gene_symbol" %in% colnames(sa)) sa$label_gene_symbol else NULL
-    }
-    if (is.null(gid) || is.null(gsym)) {
-      function(ids) ids
+observeEvent(
+  selectedContrast(),
+  {
+    contrast <<- selectedContrast()
+    gsea <<- .gsea_raw()
+    ei <<- if (!is.null(contrast)) {
+      eds$enrichment_input(contrast)
     } else {
-      map <- setNames(as.character(gsym), as.character(gid))
-      function(ids) { s <- unname(map[as.character(ids)]); ifelse(is.na(s) | !nzchar(s), ids, s) }
+      list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
     }
-  })
+    design <<- if (!is.null(contrast)) eds$contrast_label(contrast) else ""
 
-  # Update GSEA type choices for this contrast
-  updateSelectInput(session = session, inputId = "gseaType",
-                    choices = names(gsea),
-                    selected = if (length(gsea)) names(gsea)[[1]] else NULL)
+    # GSEA thresholds / featureLevel: SUSHI SE metadata$param, else defaults.
+    p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else list()
+    if (is.null(p)) {
+      p <- list()
+    }
+    if (is.null(p$featureLevel)) {
+      p$featureLevel <- eds$feature_id_kind()
+    }
+    p$fdrThreshGSEA <- .enr_fdr_thresh("gsea")
+    param <<- p
 
-  output$gseaDesign <- renderText({ design })
+    # Backend-agnostic gene-id -> symbol remap (no-op when feature_ids are already
+    # symbols, e.g. an uploaded h5ad), so labels never blank out.
+    .id2sym <<- local({
+      sa <- ei$seq_anno
+      gid <- gsym <- NULL
+      if (!is.null(sa)) {
+        gid <- if ("gene_id" %in% colnames(sa)) {
+          sa$gene_id
+        } else if ("label_gene_id" %in% colnames(sa)) {
+          sa$label_gene_id
+        } else {
+          NULL
+        }
+        gsym <- if ("gene_name" %in% colnames(sa)) {
+          sa$gene_name
+        } else if ("label_gene_symbol" %in% colnames(sa)) {
+          sa$label_gene_symbol
+        } else {
+          NULL
+        }
+      }
+      if (is.null(gid) || is.null(gsym)) {
+        function(ids) ids
+      } else {
+        map <- setNames(as.character(gsym), as.character(gid))
+        function(ids) {
+          s <- unname(map[as.character(ids)])
+          ifelse(is.na(s) | !nzchar(s), ids, s)
+        }
+      }
+    })
 
-  # GSEA overview table
-  gsea.overview <- data.frame(check.names = FALSE, "Number of Significant Pathways" = numeric())
-  for (i in seq_along(names(gsea))) {
-    testName <- names(gsea)[i]
-    gsea.overview[testName, "Number of Significant Pathways"] <- nrow(.res_df(gsea[[i]]))
-  }
-  output$gseaOverview <- function() {
-    gsea.overview %>% kable(format = "html", caption = "GSEA:") %>%
-      kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
-  }
+    # Update GSEA type choices for this contrast
+    updateSelectInput(
+      session = session,
+      inputId = "gseaType",
+      choices = names(gsea),
+      selected = if (length(gsea)) names(gsea)[[1]] else NULL
+    )
 
-  # GSEA thresholds table
-  gseaThresholds <- data.frame(check.names = FALSE, "GSEA Cut-Offs" = character())
-  gseaThresholds["Output GSEA Term FDR", "GSEA Cut-Offs"] <- param$fdrThreshGSEA
-  output$gseaThreshOverview <- function() {
-    gseaThresholds %>% kable(format = "html", caption = "Cut-Offs:") %>%
-      kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
-  }
+    output$gseaDesign <- renderText({
+      design
+    })
 
-  # Isoform-level aggregation UI (only shown for isoform data)
-  if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
-    output$gseaIsoformAggUI <- renderUI({
-      tagList(
-        box(
-          title = "Isoform Aggregation", width = NULL, solidHeader = TRUE,
-          status = "info", collapsible = TRUE, collapsed = FALSE,
-          tags$div(
-            class = "callout callout-info",
-            tags$p(
-              tags$b("Note:"), "This dataset is at isoform level. Multiple transcripts per gene
+    # GSEA overview table
+    gsea.overview <- data.frame(check.names = FALSE, "Number of Significant Pathways" = numeric())
+    for (i in seq_along(names(gsea))) {
+      testName <- names(gsea)[i]
+      gsea.overview[testName, "Number of Significant Pathways"] <- nrow(.res_df(gsea[[i]]))
+    }
+    output$gseaOverview <- function() {
+      gsea.overview %>%
+        kable(format = "html", caption = "GSEA:") %>%
+        kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
+    }
+
+    # GSEA thresholds table
+    gseaThresholds <- data.frame(check.names = FALSE, "GSEA Cut-Offs" = character())
+    gseaThresholds["Output GSEA Term FDR", "GSEA Cut-Offs"] <- param$fdrThreshGSEA
+    output$gseaThreshOverview <- function() {
+      gseaThresholds %>%
+        kable(format = "html", caption = "Cut-Offs:") %>%
+        kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
+    }
+
+    # Isoform-level aggregation UI (only shown for isoform data)
+    if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+      output$gseaIsoformAggUI <- renderUI({
+        tagList(
+          box(
+            title = "Isoform Aggregation",
+            width = NULL,
+            solidHeader = TRUE,
+            status = "info",
+            collapsible = TRUE,
+            collapsed = FALSE,
+            tags$div(
+              class = "callout callout-info",
+              tags$p(
+                tags$b("Note:"),
+                "This dataset is at isoform level. Multiple transcripts per gene
               were passed to the enrichment analysis, each with their own log2 fold change. To
               display a single fold change per gene in the network plot, values are aggregated
               using the method selected below."
+              )
+            ),
+            selectInput(
+              inputId = "gseaIsoformAgg",
+              label = "Aggregation method",
+              choices = c(
+                "Max absolute" = "maxabs",
+                "Mean" = "mean",
+                "Median" = "median",
+                "Max" = "max",
+                "Min" = "min"
+              ),
+              selected = "maxabs",
+              width = "50%"
             )
-          ),
-          selectInput(
-            inputId = "gseaIsoformAgg", label = "Aggregation method",
-            choices = c("Max absolute" = "maxabs", "Mean" = "mean", "Median" = "median", "Max" = "max", "Min" = "min"),
-            selected = "maxabs", width = "50%"
           )
         )
-      )
-    })
-    outputOptions(output, "gseaIsoformAggUI", suspendWhenHidden = FALSE)
-  }
-}, ignoreNULL = FALSE, priority = 10)
+      })
+      outputOptions(output, "gseaIsoformAggUI", suspendWhenHidden = FALSE)
+    }
+  },
+  ignoreNULL = FALSE,
+  priority = 10
+)
 
 # Main observer for GSEA type changes (also refires on contrast switch, after the
 # higher-priority setup block above refreshes gsea/ei/.id2sym).
@@ -214,7 +264,7 @@ observeEvent(
     gseaToUse$rdf <- NULL
     gseaToUse$rdf_symbol <- NULL
     gseaToUse$is_native <- FALSE
-    er  <- gsea[[input$gseaType]]
+    er <- gsea[[input$gseaType]]
     rdf <- .res_df(er)
 
     # Check if results exist and show modal if empty
@@ -249,10 +299,15 @@ observeEvent(
         })
         rdf_symbol <- rdf
         # Convert core enrichment from gene IDs to gene names
-        rdf_symbol$core_enrichment <- vapply(rdf_symbol$core_enrichment, function(genes_string) {
-          gene_ids <- strsplit(genes_string, "/")[[1]]
-          paste(.id2sym(gene_ids), collapse = "/")
-        }, character(1), USE.NAMES = FALSE)
+        rdf_symbol$core_enrichment <- vapply(
+          rdf_symbol$core_enrichment,
+          function(genes_string) {
+            gene_ids <- strsplit(genes_string, "/")[[1]]
+            paste(.id2sym(gene_ids), collapse = "/")
+          },
+          character(1),
+          USE.NAMES = FALSE
+        )
       } else {
         # For other pathway databases (e.g., C2)
         rdf_symbol <- rdf
@@ -282,7 +337,6 @@ observeEvent(
       gseaToUse$log2RatioGSEA <- log2RatioGSEA
       gseaToUse$colsToTable <- colsToTable
     }
-
 
     # Clear existing plots
     for (x in names(gseaPlotReactive)) {
@@ -314,7 +368,9 @@ output$selectedTable_GSEA <- DT::renderDataTable({
     rownames = FALSE,
     caption = paste0(
       "Click pathways in this table to add them to the figures on the right. ",
-      "Only pathways with FDR <= ", param$fdrThreshGSEA, " are listed."
+      "Only pathways with FDR <= ",
+      param$fdrThreshGSEA,
+      " are listed."
     )
   ) %>%
     DT::formatStyle(
@@ -395,11 +451,11 @@ observeEvent(
   ignoreInit = TRUE,
   {
     req(gseaToUse$rdf_symbol)
-    current_rdf        <- isolate(gseaToUse$rdf)
+    current_rdf <- isolate(gseaToUse$rdf)
     current_rdf_symbol <- isolate(gseaToUse$rdf_symbol)
-    current_er         <- isolate(gseaToUse$er)
-    current_er_symbol  <- isolate(gseaToUse$er_symbol)
-    is_native          <- isolate(gseaToUse$is_native)
+    current_er <- isolate(gseaToUse$er)
+    current_er_symbol <- isolate(gseaToUse$er_symbol)
+    is_native <- isolate(gseaToUse$is_native)
     req(!is.null(input$selectedTable_GSEA_rows_selected))
     req(current_rdf)
 
@@ -411,13 +467,15 @@ observeEvent(
     n_dropped <- length(input$selectedTable_GSEA_rows_selected) - length(sel_rows)
     if (n_dropped > 0) {
       showNotification(
-        paste0(n_dropped, " selected pathway(s) with FDR > ", param$fdrThreshGSEA,
-               " not added to the figures."),
-        id = "gseaFdrDrop", type = "warning"
+        paste0(n_dropped, " selected pathway(s) with FDR > ", param$fdrThreshGSEA, " not added to the figures."),
+        id = "gseaFdrDrop",
+        type = "warning"
       )
     }
     if (!length(sel_rows)) {
-      for (x in names(gseaPlotReactive)) gseaPlotReactive[[x]] <- NULL
+      for (x in names(gseaPlotReactive)) {
+        gseaPlotReactive[[x]] <- NULL
+      }
       return()
     }
 
@@ -433,13 +491,19 @@ observeEvent(
     # For isoform data, aggregate multiple transcripts per gene
     if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
       agg_method <- if (!is.null(input$gseaIsoformAgg)) input$gseaIsoformAgg else "maxabs"
-      na_safe <- function(fn) function(x) { x <- x[!is.na(x)]; if (length(x) == 0) NA_real_ else fn(x) }
-      agg_fn <- switch(agg_method,
+      na_safe <- function(fn) {
+        function(x) {
+          x <- x[!is.na(x)]
+          if (length(x) == 0) NA_real_ else fn(x)
+        }
+      }
+      agg_fn <- switch(
+        agg_method,
         "maxabs" = na_safe(function(x) x[which.max(abs(x))]),
-        "mean"   = na_safe(mean),
+        "mean" = na_safe(mean),
         "median" = na_safe(median),
-        "max"    = na_safe(max),
-        "min"    = na_safe(min)
+        "max" = na_safe(max),
+        "min" = na_safe(min)
       )
       log2RatioGSEA <- vapply(split(log2RatioGSEA, names(log2RatioGSEA)), agg_fn, numeric(1))
       log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
@@ -477,7 +541,10 @@ observeEvent(
           # Apply filter mode
           if (input$gseaVisFilterMode == "genes") {
             if (length(genes_pass_filter) == 0) {
-              showNotification("No genes meet the current filter thresholds. Lower the Log2FC or P-Value threshold.", type = "warning")
+              showNotification(
+                "No genes meet the current filter thresholds. Lower the Log2FC or P-Value threshold.",
+                type = "warning"
+              )
               return()
             }
             log2RatioGSEA <- log2RatioGSEA[names(log2RatioGSEA) %in% genes_pass_filter]
@@ -497,7 +564,10 @@ observeEvent(
       # Check that selected pathways still have genes after filtering
       sel_genes <- current_rdf_symbol$core_enrichment[sel_rows]
       if (!any(nchar(sel_genes) > 0)) {
-        showNotification("No genes in the selected pathways meet the current filter thresholds. Lower the Log2FC or P-Value threshold.", type = "warning")
+        showNotification(
+          "No genes in the selected pathways meet the current filter thresholds. Lower the Log2FC or P-Value threshold.",
+          type = "warning"
+        )
         return()
       }
       if (is_native) current_er_symbol@result <- current_rdf_symbol
@@ -546,34 +616,36 @@ observeEvent(
 
       # Add gene labels if requested
       if (input$showGeneLabelsGSEA) {
-        cn <- cn + geom_text_repel(
-          data = cd2,
-          aes(label = name, x = x, y = y),
+        cn <- cn +
+          geom_text_repel(
+            data = cd2,
+            aes(label = name, x = x, y = y),
+            size = input$textSizeGSEA / 3,
+            max.overlaps = input$gseaMaxOver,
+            nudge_x = input$gseaDodgeX / 10,
+            nudge_y = input$gseaDodgeY / 10,
+            fontface = "bold",
+            color = "black",
+            bg.color = "white",
+            bg.r = 0.15,
+            na.rm = TRUE
+          )
+      }
+
+      # Add pathway labels
+      cn <- cn +
+        geom_label_repel(
+          data = cd1,
+          aes(label = Label, x = x, y = y, fill = Label),
           size = input$textSizeGSEA / 3,
           max.overlaps = input$gseaMaxOver,
           nudge_x = input$gseaDodgeX / 10,
           nudge_y = input$gseaDodgeY / 10,
           fontface = "bold",
-          color = "black",
-          bg.color = "white",
-          bg.r = 0.15,
+          show.legend = FALSE,
+          fill = alpha("white", input$gseaLabelAlpha),
           na.rm = TRUE
         )
-      }
-
-      # Add pathway labels
-      cn <- cn + geom_label_repel(
-        data = cd1,
-        aes(label = Label, x = x, y = y, fill = Label),
-        size = input$textSizeGSEA / 3,
-        max.overlaps = input$gseaMaxOver,
-        nudge_x = input$gseaDodgeX / 10,
-        nudge_y = input$gseaDodgeY / 10,
-        fontface = "bold",
-        show.legend = FALSE,
-        fill = alpha("white", input$gseaLabelAlpha),
-        na.rm = TRUE
-      )
 
       gseaPlotReactive$cnetplot <- cn
 
@@ -581,10 +653,12 @@ observeEvent(
       erRP <- clusterProfiler::slice(current_er, sel_rows)
       rp <- enrichplot::ridgeplot(x = erRP, fill = input$ridgePlotColourByGSEA)
       rp <- rp +
-        scale_y_discrete(labels = erRP@result$Label[match(
-          levels(as.factor(rp$plot_env$gs2val.df$category)),
-          erRP@result$Description
-        )]) +
+        scale_y_discrete(
+          labels = erRP@result$Label[match(
+            levels(as.factor(rp$plot_env$gs2val.df$category)),
+            erRP@result$Description
+          )]
+        ) +
         theme(axis.text.y = element_text(vjust = -0.01, size = input$textSizeGSEA)) +
         geom_vline(xintercept = 0, linetype = "dashed") +
         scale_fill_gradient2(
@@ -598,13 +672,19 @@ observeEvent(
     } else {
       gseaPlotReactive$cnetplot <- NULL
       gseaPlotReactive$ridgeplot <- NULL
-      showNotification("Network and ridge plots need the original enrichment object; not available for this dataset.", type = "message")
+      showNotification(
+        "Network and ridge plots need the original enrichment object; not available for this dataset.",
+        type = "message"
+      )
     }
 
     # Lollipop plot (-log10 FDR, coloured by NES)
     lolli_df <- erRP_df
     lolli_df$negLogP <- -log10(lolli_df$p.adjust)
-    lolli_df[[labelColumn]] <- factor(lolli_df[[labelColumn]], levels = lolli_df[[labelColumn]][order(lolli_df$negLogP)])
+    lolli_df[[labelColumn]] <- factor(
+      lolli_df[[labelColumn]],
+      levels = lolli_df[[labelColumn]][order(lolli_df$negLogP)]
+    )
     scl <- input$gseaLollipopScale
     ts <- input$textSizeGSEA
     lp <- ggplot(lolli_df, aes(y = .data[[labelColumn]], x = negLogP)) +
@@ -691,7 +771,10 @@ observeEvent(
       gseaPlotReactive$runningscore <- rs
     } else {
       gseaPlotReactive$runningscore <- NULL
-      showNotification("Running-score plot needs the original enrichment object; not available for this dataset.", type = "message")
+      showNotification(
+        "Running-score plot needs the original enrichment object; not available for this dataset.",
+        type = "message"
+      )
     }
 
     # UpSet plot
@@ -761,8 +844,7 @@ output$dlPlot_cnetGSEA <- downloadHandler(
 output$heatmap_GSEA <- renderPlot(
   {
     req(!is.null(gseaPlotReactive[["heatmap"]]))
-    draw_heatmap(gseaPlotReactive[["heatmap"]],
-                 legend_dx = input$GSEALegendDX, legend_dy = input$GSEALegendDY)
+    draw_heatmap(gseaPlotReactive[["heatmap"]], legend_dx = input$GSEALegendDX, legend_dy = input$GSEALegendDY)
   },
   width = function() as.numeric(input$figWidthGSEA),
   height = function() as.numeric(input$figHeightGSEA * 1.5)
@@ -779,8 +861,9 @@ output$dlPlot_heatmapGSEA <- downloadHandler(
   content = function(file) {
     req(gseaPlotReactive[["heatmap"]])
     export_plot_standard(
-      plot_object = function() draw_heatmap(gseaPlotReactive[["heatmap"]],
-                                            legend_dx = input$GSEALegendDX, legend_dy = input$GSEALegendDY),
+      plot_object = function() {
+        draw_heatmap(gseaPlotReactive[["heatmap"]], legend_dx = input$GSEALegendDX, legend_dy = input$GSEALegendDY)
+      },
       filename = file,
       format = tolower(input$downloadFormatGSEA),
       width = as.numeric(input$figWidthGSEA) / 25,

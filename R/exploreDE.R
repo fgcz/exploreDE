@@ -14,7 +14,9 @@
 #' exploreDE("my_data.h5ad")
 #' }
 exploreDE <- function(file = NULL, ...) {
-  if (!is.null(file)) file <- normalizePath(file, mustWork = TRUE)
+  if (!is.null(file)) {
+    file <- normalizePath(file, mustWork = TRUE)
+  }
   old <- options(exploreDE.file = file)
   on.exit(options(old), add = TRUE)
   shiny::runApp(appDir = system.file("app", package = "exploreDE"), ...)

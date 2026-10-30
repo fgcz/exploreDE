@@ -9,7 +9,7 @@ test_that("build_feature_id returns protein_Id directly when it is unique (prote
 test_that("build_feature_id falls back to protein_Id_site for phospho data", {
   df <- data.frame(
     protein_Id = c("P1", "P1", "P2"),
-    site       = c("S1", "S2", "S1"),
+    site = c("S1", "S2", "S1"),
     stringsAsFactors = FALSE
   )
   expect_equal(build_feature_id(df), c("P1_S1", "P1_S2", "P2_S1"))
@@ -27,7 +27,7 @@ test_that("build_feature_id falls back to protein_Id_peptide_Id for peptide data
 test_that("build_feature_id prefers site over peptide_Id when both are present and site disambiguates", {
   df <- data.frame(
     protein_Id = c("P1", "P1", "P2"),
-    site       = c("S1", "S2", "S1"),
+    site = c("S1", "S2", "S1"),
     peptide_Id = c("AAA", "BBB", "AAA"),
     stringsAsFactors = FALSE
   )
@@ -38,7 +38,7 @@ test_that("build_feature_id prefers site over peptide_Id when both are present a
 test_that("build_feature_id strips tildes from sub-feature columns when combining", {
   df <- data.frame(
     protein_Id = c("P1", "P1"),
-    site       = c("S1~lfq~extra", "S2~lfq~extra"),
+    site = c("S1~lfq~extra", "S2~lfq~extra"),
     stringsAsFactors = FALSE
   )
   expect_equal(build_feature_id(df), c("P1_S1_lfq_extra", "P1_S2_lfq_extra"))

@@ -5,9 +5,24 @@ test_that("convert_genomics_se on RNASeq gene-level fixture returns expected str
   # --- Top-level shape -------------------------------------------------------
   expect_type(out, "list")
   expect_equal(out$dataType, "RNASeq")
-  expect_true(all(c("se", "param", "seqAnno", "dataset", "factors", "factorLevels",
-                    "groupingName", "countList", "genes", "design", "designLevels",
-                    "goObjects", "allPathways") %in% names(out)))
+  expect_true(all(
+    c(
+      "se",
+      "param",
+      "seqAnno",
+      "dataset",
+      "factors",
+      "factorLevels",
+      "groupingName",
+      "countList",
+      "genes",
+      "design",
+      "designLevels",
+      "goObjects",
+      "allPathways"
+    ) %in%
+      names(out)
+  ))
 
   # --- seqAnno ---------------------------------------------------------------
   expect_s3_class(out$seqAnno, "data.frame")

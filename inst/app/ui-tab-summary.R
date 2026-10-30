@@ -56,10 +56,14 @@ tabItem(
           status = "primary",
           tags$b("Yer jokin'! Not another one?!"),
           br(),
-          tags$p("ExploreDE 3.9.0! This app gets more updates than the UK does prime ministers.", tags$sub(tags$em("[Spain enters the chat]"), style = "font-size: 60%;")),
+          tags$p(
+            "ExploreDE 3.9.0! This app gets more updates than the UK does prime ministers.",
+            tags$sub(tags$em("[Spain enters the chat]"), style = "font-size: 60%;")
+          ),
           tags$ul(
             tags$li(
-              tags$b("Finally!"), " You can relabel groups!",
+              tags$b("Finally!"),
+              " You can relabel groups!",
               tags$ul(
                 tags$li("Under the 'Colours / Label' tab, you can rename the group labels to whatever you want!"),
                 tags$li("It supports italics, super/subscript, and Greek letters..."),
@@ -70,7 +74,9 @@ tabItem(
               "We've also spent some time tidying some plots, fixing some little niggles (like the feature bucket), and adding some extra little sliders."
             )
           ),
-          tags$p(tags$em("As always, feedback on the app (good and bad), feature requests, and bug reports are greatly appreciated!"))
+          tags$p(tags$em(
+            "As always, feedback on the app (good and bad), feature requests, and bug reports are greatly appreciated!"
+          ))
         )
       )
     )

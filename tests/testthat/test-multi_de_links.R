@@ -42,7 +42,9 @@ test_that("'..' is refused, even when the target exists", {
   expect_null(multi_resolve_dataset("p1234/../p9999/DESeq2_A--over--B_2024/A--over--B", r$roots))
   expect_null(multi_resolve_dataset("../projects/p9999/DESeq2_A--over--B_2024/A--over--B", r$roots))
   expect_null(multi_resolve_dataset(
-    "https://x/?data=p1234/../p9999/DESeq2_A--over--B_2024/A--over--B", r$roots))
+    "https://x/?data=p1234/../p9999/DESeq2_A--over--B_2024/A--over--B",
+    r$roots
+  ))
 })
 
 test_that("absolute paths must lie under a root, not merely share its prefix", {
@@ -90,8 +92,10 @@ test_that("multi_load_de_result returns NULL without a DE result", {
 test_that("multi_load_de_result loads a real SUSHI DESeq2 result", {
   path <- "/srv/GT/analysis/course_sushi/public/gstore/projects/p1000/DESeq2_SDY--over--Control_2025-01-29--14-26-27/SDY--over--Control"
   skip_if_not(file.exists(file.path(path, "deResult.rds")), "course data not mounted")
-  res <- multi_resolve_dataset(sub("^.*/projects/", "", path),
-                               c("/srv/gstore/projects", "/srv/GT/analysis/course_sushi/public/gstore/projects"))
+  res <- multi_resolve_dataset(
+    sub("^.*/projects/", "", path),
+    c("/srv/gstore/projects", "/srv/GT/analysis/course_sushi/public/gstore/projects")
+  )
   expect_equal(res$path, path)
   out <- multi_load_de_result(res$path)
   expect_true("log2Ratio" %in% colnames(out$seqAnno))

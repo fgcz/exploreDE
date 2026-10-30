@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("CountQC: subclass + no DE", {
-  fx  <- fx_countqc()
+  fx <- fx_countqc()
   eds <- new_explore_dataset(fx$se)
 
   expect_s3_class(eds, "ExploreDatasetSE_CountQC")
@@ -15,7 +15,7 @@ test_that("CountQC: subclass + no DE", {
 })
 
 test_that("CountQC: assay accessor returns counts", {
-  fx  <- fx_countqc()
+  fx <- fx_countqc()
   eds <- new_explore_dataset(fx$se)
   expect_true("counts" %in% eds$assay_names())
   m <- eds$assay("counts")
@@ -24,11 +24,11 @@ test_that("CountQC: assay accessor returns counts", {
 })
 
 test_that("CrisprCountQC: subclass + sgrna_to_gene populated", {
-  fx  <- fx_crispr_countqc()
+  fx <- fx_crispr_countqc()
   eds <- new_explore_dataset(fx$se)
 
   expect_s3_class(eds, "ExploreDatasetSE_CrisprCountQC")
-  expect_s3_class(eds, "ExploreDatasetSE_CountQC")     # inherits
+  expect_s3_class(eds, "ExploreDatasetSE_CountQC") # inherits
   expect_identical(eds$omics_class(), "genomics")
   expect_identical(eds$data_type(), "CrisprCountQC")
   expect_identical(eds$feature_id_kind(), "guide")
@@ -40,7 +40,7 @@ test_that("CrisprCountQC: subclass + sgrna_to_gene populated", {
 })
 
 test_that("CrisprCountQC: validator passes", {
-  fx  <- fx_crispr_countqc()
+  fx <- fx_crispr_countqc()
   eds <- new_explore_dataset(fx$se)
   expect_silent(validate_explore_dataset(eds))
 })

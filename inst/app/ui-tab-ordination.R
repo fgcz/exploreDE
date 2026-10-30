@@ -18,13 +18,17 @@ tabItem(
           those samples are to one another."
         ),
         tags$p(
-          tags$b("PCA"), " (Principal Component Analysis) works best with normally
+          tags$b("PCA"),
+          " (Principal Component Analysis) works best with normally
           distributed data and is sensitive to outliers. ",
-          tags$b("PCoA/MDS"), " (Principal Coordinates Analysis / Multidimensional Scaling)
+          tags$b("PCoA/MDS"),
+          " (Principal Coordinates Analysis / Multidimensional Scaling)
           can use different distance metrics and is more flexible. ",
-          tags$b("NMDS"), " (Non-metric Multidimensional Scaling) preserves rank-order
+          tags$b("NMDS"),
+          " (Non-metric Multidimensional Scaling) preserves rank-order
           distances and is robust to non-linear relationships. ",
-          tags$b("GLM-PCA"), " uses generalised linear models and is specifically designed
+          tags$b("GLM-PCA"),
+          " uses generalised linear models and is specifically designed
           for count data (RNA-seq)."
         ),
         tags$p(
@@ -41,7 +45,9 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Main settings",
-            helpText("The ordination plot is completely separate from the DE test and will be identical in other live reports from the same dataset, it's just here for convenience."),
+            helpText(
+              "The ordination plot is completely separate from the DE test and will be identical in other live reports from the same dataset, it's just here for convenience."
+            ),
 
             # Method selector
             selectInput(
@@ -51,7 +57,9 @@ tabItem(
               selected = "pca",
               width = "75%"
             ),
-            helpText("PCA: standard linear method. PCoA/MDS: distance-based. NMDS: non-metric. GLM-PCA: for count data."),
+            helpText(
+              "PCA: standard linear method. PCoA/MDS: distance-based. NMDS: non-metric. GLM-PCA: for count data."
+            ),
             hr(style = "border-top: 0.1px solid #000000;"),
 
             # Plot type selector (samples only or biplot)
@@ -65,7 +73,11 @@ tabItem(
 
             conditionalPanel(
               condition = "output.test == 'CrisprCountQC'",
-              checkboxInput(inputId = "pcaCollapseGuides", label = "Collapse sgRNA guides per gene (sum)", value = FALSE)
+              checkboxInput(
+                inputId = "pcaCollapseGuides",
+                label = "Collapse sgRNA guides per gene (sum)",
+                value = FALSE
+              )
             ),
 
             # Biplot-specific controls (conditionally shown)
@@ -176,7 +188,15 @@ tabItem(
               )
             ),
             hr(style = "border-top: 0.1px solid #000000;"),
-            numericInput(inputId = "pcaTopN", label = "Use top n features ranked by SD", value = 2000, min = 2, max = 1e5, step = 1, width = "75%"),
+            numericInput(
+              inputId = "pcaTopN",
+              label = "Use top n features ranked by SD",
+              value = 2000,
+              min = 2,
+              max = 1e5,
+              step = 1,
+              width = "75%"
+            ),
 
             # Method-specific controls
             conditionalPanel(
@@ -223,9 +243,23 @@ tabItem(
             selectInput(inputId = "pcaFactor2", label = "Shape by", choices = "", selected = "", width = "75%"),
             hr(style = "border-top: 0.1px solid #000000;"),
             selectInput(inputId = "pcaCounts", label = "Counts to plot", choices = "", selected = "", width = "75%"),
-            selectInput(inputId = "pcaBatch", label = "Batch-correct by", choices = "", multiple = FALSE, width = "75%"),
-            selectInput(inputId = "pcaBatchDesign", label = "Design factor to preserve", choices = "", multiple = FALSE, width = "75%"),
-            helpText("The design factor tells removeBatchEffect which biological signal to protect. For two-factor DE this is locked to the primary grouping; for CountQC/Crispr you can pick any factor."),
+            selectInput(
+              inputId = "pcaBatch",
+              label = "Batch-correct by",
+              choices = "",
+              multiple = FALSE,
+              width = "75%"
+            ),
+            selectInput(
+              inputId = "pcaBatchDesign",
+              label = "Design factor to preserve",
+              choices = "",
+              multiple = FALSE,
+              width = "75%"
+            ),
+            helpText(
+              "The design factor tells removeBatchEffect which biological signal to protect. For two-factor DE this is locked to the primary grouping; for CountQC/Crispr you can pick any factor."
+            ),
             checkboxInput(inputId = "pcaLog2", label = "Log2 counts?", value = TRUE),
             helpText("Log2 only applies to non-logged RNA counts, e.g., TPM, FPKM"),
             hr(style = "border-top: 0.1px solid #000000;"),
@@ -236,7 +270,15 @@ tabItem(
             checkboxInput(inputId = "pcaAxesProp", label = "Keep axes proportional", value = FALSE),
             tags$b("Add ellipses?"),
             checkboxInput(inputId = "pcaAddEllipses", label = "Add ellipses", value = TRUE),
-            sliderInput(inputId = "pcaEllipsesAlpha", label = "Ellipses alpha", min = 0, max = 1, step = 0.1, value = 0.2, width = "65%"),
+            sliderInput(
+              inputId = "pcaEllipsesAlpha",
+              label = "Ellipses alpha",
+              min = 0,
+              max = 1,
+              step = 0.1,
+              value = 0.2,
+              width = "65%"
+            ),
 
             # PCA-specific options
             conditionalPanel(
@@ -254,14 +296,65 @@ tabItem(
             title = "Figure settings",
             h4("Plot settings"),
             splitLayout(
-              sliderInput(inputId = "figWidthPCA", label = "Width", min = 100, max = 2000, value = 800, step = 10, width = "85%"),
-              sliderInput(inputId = "figHeightPCA", label = "Height", min = 100, max = 2000, value = 600, step = 10, width = "85%"),
-              sliderInput(inputId = "textSizePCA", label = "Font Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = TRUE)
+              sliderInput(
+                inputId = "figWidthPCA",
+                label = "Width",
+                min = 100,
+                max = 2000,
+                value = 800,
+                step = 10,
+                width = "85%"
+              ),
+              sliderInput(
+                inputId = "figHeightPCA",
+                label = "Height",
+                min = 100,
+                max = 2000,
+                value = 600,
+                step = 10,
+                width = "85%"
+              ),
+              sliderInput(
+                inputId = "textSizePCA",
+                label = "Font Size",
+                min = 4,
+                max = 30,
+                value = 12,
+                step = 0.5,
+                width = "85%",
+                ticks = TRUE
+              )
             ),
             splitLayout(
-              sliderInput(inputId = "dotSizePCA", label = "Dot size", min = 1, max = 10, value = 5, step = 0.5, width = "85%", ticks = TRUE),
-              sliderInput(inputId = "alphaPCA", label = "Dot alpha", min = 0.1, max = 1, value = 0.9, step = 0.1, width = "85%", ticks = TRUE),
-              sliderInput(inputId = "dotBorderPCA", label = "Dot border", min = 0, max = 1, value = 0.2, step = 0.1, width = "85%"),
+              sliderInput(
+                inputId = "dotSizePCA",
+                label = "Dot size",
+                min = 1,
+                max = 10,
+                value = 5,
+                step = 0.5,
+                width = "85%",
+                ticks = TRUE
+              ),
+              sliderInput(
+                inputId = "alphaPCA",
+                label = "Dot alpha",
+                min = 0.1,
+                max = 1,
+                value = 0.9,
+                step = 0.1,
+                width = "85%",
+                ticks = TRUE
+              ),
+              sliderInput(
+                inputId = "dotBorderPCA",
+                label = "Dot border",
+                min = 0,
+                max = 1,
+                value = 0.2,
+                step = 0.1,
+                width = "85%"
+              ),
             ),
             br(),
             splitLayout(
@@ -269,12 +362,48 @@ tabItem(
               checkboxInput(inputId = "boldPCA", label = "Bold?", value = TRUE),
               checkboxInput(inputId = "showLinesPCA", label = "Grid lines?", value = FALSE)
             ),
-            hr(style = "border-top: 1px solid #000000;"), h4("Annotation settings"),
-            numericInput(inputId = "pcaLabelMaxOverlap", label = "Number of max overlapping labels", min = 1, max = 1e4, value = 10, step = 1, width = "33%"),
+            hr(style = "border-top: 1px solid #000000;"),
+            h4("Annotation settings"),
+            numericInput(
+              inputId = "pcaLabelMaxOverlap",
+              label = "Number of max overlapping labels",
+              min = 1,
+              max = 1e4,
+              value = 10,
+              step = 1,
+              width = "33%"
+            ),
             splitLayout(
-              sliderInput(inputId = "geneLabelNudgePCAX", label = "Nudge Labels X", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
-              sliderInput(inputId = "geneLabelNudgePCAY", label = "Nudge Labels Y", min = -10, max = 10, value = 0, step = 1, width = "85%", ticks = TRUE),
-              sliderInput(inputId = "geneLabelSizePCA", label = "Label Size", min = 4, max = 30, value = 12, step = 0.5, width = "85%", ticks = TRUE)
+              sliderInput(
+                inputId = "geneLabelNudgePCAX",
+                label = "Nudge Labels X",
+                min = -10,
+                max = 10,
+                value = 0,
+                step = 1,
+                width = "85%",
+                ticks = TRUE
+              ),
+              sliderInput(
+                inputId = "geneLabelNudgePCAY",
+                label = "Nudge Labels Y",
+                min = -10,
+                max = 10,
+                value = 0,
+                step = 1,
+                width = "85%",
+                ticks = TRUE
+              ),
+              sliderInput(
+                inputId = "geneLabelSizePCA",
+                label = "Label Size",
+                min = 4,
+                max = 30,
+                value = 12,
+                step = 0.5,
+                width = "85%",
+                ticks = TRUE
+              )
             )
           ),
           tabPanel(
@@ -286,18 +415,21 @@ tabItem(
             tags$details(
               tags$summary(tags$b("Guidance on step ordering")),
               tags$ul(
-                tags$li(tags$b("Group subsetting vs Top N:"),
+                tags$li(
+                  tags$b("Group subsetting vs Top N:"),
                   "If group subsetting comes first (default), the top N most variable features are selected",
                   "from within the selected groups only. If Top N comes first, features are selected based on",
                   "variability across all samples, then groups are subsetted."
                 ),
-                tags$li(tags$b("Log2 transform & Batch correction:"),
+                tags$li(
+                  tags$b("Log2 transform & Batch correction:"),
                   "limma::removeBatchEffect assumes data is on a log scale (additive batch effects).",
                   "On linear-scale data (TPM, FPKM, Raw, Normalised), batch effects are multiplicative,",
                   "so batch correction should generally come after a log2 transform.",
                   "Already-logged count types (Normalised + Log2, VST) do not need the log2 step."
                 ),
-                tags$li(tags$b("Peptide filter (proteomics only):"),
+                tags$li(
+                  tags$b("Peptide filter (proteomics only):"),
                   "Filters features by minimum number of peptides. Placing this before Top N",
                   "ensures the SD-based selection only considers well-supported features."
                 )
@@ -315,16 +447,27 @@ tabItem(
             hr(style = "border-top: 1px solid #000000;"),
             h4("Download Plots"),
             downloadButton(outputId = "dlPlot_ordination", label = "Download Ordination Plot"),
-            br(), br(),
+            br(),
+            br(),
             downloadButton(outputId = "dlPlot_ordinationPairs", label = "Download Paired Plot"),
             hr(style = "border-top: 1px solid #000000;"),
             h4("Download Settings"),
             splitLayout(
-              selectInput(inputId = "downloadFormatPCA", label = "Format", choices = c("PDF", "SVG", "PNG"), selected = "PDF"),
+              selectInput(
+                inputId = "downloadFormatPCA",
+                label = "Format",
+                choices = c("PDF", "SVG", "PNG"),
+                selected = "PDF"
+              ),
               selectInput(inputId = "dpiPCA", label = "DPI", choices = c(72, 150, 300, 600, 1000), selected = 600)
             ),
             textInput(inputId = "filename_ordination", label = "Enter filename", value = "Ordination"),
-            selectInput(inputId = "ordinationFont", label = "Font", choices = c("serif", "sans", "mono"), selected = "sans")
+            selectInput(
+              inputId = "ordinationFont",
+              label = "Font",
+              choices = c("serif", "sans", "mono"),
+              selected = "sans"
+            )
           )
         ),
       ) # end of box
@@ -347,7 +490,8 @@ tabItem(
               color = "#0275D8"
             ),
             uiOutput(outputId = "pcaNAWarning", inline = TRUE),
-            br(), br(),
+            br(),
+            br(),
             DT::dataTableOutput("pcaBrushTable")
           ),
           tabPanel(

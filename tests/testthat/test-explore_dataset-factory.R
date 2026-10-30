@@ -31,7 +31,7 @@ test_that("detect_se_shape classifies proteomics", {
 })
 
 test_that("new_explore_dataset() picks ExploreDatasetSE_RNASeq", {
-  fx  <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene()
   eds <- new_explore_dataset(fx$se)
   expect_s3_class(eds, "ExploreDatasetSE_RNASeq")
   expect_s3_class(eds, "ExploreDatasetSE")
@@ -39,20 +39,20 @@ test_that("new_explore_dataset() picks ExploreDatasetSE_RNASeq", {
 })
 
 test_that("new_explore_dataset() picks ExploreDatasetSE_CountQC", {
-  fx  <- fx_countqc()
+  fx <- fx_countqc()
   eds <- new_explore_dataset(fx$se)
   expect_s3_class(eds, "ExploreDatasetSE_CountQC")
 })
 
 test_that("new_explore_dataset() picks ExploreDatasetSE_CrisprCountQC", {
-  fx  <- fx_crispr_countqc()
+  fx <- fx_crispr_countqc()
   eds <- new_explore_dataset(fx$se)
   expect_s3_class(eds, "ExploreDatasetSE_CrisprCountQC")
-  expect_s3_class(eds, "ExploreDatasetSE_CountQC")   # inherits
+  expect_s3_class(eds, "ExploreDatasetSE_CountQC") # inherits
 })
 
 test_that("new_explore_dataset() picks ExploreDatasetSE_Proteomics", {
-  fx  <- fx_proteomics_protein()
+  fx <- fx_proteomics_protein()
   eds <- new_explore_dataset(fx$se)
   expect_s3_class(eds, "ExploreDatasetSE_Proteomics")
 })
@@ -63,6 +63,5 @@ test_that("ExploreDataset abstract base rejects direct instantiation", {
 
 test_that("ExploreDatasetSE intermediate rejects shape-blind use", {
   fx <- fx_rnaseq_gene()
-  expect_error(ExploreDatasetSE$new(fx$se),
-               "must implement .build_config")
+  expect_error(ExploreDatasetSE$new(fx$se), "must implement .build_config")
 })

@@ -3,10 +3,24 @@
 expect_proteomics_shape <- function(out) {
   expect_type(out, "list")
   expect_equal(out$dataType, "proteomics")
-  expect_true(all(c("se", "seqAnnoList", "contrasts", "dataset", "factors",
-                    "countList", "genes", "factorLevels", "groupingName",
-                    "gene_lookup", "protein_lookup",
-                    "gene_choices", "protein_choices") %in% names(out)))
+  expect_true(all(
+    c(
+      "se",
+      "seqAnnoList",
+      "contrasts",
+      "dataset",
+      "factors",
+      "countList",
+      "genes",
+      "factorLevels",
+      "groupingName",
+      "gene_lookup",
+      "protein_lookup",
+      "gene_choices",
+      "protein_choices"
+    ) %in%
+      names(out)
+  ))
 
   # --- Contrasts --------------------------------------------------------------
   expect_type(out$contrasts, "character")
@@ -30,11 +44,9 @@ expect_proteomics_shape <- function(out) {
     mat <- out$countList[[m]]
     # Rownames must be a subset of feature_ids in at least one contrast
     all_fids <- unique(unlist(lapply(out$seqAnnoList, `[[`, "feature_id")))
-    expect_true(all(rownames(mat) %in% all_fids),
-      info = paste("count matrix", m, "has rownames not in any feature_id"))
+    expect_true(all(rownames(mat) %in% all_fids), info = paste("count matrix", m, "has rownames not in any feature_id"))
     # Columns match sample dataset
-    expect_equal(ncol(mat), nrow(out$dataset),
-      info = paste("count matrix", m, "column count != dataset rows"))
+    expect_equal(ncol(mat), nrow(out$dataset), info = paste("count matrix", m, "column count != dataset rows"))
   }
 
   # --- genes vector ----------------------------------------------------------
@@ -146,10 +158,8 @@ test_that("convert_proteomics_se countList rownames match unique feature_ids fro
     all_fids <- unique(unlist(lapply(out$seqAnnoList, `[[`, "feature_id")))
     for (m in names(out$countList)) {
       rn <- rownames(out$countList[[m]])
-      expect_equal(anyDuplicated(rn), 0L,
-        info = paste(key, "/", m, ": duplicate feature_ids in count matrix"))
-      expect_true(all(rn %in% all_fids),
-        info = paste(key, "/", m, ": rownames not in seqAnnoList feature_ids"))
+      expect_equal(anyDuplicated(rn), 0L, info = paste(key, "/", m, ": duplicate feature_ids in count matrix"))
+      expect_true(all(rn %in% all_fids), info = paste(key, "/", m, ": rownames not in seqAnnoList feature_ids"))
     }
   }
 })

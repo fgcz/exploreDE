@@ -10,7 +10,8 @@ tabItem(
           solidHeader = TRUE,
           status = "primary",
           uiOutput(outputId = "contrastSelectorUI_degTable"),
-          textOutput("DEGDesign"), br(),
+          textOutput("DEGDesign"),
+          br(),
           textInput(inputId = "filename_deg", label = NULL, value = "DE_Results", placeholder = "Filename"),
           downloadButton(
             outputId = "dlTable_deg",
@@ -20,11 +21,14 @@ tabItem(
             outputId = "dlTableSelected_deg",
             label = "Download Selected DE Results"
           ),
-          br(), br(),
+          br(),
+          br(),
           tags$p(
             "You can click on any feature in this table, and they will automatically be added to the selected features buckets in volcano, heatmaps, and boxplot tabs. So you can sort for features based on name, type, TPM, log2 fold change, whatever you like, and visualise those features instantly!"
           ),
-          actionButton(inputId = "resetDEGTableSelectRows", label = "Deselect all features?"), br(), br(),
+          actionButton(inputId = "resetDEGTableSelectRows", label = "Deselect all features?"),
+          br(),
+          br(),
           DT::dataTableOutput("degTable"),
           style = "overflow-y: scroll;"
         ),
@@ -40,9 +44,26 @@ tabItem(
             "Use this little box to calculate how many features are up- or down-regulated based on given thresholds."
           ),
           br(),
-          selectInput(inputId = "featureCalcPType", label = "P-value type", choices = c("FDR", "Raw"), selected = "FDR"),
-          selectInput(inputId = "featureCalcPValue", label = "P-value threshold", choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 1e-04, 1e-05), selected = 0.05),
-          sliderInput(inputId = "featureCalcLFC", label = "Log2 FC threshold (+/-)", min = 0, max = 10, value = 0.5, step = 0.25),
+          selectInput(
+            inputId = "featureCalcPType",
+            label = "P-value type",
+            choices = c("FDR", "Raw"),
+            selected = "FDR"
+          ),
+          selectInput(
+            inputId = "featureCalcPValue",
+            label = "P-value threshold",
+            choices = c(1.0, 0.1, 0.05, 0.01, 0.001, 1e-04, 1e-05),
+            selected = 0.05
+          ),
+          sliderInput(
+            inputId = "featureCalcLFC",
+            label = "Log2 FC threshold (+/-)",
+            min = 0,
+            max = 10,
+            value = 0.5,
+            step = 0.25
+          ),
           br(),
           tableOutput(outputId = "featureCalcTable"),
           br(),
