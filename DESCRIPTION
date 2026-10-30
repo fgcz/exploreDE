@@ -51,6 +51,7 @@ Imports:
   officer,
   R6,
   anndataR,
+  rhdf5,
   jsonlite,
   curl,
   SummarizedExperiment,
