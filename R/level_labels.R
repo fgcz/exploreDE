@@ -28,46 +28,46 @@
 
 # Named HTML entities we decode (everything else numeric: &#916; / &#x394;).
 .label_entities <- c(
-  amp = "&", lt = "<", gt = ">", quot = "\"", apos = "'", nbsp = " ",
-  micro = "µ", deg = "°", plusmn = "±", times = "×",
-  middot = "·", minus = "−", ndash = "–", mdash = "—",
-  hellip = "…", rarr = "→", larr = "←",
-  Alpha = "Α", Beta = "Β", Gamma = "Γ", Delta = "Δ",
-  Epsilon = "Ε", Zeta = "Ζ", Eta = "Η", Theta = "Θ",
-  Iota = "Ι", Kappa = "Κ", Lambda = "Λ", Mu = "Μ",
-  Nu = "Ν", Xi = "Ξ", Omicron = "Ο", Pi = "Π",
-  Rho = "Ρ", Sigma = "Σ", Tau = "Τ", Upsilon = "Υ",
-  Phi = "Φ", Chi = "Χ", Psi = "Ψ", Omega = "Ω",
-  alpha = "α", beta = "β", gamma = "γ", delta = "δ",
-  epsilon = "ε", zeta = "ζ", eta = "η", theta = "θ",
-  iota = "ι", kappa = "κ", lambda = "λ", mu = "μ",
-  nu = "ν", xi = "ξ", omicron = "ο", pi = "π",
-  rho = "ρ", sigmaf = "ς", sigma = "σ", tau = "τ",
-  upsilon = "υ", phi = "φ", chi = "χ", psi = "ψ",
-  omega = "ω"
+  amp = "&", lt = "<", gt = ">", quot = "\"", apos = "'", nbsp = "\u00a0",
+  micro = "\u00b5", deg = "\u00b0", plusmn = "\u00b1", times = "\u00d7",
+  middot = "\u00b7", minus = "\u2212", ndash = "\u2013", mdash = "\u2014",
+  hellip = "\u2026", rarr = "\u2192", larr = "\u2190",
+  Alpha = "\u0391", Beta = "\u0392", Gamma = "\u0393", Delta = "\u0394",
+  Epsilon = "\u0395", Zeta = "\u0396", Eta = "\u0397", Theta = "\u0398",
+  Iota = "\u0399", Kappa = "\u039a", Lambda = "\u039b", Mu = "\u039c",
+  Nu = "\u039d", Xi = "\u039e", Omicron = "\u039f", Pi = "\u03a0",
+  Rho = "\u03a1", Sigma = "\u03a3", Tau = "\u03a4", Upsilon = "\u03a5",
+  Phi = "\u03a6", Chi = "\u03a7", Psi = "\u03a8", Omega = "\u03a9",
+  alpha = "\u03b1", beta = "\u03b2", gamma = "\u03b3", delta = "\u03b4",
+  epsilon = "\u03b5", zeta = "\u03b6", eta = "\u03b7", theta = "\u03b8",
+  iota = "\u03b9", kappa = "\u03ba", lambda = "\u03bb", mu = "\u03bc",
+  nu = "\u03bd", xi = "\u03be", omicron = "\u03bf", pi = "\u03c0",
+  rho = "\u03c1", sigmaf = "\u03c2", sigma = "\u03c3", tau = "\u03c4",
+  upsilon = "\u03c5", phi = "\u03c6", chi = "\u03c7", psi = "\u03c8",
+  omega = "\u03c9"
 )
 
 # Greek (Unicode) -> character in the Adobe Symbol font encoding.
 .symbol_font_map <- c(
-  "Α" = "A", "Β" = "B", "Γ" = "G", "Δ" = "D", "∆" = "D",
-  "Ε" = "E", "Ζ" = "Z", "Η" = "H", "Θ" = "Q", "Ι" = "I",
-  "Κ" = "K", "Λ" = "L", "Μ" = "M", "Ν" = "N", "Ξ" = "X",
-  "Ο" = "O", "Π" = "P", "Ρ" = "R", "Σ" = "S", "Τ" = "T",
-  "Υ" = "U", "Φ" = "F", "Χ" = "C", "Ψ" = "Y", "Ω" = "W",
-  "Ω" = "W",
-  "α" = "a", "β" = "b", "γ" = "g", "δ" = "d", "ε" = "e",
-  "ζ" = "z", "η" = "h", "θ" = "q", "ι" = "i", "κ" = "k",
-  "λ" = "l", "μ" = "m", "ν" = "n", "ξ" = "x", "ο" = "o",
-  "π" = "p", "ρ" = "r", "ς" = "V", "σ" = "s", "τ" = "t",
-  "υ" = "u", "φ" = "f", "χ" = "c", "ψ" = "y", "ω" = "w",
-  "ϑ" = "J", "ϕ" = "j", "ϖ" = "v"
+  "\u0391" = "A", "\u0392" = "B", "\u0393" = "G", "\u0394" = "D", "\u2206" = "D",
+  "\u0395" = "E", "\u0396" = "Z", "\u0397" = "H", "\u0398" = "Q", "\u0399" = "I",
+  "\u039a" = "K", "\u039b" = "L", "\u039c" = "M", "\u039d" = "N", "\u039e" = "X",
+  "\u039f" = "O", "\u03a0" = "P", "\u03a1" = "R", "\u03a3" = "S", "\u03a4" = "T",
+  "\u03a5" = "U", "\u03a6" = "F", "\u03a7" = "C", "\u03a8" = "Y", "\u03a9" = "W",
+  "\u2126" = "W",
+  "\u03b1" = "a", "\u03b2" = "b", "\u03b3" = "g", "\u03b4" = "d", "\u03b5" = "e",
+  "\u03b6" = "z", "\u03b7" = "h", "\u03b8" = "q", "\u03b9" = "i", "\u03ba" = "k",
+  "\u03bb" = "l", "\u03bc" = "m", "\u03bd" = "n", "\u03be" = "x", "\u03bf" = "o",
+  "\u03c0" = "p", "\u03c1" = "r", "\u03c2" = "V", "\u03c3" = "s", "\u03c4" = "t",
+  "\u03c5" = "u", "\u03c6" = "f", "\u03c7" = "c", "\u03c8" = "y", "\u03c9" = "w",
+  "\u03d1" = "J", "\u03d5" = "j", "\u03d6" = "v"
 )
 
 # Non-Latin-1 punctuation base pdf() can't draw -> ASCII stand-ins (PDF only).
 .pdf_ascii_map <- c(
-  "−" = "-", "–" = "-", "—" = "-", "‘" = "'",
-  "’" = "'", "“" = "\"", "”" = "\"", "…" = "...",
-  "→" = "->", "←" = "<-"
+  "\u2212" = "-", "\u2013" = "-", "\u2014" = "-", "\u2018" = "'",
+  "\u2019" = "'", "\u201c" = "\"", "\u201d" = "\"", "\u2026" = "...",
+  "\u2192" = "->", "\u2190" = "<-"
 )
 
 .pdf_symbol_family <- "GreekSym"

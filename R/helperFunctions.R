@@ -84,7 +84,7 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
   }
   if (!designColumn %in% colnames(dataset)) {
     return(skipped(sprintf(
-      "Design column '%s' missing from sample metadata — batch correction skipped.",
+      "Design column '%s' missing from sample metadata \u2014 batch correction skipped.",
       designColumn
     )))
   }
@@ -92,7 +92,7 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
   grp <- factor(dataset[[designColumn]])
   if (nlevels(grp) < 2) {
     return(warned(sprintf(
-      "Design factor '%s' has only one level — batch correction applied without a design matrix.",
+      "Design factor '%s' has only one level \u2014 batch correction applied without a design matrix.",
       designColumn
     )))
   }
@@ -100,7 +100,7 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
   design <- tryCatch(stats::model.matrix(~grp), error = function(e) e)
   if (inherits(design, "error")) {
     return(skipped(sprintf(
-      "Could not build design matrix from '%s': %s — batch correction skipped.",
+      "Could not build design matrix from '%s': %s \u2014 batch correction skipped.",
       designColumn, conditionMessage(design)
     )))
   }
@@ -114,7 +114,7 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
         combined <- cbind(batch_mm, design[, -1, drop = FALSE])
         if (qr(combined)$rank < ncol(combined)) {
           return(warned(sprintf(
-            "Batch ('%s') and design ('%s') are confounded — batch correction applied without a design matrix.",
+            "Batch ('%s') and design ('%s') are confounded \u2014 batch correction applied without a design matrix.",
             batchColumn, designColumn
           )))
         }
@@ -150,7 +150,7 @@ apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
 
   if (!batchCol %in% colnames(dataset) ||
       nlevels(factor(dataset[[batchCol]])) < 2) {
-    notify(sprintf("Batch factor '%s' has <2 levels — batch correction skipped.", batchCol))
+    notify(sprintf("Batch factor '%s' has <2 levels \u2014 batch correction skipped.", batchCol))
     return(counts)
   }
 
@@ -166,7 +166,7 @@ apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
   tryCatch(
     do.call(limma::removeBatchEffect, args),
     error = function(e) {
-      notify(sprintf("Batch correction failed: %s — showing uncorrected counts.",
+      notify(sprintf("Batch correction failed: %s \u2014 showing uncorrected counts.",
                      conditionMessage(e)),
              type = "error")
       counts
@@ -805,36 +805,36 @@ buildCitationsList <- function(aligner, de_method, run_go = FALSE, ref_build = N
   citations$FastQC <- "Andrews S (2010) FastQC: A Quality Control Tool for High Throughput Sequence Data. Available online at: https://www.bioinformatics.babraham.ac.uk/projects/fastqc/"
 
   # MultiQC
-  citations$MultiQC <- "Ewels P, Magnusson M, Lundin S, Käller M (2016) MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics 32(19), 3047–3048. https://doi.org/10.1093/bioinformatics/btw354"
+  citations$MultiQC <- "Ewels P, Magnusson M, Lundin S, K\u00e4ller M (2016) MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics 32(19), 3047\u20133048. https://doi.org/10.1093/bioinformatics/btw354"
 
   # fastp
-  citations$fastp <- "Chen S, Zhou Y, Chen Y, Gu J (2018) fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics 34, i884–i890. https://doi.org/10.1093/bioinformatics/bty560"
+  citations$fastp <- "Chen S, Zhou Y, Chen Y, Gu J (2018) fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics 34, i884\u2013i890. https://doi.org/10.1093/bioinformatics/bty560"
 
   # Aligner-specific citations
   if (aligner == "STAR") {
-    citations$STAR <- "Dobin A, Davis CA, Schlesinger F, Drenkow J, Zaleski C, Jha S, Batut P, Chaisson M, Gingeras TR (2013) STAR: ultrafast universal RNA-seq aligner. Bioinformatics 29, 15–21. https://doi.org/10.1093/bioinformatics/bts635"
+    citations$STAR <- "Dobin A, Davis CA, Schlesinger F, Drenkow J, Zaleski C, Jha S, Batut P, Chaisson M, Gingeras TR (2013) STAR: ultrafast universal RNA-seq aligner. Bioinformatics 29, 15\u201321. https://doi.org/10.1093/bioinformatics/bts635"
   } else if (aligner == "Kallisto") {
-    citations$Kallisto <- "Bray NL, Pimentel H, Melsted P, Pachter L (2016) Near-optimal probabilistic RNA-seq quantification. Nature Biotechnology 34, 525–527. https://doi.org/10.1038/nbt.3519"
+    citations$Kallisto <- "Bray NL, Pimentel H, Melsted P, Pachter L (2016) Near-optimal probabilistic RNA-seq quantification. Nature Biotechnology 34, 525\u2013527. https://doi.org/10.1038/nbt.3519"
   } else if (aligner == "FeatureCounts") {
     citations$Rsubread <- "Liao Y, Smyth GK, Shi W (2013) The Subread aligner: fast, accurate and scalable read mapping by seed-and-vote. Nucleic Acids Research 41, e108. https://doi.org/10.1093/nar/gkt214"
-    citations$STAR <- "Dobin A, Davis CA, Schlesinger F, Drenkow J, Zaleski C, Jha S, Batut P, Chaisson M, Gingeras TR (2013) STAR: ultrafast universal RNA-seq aligner. Bioinformatics 29, 15–21. https://doi.org/10.1093/bioinformatics/bts635"
+    citations$STAR <- "Dobin A, Davis CA, Schlesinger F, Drenkow J, Zaleski C, Jha S, Batut P, Chaisson M, Gingeras TR (2013) STAR: ultrafast universal RNA-seq aligner. Bioinformatics 29, 15\u201321. https://doi.org/10.1093/bioinformatics/bts635"
   }
 
   # GENCODE citation if detected in reference build
   if (!is.null(ref_build) && grepl("GENCODE", ref_build, ignore.case = TRUE)) {
-    citations$GENCODE <- "Frankish A, Diekhans M, Jungreis I, Lagarde J, Loveland JE, Mudge JM, Sisu C, Wright JC, Armstrong J, Barnes I, et al. (2021) GENCODE: reference annotation for the human and mouse genomes. Nucleic Acids Research 49, D916–D923. https://doi.org/10.1093/nar/gkaa1087"
+    citations$GENCODE <- "Frankish A, Diekhans M, Jungreis I, Lagarde J, Loveland JE, Mudge JM, Sisu C, Wright JC, Armstrong J, Barnes I, et al. (2021) GENCODE: reference annotation for the human and mouse genomes. Nucleic Acids Research 49, D916\u2013D923. https://doi.org/10.1093/nar/gkaa1087"
   }
 
   # DE method citations
   if (de_method == "DESeq2") {
     citations$DESeq2 <- "Love MI, Huber W, Anders S (2014) Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. Genome Biology 15, 550. https://doi.org/10.1186/s13059-014-0550-8"
   } else if (de_method == "edgeR") {
-    citations$edgeR <- "Robinson MD, McCarthy DJ, Smyth GK (2010) edgeR: a Bioconductor package for differential expression analysis of digital gene expression data. Bioinformatics 26, 139–140. https://doi.org/10.1093/bioinformatics/btp616"
+    citations$edgeR <- "Robinson MD, McCarthy DJ, Smyth GK (2010) edgeR: a Bioconductor package for differential expression analysis of digital gene expression data. Bioinformatics 26, 139\u2013140. https://doi.org/10.1093/bioinformatics/btp616"
   }
 
   # GO analysis citation if applicable
   if (run_go) {
-    citations$clusterProfiler <- "Yu G, Wang LG, Han Y, He QY (2012) clusterProfiler: an R package for comparing biological themes among gene clusters. OMICS 16, 284–287. https://doi.org/10.1089/omi.2011.0118"
+    citations$clusterProfiler <- "Yu G, Wang LG, Han Y, He QY (2012) clusterProfiler: an R package for comparing biological themes among gene clusters. OMICS 16, 284\u2013287. https://doi.org/10.1089/omi.2011.0118"
   }
 
   # R and exploreDE citations
