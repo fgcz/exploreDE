@@ -270,13 +270,13 @@
   primary <- if ("counts" %in% names(counts)) counts[["counts"]] else counts[[1]]
   base_ids <- rownames(primary) %||% as.character(seq_len(nrow(primary)))
   sample_ids <- colnames(primary) %||% rownames(as.data.frame(coldata))
-  if (anyDuplicated(base_ids)) { warning("duplicate feature ids in counts — made unique"); base_ids <- make.unique(base_ids) }
+  if (anyDuplicated(base_ids)) { warning("duplicate feature ids in counts \u2014 made unique"); base_ids <- make.unique(base_ids) }
 
   # -- feature_id (the join key): symbol/id from args or rowData --------------
   rd <- .as_df_keep_names(rowdata)
   if (!is.null(rd)) {
     if (nrow(rd) != length(base_ids))
-      warning("rowData rows != feature count — aligning by rowname where possible")
+      warning("rowData rows != feature count \u2014 aligning by rowname where possible")
     rn <- rownames(rd)
     if (!is.null(rn) && all(base_ids %in% rn)) rd <- rd[base_ids, , drop = FALSE]
   }
@@ -419,7 +419,7 @@
     missing_stats <- setdiff(c("effect_log2fc", "score_fdr"), colnames(d))
     if (length(missing_stats))
       warning(sprintf(
-        "DE '%s': could not resolve %s from columns (%s) — values will be NA. Pass de_columns= for this file, or add a pattern to inst/dictionaries/column_patterns.json if this naming will recur.",
+        "DE '%s': could not resolve %s from columns (%s) \u2014 values will be NA. Pass de_columns= for this file, or add a pattern to inst/dictionaries/column_patterns.json if this naming will recur.",
         cn, paste(missing_stats, collapse = " and "), paste(orig_cols, collapse = ", ")))
     slot <- gsub("[^a-z0-9]+", "_", tolower(cn)); de_slot[[cn]] <- slot
     can <- data.frame(effect_log2fc = rep(NA_real_, length(fid)),
@@ -428,7 +428,7 @@
                       row.names = fid)
     tgt <- id2fid[rownames(d)]                    # DE feature ids -> canonical fid
     ok  <- !is.na(tgt)
-    if (any(!ok)) warning(sprintf("DE '%s': %d feature(s) not in counts/rowData — dropped",
+    if (any(!ok)) warning(sprintf("DE '%s': %d feature(s) not in counts/rowData \u2014 dropped",
                                   cn, sum(!ok)))
     pos <- match(tgt[ok], fid)
     stat_cols <- c("effect_log2fc", "score_pvalue", "score_fdr",
@@ -513,7 +513,7 @@
   enr_support <- list(); enr_tidy <- list()
   bad_keys <- setdiff(names(pathways), names(de))
   if (length(bad_keys))
-    warning(sprintf("pathway stats for non-existent contrast(s): %s — kept but unbound",
+    warning(sprintf("pathway stats for non-existent contrast(s): %s \u2014 kept but unbound",
                     paste(bad_keys, collapse = ", ")))
   for (cn in names(pathways)) {
     slot <- de_slot[[cn]] %||% gsub("[^a-z0-9]+", "_", tolower(cn))
