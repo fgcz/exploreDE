@@ -47,6 +47,7 @@
   call", "missing value where TRUE/FALSE needed").
 - GO tabs follow the changed `twoGroups` output of ezRun; small ORA/GSEA and
   volcano fixes.
+- `rhdf5` is a declared dependency, so `.h5ad` files load on a fresh install; before, anndataR failed with "HDF5AnnData requires the rhdf5 package".
 
 ## Documentation
 
