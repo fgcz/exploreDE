@@ -67,8 +67,10 @@ Imports:
   methods,
   openxlsx,
   readr,
-  tibble
+  tibble,
+  xml2
 Suggests:
+  DOSE,
   testthat (>= 3.0.0),
   jsonvalidate,
   systemfonts,
