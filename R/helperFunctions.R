@@ -24,6 +24,37 @@ kegg_species_label <- function(ref_build) {
     NULL)
 }
 
+#' go_annotation_columns
+#' The GO annotation columns a feature table carries, out of `GO BP`, `GO MF`,
+#' and `GO CC`. Any subset is valid: Non-reference organisms often have only
+#' one ontology. An empty result means the GO tabs are hidden, as KEGG is for
+#' unsupported species.
+#'
+#' @param df A feature or DE table (`data.frame`).
+#' @return Character vector of the GO columns present, possibly empty.
+#' @export
+go_annotation_columns <- function(df) {
+  intersect(c("GO BP", "GO MF", "GO CC"), colnames(df))
+}
+
+#' features_in_go_term
+#' Which rows of a feature table are annotated to one GO term, looking in
+#' whichever GO columns the table has (see [go_annotation_columns()]). Each
+#' column holds `"; "`-separated GO ids; `NA` means no annotation.
+#'
+#' @param df A feature or DE table (`data.frame`).
+#' @param go_id A GO id, e.g. `"GO:0006955"`.
+#' @return Logical vector, one per row; all `FALSE` without GO columns.
+#' @export
+features_in_go_term <- function(df, go_id) {
+  hit <- rep(FALSE, nrow(df))
+  for (col in go_annotation_columns(df)) {
+    x <- as.character(df[[col]])
+    hit <- hit | (!is.na(x) & grepl(go_id, x, fixed = TRUE))
+  }
+  hit
+}
+
 #' batch_correction_design
 #' Build a design matrix for limma::removeBatchEffect that preserves biological
 #' signal. Without a design matrix, removeBatchEffect assumes a one-group

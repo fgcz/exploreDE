@@ -205,7 +205,7 @@ ExploreDatasetH5AD <- R6::R6Class(
     enrichment_table = function(contrast, kind) {
       stopifnot(kind %in% c("ora", "gsea"))
       slot   <- sub("^de_", "", private$.contrast_slot[[contrast]] %||% contrast)
-      stored <- ((private$.uns$enrichment %||% list())[[slot]] %||% list())[[kind]]
+      stored <- ((private$.uns[["enrichment"]] %||% list())[[slot]] %||% list())[[kind]]
       if (is.data.frame(stored) && nrow(stored)) return(stored)
       super$enrichment_table(contrast, kind)
     },
@@ -242,7 +242,7 @@ ExploreDatasetH5AD <- R6::R6Class(
     # ("ora/BP/upGenes", "gsea/BP", or just "ora" for a bare object).
     .rebuild_enrichment = function(slot, kind) {
       sup_all  <- private$.uns$enrichment_support[[slot]] %||% list()
-      tidy_all <- private$.uns$enrichment[[slot]] %||% list()
+      tidy_all <- private$.uns[["enrichment"]][[slot]] %||% list()
       pick <- if (kind == "gsea") "gsea" else setdiff(names(sup_all), "gsea")
       out <- list()
       for (nm in intersect(pick, names(sup_all))) {
@@ -333,7 +333,8 @@ ExploreDatasetH5AD <- R6::R6Class(
       # Contrasts: one per uns$de entry, keyed test_vs_reference to match the
       # SE subclass; remember which varm slot each maps to.
       cm <- list(); slot_map <- list()
-      de_meta <- uns$de %||% list()
+      # [[ ]], not $: Without a `de` key, uns$de partial-matches uns$design.
+      de_meta <- uns[["de"]] %||% list()
       for (slot in names(de_meta)) {
         d <- de_meta[[slot]]
         test <- d$test_group %||% NA_character_
@@ -522,10 +523,15 @@ ExploreDatasetH5AD <- R6::R6Class(
         d$gene_name <- fv[d$feature_id, "display_name"]
         # Columns several app modules (DE table, volcano, DE QC) expect from a
         # SUSHI seqAnno; supply equivalents so those tabs work for uploaded data.
-        # usedInTest: which features entered the test. Proxy: a usable p-value;
+        # usedInTest: which features entered the test. The file's own
+        # used_in_test flag when it has one (spec §5); else a usable p-value;
         # when the producer carries no raw p-value (e.g. SAINTexpress, FDR only)
         # fall back to the fdr column so the DE views are not silently emptied.
-        if (!"usedInTest" %in% colnames(d)) {
+        if ("used_in_test" %in% colnames(d)) {
+          d$usedInTest <- eds_as_flag(d$used_in_test)
+        } else if ("usedInTest" %in% colnames(d)) {
+          d$usedInTest <- eds_as_flag(d$usedInTest)
+        } else {
           has_p <- "pValue" %in% colnames(d) && any(!is.na(d$pValue))
           d$usedInTest <- if (has_p) !is.na(d$pValue)
             else if ("fdr" %in% colnames(d)) !is.na(d$fdr)

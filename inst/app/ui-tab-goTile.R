@@ -25,12 +25,16 @@ tabItem(
         status = "primary",
         uiOutput(outputId = "contrastSelectorUI_goTile"),
         h4("Tile Input settings"),
-        selectizeInput(
-          inputId = "goTileInput",
-          choices = NULL,
-          multiple = TRUE,
-          label = "Enter the GO Term(s) you wish to plot",
-          options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
+        # GO term tiles — only when the features carry GO annotation columns.
+        conditionalPanel(
+          condition = "output.goTileGoSupported",
+          selectizeInput(
+            inputId = "goTileInput",
+            choices = NULL,
+            multiple = TRUE,
+            label = "Enter the GO Term(s) you wish to plot",
+            options = list(placeholder = 'Select features', plugins = list('remove_button', 'drag_drop', 'restore_on_backspace', 'clear_button'))
+          )
         ),
         # KEGG pathway tile — RNASeq + supported species (hsa/mmu/rno) only.
         conditionalPanel(

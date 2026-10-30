@@ -9,6 +9,19 @@
 
 `%||%` <- function(a, b) if (is.null(a) || length(a) == 0L) b else a
 
+# Where this file was source()'d from, or NULL when it was loaded as an
+# installed package or by devtools::load_all(). Recorded while the file is
+# read: source() keeps `ofile` on the call stack only during that call, and the
+# dictionary below is loaded lazily, long after.
+.eds_source_file <- local({
+  ofile <- NULL
+  for (fr in sys.frames()) {
+    cand <- fr$ofile
+    if (is.character(cand) && grepl("utils_explore_dataset\\.R$", cand)) { ofile <- cand; break }
+  }
+  if (is.null(ofile)) NULL else normalizePath(ofile, mustWork = FALSE)
+})
+
 # The AUTOMATIC half of exploreDE's dictionary (plans/jambon/anndata_manifest_design.md):
 # when no explicit de_columns/rowdata_columns mapping is given, THIS is what
 # figures out which column is which for an arbitrary incoming data.frame. Lives
@@ -18,33 +31,19 @@
 # code change. Loaded once per session; each concept's pattern array is
 # collapsed to one alternation regex for eds_standardise_*_columns() below.
 eds_load_column_patterns <- function() {
-  path <- system.file("dictionaries", "column_patterns.json", package = "exploreDE")
-  if (!nzchar(path)) {
-    # exploreDE is not always installed as a package -- it's routinely
-    # source()'d directly from an arbitrary working directory: app.R's own
-    # "dev mode -- no install required" startup, or an ad hoc test script
-    # that does `source(file.path(PKG, "R", "utils_explore_dataset.R"))`
-    # with PKG an absolute path and getwd() somewhere else entirely. Anchor
-    # to THIS FILE'S OWN LOCATION rather than guessing from getwd(): source()
-    # records the path it was given as `ofile` in its own evaluation frame,
-    # which is still on the call stack right now (this call happens at the
-    # top level of this very file, i.e. during that source() call).
-    ofile <- NULL
-    for (fr in sys.frames()) {
-      cand <- fr$ofile
-      if (!is.null(cand) && grepl("utils_explore_dataset\\.R$", cand)) { ofile <- cand; break }
-    }
-    if (!is.null(ofile)) {
-      pkg_root <- dirname(dirname(normalizePath(ofile, mustWork = FALSE)))
-      cand_path <- file.path(pkg_root, "inst", "dictionaries", "column_patterns.json")
-      if (file.exists(cand_path)) path <- cand_path
-    }
+  # A source()'d checkout (app.R's start-up, ad hoc scripts) reads its own
+  # dictionary first, so the running app always matches the code it sourced,
+  # even when an older exploreDE is installed alongside (the base image).
+  path <- ""
+  if (!is.null(.eds_source_file)) {
+    cand_path <- file.path(dirname(dirname(.eds_source_file)), "inst", "dictionaries", "column_patterns.json")
+    if (file.exists(cand_path)) path <- cand_path
   }
+  if (!nzchar(path)) path <- system.file("dictionaries", "column_patterns.json", package = "exploreDE")
   if (!nzchar(path)) {
     # Last resort: a few plausible getwd()-relative locations (devtools::
     # load_all()/testthat with cwd == package root or tests/testthat/, or
-    # app.R's own inst/app runtime cwd) for the rare case source() left no
-    # `ofile` on the stack (e.g. code pasted directly into the console).
+    # app.R's own inst/app runtime cwd) for code pasted into the console.
     candidates <- c(
       file.path("inst", "dictionaries", "column_patterns.json"),
       file.path("..", "dictionaries", "column_patterns.json"),
@@ -55,7 +54,7 @@ eds_load_column_patterns <- function() {
   }
   if (!nzchar(path) || !file.exists(path))
     stop("exploreDE: inst/dictionaries/column_patterns.json not found ",
-        "(checked the installed package location, this file's own directory, ",
+        "(checked this file's own checkout, the installed package location, ",
         "and dev-mode relative paths). Only the column-standardising helpers ",
         "need it; if you are running a cut-down build that does not import ",
         "arbitrary column names, nothing should be reaching this.")
@@ -65,6 +64,25 @@ eds_load_column_patterns <- function() {
   # listed first always beat the broad substring catch-alls listed last.
   ordered <- function(group) lapply(group, function(pats) as.character(unlist(pats)))
   list(de = ordered(raw$de %||% list()), rowdata = ordered(raw$rowdata %||% list()))
+}
+
+# A "was this feature tested?" flag (used_in_test / SUSHI's usedInTest) as a
+# plain logical with no NA. Accepts logical, 0/1 numbers (anndataR and other
+# writers can store booleans as integers), and "TRUE"/"true"/"1" text. Unknown
+# or missing counts as not tested.
+eds_as_flag <- function(x) {
+  if (is.factor(x)) x <- as.character(x)
+  out <- if (is.logical(x)) {
+    x
+  } else if (is.numeric(x)) {
+    x != 0
+  } else {
+    x <- trimws(as.character(x))
+    num <- suppressWarnings(as.numeric(x))
+    ifelse(!is.na(num), num != 0, as.logical(toupper(x)))
+  }
+  out[is.na(out)] <- FALSE
+  as.logical(out)
 }
 
 # THE column matcher. Every piece of exploreDE that has to work out "which of

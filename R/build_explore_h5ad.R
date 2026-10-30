@@ -437,6 +437,14 @@
       if (!col %in% colnames(can)) can[[col]] <- rep(NA_real_, length(fid))
       if (col %in% colnames(d)) can[[col]][pos] <- suppressWarnings(as.numeric(d[[col]]))[ok]
     }
+    # Whether each feature entered the test (e.g. SUSHI's usedInTest), when the
+    # DE table says so; found by the dictionary only. Features the table
+    # doesn't list were not tested. Without it, the reader counts a feature as
+    # tested when its p-value (or FDR) isn't NA.
+    if ("used_in_test" %in% colnames(d)) {
+      can$used_in_test <- rep(FALSE, length(fid))
+      can$used_in_test[pos] <- eds_as_flag(d$used_in_test)[ok]
+    }
     varm[[paste0("de_", slot)]] <- can
     grp <- strsplit(cn, "_vs_|--over--")[[1]]
     uns_de[[slot]] <- list(assay_used = "counts",

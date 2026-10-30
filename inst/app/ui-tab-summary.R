@@ -56,7 +56,7 @@ tabItem(
           status = "primary",
           tags$b("Yer jokin'! Not another one?!"),
           br(),
-          tags$p("ExploreDE 3.8.0! This app gets more updates than the UK does prime ministers.", tags$sub(tags$em("[Spain enters the chat]"), style = "font-size: 60%;")),
+          tags$p("ExploreDE 3.9.0! This app gets more updates than the UK does prime ministers.", tags$sub(tags$em("[Spain enters the chat]"), style = "font-size: 60%;")),
           tags$ul(
             tags$li(
               tags$b("Finally!"), " You can relabel groups!",

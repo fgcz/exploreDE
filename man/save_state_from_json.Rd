@@ -18,6 +18,6 @@ The bundle: `list(meta, inputs, rv, multi)`. Stops with a short
 \description{
 Refuses anything larger than `max_bytes`, anything that isn't an exploreDE
 session in format `exploreDE-session/2`, and anything nested deeper than a
-session ever is. Returns the bundle in the same shape the `.rds` session
-files have, so one restore path serves both.
+session ever is. Returns the bundle in the shape the restore handler uses
+(`inst/app/server-saveState.R`).
 }

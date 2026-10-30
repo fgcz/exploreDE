@@ -484,9 +484,9 @@ server <- function(input, output, session) {
     }
     eds      <- inputDataReactive()$.eds
     dataType <- eds$data_type()
-    # Column-presence check: cheap, no DB lookup. goTile tab is only shown when
-    # SUSHI has annotated features with GO terms (GO BP / MF / CC columns).
-    has_go   <- any(c("GO BP", "GO MF", "GO CC") %in% colnames(eds$features()))
+    # Column-presence check: cheap, no DB lookup. True when the features carry
+    # any GO annotation column (GO BP / MF / CC).
+    has_go   <- length(go_annotation_columns(eds$features())) > 0
     # Create dependency on menuUpdateTrigger for manual updates
     multiDeReactive$menuUpdateTrigger
     # Use isolate to check hasMultiData without automatic re-rendering
@@ -499,7 +499,7 @@ server <- function(input, output, session) {
       tags$li(class = "header", "Session"),
       menuItem(text = "Results Summary", tabName = "summaryTab", icon = icon("list")),
       menuItem(text = "Colours / Labels", tabName = "colourTab", icon = icon("palette")),
-      menuItem(text = "Save / Load Session (beta)", tabName = "saveStateTab", icon = icon("floppy-disk")),
+      menuItem(text = "Save / Load Session", tabName = "saveStateTab", icon = icon("floppy-disk")),
 
       # 1. Count tabs (Always shown)
       tags$li(class = "header", "Counts"),
@@ -540,7 +540,8 @@ server <- function(input, output, session) {
         menuItem(text = "Over-Representation Analysis", tabName = "oraTab", icon = icon("hubspot")),
         menuItem(text = "Gene Set Enrichment Analysis", tabName = "gseaTab", icon = icon("hubspot"))
       )
-      if (has_go) {
+      # Tiles come from GO terms and/or a KEGG pathway: Shown when either is available.
+      if (has_go || keggSpeciesSupported) {
         pathwayItems <- c(pathwayItems, list(
           menuItem(text = "Pathway Tile Plots", tabName = "goTileTab", icon = icon("table"))
         ))

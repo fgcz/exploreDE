@@ -20,6 +20,9 @@
     ],
     "score": [
       "score"
+    ],
+    "used_in_test": [
+      "^used[._ ]?in[._ ]?test$"
     ]
   },
   "rowdata": {

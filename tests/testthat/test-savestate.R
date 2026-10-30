@@ -245,6 +245,12 @@ test_that("code-like content stays text, and R objects cannot be written", {
   expect_error(save_state_to_json(list(meta = list(app = "exploreDE"), inputs = list(x = e))))
 })
 
+test_that("a retired .rds session renamed to .json is refused, never deserialised", {
+  f <- tempfile(fileext = ".json")
+  saveRDS(state_bundle(), f)
+  expect_error(save_state_from_json(f), "not valid JSON")
+})
+
 # ---- Multi DE helpers ------------------------------------------------------
 
 test_that("save_state_multi_inputs keeps multi widgets and drops the rest", {

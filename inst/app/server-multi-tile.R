@@ -135,14 +135,14 @@ multiMatReactive <- eventReactive(multiDeReactive$results, {
         firstTable <- results[[1]]$seqAnnoList[[1]]
     }
 
-    if (!is.null(firstTable) && !is.null(firstTable$`GO BP`)) {
+    go_cols <- if (!is.null(firstTable)) go_annotation_columns(firstTable) else character(0)
+    if (length(go_cols)) {
         tryCatch(
             {
-                allPathways <- c(
-                    unique(unlist(strsplit(x = c(firstTable$`GO BP`), "; "))),
-                    unique(unlist(strsplit(x = c(firstTable$`GO MF`), "; "))),
-                    unique(unlist(strsplit(x = c(firstTable$`GO CC`), "; ")))
-                )
+                allPathways <- unique(unlist(lapply(go_cols, function(col) {
+                    x <- as.character(firstTable[[col]])
+                    strsplit(x[!is.na(x)], "; ", fixed = TRUE)
+                })))
                 # Only run go2term if we have pathways
                 if (length(allPathways) > 0) {
                     goTerms <- clusterProfiler::go2term(allPathways)
@@ -746,14 +746,9 @@ observeEvent(
                 firstTable <- multiDeReactive$results[[1]]$seqAnnoList[[1]]
             }
 
-            if (!is.null(firstTable) && !is.null(firstTable$`GO BP`)) {
-                customList[["GO"]][["highlightersC"]] <- firstTable$feature_id[grep(
-                    (input$tileGenesPathway %>% strsplit(" ") %>% .[[1]] %>% .[1]),
-                    paste(
-                        firstTable$`GO BP`,
-                        firstTable$`GO MF`,
-                        firstTable$`GO CC`
-                    )
+            if (!is.null(firstTable) && length(go_annotation_columns(firstTable))) {
+                customList[["GO"]][["highlightersC"]] <- firstTable$feature_id[features_in_go_term(
+                    firstTable, input$tileGenesPathway %>% strsplit(" ") %>% .[[1]] %>% .[1]
                 )]
                 customList[["GO"]][["plotTitle"]] <- paste0(input$tileGenesPathway, " Tile Plot")
             }

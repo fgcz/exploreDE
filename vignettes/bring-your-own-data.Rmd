@@ -11,14 +11,16 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-exploreDE reads one file format: an `.h5ad` (AnnData) file built by
-`build_explore_h5ad()`. That function is the only supported way to get your
-own data into the app, whatever pipeline produced it. This vignette covers:
+exploreDE reads one file format: an `.h5ad` (AnnData) file in the
+`exploreDE/1.0` layout. In R, `build_explore_h5ad()` writes it for you,
+whatever pipeline produced your data. This vignette covers:
 
 1. installing exploreDE and running it on your own machine;
 2. building a file, from counts only up to counts + DE + pathways;
 3. checking the file before you open it;
-4. what to do when your column names aren't recognised.
+4. what to do when your column names aren't recognised;
+5. organisms without an annotation package (your own GO terms and enrichment);
+6. writing the file from outside R, and saving your settings in the app.
 
 Every example below runs as written against the two datasets that ship with
 the package (`inst/examples/`).
@@ -39,9 +41,9 @@ exploreDE()                 # or start on the landing page
 ```
 
 On the landing page, use **Choose an exploreDE .h5ad file** to upload
-your file (up to 1 GB), or load the demo dataset. The file is read into memory for your session only.
-The menu then shows only the tabs your data supports: DE tabs need a DE
-table, pathway tabs need pathway results.
+your file (up to 1 GB), or load the demo dataset. The file is read into
+memory for your session only. The menu then shows only the tabs your data
+supports: DE tabs need a DE table, and pathway tabs need pathway results.
 
 ## What goes into a file
 
@@ -51,11 +53,11 @@ Only three things are required:
 |-----------|------------|
 | `x`       | the counts: a matrix (features × samples), a named list of matrices (e.g. `list(counts = , normalised = )`), or a `DESeqDataSet` |
 | `coldata` | sample metadata, one row per sample, rownames = the counts' column names |
-| `omics`   | `"rnaseq"`, `"proteomics"` or `"crispr"` |
+| `omics`   | `"rnaseq"`, `"proteomics"`, or `"crispr"` |
 
 Everything else is optional: `rowdata` (feature annotation), `de` (one DE
 table per contrast), `pathways` (ORA/GSEA results per contrast), plus labels
-such as `organism`, `ref_build` and `factors`.
+such as `organism`, `ref_build`, and `factors`.
 
 ```{r libs, message = FALSE}
 library(exploreDE)
@@ -168,27 +170,31 @@ column wins, so exact names beat loose substrings:
 "score_pvalue":  ["^p[._ ]?value$"],
 "score_fdr":     ["^fdr$", "^adj[._ ]?p[._ ]?val(ue)?$", "^padj$",
                   "^q[._ ]?val(ue)?$", "^p[._ ]?adjusted$", "fdr"],
-"score":         ["score"]
+"score":         ["score"],
+"used_in_test":  ["^used[._ ]?in[._ ]?test$"]
 ```
 
-This covers DESeq2, edgeR, limma and prolfqua out of the box. It also
-covers SAINTexpress, whose tables have `log2_EFCs`, `BFDR` and
+This covers DESeq2, edgeR, limma, and prolfqua out of the box. It also
+covers SAINTexpress, whose tables have `log2_EFCs`, `BFDR`, and
 `SaintScore` and no p-value at all: `log2_EFCs` matches `log2`, `BFDR`
 matches `fdr`, and `SaintScore` becomes an extra score. That score is shown
 in the DE table and offered as a volcano y-axis; significance thresholds
 still use the FDR. With no p-value, the app works from the FDR alone.
 
 The `rowdata` side works the same way for gene IDs, symbols, descriptions,
-protein and peptide IDs, phospho sites and GO columns.
+protein and peptide IDs, phospho sites, and GO columns.
 
-Only the recognised statistics are stored for each contrast. Other DE-table
-columns (e.g. a per-contrast `avgAbd`) are not kept; put per-feature
+Only the recognised statistics are stored for each contrast, plus a
+`usedInTest` flag when the table has one (SUSHI's expression filter; the DE
+views then show only the tested features). Without it, a feature counts as
+tested when its p-value isn't `NA`. Other DE-table columns (e.g. a
+per-contrast `avgAbd`) are not kept; put per-feature
 annotation in `rowdata`, where every column is kept.
 
 ### When a column isn't recognised
 
 `build_explore_h5ad()` warns, naming the contrast, the field it couldn't
-fill and the columns it saw. Two fixes:
+fill, and the columns it saw. Two fixes:
 
 - **For one file:** name the columns yourself. Five keys exist; anything you
   don't name is still found by the dictionary.
@@ -214,3 +220,100 @@ fill and the columns it saw. Two fixes:
 `peptide_Id` column means peptide, and a `transcript_id` column with one
 transcript per row means isoform. Otherwise it's gene (RNA-seq) or protein
 (proteomics). Pass `feature_level =` to override.
+
+## Organisms without an annotation package
+
+Nothing in the file needs an organism database. Leave `organism` and
+`ref_build` out, and use your own gene ids as the rownames of the counts.
+What changes is what the app can offer:
+
+- **KEGG** tabs appear only for human, mouse, and rat.
+- **GO** tile plots and the GO heatmap appear when `rowdata` has GO
+  annotation columns: Any of `GO BP`, `GO MF`, and `GO CC`, each holding
+  `"; "`-separated GO ids (`NA` for none). One ontology is enough.
+- **ORA / GSEA** show the results you pass in `pathways`; the app never runs
+  enrichment itself.
+
+If your annotation is one list of GO ids per gene (e.g. eggNOG-mapper's
+comma-separated `GOs` column), split it by ontology with GO.db:
+
+```{r go-columns, eval = FALSE}
+# annot: one row per gene, with gene_id and GOs ("GO:0008150,GO:0003674", or "-")
+ids  <- strsplit(annot$GOs, ",", fixed = TRUE)
+long <- data.frame(gene_id = rep(annot$gene_id, lengths(ids)), go = unlist(ids))
+long <- long[grepl("^GO:", long$go), ]
+long$ontology <- AnnotationDbi::Ontology(long$go)   # "BP", "MF" or "CC"
+for (ont in c("BP", "MF", "CC")) {
+  hits     <- long[long$ontology %in% ont, ]
+  per_gene <- split(hits$go, factor(hits$gene_id, levels = annot$gene_id))
+  annot[[paste("GO", ont)]] <- vapply(per_gene, function(x)
+    if (length(x)) paste(x, collapse = "; ") else NA_character_, "")
+}
+```
+
+For pathway results, run clusterProfiler's `enricher()` (or `GSEA()`) with a
+`TERM2GENE` built from the same annotation. The example below does this on
+the shipped dataset as if it had no annotation package: It keeps only the
+`GO BP` column, builds `TERM2GENE` from it, and runs ORA on the up-regulated
+genes against the tested ones. Gene ids in `TERM2GENE` must be the rownames
+of your counts.
+
+```{r own-annotation}
+rd  <- rowData(se)
+bp  <- strsplit(as.character(rd[["GO BP"]]), "; ", fixed = TRUE)
+t2g <- data.frame(term = unlist(bp), gene = rep(rownames(rd), lengths(bp)))
+t2g <- t2g[!is.na(t2g$term), ]
+
+tested <- rownames(rd)[rd$usedInTest]
+up     <- rownames(rd)[rd$usedInTest & !is.na(rd$fdr) & rd$fdr < 0.05 & rd$log2Ratio > 0]
+ora_up <- clusterProfiler::enricher(up, TERM2GENE = t2g, universe = tested)
+
+build_explore_h5ad(
+  x        = list(counts = assay(se, "counts"), normalised = assay(se, "xNorm")),
+  out      = file.path(out_dir, "own_annotation.h5ad"),
+  omics    = "rnaseq",
+  coldata  = colData(se),
+  rowdata  = rd[, c("gene_id", "gene_name", "description", "GO BP")],
+  factors  = "Condition [Factor]",
+  de       = list(diff_vs_undiff = rd),
+  pathways = list(diff_vs_undiff = list(ora = list(BP = list(upGenes = ora_up))))
+)
+```
+
+Name the nested results as the app shows them: The ontology (`BP`, `MF`,
+`CC`, or your own label), then the direction (`upGenes`, `downGenes`,
+`bothGenes`).
+
+## Writing the file outside R
+
+If your pipeline isn't in R (a Python script, an exporter app), write the
+`.h5ad` yourself following the format spec that ships with the package:
+
+```{r spec, eval = FALSE}
+system.file("spec/exploreDE-h5ad-1.0.md", package = "exploreDE")
+```
+
+It lists every required key, the proteomics profile (protein, peptide,
+phospho, and precursor levels), and a minimal Python writer that has been
+checked against the reader. Check the result with `new_explore_dataset()` as
+above. APB Export's exploreDE output and the prolfquapp DEA's
+`AnnData.h5ad` (prolfquapp 2.10.x) open as they are.
+
+## Opening a file from a link
+
+On a server, `?data=` takes a percent-encoded `https://` link to an `.h5ad`
+from an allowed source, for example
+`https://shiny-public.fgcz.uzh.ch/app/exploreDE/?data=https%3A%2F%2F...%2Fmy_data.h5ad`.
+The default sources are APB Export jobs and public pStore; set the
+environment variable `EXPLOREDE_URL_SOURCES` (comma-separated `https://`
+prefixes) to change them. The file is downloaded without redirects, up to
+1 GB, and then checked like an upload.
+
+## Saving your settings
+
+The **Save / Load Session** tab downloads your settings across every tab
+(widgets, the feature bucket, pathway selections, and Multi DE datasets) as
+one `.json` file. Upload it later on the same dataset to pick up where you
+left off; a session from a different dataset is refused. The file holds no
+data, and its format is described in
+`system.file("spec/exploreDE-session-2.md", package = "exploreDE")`.

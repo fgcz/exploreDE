@@ -1,8 +1,8 @@
 # ═══════════════════════════════════════════════════════════════════════════
-# SAVE / RESTORE SESSION STATE  (v1 — single-dataset; multi-DE excluded)
+# SAVE / RESTORE SESSION STATE  (format exploreDE-session/2, incl. Multi DE)
 # ---------------------------------------------------------------------------
 # Serialise the app's widget state + a few reactiveValues that live outside
-# input$ to a single .rds the user downloads, and restore it on re-upload.
+# input$ to a single .json the user downloads, and restore it on re-upload.
 # See plans/archive/save_state_plan.md for the full design. Restore uses three paths:
 #   (1) a sendInputMessage retry burst for standard widgets,
 #   (2) the restore_seed store (consulted by restore_default() in every rebuilt
@@ -25,9 +25,9 @@ current_fingerprint <- function() {
 }
 
 # ── SAVE ────────────────────────────────────────────────────────────────────
-# One bundle, two formats: .json (format exploreDE-session/2, see
-# inst/spec/exploreDE-session-2.md) and the original .rds, kept alongside
-# while the JSON format is tested.
+# One bundle, written as JSON (format exploreDE-session/2, see
+# inst/spec/exploreDE-session-2.md). The earlier .rds format was retired in
+# 3.9.0: Reading an .rds can run code.
 state_filename <- function(ext) {
   dt <- tryCatch(inputDataReactive()$.eds$data_type(), error = function(e) "data")
   sprintf("exploreDE_state_%s_%s.%s", dt, format(Sys.time(), "%Y%m%d_%H%M%S"), ext)
@@ -85,10 +85,6 @@ build_state_bundle <- function() {
 output$download_state_json <- downloadHandler(
   filename = function() state_filename("json"),
   content  = function(file) writeLines(save_state_to_json(build_state_bundle()), file, useBytes = TRUE)
-)
-output$download_state <- downloadHandler(
-  filename = function() state_filename("rds"),
-  content  = function(file) saveRDS(build_state_bundle(), file)
 )
 
 output$save_state_status <- renderText({
@@ -205,8 +201,15 @@ restore_multi_datasets <- function(datasets) {
 observeEvent(input$load_state_file, {
   f <- input$load_state_file
   req(f)
-  is_json <- grepl("\\.json$", f$name, ignore.case = TRUE)
-  bundle <- tryCatch(if (is_json) save_state_from_json(f$datapath) else readRDS(f$datapath),
+  # Retired .rds sessions are never read (readRDS can run code); say so plainly.
+  if (grepl("\\.rds$", f$name, ignore.case = TRUE)) {
+    msg <- paste0("✗ .rds session files are no longer supported. Open your dataset, ",
+                  "set it up again, and save the session as .json.")
+    output$load_state_status <- renderText(msg)
+    showNotification(msg, type = "error", duration = 12)
+    return()
+  }
+  bundle <- tryCatch(save_state_from_json(f$datapath),
                      error = function(e) list(.error = conditionMessage(e)))
   if (!is.null(bundle$.error) || !is.list(bundle) ||
       !identical(bundle$meta$app, "exploreDE")) {

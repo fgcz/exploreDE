@@ -3,6 +3,10 @@ eds <- inputDataReactive()$.eds
 if (eds$data_type() == "RNASeq" && eds$has_de()) {
 
   allPathways <- eds$all_pathways()
+  # GO behaves like KEGG: The GO selector shows only when the features carry
+  # GO annotation columns (any of GO BP / MF / CC).
+  output$goTileGoSupported <- reactive({ !is_empty(allPathways) })
+  outputOptions(output, "goTileGoSupported", suspendWhenHidden = FALSE)
 
   # Follows the app-wide selected contrast (constant for single-contrast data).
   output$goTilePlotDesign <- renderText({
@@ -156,7 +160,9 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
       # keep features used in the test, and — when requested — those passing
       # both the p-value threshold and the absolute log2FC threshold.
       applySig <- function(d1) {
-        d1 <- d1[d1$usedInTest == TRUE, ]
+        # A tile is coloured by log2FC, so rows without one can't be drawn (and
+        # NA rows break the row clustering).
+        d1 <- d1[d1$usedInTest %in% TRUE & !is.na(d1$log2Ratio), ]
         if (isTRUE(input$degOnlyGoTile)) {
           d1 <- d1[which(
             d1[[pCol]]        <= as.numeric(input$pThresholdGoTile %||% 1) &
@@ -170,8 +176,11 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
       goToPlot <- gsub(" .*", "", input$goTileInput)
       goToPlot <- goToPlot[nzchar(goToPlot)]
       dfToPlotList <- list()
+      # GO membership comes from features(), which always carries the GO
+      # columns; .h5ad DE tables don't. Same feature_id space on every backend.
+      goFeats <- eds$features()
       for (GO in goToPlot) {
-        d1 <- seqAnno[with(seqAnno, grepl(GO, paste(`GO BP`, `GO MF`, `GO CC`))), ]
+        d1 <- seqAnno[seqAnno$feature_id %in% rownames(goFeats)[features_in_go_term(goFeats, GO)], ]
         dfToPlotList[[GO]] <- applySig(d1)
       }
 
@@ -211,6 +220,9 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
                           h = grid::unit(input$textSizeGoTile * 3, "pt"))
               return(invisible(NULL))
             }
+            # No stars for an untested p-value (e.g. DESeq2's independent
+            # filtering leaves padj NA).
+            if (is.na(m2[i, j])) return(invisible(NULL))
             if (m2[i, j] <= 0.0001) {
               grid.text("****", x, y)
             } else if (m2[i, j] <= 0.001) {

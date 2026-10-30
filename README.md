@@ -13,16 +13,21 @@ exploreDE("my_data.h5ad")     # or open straight into your own file
 
 With no file, the app opens on its landing page, where you can upload an
 exploreDE `.h5ad` (see below) or load the demo dataset that ships with the
-package. At FGCZ the app is also reachable from SUSHI with
-`?data=<result directory>`.
+package. On a server, `?data=` opens a dataset from the link:
+
+- `?data=<result directory>`: A SUSHI result on FGCZ's gStore (LDAP-checked).
+- `?data=<percent-encoded https link to an .h5ad>`: A file from an allowed
+  source (by default APB Export jobs and public pStore; set
+  `EXPLOREDE_URL_SOURCES` to change the list). Plain `https://` only, no
+  redirects, up to 1 GB.
 
 ## Bring your own data
 
-exploreDE reads one file format: an `.h5ad` (AnnData) file built by
-`build_explore_h5ad()`, for `"rnaseq"`, `"proteomics"` or `"crispr"` data
-from any pipeline. Only counts, sample metadata and the omics type are
-required; a DE table and pathway results are optional, and the app shows
-the tabs your data supports.
+exploreDE reads one file format: an `.h5ad` (AnnData) file in the
+`exploreDE/1.0` layout, for `"rnaseq"`, `"proteomics"`, or `"crispr"` data
+from any pipeline. In R, `build_explore_h5ad()` writes it. Only counts,
+sample metadata, and the omics type are required; a DE table and pathway
+results are optional, and the app shows the tabs your data supports.
 
 ```r
 build_explore_h5ad(
@@ -35,12 +40,12 @@ build_explore_h5ad(
 )
 ```
 
-You don't need to rename columns: a built-in dictionary recognises the usual
-DESeq2, edgeR, limma, prolfqua and SAINTexpress column names, and warns when
+You don't need to rename columns: A built-in dictionary recognises the usual
+DESeq2, edgeR, limma, prolfqua, and SAINTexpress column names, and warns when
 it can't place one.
 
 - **Full guide:** `vignette("bring-your-own-data", package = "exploreDE")`
-  covers counts-only, proteomics and RNA-seq + pathway examples (all runnable
+  covers counts-only, proteomics, and RNA-seq + pathway examples (all runnable
   on the data shipped with the package), checking a file, and what to do when
   a column isn't recognised.
 - **Using an AI assistant:** give it
@@ -49,8 +54,19 @@ it can't place one.
 - **Argument reference:** `?build_explore_h5ad`.
 - **Writing files from another tool (Python, an exporter app):**
   `system.file("spec/exploreDE-h5ad-1.0.md", package = "exploreDE")` is the
-  written `.h5ad` format spec, including the proteomics profile and the
-  prolfquapp layouts exploreDE accepts.
+  written `.h5ad` format spec, including the proteomics profile and a minimal
+  Python writer. APB Export's exploreDE output follows it.
+- **Also opens as it is:** The prolfquapp DEA's `AnnData.h5ad` (prolfquapp
+  2.10.x; spec §10).
+
+## Saving your settings
+
+The **Save / Load Session** tab downloads your settings across every tab
+(widgets, the feature bucket, pathway selections, and Multi DE datasets) as
+one `.json` file, and restores them on the same dataset later. It never holds
+data. The format is `exploreDE-session/2`:
+`system.file("spec/exploreDE-session-2.md", package = "exploreDE")`. The
+earlier `.rds` session files were retired in 3.9.0.
 
 ## Citing exploreDE
 

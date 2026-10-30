@@ -156,7 +156,7 @@ save_state_multi_datasets <- function(results) {
 # ---- JSON session files (format exploreDE-session/2) -----------------------
 # See inst/spec/exploreDE-session-2.md. JSON can only hold text, numbers,
 # true/false, null, arrays, and objects, so reading a session file can never
-# run code (an .rds can). Every value is written as an array (no unboxing), so
+# run code. (The .rds format it replaced could; it was retired in 3.9.0.) Every value is written as an array (no unboxing), so
 # single values and multi-selects read back the same way.
 
 SAVE_STATE_JSON_FORMAT <- "exploreDE-session/2"
@@ -179,8 +179,8 @@ save_state_to_json <- function(bundle) {
 #'
 #' Refuses anything larger than `max_bytes`, anything that isn't an exploreDE
 #' session in format `exploreDE-session/2`, and anything nested deeper than a
-#' session ever is. Returns the bundle in the same shape the `.rds` session
-#' files have, so one restore path serves both.
+#' session ever is. Returns the bundle in the shape the restore handler uses
+#' (`inst/app/server-saveState.R`).
 #'
 #' @param path Path to the uploaded `.json` file.
 #' @param max_bytes Size limit; 5 MB by default.
@@ -202,7 +202,7 @@ save_state_from_json <- function(path, max_bytes = 5 * 1024^2) {
   if (!identical(meta[["format"]], SAVE_STATE_JSON_FORMAT))
     stop(sprintf("unsupported session format (expected %s)", SAVE_STATE_JSON_FORMAT))
 
-  # [] reads back as list(); the .rds files hold character(0) there.
+  # [] reads back as list(); the restore expects character(0) there.
   empty_to_chr <- function(v) {
     if (is.list(v) && !length(v) && is.null(names(v))) return(character())
     if (is.list(v)) v[] <- lapply(v, empty_to_chr)

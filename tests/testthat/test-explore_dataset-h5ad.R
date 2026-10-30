@@ -62,6 +62,25 @@ test_that("loose pieces: counts + colData + omics, no DE, builds a valid eds", {
   expect_identical(dim(eds$assay("counts")), dim(p$counts))
 })
 
+test_that("a file without uns$de loads as counts-only (no partial match to uns$design)", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata)
+
+  adata <- anndataR::read_h5ad(out, as = "InMemoryAnnData")
+  u <- adata$uns
+  u[["de"]] <- NULL
+  u$design <- list(grouping = "factor_condition")
+  adata$uns <- u
+  expect_null(adata$uns[["de"]])
+
+  eds <- new_explore_dataset(adata)
+  expect_false(eds$has_de())
+  expect_length(eds$contrasts(), 0L)
+  expect_identical(eds$factor_names(), "condition")
+})
+
 test_that("counts as a named collection of matrices exposes each assay", {
   skip_if_no_anndataR()
   p <- make_toy_pieces()
@@ -903,4 +922,67 @@ test_that("a counts-only file gets computed normalised + normalised_log2 assays"
   expect_equal(norm, sweep(cts, 2, sf, "/"))
   expect_equal(eds$assay("normalised_log2"),
                log2(norm + eds$background_expression()))
+})
+
+# ---- used_in_test: which features entered the test (spec §5) ----------------
+
+test_that("eds_as_flag reads logical, 0/1, and text flags; unknown is not tested", {
+  expect_identical(eds_as_flag(c(TRUE, FALSE, NA)), c(TRUE, FALSE, FALSE))
+  expect_identical(eds_as_flag(c(1L, 0L, NA)), c(TRUE, FALSE, FALSE))
+  expect_identical(eds_as_flag(c(1, 0)), c(TRUE, FALSE))
+  expect_identical(eds_as_flag(c("TRUE", "false", "1", "0", "", NA)),
+                   c(TRUE, FALSE, TRUE, FALSE, FALSE, FALSE))
+  expect_identical(eds_as_flag(factor(c("TRUE", "FALSE"))), c(TRUE, FALSE))
+})
+
+test_that("SUSHI's usedInTest survives into the .h5ad and matches the SE backend", {
+  skip_if_no_anndataR()
+  se <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))
+  rd <- SummarizedExperiment::rowData(se)
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  suppressWarnings(build_explore_h5ad(
+    x = list(counts = SummarizedExperiment::assay(se, "counts")), out = out, omics = "rnaseq",
+    coldata = SummarizedExperiment::colData(se), rowdata = rd,
+    factors = "Condition [Factor]", de = list(diff_vs_undiff = rd)))
+
+  eds_h5 <- new_explore_dataset(out)
+  eds_se <- new_explore_dataset(se)
+  d_h5 <- eds_h5$de(eds_h5$primary_contrast())
+  d_se <- eds_se$de(eds_se$primary_contrast())
+  expect_true("used_in_test" %in% colnames(d_h5))
+  expect_type(d_h5$usedInTest, "logical")
+  tested_h5 <- d_h5$feature_id[d_h5$usedInTest]
+  tested_se <- d_se$feature_id[d_se$usedInTest %in% TRUE]
+  expect_setequal(tested_h5, tested_se)
+  # SUSHI gives untested genes a p-value, so the old p-value rule overcounted.
+  expect_lt(length(tested_h5), sum(!is.na(d_h5$pValue)))
+})
+
+test_that("without used_in_test, a feature is tested when its p-value isn't NA", {
+  skip_if_no_anndataR()
+  dds <- make_toy_dds()
+  res <- DESeq2::results(dds, contrast = c("condition", "treated", "control"))
+  res$pvalue[1:5] <- NA                                    # e.g. all-zero / outlier genes
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(treated_vs_control = res))
+  d <- new_explore_dataset(out)$de("treated_vs_control")
+  expect_false("used_in_test" %in% colnames(d))
+  expect_identical(d$usedInTest, !is.na(d$pValue))
+})
+
+test_that("a 0/1 used_in_test column (as some writers store booleans) reads as logical", {
+  skip_if_no_anndataR()
+  dds <- make_toy_dds()
+  res <- as.data.frame(DESeq2::results(dds, contrast = c("condition", "treated", "control")))
+  res$used_in_test <- rep(c(1L, 0L), length.out = nrow(res))
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(treated_vs_control = res))
+
+  adata <- anndataR::read_h5ad(out, as = "InMemoryAnnData")
+  vm <- adata$varm
+  vm$de_treated_vs_control$used_in_test <- as.integer(vm$de_treated_vs_control$used_in_test)
+  adata$varm <- vm
+  d <- new_explore_dataset(adata)$de("treated_vs_control")
+  expect_type(d$usedInTest, "logical")
+  expect_identical(sum(d$usedInTest), sum(res$used_in_test))
 })

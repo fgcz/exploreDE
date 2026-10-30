@@ -196,10 +196,13 @@ observe({
     }
   }
 
-  # RNASeq-specific: GO term selection
-  if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
-    pathways <- eds$all_pathways()
-    req(length(pathways) > 0)
+  # GO term selection. Like the KEGG sub-tab, the GO sub-tab only exists when
+  # it can work: RNA-seq with DE (the fetch reads the DE table) and GO
+  # annotation columns in the features.
+  pathways <- if (eds$data_type() == "RNASeq" && eds$has_de()) eds$all_pathways() else character(0)
+  if (!length(pathways)) {
+    hideTab(inputId = "sig", target = "GO")
+  } else {
     updateSelectizeInput(
       session,
       inputId = "heatmapGoInput",
@@ -216,10 +219,6 @@ observe({
       )
     })
     outputOptions(output, "heatmapGOUI2", suspendWhenHidden = FALSE)
-  } else {
-    output$heatmapGOUI1 <- renderUI({
-      h5("Proteomics data doesn't support GO terms.")
-    })
   }
 })
 
@@ -1245,9 +1244,10 @@ observeEvent(input$heatmapGoGo, {
 
   goId <- gsub(" .*", "", input$heatmapGoInput)
   goName <- sub("^\\S+\\s+", "", input$heatmapGoInput)
-  seqAnno <- eds$de(eds$primary_contrast())
-
-  goGenes <- seqAnno$feature_id[with(seqAnno, grepl(goId, paste(`GO BP`, `GO MF`, `GO CC`)))]
+  # GO membership from features() (always carries the GO columns; .h5ad DE
+  # tables don't). rownames(features()) are the DE table's feature_ids.
+  feats   <- eds$features()
+  goGenes <- rownames(feats)[features_in_go_term(feats, goId)]
 
   goHeatmapReactive$currentGoTerm <- goId
   goHeatmapReactive$currentGoName <- goName

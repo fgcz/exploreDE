@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Current. Describes what exploreDE 3.8.0 reads and writes. |
-| **Date** | 2026-10-29 |
+| **Status** | Current. Describes what exploreDE 3.9.0 reads and writes. |
+| **Date** | 2026-10-30 |
 | **Supersedes** | The 2026-04-17 draft (`plans/archive/anndata_migration/anndata_spec_2026-04-17.qmd`), which the implementation has since departed from. |
 | **Reference reader** | `R/ExploreDatasetH5AD.R` (via `new_explore_dataset()`) |
 | **Reference writer** | `build_explore_h5ad()` in `R/build_explore_h5ad.R` |
@@ -23,7 +23,22 @@ exploreDE's `ExploreDatasetH5AD`.
 
 - A standard AnnData file (`.h5ad`, HDF5), in the on-disk encoding written by
   Python `anndata` ≥ 0.8 or R `anndataR`. Both have been checked against the
-  reader (Python `anndata` 0.10.5, R `anndataR` 1.3.1).
+  reader (Python `anndata` 0.10.5 and 0.12, R `anndataR` 1.2.3 and 1.3.1).
+  The deployed app (ShinyProxy `fgcz_base_image`) reads with `anndataR` 1.2.3.
+- Text MAY be stored in any standard encoding: `string-array`, `categorical`,
+  or `nullable-string-array` (what Python `anndata` ≥ 0.12 writes for pandas
+  string columns). Reading `nullable-string-array` needs `anndataR` ≥ 1.2.2.
+  Older `anndataR` versions only warn, and the file loads without its sample
+  names, factors, and feature ids. To open a file there, cast text to `object`
+  before writing:
+
+  ```python
+  def plain_strings(df):
+      df = df.astype({c: object for c in df.columns if isinstance(df[c].dtype, pd.StringDtype)})
+      df.index = df.index.astype(object)
+      return df
+  adata.obs, adata.var = plain_strings(adata.obs), plain_strings(adata.var)
+  ```
 - **One modality per file.** MuData (`.h5mu`) is not read.
 - **Axes are AnnData's:** `obs` = samples, `var` = features. Every matrix is
   samples × features (the transpose of a SummarizedExperiment).
@@ -127,14 +142,15 @@ tabs are hidden.
 
 Each entry MUST be a data frame (`encoding-type: dataframe`) with one row per
 feature, in `var` order, and its index equal to `var_names`. Features that were
-not tested are `NaN`.
+not tested are `NaN`, or are marked `false` in `used_in_test`.
 
 | Column | Status | Meaning |
 |---|---|---|
 | `effect_log2fc` | MUST | log2 fold change (volcano x-axis). |
 | `score_fdr` | MUST | Adjusted p-value / q-value / FDR. **This is the significance axis**: Every threshold in the app uses it. |
-| `score_pvalue` | MAY | Raw p-value (volcano y-axis). Leave it out if the method has none (e.g. SAINTexpress); the app then works from the FDR alone. A feature counts as "tested" when its p-value (or, with no p-values, its FDR) is not `NaN`. |
+| `score_pvalue` | MAY | Raw p-value (volcano y-axis). Leave it out if the method has none (e.g. SAINTexpress); the app then works from the FDR alone. |
 | `score` | MAY | One extra display-only score (e.g. SaintScore). Shown in the DE table and offered as a volcano y-axis, never used for thresholds. Its display label comes from `uns["exploreDE"]["mapping"]` (§7.6); without a label it is shown as `score`. |
+| `used_in_test` | MAY | Boolean: Whether the feature entered the test (e.g. SUSHI's `usedInTest`, the expression filter). The DE views show only tested features. Without this column, a feature counts as tested when its p-value (or, with no p-values, its FDR) is not `NaN`. Readers also accept 0/1. |
 | other columns | MAY | Passed through with the DE table; not interpreted. |
 
 `<slot>` SHOULD match `[a-z0-9_]+` (the reference writer lower-cases the
@@ -198,11 +214,12 @@ design:
   grouping: "factor_condition"                     # default grouping
 ```
 
-### 7.3 `de` — MUST be present, MAY be empty
+### 7.3 `de` — SHOULD be present, MAY be empty
 
 One entry per contrast, keyed by `<slot>` (same as `varm["de_<slot>"]`).
-Write `{}` when there are none: **A file without the `de` key does not load**
-(reader limitation, §9).
+Write `{}` when there are none. exploreDE ≥ 3.9.0 reads a file without the
+`de` key as having no contrasts; exploreDE 3.8.0 does not load it, because
+there `uns$de` partial-matches `uns$design`.
 
 | Field | Status | Meaning |
 |---|---|---|
@@ -352,24 +369,22 @@ adata = ad.AnnData(
 adata.write_h5ad("my_proteomics.h5ad")
 ```
 
-## 9. Reader limitations (exploreDE 3.8.0)
+## 9. Reader limitations (exploreDE 3.9.0)
 
 These are reader behaviours, not format rules; the MUSTs above already work
 around them.
 
-1. **`uns["de"]` absent → the file does not load.** R's `$` partial matching
-   resolves `uns$de` to `uns$design`. Write `de = {}`.
-2. **Pathway tabs are RNA-seq only.** The menu shows them for
+1. **Pathway tabs are RNA-seq only.** The menu shows them for
    `omics_type = "rnaseq_bulk"` with DE; it does not consult the file's
    enrichment. `has_enrichment()` counts only methods with an
    `enrichment_support` entry.
-3. **`X` doubles as `counts`** when `layers` has no `counts` (§4).
-4. **R-written files may not open in Python.** `anndataR` 1.3.1 writes each
-   `varm` data frame's `_index` as `1..n` instead of the var names, and Python
-   `anndata` refuses the file ("value.index does not match parent's var
-   names"). The exploreDE reader doesn't mind. Addressed by
-   scverse/anndataR#525, which prolfquapp uses via the `wolski/anndataR` fork.
-5. **Fixed significance cut-offs.** DE thresholds default to FDR 0.05 and
+2. **`X` doubles as `counts`** when `layers` has no `counts` (§4).
+3. **R-written files may not open in Python.** `anndataR` before 1.2.3 (and
+   the 1.3.1 development build) writes each `varm` data frame's `_index` as
+   `1..n` instead of the var names, and Python `anndata` refuses the file
+   ("value.index does not match parent's var names"). The exploreDE reader
+   doesn't mind. Fixed in `anndataR` 1.2.3 (scverse/anndataR#525).
+4. **Fixed significance cut-offs.** DE thresholds default to FDR 0.05 and
    |log2FC| 0 in the app; they are not read from the file.
 
 ## 10. Accepted dialect — prolfquapp DEA `AnnData.h5ad`
@@ -416,7 +431,7 @@ joins `var` onto each on the feature id.
   `MuData.h5mu` (modalities `lfqdata` and `dea`). exploreDE reads neither the
   `.h5mu` nor an `artifact_type = "lfqdata"` AnnData.
 
-exploreDE 3.8.0 stops on this layout with "varm matrix has N columns but
+exploreDE 3.9.0 stops on this layout with "varm matrix has N columns but
 varm_columns names 0".
 
 ---
@@ -427,3 +442,4 @@ varm_columns names 0".
 |---|---|---|
 | 2026-04-17 | draft 0.1 | Planning draft (archived). |
 | 2026-10-29 | 1.0 | First written spec of what the reader and writer actually do; proteomics profile; prolfquapp dialect. |
+| 2026-10-30 | 1.0 | Format unchanged. `nullable-string-array` text is read (the deployed app has `anndataR` 1.2.3); `uns["de"]` relaxed from MUST to SHOULD (exploreDE 3.9.0 reader fix); optional `used_in_test` DE column. |

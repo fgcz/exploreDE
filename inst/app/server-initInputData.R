@@ -1,36 +1,3 @@
-# ---------------------------------------------------------------------------
-# Phase 0/1 bootstrap (added 2026-05-15)
-#
-# The ExploreDataset R6 hierarchy + legacy_gStoreList_from_eds() shim live in
-# the package proper (exploreDE/R/), but the deployed app runs against the
-# package version baked into fgcz-base-image — which won't include these until
-# the image is rebuilt. Until then we source the source-tree R/ files directly
-# so the running app picks up the new infrastructure without an image rebuild.
-#
-# Once the rebuilt image deploys, `exists()` finds the package-provided
-# new_explore_dataset() and the loop becomes a no-op.
-# ---------------------------------------------------------------------------
-if (!exists("new_explore_dataset", mode = "function")) {
-  .eds_R_dir <- normalizePath(file.path("..", "..", "R"), mustWork = FALSE)
-  for (.f in c(
-    "utils_explore_dataset.R",
-    "ExploreDataset.R",
-    "ExploreDatasetSE.R",
-    "ExploreDatasetSE_RNASeq.R",
-    "ExploreDatasetSE_CountQC.R",
-    "ExploreDatasetSE_CrisprCountQC.R",
-    "ExploreDatasetSE_Proteomics.R",
-    "new_explore_dataset.R",
-    "validate_explore_dataset.R",
-    "legacy_glue.R"   # multi-* proteomics auto-load still needs the shim
-  )) {
-    .fp <- file.path(.eds_R_dir, .f)
-    if (file.exists(.fp)) source(.fp)
-  }
-  rm(.eds_R_dir, .f, .fp)
-}
-
-
 # Helper functions
 
 #' batch_correction_design

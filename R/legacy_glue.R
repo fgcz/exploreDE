@@ -116,13 +116,15 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
   }
 
   # ---- GO pathways --------------------------------------------------------
-  allPathwaysDEG <- c(
-    unique(unlist(strsplit(x = rd$`GO BP`, "; "))),
-    unique(unlist(strsplit(x = rd$`GO MF`, "; "))),
-    unique(unlist(strsplit(x = rd$`GO CC`, "; ")))
-  )
-  goTerms     <- clusterProfiler::go2term(allPathwaysDEG)
-  allPathways <- paste(goTerms[, 1], goTerms[, 2])
+  allPathwaysDEG <- unique(unlist(lapply(go_annotation_columns(rd), function(col) {
+    x <- as.character(rd[[col]])
+    strsplit(x[!is.na(x)], "; ", fixed = TRUE)
+  })))
+  allPathways <- character(0)
+  if (length(allPathwaysDEG)) {
+    goTerms     <- clusterProfiler::go2term(allPathwaysDEG)
+    allPathways <- paste(goTerms[, 1], goTerms[, 2])
+  }
 
   # ---- dataType from path -------------------------------------------------
   # eds$data_type() already returns the legacy "RNASeq"/"CountQC"/"CrisprCountQC"

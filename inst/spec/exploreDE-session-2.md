@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Current, alongside the previous `.rds` format while it is tested. |
-| **Date** | 2026-10-29 |
+| **Status** | Current. The only session format since exploreDE 3.9.0. |
+| **Date** | 2026-10-30 |
 | **Written by** | Save / Load Session tab, "Save session (.json)" (`save_state_to_json()`) |
 | **Read by** | Save / Load Session tab, any `.json` upload (`save_state_from_json()`) |
 | **Code** | `R/utils_savestate.R`, `inst/app/server-saveState.R` |
@@ -14,8 +14,8 @@ DE datasets with their settings. It never holds data. Datasets are loaded
 again from their source on restore.
 
 The file is JSON, so it can only hold text, numbers, true/false, null, arrays,
-and objects. Reading it can't run code, which an `.rds` file can. It opens in
-any text editor and can be diffed or edited by hand.
+and objects. Reading it can't run code. It opens in any text editor and can be
+diffed or edited by hand.
 
 ## 1. Encoding
 
@@ -46,7 +46,7 @@ Unknown top-level keys are ignored.
 |---|---|---|
 | `app` | MUST | `["exploreDE"]` |
 | `format` | MUST | `["exploreDE-session/2"]`. Any other value is refused. |
-| `version` | SHOULD | `[1]` (the bundle version the `.rds` files carry too) |
+| `version` | SHOULD | `[1]`, the bundle version |
 | `saved_at` | SHOULD | When it was saved. |
 | `dataUrl` | SHOULD | The `?data=` query the dataset was opened with (`""` for uploads and the demo). |
 | `fingerprint` | MUST | Identifies the dataset; the session is refused on any other. |
@@ -137,13 +137,13 @@ The reader refuses, with a short message:
 Strings are only ever used as widget values, feature ids, or dataset links, and
 links pass the same checks as links typed into the Data Selection tab.
 
-## 4. Relation to the `.rds` format
+## 4. The retired `.rds` format
 
-The `.rds` file holds the same bundle (`meta`, `inputs`, `rv`, and now
-`multi`) as an R object, and both go through the same restore. `.rds` stays
-available while this format is tested and will then be removed. Two small
-differences: JSON doesn't store button-click counts (they're never restored),
-and an empty JSON array reads back as an empty character vector.
+Before this format, a session was saved as an `.rds` file: The same bundle as
+an R object. Reading an `.rds` file can run code, so exploreDE 3.9.0 removed it.
+An uploaded `.rds` is refused with a message asking the user to save the
+session again as `.json`. Nothing converts old files: Open the dataset, set it
+up, and save again.
 
 ## Version history
 
@@ -151,3 +151,4 @@ and an empty JSON array reads back as an empty character vector.
 |---|---|---|
 | 2026-09 | `.rds`, bundle version 1 | Save / Load Session (beta), single dataset. |
 | 2026-10-29 | `exploreDE-session/2` | JSON format; Multi DE datasets and settings. |
+| 2026-10-30 | `exploreDE-session/2` | `.rds` removed (exploreDE 3.9.0); Save / Load Session out of beta. |

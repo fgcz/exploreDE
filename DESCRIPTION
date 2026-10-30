@@ -1,7 +1,7 @@
 Package: exploreDE
 Type: Package
 Title: exploreDE
-Version: 3.8.0
+Version: 3.9.0
 Author: Peter Leary [aut, cre]
 Maintainer: Peter Leary <peter.leary@uzh.ch>
 Description: A Shiny application to help users explore and enjoy their 'omics data, 

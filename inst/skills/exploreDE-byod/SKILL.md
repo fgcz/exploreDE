@@ -11,9 +11,16 @@ checks the result. Read this whole file before writing code.
 
 ## Rules
 
-- exploreDE reads exactly one format: an `.h5ad` written by
-  `build_explore_h5ad()`. Never hand-write `.h5ad` structure or invent
-  another format.
+- exploreDE reads exactly one format: An `.h5ad` in the `exploreDE/1.0`
+  layout. In R, always write it with `build_explore_h5ad()`; never hand-write
+  `.h5ad` structure or invent another format.
+- If the user's pipeline isn't in R (Python, an exporter app), don't write R
+  for them: Point them to the format spec,
+  `system.file("spec/exploreDE-h5ad-1.0.md", package = "exploreDE")`, which
+  has every required key and a minimal Python writer.
+- Some files need no script at all: APB Export's exploreDE output and the
+  prolfquapp DEA's `AnnData.h5ad` (prolfquapp 2.10.x) open as they are. Check
+  with `new_explore_dataset()` (see "Verify") before writing anything.
 - Look at the user's actual data first (`dim()`, `colnames()`,
   `head(rownames())`, `class()`). Never guess column names, and never write
   a mapping to a column that isn't there.
@@ -44,7 +51,7 @@ Required:
   `coldata`'s rownames.
 - `coldata`: one row per sample, rownames equal to `colnames(counts)`.
   Not needed if `x` is a `DESeqDataSet`.
-- `omics`: exactly `"rnaseq"`, `"proteomics"` or `"crispr"`.
+- `omics`: exactly `"rnaseq"`, `"proteomics"`, or `"crispr"`.
 - `out`: output path ending in `.h5ad`.
 
 Optional:
@@ -53,7 +60,8 @@ Optional:
   Every column is kept.
 - `de`: named list, one DE table (data.frame / `DESeqResults`) per contrast,
   e.g. `list(Treat_vs_Ctrl = res)`. Only the recognised statistics are kept
-  per contrast (log2 fold change, p-value, FDR, optional extra score); other
+  per contrast (log2 fold change, p-value, FDR, optional extra score, optional
+  `usedInTest` flag); other
   DE columns are dropped, so put per-feature information in `rowdata`.
 - `pathways`: named by contrast (a subset of `de`'s names), each a list with
   `ora` and/or `gsea`. Values: clusterProfiler `enrichResult`/`gseaResult`,
@@ -126,10 +134,11 @@ the first pattern that matches any column wins.
 | p-value | `pvalue`, `p.value`, `P.Value`, `p_value` |
 | FDR | `fdr`, `adj.P.Val`, `padj`, `qvalue`, `p.adjusted`, then anything containing `fdr` |
 | extra score | anything containing `score` (e.g. `SaintScore`) |
+| tested flag | `usedInTest`, `used_in_test` (optional; without it, "tested" = p-value not `NA`) |
 
-So DESeq2, edgeR, limma, prolfqua and SAINTexpress tables work as they are.
-SAINTexpress has `log2_EFCs`, `BFDR`, `SaintScore` and no p-value: that's
-fine, the app works from the FDR, and the score is shown in the DE table and
+So DESeq2, edgeR, limma, prolfqua, and SAINTexpress tables work as they are.
+SAINTexpress has `log2_EFCs`, `BFDR`, `SaintScore`, and no p-value: That's
+fine, since the app works from the FDR, and the score is shown in the DE table and
 as a volcano y-axis (display only; thresholds use the FDR). A table with an
 FDR but no raw p-value gives `has_pvalue() == FALSE`, which is correct.
 
@@ -142,9 +151,27 @@ FDR but no raw p-value gives `has_pvalue() == FALSE`, which is correct.
 `peptide_Id` → peptide, a `transcript_id` with one transcript per row →
 isoform, otherwise gene / protein.
 
+### Organisms without an annotation package
+
+Nothing needs an organism database. Leave `organism`/`ref_build` out and use
+the user's own gene ids as the counts' rownames.
+
+- KEGG tabs appear only for human, mouse, and rat; don't try to add KEGG.
+- GO tabs appear when `rowdata` has any of `GO BP`, `GO MF`, `GO CC`, each a
+  `"; "`-separated string of GO ids (`NA` for none). One ontology is fine.
+  If the user has one GO list per gene (e.g. eggNOG-mapper's comma-separated
+  `GOs`), split it with `AnnotationDbi::Ontology()` (GO.db) into those three
+  columns; the vignette's "Organisms without an annotation package" section
+  has the code.
+- The app never runs enrichment. For ORA/GSEA, run
+  `clusterProfiler::enricher()` / `GSEA()` with a `TERM2GENE` built from the
+  user's annotation, gene ids = the counts' rownames, and pass the results as
+  `pathways = list(<contrast> = list(ora = list(BP = list(upGenes = res))))`
+  (ontology, then `upGenes`/`downGenes`/`bothGenes`).
+
 ### When the builder warns that it couldn't resolve a column
 
-The warning names the contrast, the missing field and the columns it saw.
+The warning names the contrast, the missing field, and the columns it saw.
 
 1. **One file:** map the columns explicitly, using names that exist in the
    user's table:
@@ -186,6 +213,10 @@ library(exploreDE)
 exploreDE("my_data.h5ad")   # opens straight into the file
 # or: exploreDE(), then upload the .h5ad on the landing page (up to 1 GB)
 ```
+
+On a server, `?data=<percent-encoded https link to the .h5ad>` opens a file
+from an allowed source (APB Export jobs and public pStore by default; the
+environment variable `EXPLOREDE_URL_SOURCES` sets the list).
 
 Install with `BiocManager::install("fgcz/exploreDE")`. The full guide is
 `vignette("bring-your-own-data", package = "exploreDE")`; the argument
