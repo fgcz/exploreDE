@@ -113,7 +113,7 @@ gseaToUse <- reactiveValues(er = NULL)
 # single-contrast dataset selectedContrast() is constant, so this fires once.
 gsea <- NULL
 ei <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
-param <- list()
+gseaParam <- list()
 design <- ""
 .id2sym <- function(ids) ids
 
@@ -140,7 +140,7 @@ observeEvent(
       p$featureLevel <- eds$feature_id_kind()
     }
     p$fdrThreshGSEA <- .enr_fdr_thresh("gsea")
-    param <<- p
+    gseaParam <<- p
 
     # Backend-agnostic gene-id -> symbol remap (no-op when feature_ids are already
     # symbols, e.g. an uploaded h5ad), so labels never blank out.
@@ -200,7 +200,7 @@ observeEvent(
 
     # GSEA thresholds table
     gseaThresholds <- data.frame(check.names = FALSE, "GSEA Cut-Offs" = character())
-    gseaThresholds["Output GSEA Term FDR", "GSEA Cut-Offs"] <- param$fdrThreshGSEA
+    gseaThresholds["Output GSEA Term FDR", "GSEA Cut-Offs"] <- gseaParam$fdrThreshGSEA
     output$gseaThreshOverview <- function() {
       gseaThresholds %>%
         kable(format = "html", caption = "Cut-Offs:") %>%
@@ -208,7 +208,7 @@ observeEvent(
     }
 
     # Isoform-level aggregation UI (only shown for isoform data)
-    if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+    if (!is.null(gseaParam$featureLevel) && gseaParam$featureLevel == "isoform") {
       output$gseaIsoformAggUI <- renderUI({
         tagList(
           box(
@@ -369,7 +369,7 @@ output$selectedTable_GSEA <- DT::renderDataTable({
     caption = paste0(
       "Click pathways in this table to add them to the figures on the right. ",
       "Only pathways with FDR <= ",
-      param$fdrThreshGSEA,
+      gseaParam$fdrThreshGSEA,
       " are listed."
     )
   ) %>%
@@ -388,7 +388,7 @@ output$selectedTable_GSEA <- DT::renderDataTable({
     ) %>%
     DT::formatStyle(
       columns = "FDR",
-      color = styleInterval(cuts = param$fdrThreshGSEA, values = c("green", "black")),
+      color = styleInterval(cuts = gseaParam$fdrThreshGSEA, values = c("green", "black")),
       fontWeight = "bold"
     )
 })
@@ -463,11 +463,13 @@ observeEvent(
     # plotted -- enrichplot already silently drops the rest from the native
     # plots, so apply the same rule to every figure and say so.
     sel_rows <- input$selectedTable_GSEA_rows_selected
-    sel_rows <- sel_rows[!is.na(current_rdf$p.adjust[sel_rows]) & current_rdf$p.adjust[sel_rows] <= param$fdrThreshGSEA]
+    sel_rows <- sel_rows[
+      !is.na(current_rdf$p.adjust[sel_rows]) & current_rdf$p.adjust[sel_rows] <= gseaParam$fdrThreshGSEA
+    ]
     n_dropped <- length(input$selectedTable_GSEA_rows_selected) - length(sel_rows)
     if (n_dropped > 0) {
       showNotification(
-        paste0(n_dropped, " selected pathway(s) with FDR > ", param$fdrThreshGSEA, " not added to the figures."),
+        paste0(n_dropped, " selected pathway(s) with FDR > ", gseaParam$fdrThreshGSEA, " not added to the figures."),
         id = "gseaFdrDrop",
         type = "warning"
       )
@@ -489,7 +491,7 @@ observeEvent(
     # Apply gene filtering based on visualisation thresholds
     log2RatioGSEA <- gseaToUse$log2RatioGSEA
     # For isoform data, aggregate multiple transcripts per gene
-    if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+    if (!is.null(gseaParam$featureLevel) && gseaParam$featureLevel == "isoform") {
       agg_method <- if (!is.null(input$gseaIsoformAgg)) input$gseaIsoformAgg else "maxabs"
       na_safe <- function(fn) {
         function(x) {

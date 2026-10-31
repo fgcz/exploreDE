@@ -48,6 +48,19 @@
 - GO tabs follow the changed `twoGroups` output of ezRun; small ORA/GSEA and
   volcano fixes.
 - `rhdf5` is a declared dependency, so `.h5ad` files load on a fresh install; before, anndataR failed with "HDF5AnnData requires the rhdf5 package".
+- The app gets the package's functions, internal helpers included, when it
+  runs from the installed package, however it is started
+  (`exploreDE::exploreDE()`, or `shiny::runApp()` on
+  `system.file("app", package = "exploreDE")`). Before, it needed
+  `library(exploreDE)` first ('could not find function
+  "legend_offset_ui"'), and internal helpers such as the prolfquapp `.h5ad`
+  reader were never available.
+- The ORA and GSEA tabs keep their settings apart. Before, for an uploaded
+  `.h5ad`, the GSEA tab overwrote the ORA FDR threshold, and the ORA table
+  failed with "length(cuts) must be equal to length(values) - 1".
+- Species without KEGG support (anything but human, mouse and rat): Changing
+  the contrast no longer ends the session with "EXPR must be a length 1
+  vector". An `.h5ad` with two or more contrasts hung on load.
 
 ## Documentation
 

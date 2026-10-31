@@ -72,6 +72,16 @@ if (!is.null(r_dir)) {
   r_files <- list.files(r_dir, pattern = "\\.R$", full.names = TRUE)
   invisible(lapply(r_files, source))
   cat("sourced", length(r_files), "R/ helper file(s) from", r_dir, "\n")
+} else if (
+  nzchar(system.file("app", package = "exploreDE")) &&
+    identical(normalizePath(getwd()), normalizePath(system.file("app", package = "exploreDE")))
+) {
+  # The installed package's own app (exploreDE(), or runApp() on system.file("app", package = "exploreDE")): R/ is
+  # not shipped, so put the package's functions, internal helpers included, on the search path instead.
+  attach(asNamespace("exploreDE"), name = "exploreDE:app", warn.conflicts = FALSE)
+  shiny::onStop(function() {
+    if ("exploreDE:app" %in% search()) detach("exploreDE:app", character.only = TRUE)
+  })
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
