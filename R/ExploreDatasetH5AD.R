@@ -639,6 +639,9 @@ ExploreDatasetH5AD <- R6::R6Class(
         }
         if ("description" %in% colnames(fv) && !"description" %in% colnames(d)) {
           d$description <- fv[d$feature_id, "description"]
+        } else if (!"description" %in% colnames(d)) {
+          # As for a SUSHI rowData without one: the volcano and DE table select it by name.
+          d$description <- d$gene_name
         }
         for (col in c("gc", "featWidth")) {
           if (col %in% colnames(fv) && !col %in% colnames(d)) d[[col]] <- fv[d$feature_id, col]

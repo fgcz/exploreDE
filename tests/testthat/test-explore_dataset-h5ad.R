@@ -125,6 +125,26 @@ test_that("de_columns maps non-standard DE column names", {
   expect_lt(max(abs(de[common, "effect_log2fc"] - ref[common]), na.rm = TRUE), 1e-6)
 })
 
+test_that("de() carries a description even when the features have none", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces() # rowdata has gene_name, no description
+  out <- withr::local_tempfile(fileext = ".h5ad")
+
+  build_explore_h5ad(
+    p$counts,
+    out = out,
+    omics = "rnaseq",
+    coldata = p$coldata,
+    rowdata = p$rowdata,
+    de = list(treated_vs_control = p$de_df),
+    de_columns = list(effect_log2fc = "LFC", score_pvalue = "P", score_fdr = "Q")
+  )
+
+  de <- new_explore_dataset(out)$de("treated_vs_control")
+  expect_true("description" %in% colnames(de))
+  expect_equal(de$description, de$gene_name)
+})
+
 # ---- 4. pathway ANNOTATION (A) in rowData -----------------------------------
 
 test_that("rowData pathway annotation surfaces as GO columns (tile/heatmap capability)", {
