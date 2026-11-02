@@ -201,6 +201,8 @@ se_to_canonical_h5ad <- function(se, out) {
 # significant terms, geneID/core_enrichment, and for GSEA gene sets (including
 # one term that is NOT in the result, which must not be stored) + a ranked list.
 .mini_cp <- function(cls, n) {
+  # DOSE defines the classes; R CMD check does not load it through clusterProfiler.
+  testthat::skip_if_not_installed("DOSE")
   ids <- sprintf("GO:%04d", seq_len(n))
   res <- data.frame(
     ID = ids,
