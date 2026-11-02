@@ -265,9 +265,11 @@ parse_level_label <- function(x) {
   }
   rich <- paste(rich, collapse = "")
   plain <- paste(plain, collapse = "")
+  # Check the markup, not the glyphs: building the grob measures text on the current device, and a
+  # single-byte device (base pdf() on Linux) errors on Greek or U+200B, which are valid here.
   ok <- tryCatch(
     {
-      gridtext::richtext_grob(rich)
+      gridtext::richtext_grob(gsub("[^\\x01-\\x7f]", "x", rich, perl = TRUE))
       TRUE
     },
     error = function(e) FALSE

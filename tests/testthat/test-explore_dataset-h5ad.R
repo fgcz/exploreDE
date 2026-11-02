@@ -817,6 +817,7 @@ test_that("unused levels are dropped even when the order is honoured", {
 # Minimal real clusterProfiler S4 objects. Constructed rather than fixtured
 # because the point under test is the S4 -> tidy derivation, not the contents.
 .fake_enrich <- function(cls = "enrichResult", padj = c(.001, .09, .6)) {
+  testthat::skip_if_not_installed("DOSE") # loads the class definitions
   methods::new(
     cls,
     result = data.frame(
@@ -834,6 +835,7 @@ test_that("unused levels are dropped even when the order is honoured", {
 # actually reads (enrichmentScore/NES/qvalue/core_enrichment/setSize) — the
 # existing .fake_enrich() only covers ORA columns.
 .fake_gsea_enrich <- function(cls = "gseaResult", n = 3, padj = c(.001, .02, .4)) {
+  testthat::skip_if_not_installed("DOSE") # loads the class definitions
   methods::new(
     cls,
     result = data.frame(
