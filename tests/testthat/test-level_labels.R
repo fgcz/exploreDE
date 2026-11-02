@@ -162,9 +162,10 @@ test_that("build_rich_heatmap_legend corrects ComplexHeatmap's inflated width", 
     },
     add = TRUE
   )
+  # Same PDF-safe labels as the fixed legend: base pdf() on Linux cannot measure raw Greek.
   raw <- ComplexHeatmap::Legend(
     at = spec$at,
-    labels = ComplexHeatmap::gt_render(spec$labels),
+    labels = ComplexHeatmap::gt_render(symbolise_rich_labels(spec$labels)),
     legend_gp = grid::gpar(fill = spec$fill),
     title = "C"
   )
@@ -185,11 +186,15 @@ test_that("draw_heatmap builds rich legends and PDF column labels without touchi
     show_legend = FALSE
   )
   attr(ha, "rich_legends") <- list(heatmap_legend_spec("C", labs, c(a = "red", b = "blue")))
-  ht <- ComplexHeatmap::Heatmap(
-    m,
-    name = "z",
-    top_annotation = ha,
-    column_labels = ComplexHeatmap::gt_render(c("α<i>x</i>", "b", "c", "d"))
+  # Built on a PNG device, as the app does inside renderPlot(); base pdf() on Linux cannot measure α.
+  ht <- withr::with_png(
+    tempfile(fileext = ".png"),
+    ComplexHeatmap::Heatmap(
+      m,
+      name = "z",
+      top_annotation = ha,
+      column_labels = ComplexHeatmap::gt_render(c("α<i>x</i>", "b", "c", "d"))
+    )
   )
   f <- tempfile(fileext = ".pdf")
   on.exit(unlink(f), add = TRUE)
