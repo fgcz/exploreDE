@@ -11,6 +11,7 @@
 # helperFunctions.R calls functions from these packages without namespace
 # qualifiers (it was written for a Shiny app context where all are attached).
 # Attach them explicitly here since devtools::load_all() doesn't attach Imports.
+skip_if_not_installed("dendextend")
 library(grid) # gpar()
 library(dendextend) # labels_colors<-
 library(ComplexHeatmap) # HeatmapAnnotation, Heatmap, draw
