@@ -15,7 +15,7 @@
 #'
 #' @param x Named list, typically `reactiveValuesToList(input, all.names = TRUE)`.
 #' @return `x` with the non-restorable entries removed.
-#' @export
+#' @noRd
 save_state_filter_inputs <- function(x) {
   ids <- names(x)
   skip_pat <- paste0(
@@ -45,7 +45,7 @@ save_state_filter_inputs <- function(x) {
 #' @param eds An `ExploreDataset` (or `NULL`).
 #' @param dataDir Resolved dataset path/URL, or `NULL`.
 #' @return A named list of identity fields, or `NULL` if `eds` is `NULL`.
-#' @export
+#' @noRd
 save_state_fingerprint <- function(eds, dataDir = NULL) {
   if (is.null(eds)) {
     return(NULL)
@@ -69,7 +69,7 @@ save_state_fingerprint <- function(eds, dataDir = NULL) {
 #'
 #' @param a,b Fingerprints from [save_state_fingerprint()] (or `NULL`).
 #' @return `TRUE` only if the two denote the same dataset.
-#' @export
+#' @noRd
 save_state_fp_match <- function(a, b) {
   if (is.null(a) || is.null(b)) {
     return(FALSE)
@@ -101,7 +101,7 @@ save_state_fp_match <- function(a, b) {
 #' @param restoring A `reactiveVal` returning `TRUE` during a restore.
 #' @param restore_seed A `reactiveValues` holding the saved input snapshot.
 #' @return The saved value while restoring (if valid), else `computed_default`.
-#' @export
+#' @noRd
 restore_default_value <- function(id, computed_default, valid = NULL, restoring, restore_seed) {
   if (!isTRUE(shiny::isolate(restoring()))) {
     return(computed_default)
@@ -128,7 +128,7 @@ restore_default_value <- function(id, computed_default, valid = NULL, restoring,
 #'
 #' @param x Named list, typically `reactiveValuesToList(input, all.names = TRUE)`.
 #' @return The restorable `multi*` entries of `x`.
-#' @export
+#' @noRd
 save_state_multi_inputs <- function(x) {
   ids <- names(x)
   keep <- grepl("^multi", ids) &
@@ -152,7 +152,7 @@ save_state_multi_inputs <- function(x) {
 #' @param results `multiDeReactive$results`: A named list of Multi DE objects,
 #'   each carrying `$source` (`list(kind, link)` or `list(kind, contrast)`).
 #' @return A list of `list(name, source, link)` / `list(name, source, contrast)`.
-#' @export
+#' @noRd
 save_state_multi_datasets <- function(results) {
   out <- list()
   for (nm in names(results)) {
@@ -179,7 +179,7 @@ SAVE_STATE_JSON_FORMAT <- "exploreDE-session/2"
 #'
 #' @param bundle The session bundle: `list(meta, inputs, rv, multi)`.
 #' @return The JSON text (character(1)).
-#' @export
+#' @noRd
 save_state_to_json <- function(bundle) {
   drop_buttons <- function(x) Filter(function(v) !inherits(v, "shinyActionButtonValue"), x)
   bundle$inputs <- drop_buttons(bundle$inputs %||% list())
@@ -209,7 +209,7 @@ save_state_to_json <- function(bundle) {
 #' @param max_bytes Size limit; 5 MB by default.
 #' @return The bundle: `list(meta, inputs, rv, multi)`. Stops with a short
 #'   message on any problem.
-#' @export
+#' @noRd
 save_state_from_json <- function(path, max_bytes = 5 * 1024^2) {
   size <- file.size(path)
   if (is.na(size) || size > max_bytes) {
