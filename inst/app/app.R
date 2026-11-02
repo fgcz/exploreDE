@@ -78,6 +78,10 @@ if (!is.null(r_dir)) {
 ) {
   # The installed package's own app (exploreDE(), or runApp() on system.file("app", package = "exploreDE")): R/ is
   # not shipped, so put the package's functions, internal helpers included, on the search path instead.
+  # A run that ended before onStop leaves its copy behind; drop it, so this run sees the installed version only.
+  while ("exploreDE:app" %in% search()) {
+    detach("exploreDE:app", character.only = TRUE)
+  }
   attach(asNamespace("exploreDE"), name = "exploreDE:app", warn.conflicts = FALSE)
   shiny::onStop(function() {
     if ("exploreDE:app" %in% search()) detach("exploreDE:app", character.only = TRUE)
