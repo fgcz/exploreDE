@@ -55,6 +55,38 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
+      # TEMPORARY: why does pdf() text measurement of Greek error here but not in rocker/r-ver:4.6.2?
+      - name: Diagnose text encoding (temporary)
+        continue-on-error: true
+        shell: Rscript {0}
+        run: |
+          cat("R:", R.version.string, "\n")
+          print(Sys.getenv(c("LANG", "LC_ALL", "LC_CTYPE", "LANGUAGE")))
+          str(l10n_info())
+          print(extSoftVersion())
+          print(capabilities(c("cairo", "iconv")))
+          print(pdf.options()[c("encoding", "family")])
+          probe <- function(label, expr) {
+            r <- tryCatch(
+              withCallingHandlers({ force(expr); "OK" }, warning = function(w) {
+                cat("  warning:", conditionMessage(w), "\n")
+                invokeRestart("muffleWarning")
+              }),
+              error = function(e) paste("ERROR:", conditionMessage(e))
+            )
+            cat(label, "->", r, "\n")
+          }
+          probe("iconv alpha -> latin1", print(iconv("α", "UTF-8", "latin1")))
+          probe("iconv alpha -> latin1//TRANSLIT", print(iconv("α", "UTF-8", "latin1//TRANSLIT")))
+          pdf(NULL)
+          probe("pdf(NULL) stringWidth(alpha)", grid::convertWidth(grid::stringWidth("α"), "mm"))
+          dev.off()
+          png(tempfile(fileext = ".png"))
+          probe("Heatmap gt_render column label", ComplexHeatmap::draw(ComplexHeatmap::Heatmap(
+            matrix(1:4, 2), column_labels = ComplexHeatmap::gt_render(c("α<i>x</i>", "y"))
+          )))
+          dev.off()
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
