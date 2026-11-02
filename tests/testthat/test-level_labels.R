@@ -186,28 +186,26 @@ test_that("draw_heatmap builds rich legends and PDF column labels without touchi
     show_legend = FALSE
   )
   attr(ha, "rich_legends") <- list(heatmap_legend_spec("C", labs, c(a = "red", b = "blue")))
-  # Built on a PNG device, as the app does inside renderPlot(); base pdf() on Linux cannot measure α.
-  ht <- withr::with_png(
-    tempfile(fileext = ".png"),
-    ComplexHeatmap::Heatmap(
-      m,
-      name = "z",
-      top_annotation = ha,
-      column_labels = ComplexHeatmap::gt_render(c("α<i>x</i>", "b", "c", "d"))
-    )
+  # ASCII column labels: Heatmap() measures them on ComplexHeatmap's own base pdf(NULL), where Greek is an
+  # error under R CMD check --as-cran. The Greek legend above still goes through the Symbol-font rewrite.
+  ht <- ComplexHeatmap::Heatmap(
+    m,
+    name = "z",
+    top_annotation = ha,
+    column_labels = ComplexHeatmap::gt_render(c("a<i>x</i>", "b", "c", "d"))
   )
   f <- tempfile(fileext = ".pdf")
   on.exit(unlink(f), add = TRUE)
   expect_no_error(export_plot_standard(function() draw_heatmap(ht, merge_legend = TRUE), f, format = "pdf"))
   expect_gt(file.size(f), 0)
-  expect_equal(as.character(ht@column_names_param$anno@var_env$value)[1], "α<i>x</i>")
+  expect_equal(as.character(ht@column_names_param$anno@var_env$value)[1], "a<i>x</i>")
   prep <- prepare_rich_heatmap(ht, list())
   expect_length(prep$args$annotation_legend_list, 1)
 })
 
 test_that("heatmap PDFs with rich legends have exactly one page", {
   skip_if_not(rich_labels_available())
-  pages <- function(f) sum(grepl("/Type /Page[^s]|/Type /Page$", readLines(f, warn = FALSE)))
+  pages <- function(f) sum(grepl("/Type /Page[^s]|/Type /Page$", readLines(f, warn = FALSE), useBytes = TRUE))
   ha <- ComplexHeatmap::HeatmapAnnotation(
     C = c("a", "b", "a", "b"),
     col = list(C = c(a = "red", b = "blue")),
