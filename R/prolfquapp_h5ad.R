@@ -160,7 +160,7 @@ is_prolfquapp_anndata <- function(adata) {
 #'   (`uns$prolfquapp` present)
 #' @return the `SummarizedExperiment` prolfquapp wrote alongside the AnnData:
 #'   `rowData(se)$annotation` from var, one nested rowData frame per varm entry
-#' @export
+#' @noRd
 se_from_prolfquapp_anndata <- function(adata) {
   uns <- adata$uns[["prolfquapp"]]
   if (is.null(uns)) {

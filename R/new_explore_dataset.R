@@ -10,7 +10,7 @@
 #' @param se A `SummarizedExperiment`.
 #' @return Character scalar: one of `"rna_seq"`, `"count_qc"`,
 #'   `"crispr_count_qc"`, `"proteomics"`.
-#' @export
+#' @noRd
 detect_se_shape <- function(se) {
   param <- S4Vectors::metadata(se)$param %||% list()
   rd_nms <- names(SummarizedExperiment::rowData(se))

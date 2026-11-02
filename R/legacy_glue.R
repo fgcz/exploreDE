@@ -21,7 +21,7 @@
 #' @param param Optional SUSHI param list; defaults to
 #'   `metadata(se)$param`.
 #' @return A named list with the legacy gStoreList shape.
-#' @export
+#' @noRd
 legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = NULL) {
   stopifnot(inherits(eds, "ExploreDataset"))
   if (is.null(se)) {
@@ -361,7 +361,7 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
 #' @param eds An `ExploreDataset` instance (genomics).
 #' @param contrast A single contrast name (must be in `eds$contrasts()`).
 #' @return A named list with the legacy per-contrast Multi-DE shape.
-#' @export
+#' @noRd
 legacy_multi_contrast_from_eds <- function(eds, contrast) {
   stopifnot(inherits(eds, "ExploreDataset"), contrast %in% eds$contrasts())
   cm <- eds$contrast_meta(contrast)
