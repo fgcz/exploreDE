@@ -44,6 +44,12 @@ jobs:
           # Revert to "true" once pkgdepends understands zstd archives.
           use-public-rspm: always
 
+      # The gdtools macOS binary links against XQuartz (/opt/X11/lib/libXrender.1.dylib),
+      # which GitHub's macOS runners do not ship; without it the vignette build fails.
+      - name: Install XQuartz
+        if: runner.os == 'macOS'
+        run: brew install --cask xquartz
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
