@@ -98,7 +98,8 @@ test_that("make_rep_heatmap runs with Colours-tab level labels", {
     replicabilityFactors = "cond",
     GroupColourcondA = "red",
     GroupColourcondB = "blue",
-    GroupLabelcondA = "<i>Il4ra</i><sup>fl/fl</sup> &Delta;"
+    # No Greek: this helper draws plain labels straight onto the base pdf() device below
+    GroupLabelcondA = "<i>Il4ra</i><sup>fl/fl</sup>"
   ))
   fn <- with_mock_env(make_rep_heatmap, input = input)
 
