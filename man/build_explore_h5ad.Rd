@@ -67,6 +67,14 @@ Overrides are persisted at `uns$exploreDE$mapping$feature`.}
 (keys a subset of `de`); each entry a named list of clusterProfiler objects
 and/or `data.frame`s.}
 
+\item{enrichment_padj_max}{p.adjust cut-off applied to clusterProfiler
+results before they are stored (`p.adjust <= enrichment_padj_max`). Either
+one number for every method, or a named list keyed by the method names used
+in `pathways` (e.g. `list(ora = 0.05, gsea = 0.05)`) so that ORA and GSEA can
+follow their own FDR thresholds; a method not named in the list uses the
+largest value given. The value(s) are recorded in `uns$enrichment_filter`
+and the app uses a per-method value as its significance threshold.}
+
 \item{factors}{Optional colData columns that are experimental factors
 (default: all character/factor-typed columns).}
 
