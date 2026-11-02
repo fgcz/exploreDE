@@ -65,6 +65,7 @@
 - Species without KEGG support (anything but human, mouse and rat): Changing
   the contrast no longer ends the session with "EXPR must be a length 1
   vector". An `.h5ad` with two or more contrasts hung on load.
+- Level labels with Greek letters, or with a space between two tags, keep their formatting when a PDF device is open on Linux. Before, the label check measured them on that device, failed, and fell back to plain text.
 
 ## Documentation
 
