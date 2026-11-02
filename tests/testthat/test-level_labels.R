@@ -205,7 +205,7 @@ test_that("draw_heatmap builds rich legends and PDF column labels without touchi
 
 test_that("heatmap PDFs with rich legends have exactly one page", {
   skip_if_not(rich_labels_available())
-  pages <- function(f) sum(grepl("/Type /Page[^s]|/Type /Page$", readLines(f, warn = FALSE)))
+  pages <- function(f) sum(grepl("/Type /Page[^s]|/Type /Page$", readLines(f, warn = FALSE), useBytes = TRUE))
   ha <- ComplexHeatmap::HeatmapAnnotation(
     C = c("a", "b", "a", "b"),
     col = list(C = c(a = "red", b = "blue")),
