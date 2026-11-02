@@ -15,7 +15,7 @@
 #' @param prefix Input-id prefix for the tab (e.g. `"heatmap"`).
 #' @return A shiny tag list.
 #' @keywords internal
-#' @export
+#' @noRd
 legend_offset_ui <- function(prefix) {
   shiny::splitLayout(
     shiny::sliderInput(
@@ -121,7 +121,7 @@ legend_offset_ui <- function(prefix) {
 #' @param ... Passed to `ComplexHeatmap::draw()` (e.g. `merge_legend`, `padding`).
 #' @param legend_dx,legend_dy Legend offsets in mm (`NULL` = 0).
 #' @keywords internal
-#' @export
+#' @noRd
 draw_heatmap <- function(ht, ..., legend_dx = 0, legend_dy = 0) {
   dx <- as.numeric(legend_dx %||% 0)
   dy <- as.numeric(legend_dy %||% 0)

@@ -174,14 +174,14 @@
 #'
 #' @param x Character vector.
 #' @return Character vector safe to embed in a ggtext/gridtext string.
-#' @export
+#' @noRd
 escape_label_markdown <- function(x) {
   gsub("([[:punct:]])", "\\\\\\1", x, perl = TRUE)
 }
 
 #' Decode HTML entities (named subset + numeric) to Unicode
 #' @param x Character vector.
-#' @export
+#' @noRd
 decode_label_entities <- function(x) {
   vapply(
     x,
@@ -230,7 +230,7 @@ decode_label_entities <- function(x) {
 #'
 #' @param x Single string.
 #' @return list(rich, plain, ok)
-#' @export
+#' @noRd
 parse_level_label <- function(x) {
   x <- enc2utf8(as.character(x))
   m <- gregexpr(.label_tag_pattern, x, perl = TRUE)
@@ -281,7 +281,7 @@ parse_level_label <- function(x) {
 }
 
 #' Can this session render rich (ggtext) labels?
-#' @export
+#' @noRd
 rich_labels_available <- function() {
   requireNamespace("ggtext", quietly = TRUE) && requireNamespace("gridtext", quietly = TRUE)
 }
@@ -299,7 +299,7 @@ rich_labels_available <- function() {
 #'   legend.text element_markdown() switched on by another factor.
 #' @return Character vector named by the raw levels, with attribute
 #'   `rich = TRUE` when it must be drawn with element_markdown().
-#' @export
+#' @noRd
 level_labels <- function(input, fname, levels, mode = c("rich", "plain"), wrap = FALSE, force_rich = FALSE) {
   mode <- match.arg(mode)
   levels <- as.character(levels)
@@ -346,7 +346,7 @@ level_labels <- function(input, fname, levels, mode = c("rich", "plain"), wrap =
 }
 
 #' Is a label vector (from level_labels()) rich markdown?
-#' @export
+#' @noRd
 is_rich_labels <- function(x) isTRUE(attr(x, "rich"))
 
 #' Theme switching the given text elements to ggtext::element_markdown()
@@ -354,7 +354,7 @@ is_rich_labels <- function(x) isTRUE(attr(x, "rich"))
 #' Add AFTER the complete theme (theme_prism()/theme_bw()): the markdown
 #' element merges with, and so inherits, the existing size/face/angle.
 #'
-#' @export
+#' @noRd
 rich_label_theme <- function(axis_x = FALSE, axis_y = FALSE, legend = FALSE, strip = FALSE) {
   if (!rich_labels_available()) {
     return(ggplot2::theme())
@@ -383,7 +383,7 @@ rich_label_theme <- function(axis_x = FALSE, axis_y = FALSE, legend = FALSE, str
 #'
 #' @param x Character vector of labels (plain or rich).
 #' @return Unique offending characters.
-#' @export
+#' @noRd
 label_pdf_unsupported_chars <- function(x) {
   x <- x[!is.na(x)]
   if (!length(x)) {
@@ -395,14 +395,14 @@ label_pdf_unsupported_chars <- function(x) {
 }
 
 #' Does any label contain Greek letters?
-#' @export
+#' @noRd
 label_has_greek <- function(x) {
   x <- x[!is.na(x)]
   length(x) > 0 && any(strsplit(paste(x, collapse = ""), "")[[1]] %in% names(.symbol_font_map))
 }
 
 #' Register the Symbol font as a pdf() family (idempotent)
-#' @export
+#' @noRd
 ensure_pdf_symbol_font <- function() {
   if (!.pdf_symbol_family %in% names(grDevices::pdfFonts())) {
     fam <- list(grDevices::Type1Font("Symbol", rep("Symbol.afm", 4), encoding = "AdobeSym.enc"))
@@ -415,7 +415,7 @@ ensure_pdf_symbol_font <- function() {
 #' Rewrite rich labels for base pdf(): Greek -> Symbol-font spans,
 #' non-Latin-1 punctuation -> ASCII
 #' @param x Character vector of rich (markdown) labels; names are kept.
-#' @export
+#' @noRd
 symbolise_rich_labels <- function(x) {
   nm <- names(x)
   # Zero-width space anchors (parse_level_label()) -> a near-invisible glyph
@@ -453,7 +453,7 @@ symbolise_rich_labels <- function(x) {
 #' element_text can't draw the Symbol-font spans.
 #'
 #' @param p A plot object; non-ggplots are returned unchanged.
-#' @export
+#' @noRd
 prepare_plot_for_pdf <- function(p) {
   if (!inherits(p, "ggplot") || !rich_labels_available()) {
     return(p)
@@ -497,7 +497,7 @@ prepare_plot_for_pdf <- function(p) {
 #' @param labels Rich labels from level_labels(), named by level.
 #' @param fill Colours, named by level.
 #' @param title_gp,labels_gp grid gpar for the title and labels.
-#' @export
+#' @noRd
 heatmap_legend_spec <- function(
   title,
   labels,
@@ -521,7 +521,7 @@ heatmap_legend_spec <- function(
 #' @param spec From heatmap_legend_spec().
 #' @param pdf Rewrite Greek to the Symbol font for base pdf().
 #' @return A ComplexHeatmap `Legends` object.
-#' @export
+#' @noRd
 build_rich_heatmap_legend <- function(spec, pdf = FALSE) {
   labels <- spec$labels
   if (pdf) {
@@ -616,7 +616,7 @@ build_rich_heatmap_legend <- function(spec, pdf = FALSE) {
 #' Called by draw_heatmap() BEFORE any off-screen grab, so `pdf` reflects the
 #' real target device.
 #' @return list(ht, args)
-#' @export
+#' @noRd
 prepare_rich_heatmap <- function(ht, args) {
   pdf <- identical(names(grDevices::dev.cur()), "pdf")
   specs <- .heatmap_rich_legend_specs(ht)

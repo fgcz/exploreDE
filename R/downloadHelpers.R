@@ -11,7 +11,7 @@
 #' @param sheet_name Name of the worksheet (default: "Data")
 #' @param table_name Name of the Excel table (default: "DataTable")
 #'
-#' @export
+#' @noRd
 export_excel_standard <- function(df, filename, sheet_name = "Data", table_name = "DataTable") {
   # Create workbook and add sheet
   wb <- openxlsx::createWorkbook()
@@ -50,7 +50,7 @@ export_excel_standard <- function(df, filename, sheet_name = "Data", table_name 
 #' @param width Width in inches
 #' @param height Height in inches
 #'
-#' @export
+#' @noRd
 export_plot_standard <- function(plot_object, filename, format = "pdf", dpi = 300, width = 8, height = 6) {
   format <- tolower(format)
 
@@ -97,7 +97,7 @@ export_plot_standard <- function(plot_object, filename, format = "pdf", dpi = 30
 #' @param design_name Optional design/contrast name to prepend
 #'
 #' @return A string with the constructed filename
-#' @export
+#' @noRd
 generate_filename <- function(base_name, suffix = NULL, extension, design_name = NULL) {
   # Clean inputs (remove NULLs and empty strings)
   parts <- c(design_name, base_name, suffix)

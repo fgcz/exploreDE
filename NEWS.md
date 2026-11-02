@@ -6,6 +6,7 @@
   session format is removed: An uploaded `.rds` is refused with a message
   asking the user to save again as `.json`. Reading an `.rds` can run code;
   reading JSON can't. Save / Load Session is out of beta.
+- Only the documented API is exported: `exploreDE()`, `build_explore_h5ad()`, `new_explore_dataset()`, `validate_explore_dataset()`, and the `ExploreDataset*` classes. The 89 app helpers (`generateParams()`, `step_*()`, `banana_*()`, `save_state_*()`, ...) are internal, so `exploreDE::<helper>()` no longer works; the app gets them by sourcing `R/` or, when installed, from the package namespace.
 
 ## New features
 
