@@ -380,9 +380,25 @@ select_genes_by_sd <- function(counts, top_n = 2000) {
 
 
 # =============================================================================
-# Feature bucket API (from server-featureBucket.R)
+# Server-scope binding
+# =============================================================================
+
+#' bind_to_scope
+#' Return a copy of `fn` whose free variables resolve in `env`. server-*.R
+#' use it for the helpers below that read per-session reactives, e.g.
+#' `bucket_add <- bind_to_scope(bucket_add)`.
+#' @param fn Function defined in R/
+#' @param env Environment to resolve free variables in (default: the caller)
+#' @noRd
+bind_to_scope <- function(fn, env = parent.frame()) {
+  environment(fn) <- env
+  fn
+}
+
+# =============================================================================
+# Feature bucket API (used by server-featureBucket.R, bound there with bind_to_scope())
 # NOTE: bucket_add/remove/clear and resolve_features reference the Shiny
-# reactives `featureBucket`, `seqAnnoReactive`, and `inputDataReactive()`.
+# reactives `featureBucket`, `seqAnnoReactive`, and `eds`.
 # They will error if called outside a Shiny session.
 # =============================================================================
 
@@ -392,10 +408,17 @@ select_genes_by_sd <- function(counts, top_n = 2000) {
 #' @param source Label for telemetry / debugging
 #' @noRd
 bucket_add <- function(new_features, source = "unknown") {
-  valid_ids <- seqAnnoReactive$sa$feature_id
+  # Counts-only uploads have no DE table (sa is NULL); the valid feature
+  # universe is then simply every feature in the dataset.
+  valid_ids <- if (!is.null(seqAnnoReactive$sa)) {
+    seqAnnoReactive$sa$feature_id
+  } else {
+    eds$feature_ids()
+  }
   # Also accept gene-level names for CrisprCountQC collapsed mode
-  if (!is.null(inputDataReactive()$sgRNA_to_gene)) {
-    valid_ids <- c(valid_ids, unique(inputDataReactive()$sgRNA_to_gene))
+  sg <- eds$sgrna_to_gene()
+  if (!is.null(sg)) {
+    valid_ids <- c(valid_ids, unique(sg))
   }
   valid <- new_features[new_features %in% valid_ids & new_features != ""]
   current <- isolate(featureBucket$features)
@@ -449,13 +472,15 @@ parse_gene_text <- function(text) {
 #' @return Character vector of feature_ids
 #' @noRd
 resolve_features <- function(input_genes, search_mode = "feature_id") {
-  if (search_mode == "gene_name" && !is.null(inputDataReactive()$gene_lookup)) {
-    expanded <- unlist(inputDataReactive()$gene_lookup[input_genes], use.names = FALSE)
+  gene_lookup <- eds$proteomics_choices("gene")$lookup
+  protein_lookup <- eds$proteomics_choices("protein")$lookup
+  if (search_mode == "gene_name" && !is.null(gene_lookup)) {
+    expanded <- unlist(gene_lookup[input_genes], use.names = FALSE)
     direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
     return(unique(c(expanded, direct)))
   }
-  if (search_mode == "protein_Id" && !is.null(inputDataReactive()$protein_lookup)) {
-    expanded <- unlist(inputDataReactive()$protein_lookup[input_genes], use.names = FALSE)
+  if (search_mode == "protein_Id" && !is.null(protein_lookup)) {
+    expanded <- unlist(protein_lookup[input_genes], use.names = FALSE)
     direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
     return(unique(c(expanded, direct)))
   }
@@ -464,7 +489,7 @@ resolve_features <- function(input_genes, search_mode = "feature_id") {
 
 
 # =============================================================================
-# Replicability helpers (from server-replicability.R)
+# Replicability helpers (used by server-replicability.R, bound there with bind_to_scope())
 # NOTE: reference Shiny `input` from the enclosing scope.
 # =============================================================================
 
@@ -529,7 +554,15 @@ make_rep_heatmap <- function(data, title_suffix = "") {
 
     anno_df <- dataset[, input$replicabilityFactors, drop = FALSE]
 
-    # Legend shows the Colours-tab display labels (plain text)
+    # Legend shows the Colours-tab display labels: rich ones via legends
+    # built at draw time by draw_heatmap() (see R/level_labels.R)
+    repRich <- any(vapply(
+      input$replicabilityFactors,
+      function(f) {
+        is_rich_labels(level_labels(input, f, names(colourList[[f]])))
+      },
+      logical(1)
+    ))
     annoLegendParam <- lapply(input$replicabilityFactors, function(f) {
       levs <- names(colourList[[f]])
       list(at = levs, labels = unname(level_labels(input, f, levs, mode = "plain")))
@@ -539,11 +572,22 @@ make_rep_heatmap <- function(data, title_suffix = "") {
     ha_top <- HeatmapAnnotation(
       df = anno_df,
       col = colourList,
-      show_legend = TRUE,
+      show_legend = !repRich,
       annotation_legend_param = annoLegendParam,
       annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
       gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
     )
+    if (repRich) {
+      attr(ha_top, "rich_legends") <- lapply(input$replicabilityFactors, function(f) {
+        heatmap_legend_spec(
+          title = f,
+          labels = level_labels(input, f, names(colourList[[f]]), force_rich = TRUE),
+          fill = colourList[[f]],
+          title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
+          labels_gp = gpar(fontsize = input$replicabilityTextSize)
+        )
+      })
+    }
 
     ha_left <- rowAnnotation(
       df = anno_df,
@@ -589,7 +633,13 @@ make_rep_heatmap <- function(data, title_suffix = "") {
     column_title_gp = gpar(fontsize = input$replicabilityTextSize + 2, fontface = "bold")
   )
 
-  draw(hm, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
+  draw_heatmap(
+    hm,
+    merge_legend = TRUE,
+    padding = unit(c(10, 10, 10, 10), "mm"),
+    legend_dx = input$replicabilityLegendDX,
+    legend_dy = input$replicabilityLegendDY
+  )
 }
 
 #' make_rep_dendrogram
