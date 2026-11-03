@@ -8,8 +8,7 @@
 subclass must implement. It is not instantiable on its own — calling
 `ExploreDataset$new()` raises an error. Use [new_explore_dataset()] to
 build a concrete instance, or instantiate a subclass directly.
-}
-\details{
+
 Methods implemented on the base class read only from
 `private$.config` and are inherited unchanged by every subclass.
 Methods that touch the storage backend are virtual
@@ -17,515 +16,800 @@ Methods that touch the storage backend are virtual
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-ExploreDataset-new}{\code{ExploreDataset$new()}}
-\item \href{#method-ExploreDataset-omics_class}{\code{ExploreDataset$omics_class()}}
-\item \href{#method-ExploreDataset-data_type}{\code{ExploreDataset$data_type()}}
-\item \href{#method-ExploreDataset-has_de}{\code{ExploreDataset$has_de()}}
-\item \href{#method-ExploreDataset-has_enrichment}{\code{ExploreDataset$has_enrichment()}}
-\item \href{#method-ExploreDataset-organism}{\code{ExploreDataset$organism()}}
-\item \href{#method-ExploreDataset-ref_build}{\code{ExploreDataset$ref_build()}}
-\item \href{#method-ExploreDataset-feature_id_kind}{\code{ExploreDataset$feature_id_kind()}}
-\item \href{#method-ExploreDataset-background_expression}{\code{ExploreDataset$background_expression()}}
-\item \href{#method-ExploreDataset-backend_kind}{\code{ExploreDataset$backend_kind()}}
-\item \href{#method-ExploreDataset-backend}{\code{ExploreDataset$backend()}}
-\item \href{#method-ExploreDataset-samples}{\code{ExploreDataset$samples()}}
-\item \href{#method-ExploreDataset-sample_ids}{\code{ExploreDataset$sample_ids()}}
-\item \href{#method-ExploreDataset-n_samples}{\code{ExploreDataset$n_samples()}}
-\item \href{#method-ExploreDataset-factor_names}{\code{ExploreDataset$factor_names()}}
-\item \href{#method-ExploreDataset-factor_levels}{\code{ExploreDataset$factor_levels()}}
-\item \href{#method-ExploreDataset-primary_grouping}{\code{ExploreDataset$primary_grouping()}}
-\item \href{#method-ExploreDataset-secondary_grouping}{\code{ExploreDataset$secondary_grouping()}}
-\item \href{#method-ExploreDataset-sample_factor}{\code{ExploreDataset$sample_factor()}}
-\item \href{#method-ExploreDataset-features}{\code{ExploreDataset$features()}}
-\item \href{#method-ExploreDataset-feature_ids}{\code{ExploreDataset$feature_ids()}}
-\item \href{#method-ExploreDataset-n_features}{\code{ExploreDataset$n_features()}}
-\item \href{#method-ExploreDataset-feature_display}{\code{ExploreDataset$feature_display()}}
-\item \href{#method-ExploreDataset-assay_names}{\code{ExploreDataset$assay_names()}}
-\item \href{#method-ExploreDataset-has_assay}{\code{ExploreDataset$has_assay()}}
-\item \href{#method-ExploreDataset-assay}{\code{ExploreDataset$assay()}}
-\item \href{#method-ExploreDataset-assay_label}{\code{ExploreDataset$assay_label()}}
-\item \href{#method-ExploreDataset-raw_assay_name}{\code{ExploreDataset$raw_assay_name()}}
-\item \href{#method-ExploreDataset-primary_assay_name}{\code{ExploreDataset$primary_assay_name()}}
-\item \href{#method-ExploreDataset-raw_assay}{\code{ExploreDataset$raw_assay()}}
-\item \href{#method-ExploreDataset-primary_assay}{\code{ExploreDataset$primary_assay()}}
-\item \href{#method-ExploreDataset-contrasts}{\code{ExploreDataset$contrasts()}}
-\item \href{#method-ExploreDataset-primary_contrast}{\code{ExploreDataset$primary_contrast()}}
-\item \href{#method-ExploreDataset-de}{\code{ExploreDataset$de()}}
-\item \href{#method-ExploreDataset-de_all}{\code{ExploreDataset$de_all()}}
-\item \href{#method-ExploreDataset-contrast_meta}{\code{ExploreDataset$contrast_meta()}}
-\item \href{#method-ExploreDataset-contrast_label}{\code{ExploreDataset$contrast_label()}}
-\item \href{#method-ExploreDataset-de_display_extras}{\code{ExploreDataset$de_display_extras()}}
-\item \href{#method-ExploreDataset-has_pvalue}{\code{ExploreDataset$has_pvalue()}}
-\item \href{#method-ExploreDataset-enrichment_kinds}{\code{ExploreDataset$enrichment_kinds()}}
-\item \href{#method-ExploreDataset-enrichment}{\code{ExploreDataset$enrichment()}}
-\item \href{#method-ExploreDataset-enrichment_input}{\code{ExploreDataset$enrichment_input()}}
-\item \href{#method-ExploreDataset-enrichment_table}{\code{ExploreDataset$enrichment_table()}}
-\item \href{#method-ExploreDataset-enrichment_filter}{\code{ExploreDataset$enrichment_filter()}}
-\item \href{#method-ExploreDataset-sgrna_to_gene}{\code{ExploreDataset$sgrna_to_gene()}}
-\item \href{#method-ExploreDataset-proteomics_choices}{\code{ExploreDataset$proteomics_choices()}}
-\item \href{#method-ExploreDataset-all_pathways}{\code{ExploreDataset$all_pathways()}}
-\item \href{#method-ExploreDataset-source}{\code{ExploreDataset$source()}}
-\item \href{#method-ExploreDataset-print}{\code{ExploreDataset$print()}}
-\item \href{#method-ExploreDataset-clone}{\code{ExploreDataset$clone()}}
-}
+  \itemize{
+    \item \href{#method-ExploreDataset-initialize}{\code{ExploreDataset$new()}}
+    \item \href{#method-ExploreDataset-omics_class}{\code{ExploreDataset$omics_class()}}
+    \item \href{#method-ExploreDataset-data_type}{\code{ExploreDataset$data_type()}}
+    \item \href{#method-ExploreDataset-has_de}{\code{ExploreDataset$has_de()}}
+    \item \href{#method-ExploreDataset-has_enrichment}{\code{ExploreDataset$has_enrichment()}}
+    \item \href{#method-ExploreDataset-organism}{\code{ExploreDataset$organism()}}
+    \item \href{#method-ExploreDataset-ref_build}{\code{ExploreDataset$ref_build()}}
+    \item \href{#method-ExploreDataset-feature_id_kind}{\code{ExploreDataset$feature_id_kind()}}
+    \item \href{#method-ExploreDataset-background_expression}{\code{ExploreDataset$background_expression()}}
+    \item \href{#method-ExploreDataset-backend_kind}{\code{ExploreDataset$backend_kind()}}
+    \item \href{#method-ExploreDataset-backend}{\code{ExploreDataset$backend()}}
+    \item \href{#method-ExploreDataset-samples}{\code{ExploreDataset$samples()}}
+    \item \href{#method-ExploreDataset-sample_ids}{\code{ExploreDataset$sample_ids()}}
+    \item \href{#method-ExploreDataset-n_samples}{\code{ExploreDataset$n_samples()}}
+    \item \href{#method-ExploreDataset-factor_names}{\code{ExploreDataset$factor_names()}}
+    \item \href{#method-ExploreDataset-factor_levels}{\code{ExploreDataset$factor_levels()}}
+    \item \href{#method-ExploreDataset-primary_grouping}{\code{ExploreDataset$primary_grouping()}}
+    \item \href{#method-ExploreDataset-secondary_grouping}{\code{ExploreDataset$secondary_grouping()}}
+    \item \href{#method-ExploreDataset-sample_factor}{\code{ExploreDataset$sample_factor()}}
+    \item \href{#method-ExploreDataset-features}{\code{ExploreDataset$features()}}
+    \item \href{#method-ExploreDataset-feature_ids}{\code{ExploreDataset$feature_ids()}}
+    \item \href{#method-ExploreDataset-n_features}{\code{ExploreDataset$n_features()}}
+    \item \href{#method-ExploreDataset-feature_display}{\code{ExploreDataset$feature_display()}}
+    \item \href{#method-ExploreDataset-assay_names}{\code{ExploreDataset$assay_names()}}
+    \item \href{#method-ExploreDataset-has_assay}{\code{ExploreDataset$has_assay()}}
+    \item \href{#method-ExploreDataset-assay}{\code{ExploreDataset$assay()}}
+    \item \href{#method-ExploreDataset-assay_label}{\code{ExploreDataset$assay_label()}}
+    \item \href{#method-ExploreDataset-raw_assay_name}{\code{ExploreDataset$raw_assay_name()}}
+    \item \href{#method-ExploreDataset-primary_assay_name}{\code{ExploreDataset$primary_assay_name()}}
+    \item \href{#method-ExploreDataset-raw_assay}{\code{ExploreDataset$raw_assay()}}
+    \item \href{#method-ExploreDataset-primary_assay}{\code{ExploreDataset$primary_assay()}}
+    \item \href{#method-ExploreDataset-contrasts}{\code{ExploreDataset$contrasts()}}
+    \item \href{#method-ExploreDataset-primary_contrast}{\code{ExploreDataset$primary_contrast()}}
+    \item \href{#method-ExploreDataset-de}{\code{ExploreDataset$de()}}
+    \item \href{#method-ExploreDataset-de_all}{\code{ExploreDataset$de_all()}}
+    \item \href{#method-ExploreDataset-contrast_meta}{\code{ExploreDataset$contrast_meta()}}
+    \item \href{#method-ExploreDataset-contrast_label}{\code{ExploreDataset$contrast_label()}}
+    \item \href{#method-ExploreDataset-de_display_extras}{\code{ExploreDataset$de_display_extras()}}
+    \item \href{#method-ExploreDataset-has_pvalue}{\code{ExploreDataset$has_pvalue()}}
+    \item \href{#method-ExploreDataset-enrichment_kinds}{\code{ExploreDataset$enrichment_kinds()}}
+    \item \href{#method-ExploreDataset-enrichment}{\code{ExploreDataset$enrichment()}}
+    \item \href{#method-ExploreDataset-enrichment_input}{\code{ExploreDataset$enrichment_input()}}
+    \item \href{#method-ExploreDataset-enrichment_table}{\code{ExploreDataset$enrichment_table()}}
+    \item \href{#method-ExploreDataset-enrichment_filter}{\code{ExploreDataset$enrichment_filter()}}
+    \item \href{#method-ExploreDataset-sgrna_to_gene}{\code{ExploreDataset$sgrna_to_gene()}}
+    \item \href{#method-ExploreDataset-proteomics_choices}{\code{ExploreDataset$proteomics_choices()}}
+    \item \href{#method-ExploreDataset-all_pathways}{\code{ExploreDataset$all_pathways()}}
+    \item \href{#method-ExploreDataset-source}{\code{ExploreDataset$source()}}
+    \item \href{#method-ExploreDataset-print}{\code{ExploreDataset$print()}}
+    \item \href{#method-ExploreDataset-clone}{\code{ExploreDataset$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ExploreDataset-new"></a>}}
-\if{latex}{\out{\hypertarget{method-ExploreDataset-new}{}}}
-\subsection{Method \code{new()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$new(...)}\if{html}{\out{</div>}}
+\if{html}{\out{<a id="method-ExploreDataset-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-ExploreDataset-initialize}{}}}
+\subsection{\code{ExploreDataset$new()}}{
+  Always errors: the base class is abstract. Use [new_explore_dataset()] or a concrete subclass.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$new(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Ignored.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-omics_class"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-omics_class}{}}}
-\subsection{Method \code{omics_class()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$omics_class()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$omics_class()}}{
+  Omics class from the config: `"genomics"` or `"proteomics"`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$omics_class()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-data_type"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-data_type}{}}}
-\subsection{Method \code{data_type()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$data_type()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$data_type()}}{
+  Dataset type from the config, e.g. `"RNASeq"`, `"CountQC"`, `"CrisprCountQC"` or `"proteomics"`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$data_type()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-has_de"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-has_de}{}}}
-\subsection{Method \code{has_de()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$has_de()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$has_de()}}{
+  `TRUE` when the dataset has at least one contrast.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$has_de()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-has_enrichment"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-has_enrichment}{}}}
-\subsection{Method \code{has_enrichment()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$has_enrichment()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$has_enrichment()}}{
+  `TRUE` when the config lists at least one enrichment kind.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$has_enrichment()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-organism"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-organism}{}}}
-\subsection{Method \code{organism()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$organism()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$organism()}}{
+  Organism from the config, or `NA` when unknown.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$organism()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-ref_build"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-ref_build}{}}}
-\subsection{Method \code{ref_build()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$ref_build()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$ref_build()}}{
+  Reference genome build from the config, or `NA` when unknown.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$ref_build()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-feature_id_kind"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-feature_id_kind}{}}}
-\subsection{Method \code{feature_id_kind()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$feature_id_kind()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$feature_id_kind()}}{
+  What a feature ID denotes, from the config, e.g. `"gene"`, `"isoform"`, `"protein"`,
+  `"peptide"`, `"phospho"` or `"guide"`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$feature_id_kind()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-background_expression"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-background_expression}{}}}
-\subsection{Method \code{background_expression()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$background_expression()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$background_expression()}}{
+  Low-signal offset added to expression values before taking log2; from the config, default 10.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$background_expression()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-backend_kind"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-backend_kind}{}}}
-\subsection{Method \code{backend_kind()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$backend_kind()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$backend_kind()}}{
+  Short tag naming the storage backend (`"se"`, `"h5ad"` or `"parquet"`). Implemented by subclasses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$backend_kind()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-backend"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-backend}{}}}
-\subsection{Method \code{backend()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$backend()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$backend()}}{
+  The underlying storage object. Implemented by subclasses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$backend()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-samples"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-samples}{}}}
-\subsection{Method \code{samples()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$samples()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$samples()}}{
+  Sample metadata as a data.frame, one row per sample, rownames are sample IDs.
+  Implemented by subclasses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$samples()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-sample_ids"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-sample_ids}{}}}
-\subsection{Method \code{sample_ids()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$sample_ids()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$sample_ids()}}{
+  Sample IDs: the rownames of `samples()`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$sample_ids()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-n_samples"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-n_samples}{}}}
-\subsection{Method \code{n_samples()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$n_samples()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$n_samples()}}{
+  Number of samples: the number of rows of `samples()`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$n_samples()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-factor_names"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-factor_names}{}}}
-\subsection{Method \code{factor_names()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$factor_names()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$factor_names()}}{
+  Names of the experimental factors from the config; empty when there are none.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$factor_names()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-factor_levels"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-factor_levels}{}}}
-\subsection{Method \code{factor_levels()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$factor_levels(factor)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$factor_levels()}}{
+  Levels of one experimental factor, from the config.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$factor_levels(factor)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{factor}}{Factor name, one of `factor_names()`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-primary_grouping"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-primary_grouping}{}}}
-\subsection{Method \code{primary_grouping()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$primary_grouping()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$primary_grouping()}}{
+  Name of the factor used as the primary sample grouping, from the config.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$primary_grouping()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-secondary_grouping"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-secondary_grouping}{}}}
-\subsection{Method \code{secondary_grouping()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$secondary_grouping()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$secondary_grouping()}}{
+  Name of the secondary grouping factor, or `NA` when there is none.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$secondary_grouping()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-sample_factor"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-sample_factor}{}}}
-\subsection{Method \code{sample_factor()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$sample_factor(factor)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$sample_factor()}}{
+  One column of `samples()`: the values of a factor, one per sample.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$sample_factor(factor)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{factor}}{Column name in `samples()`, usually one of `factor_names()`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-features"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-features}{}}}
-\subsection{Method \code{features()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$features()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$features()}}{
+  Feature annotation as a data.frame, one row per feature, rownames are feature IDs, with a
+  `display_name` column. Implemented by subclasses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$features()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-feature_ids"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-feature_ids}{}}}
-\subsection{Method \code{feature_ids()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$feature_ids()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$feature_ids()}}{
+  Feature IDs: the rownames of `features()`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$feature_ids()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-n_features"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-n_features}{}}}
-\subsection{Method \code{n_features()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$n_features()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$n_features()}}{
+  Number of features: the number of rows of `features()`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$n_features()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-feature_display"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-feature_display}{}}}
-\subsection{Method \code{feature_display()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$feature_display(ids = NULL)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$feature_display()}}{
+  Display names of features, named by feature ID.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$feature_display(ids = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{ids}}{Feature IDs to look up; `NULL` (default) returns all features.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-assay_names"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-assay_names}{}}}
-\subsection{Method \code{assay_names()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$assay_names()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$assay_names()}}{
+  Canonical names of the assays this dataset provides. Implemented by subclasses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$assay_names()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-has_assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-has_assay}{}}}
-\subsection{Method \code{has_assay()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$has_assay(name)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$has_assay()}}{
+  `TRUE` when `name` is one of `assay_names()`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$has_assay(name)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Canonical assay name.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-assay}{}}}
-\subsection{Method \code{assay()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$assay(name, features = NULL, samples = NULL)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$assay()}}{
+  One assay as a features x samples matrix, optionally subset. Implemented by subclasses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$assay(name, features = NULL, samples = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Canonical assay name, one of `assay_names()`.}
+      \item{\code{features}}{Feature IDs (rows) to keep; `NULL` keeps all.}
+      \item{\code{samples}}{Sample IDs (columns) to keep; `NULL` keeps all.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-assay_label"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-assay_label}{}}}
-\subsection{Method \code{assay_label()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$assay_label(name)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$assay_label()}}{
+  Human-readable label for an assay, from the config; `name` itself when no label is registered.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$assay_label(name)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Canonical assay name.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-raw_assay_name"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-raw_assay_name}{}}}
-\subsection{Method \code{raw_assay_name()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$raw_assay_name()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$raw_assay_name()}}{
+  Canonical name of the raw assay, from the config.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$raw_assay_name()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-primary_assay_name"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-primary_assay_name}{}}}
-\subsection{Method \code{primary_assay_name()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$primary_assay_name()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$primary_assay_name()}}{
+  Canonical name of the primary assay, from the config.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$primary_assay_name()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-raw_assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-raw_assay}{}}}
-\subsection{Method \code{raw_assay()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$raw_assay(...)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$raw_assay()}}{
+  The raw assay: shortcut for `assay(raw_assay_name(), ...)`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$raw_assay(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to `assay()`: `features`, `samples`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-primary_assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-primary_assay}{}}}
-\subsection{Method \code{primary_assay()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$primary_assay(...)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$primary_assay()}}{
+  The primary assay: shortcut for `assay(primary_assay_name(), ...)`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$primary_assay(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to `assay()`: `features`, `samples`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-contrasts"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-contrasts}{}}}
-\subsection{Method \code{contrasts()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$contrasts()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$contrasts()}}{
+  Names of the DE contrasts, from the config; empty when the dataset has no DE results.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$contrasts()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-primary_contrast"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-primary_contrast}{}}}
-\subsection{Method \code{primary_contrast()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$primary_contrast()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$primary_contrast()}}{
+  Name of the primary contrast, from the config; `NA` when there are no contrasts.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$primary_contrast()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-de"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-de}{}}}
-\subsection{Method \code{de()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$de(contrast)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$de()}}{
+  DE result table for one contrast, as a data.frame. Implemented by subclasses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$de(contrast)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-de_all"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-de_all}{}}}
-\subsection{Method \code{de_all()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$de_all()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$de_all()}}{
+  DE result tables of all contrasts, as a list named by contrast.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$de_all()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-contrast_meta"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-contrast_meta}{}}}
-\subsection{Method \code{contrast_meta()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$contrast_meta(contrast)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$contrast_meta()}}{
+  Metadata list of one contrast from the config: test and reference group, factor, method,
+  thresholds. Errors on an unknown contrast.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$contrast_meta(contrast)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-contrast_label"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-contrast_label}{}}}
-\subsection{Method \code{contrast_label()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$contrast_label(contrast)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$contrast_label()}}{
+  Display label of a contrast: currently the contrast name itself. Errors on an unknown contrast.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$contrast_label(contrast)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-de_display_extras"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-de_display_extras}{}}}
-\subsection{Method \code{de_display_extras()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$de_display_extras()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$de_display_extras()}}{
+  Names of extra DE columns shown for display only (e.g. `SaintScore`), from the config;
+  empty by default.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$de_display_extras()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-has_pvalue"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-has_pvalue}{}}}
-\subsection{Method \code{has_pvalue()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$has_pvalue()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$has_pvalue()}}{
+  `TRUE` when the DE table of at least one contrast has a non-missing raw `pValue`;
+  `FALSE` for FDR-only producers such as SAINTexpress.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$has_pvalue()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-enrichment_kinds"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment_kinds}{}}}
-\subsection{Method \code{enrichment_kinds()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$enrichment_kinds()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$enrichment_kinds()}}{
+  Enrichment kinds available, from the config: any of `"ora"` and `"gsea"`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$enrichment_kinds()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-enrichment"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment}{}}}
-\subsection{Method \code{enrichment()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$enrichment(contrast, kind)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$enrichment()}}{
+  Enrichment results of one contrast and kind, as a flat named list of clusterProfiler results.
+  Implemented by subclasses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$enrichment(contrast, kind)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+      \item{\code{kind}}{`"ora"` or `"gsea"`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-enrichment_input"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment_input}{}}}
-\subsection{Method \code{enrichment_input()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$enrichment_input(contrast)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$enrichment_input()}}{
+  Inputs for enrichment of one contrast: `list(seq_anno, ranked_l2fc, selections)`.
+  Implemented by subclasses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$enrichment_input(contrast)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-enrichment_table"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment_table}{}}}
-\subsection{Method \code{enrichment_table()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$enrichment_table(contrast, kind)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$enrichment_table()}}{
+  Enrichment results of one contrast and kind as one tidy data.frame, derived from
+  `enrichment()`; an empty data.frame when there are none.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$enrichment_table(contrast, kind)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+      \item{\code{kind}}{`"ora"` or `"gsea"`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-enrichment_filter"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment_filter}{}}}
-\subsection{Method \code{enrichment_filter()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$enrichment_filter()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$enrichment_filter()}}{
+  The `p.adjust` cut-off applied to the stored enrichment tables, from the config;
+  `NA` when none was applied.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$enrichment_filter()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-sgrna_to_gene"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-sgrna_to_gene}{}}}
-\subsection{Method \code{sgrna_to_gene()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$sgrna_to_gene()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$sgrna_to_gene()}}{
+  Named character vector mapping sgRNA IDs to gene names (CRISPR datasets); `NULL` otherwise.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$sgrna_to_gene()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-proteomics_choices"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-proteomics_choices}{}}}
-\subsection{Method \code{proteomics_choices()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$proteomics_choices(kind = c("gene", "protein"))}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$proteomics_choices()}}{
+  Choices and lookup for the proteomics feature picker, `list(choices, lookup)`; `NULL` when the
+  dataset has none.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$proteomics_choices(kind = c("gene", "protein"))}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{kind}}{`"gene"` (default) or `"protein"`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-all_pathways"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-all_pathways}{}}}
-\subsection{Method \code{all_pathways()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$all_pathways()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$all_pathways()}}{
+  GO terms named in the `GO BP`, `GO MF` and `GO CC` columns of `features()`, as
+  `"GO:ID term name"` strings; empty when those columns are absent.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$all_pathways()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-source"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-source}{}}}
-\subsection{Method \code{source()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$source()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$source()}}{
+  Provenance list from the config: backend kind, schema version and build time.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$source()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-print"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-print}{}}}
-\subsection{Method \code{print()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$print(...)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$print()}}{
+  Print a summary of the dataset (type, dimensions, factors, contrasts, assays, enrichment)
+  and return the object invisibly.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$print(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Ignored.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDataset-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDataset$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDataset$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

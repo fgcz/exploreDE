@@ -311,7 +311,7 @@ banana_layer <- function(data, x, y, fdr_col, facet_col = "Feature", px = 16L) {
       d$bx <- x
       ggtext::geom_richtext(
         data = d,
-        mapping = ggplot2::aes(x = bx, y = by, label = md),
+        mapping = ggplot2::aes(x = .data$bx, y = .data$by, label = .data$md),
         vjust = -0.1,
         inherit.aes = FALSE,
         fill = NA,

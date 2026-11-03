@@ -9,7 +9,6 @@ Description: A Shiny application to help users explore and enjoy their 'omics da
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
-  devtools,
   shiny,
   shinydashboard,
   tidyverse,
@@ -68,7 +67,9 @@ Imports:
   openxlsx,
   readr,
   tibble,
-  xml2
+  xml2,
+  dendextend,
+  rlang
 Suggests:
   DOSE,
   testthat (>= 3.0.0),
@@ -78,12 +79,10 @@ Suggests:
   arrow,
   knitr,
   rmarkdown,
-  dendextend,
-  rlang,
-  withr
+  withr,
+  devtools
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Remotes:
   github::scverse/anndataR
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.1

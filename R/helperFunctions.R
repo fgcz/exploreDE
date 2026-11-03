@@ -346,8 +346,8 @@ dataSummary <- function(data, varname, groupnames) {
   summary_func <- function(x, col) {
     c(
       mean = mean(x[[col]], na.rm = TRUE),
-      sd = sd(x[[col]], na.rm = TRUE),
-      se = sd(x[[col]], na.rm = TRUE) / sqrt(sum(!is.na(x[[col]])))
+      sd = stats::sd(x[[col]], na.rm = TRUE),
+      se = stats::sd(x[[col]], na.rm = TRUE) / sqrt(sum(!is.na(x[[col]])))
     )
   }
   data_sum <- plyr::ddply(
@@ -373,8 +373,8 @@ dataSummary <- function(data, varname, groupnames) {
 #' @return Character vector of rownames for the top features
 #' @noRd
 select_genes_by_sd <- function(counts, top_n = 2000) {
-  gene_sds <- apply(counts, 1, sd, na.rm = TRUE)
-  top_genes <- names(head(sort(gene_sds, decreasing = TRUE), n = top_n))
+  gene_sds <- apply(counts, 1, stats::sd, na.rm = TRUE)
+  top_genes <- names(utils::head(sort(gene_sds, decreasing = TRUE), n = top_n))
   return(top_genes)
 }
 
@@ -394,6 +394,9 @@ bind_to_scope <- function(fn, env = parent.frame()) {
   environment(fn) <- env
   fn
 }
+
+# Session objects the bound helpers below read from the server scope
+utils::globalVariables(c("eds", "input", "seqAnnoReactive"))
 
 # =============================================================================
 # Feature bucket API (used by server-featureBucket.R, bound there with bind_to_scope())
@@ -421,11 +424,11 @@ bucket_add <- function(new_features, source = "unknown") {
     valid_ids <- c(valid_ids, unique(sg))
   }
   valid <- new_features[new_features %in% valid_ids & new_features != ""]
-  current <- isolate(featureBucket$features)
+  current <- shiny::isolate(featureBucket$features)
   to_add <- setdiff(valid, current)
   if (length(to_add) > 0) {
     featureBucket$features <- c(current, to_add)
-    featureBucket$version <- isolate(featureBucket$version) + 1L
+    featureBucket$version <- shiny::isolate(featureBucket$version) + 1L
   }
 }
 
@@ -435,11 +438,11 @@ bucket_add <- function(new_features, source = "unknown") {
 #' @param source Label for telemetry
 #' @noRd
 bucket_remove <- function(to_remove, source = "unknown") {
-  current <- isolate(featureBucket$features)
+  current <- shiny::isolate(featureBucket$features)
   remaining <- current[!current %in% to_remove]
   if (length(remaining) != length(current)) {
     featureBucket$features <- remaining
-    featureBucket$version <- isolate(featureBucket$version) + 1L
+    featureBucket$version <- shiny::isolate(featureBucket$version) + 1L
   }
 }
 
@@ -449,7 +452,7 @@ bucket_remove <- function(to_remove, source = "unknown") {
 #' @noRd
 bucket_clear <- function(source = "unknown") {
   featureBucket$features <- character(0)
-  featureBucket$version <- isolate(featureBucket$version) + 1L
+  featureBucket$version <- shiny::isolate(featureBucket$version) + 1L
 }
 
 #' parse_gene_text
@@ -499,13 +502,13 @@ resolve_features <- function(input_genes, search_mode = "feature_id") {
 #' @param title_suffix String appended to heatmap title
 #' @noRd
 make_rep_heatmap <- function(data, title_suffix = "") {
-  req(data)
+  shiny::req(data)
 
   # Prepare annotations
   ha_top <- NULL
   ha_left <- NULL
-  row_names_gp <- gpar(fontsize = input$replicabilityTextSize)
-  column_names_gp <- gpar(fontsize = input$replicabilityTextSize)
+  row_names_gp <- grid::gpar(fontsize = input$replicabilityTextSize)
+  column_names_gp <- grid::gpar(fontsize = input$replicabilityTextSize)
 
   if (!is.null(input$replicabilityFactors)) {
     dataset <- data$dataset
@@ -522,14 +525,14 @@ make_rep_heatmap <- function(data, title_suffix = "") {
           if (is.null(col_input)) {
             return("#808080FF")
           }
-          tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
+          tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
         },
         character(1)
       )
       names(colors) <- levs
       return(colors)
     }) %>%
-      setNames(input$replicabilityFactors)
+      stats::setNames(input$replicabilityFactors)
 
     # Color labels based on the first selected factor
     factor_col <- input$replicabilityFactors[1]
@@ -541,7 +544,7 @@ make_rep_heatmap <- function(data, title_suffix = "") {
         if (is.null(col_input)) {
           return("#808080FF")
         }
-        tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
+        tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
       },
       character(1)
     )
@@ -549,8 +552,8 @@ make_rep_heatmap <- function(data, title_suffix = "") {
     sample_colors <- colors[as.character(dataset[[factor_col]])]
     names(sample_colors) <- dataset$Name
 
-    row_names_gp <- gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
-    column_names_gp <- gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
+    row_names_gp <- grid::gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
+    column_names_gp <- grid::gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
 
     anno_df <- dataset[, input$replicabilityFactors, drop = FALSE]
 
@@ -567,15 +570,15 @@ make_rep_heatmap <- function(data, title_suffix = "") {
       levs <- names(colourList[[f]])
       list(at = levs, labels = unname(level_labels(input, f, levs, mode = "plain")))
     }) %>%
-      setNames(input$replicabilityFactors)
+      stats::setNames(input$replicabilityFactors)
 
-    ha_top <- HeatmapAnnotation(
+    ha_top <- ComplexHeatmap::HeatmapAnnotation(
       df = anno_df,
       col = colourList,
       show_legend = !repRich,
       annotation_legend_param = annoLegendParam,
-      annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-      gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
+      annotation_name_gp = grid::gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
+      gp = grid::gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
     )
     if (repRich) {
       attr(ha_top, "rich_legends") <- lapply(input$replicabilityFactors, function(f) {
@@ -583,18 +586,18 @@ make_rep_heatmap <- function(data, title_suffix = "") {
           title = f,
           labels = level_labels(input, f, names(colourList[[f]]), force_rich = TRUE),
           fill = colourList[[f]],
-          title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-          labels_gp = gpar(fontsize = input$replicabilityTextSize)
+          title_gp = grid::gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
+          labels_gp = grid::gpar(fontsize = input$replicabilityTextSize)
         )
       })
     }
 
-    ha_left <- rowAnnotation(
+    ha_left <- ComplexHeatmap::rowAnnotation(
       df = anno_df,
       col = colourList,
       show_legend = FALSE,
-      annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-      gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
+      annotation_name_gp = grid::gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
+      gp = grid::gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
     )
   }
 
@@ -603,15 +606,15 @@ make_rep_heatmap <- function(data, title_suffix = "") {
 
   # Determine color scheme - use palette if selected, otherwise use manual colors
   if (!is.null(input$replicabilityPalette) && input$replicabilityPalette != "None") {
-    palette_colours <- brewer.pal(9, input$replicabilityPalette)
+    palette_colours <- RColorBrewer::brewer.pal(9, input$replicabilityPalette)
     selected_colours <- palette_colours[c(1, 5, 9)]
     if (input$replicabilityPaletteRev) {
-      heatmap_colours <- colorRamp2(at, selected_colours)
+      heatmap_colours <- circlize::colorRamp2(at, selected_colours)
     } else {
-      heatmap_colours <- colorRamp2(at, rev(selected_colours))
+      heatmap_colours <- circlize::colorRamp2(at, rev(selected_colours))
     }
   } else {
-    heatmap_colours <- colorRamp2(
+    heatmap_colours <- circlize::colorRamp2(
       at,
       c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh)
     )
@@ -627,16 +630,16 @@ make_rep_heatmap <- function(data, title_suffix = "") {
     show_column_names = input$replicabilityShowNames,
     row_names_gp = row_names_gp,
     column_names_gp = column_names_gp,
-    heatmap_legend_param = list(title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold")),
-    rect_gp = gpar(col = input$replicabilityBorderColor2, lwd = input$replicabilityBorderSize2 / 10),
+    heatmap_legend_param = list(title_gp = grid::gpar(fontsize = input$replicabilityTextSize, fontface = "bold")),
+    rect_gp = grid::gpar(col = input$replicabilityBorderColor2, lwd = input$replicabilityBorderSize2 / 10),
     column_title = paste0("Correlation Heatmap: ", title_suffix),
-    column_title_gp = gpar(fontsize = input$replicabilityTextSize + 2, fontface = "bold")
+    column_title_gp = grid::gpar(fontsize = input$replicabilityTextSize + 2, fontface = "bold")
   )
 
   draw_heatmap(
     hm,
     merge_legend = TRUE,
-    padding = unit(c(10, 10, 10, 10), "mm"),
+    padding = grid::unit(c(10, 10, 10, 10), "mm"),
     legend_dx = input$replicabilityLegendDX,
     legend_dy = input$replicabilityLegendDY
   )
@@ -648,8 +651,8 @@ make_rep_heatmap <- function(data, title_suffix = "") {
 #' @param title_suffix String appended to title
 #' @noRd
 make_rep_dendrogram <- function(data, title_suffix = "") {
-  req(data)
-  dend <- as.dendrogram(data$hclust)
+  shiny::req(data)
+  dend <- stats::as.dendrogram(data$hclust)
 
   if (!is.null(input$replicabilityFactors)) {
     dataset <- data$dataset
@@ -662,14 +665,14 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
         if (is.null(col_input)) {
           return("#808080FF")
         }
-        tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
+        tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
       },
       character(1)
     )
 
     sample_colors <- colors[as.character(dataset[[factor_col]])]
     names(sample_colors) <- dataset$Name
-    labels_colors(dend) <- sample_colors[labels(dend)]
+    dendextend::labels_colors(dend) <- sample_colors[labels(dend)]
 
     colors_mat <- as.data.frame(dataset[, input$replicabilityFactors, drop = FALSE])
     for (f in input$replicabilityFactors) {
@@ -680,7 +683,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
           if (is.null(col_input)) {
             return("#808080FF")
           }
-          tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
+          tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
         },
         character(1)
       )
@@ -688,7 +691,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
     colors_mat <- colors_mat[match(labels(dend), dataset$Name), , drop = FALSE]
   }
 
-  par(mar = c(20, 8, 6, 4))
+  graphics::par(mar = c(20, 8, 6, 4))
   plot(
     dend,
     main = paste0(
@@ -705,7 +708,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
   )
 
   if (!is.null(input$replicabilityFactors)) {
-    colored_bars(colors = colors_mat, dend = dend, sort_by_labels_order = FALSE)
+    dendextend::colored_bars(colors = colors_mat, dend = dend, sort_by_labels_order = FALSE)
   }
 }
 
@@ -906,7 +909,7 @@ getPackageVersions <- function(packages) {
   versions <- sapply(packages, function(pkg) {
     tryCatch(
       {
-        as.character(packageVersion(pkg))
+        as.character(utils::packageVersion(pkg))
       },
       error = function(e) {
         "version unavailable"
@@ -992,7 +995,7 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
   if (!is.null(se)) {
     tryCatch(
       {
-        lib_sizes <- colSums(assay(se, "counts"))
+        lib_sizes <- colSums(SummarizedExperiment::assay(se, "counts"))
         min_size <- round(min(lib_sizes) / 1e6, 1)
         max_size <- round(max(lib_sizes) / 1e6, 1)
         final_reads_info <- paste0(
@@ -1195,7 +1198,7 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 #' @noRd
 calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
   # Remove samples with missing values
-  completeCases <- complete.cases(counts)
+  completeCases <- stats::complete.cases(counts)
   counts_clean <- counts[completeCases, ]
 
   if (nrow(counts_clean) < 3 || ncol(counts_clean) < 3) {
@@ -1205,7 +1208,7 @@ calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
   # Run PCA
   pca_result <- tryCatch(
     {
-      prcomp(counts_clean, center = center, scale. = scale)
+      stats::prcomp(counts_clean, center = center, scale. = scale)
     },
     error = function(e) {
       return(NULL)
@@ -1238,7 +1241,7 @@ calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
 #' @noRd
 calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
   # Remove samples with missing values
-  completeCases <- complete.cases(counts)
+  completeCases <- stats::complete.cases(counts)
   counts_clean <- counts[completeCases, ]
 
   if (nrow(counts_clean) < 3 || ncol(counts_clean) < 3) {
@@ -1293,7 +1296,7 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
     # Classical PCoA
     pcoa_result <- tryCatch(
       {
-        cmdscale(dist_mat, k = min(10, nrow(counts_clean) - 1), eig = TRUE)
+        stats::cmdscale(dist_mat, k = min(10, nrow(counts_clean) - 1), eig = TRUE)
       },
       error = function(e) {
         return(NULL)
@@ -1426,7 +1429,7 @@ prepare_biplot_data <- function(
     # Manual selection: use custom_genes
     if (!is.null(custom_genes) && length(custom_genes) > 0) {
       genes_to_plot <- loadings_subset %>%
-        dplyr::filter(gene %in% custom_genes)
+        dplyr::filter(.data$gene %in% custom_genes)
     } else {
       genes_to_plot <- loadings_subset[0, ] # Empty tibble if no genes specified
     }
@@ -1434,22 +1437,22 @@ prepare_biplot_data <- function(
     # Per-PC selection: top N from each PC separately
     top_x <- loadings_subset %>%
       dplyr::arrange(dplyr::desc(abs(.data[[pc_x_name]]))) %>%
-      head(top_n) %>%
+      utils::head(top_n) %>%
       dplyr::mutate(pc_source = pc_x_name)
 
     top_y <- loadings_subset %>%
       dplyr::arrange(dplyr::desc(abs(.data[[pc_y_name]]))) %>%
-      head(top_n) %>%
+      utils::head(top_n) %>%
       dplyr::mutate(pc_source = pc_y_name)
 
     # Combine and deduplicate - keep first occurrence (prioritize PC X if gene is in both)
     genes_to_plot <- dplyr::bind_rows(top_x, top_y) %>%
-      dplyr::distinct(gene, .keep_all = TRUE)
+      dplyr::distinct(.data$gene, .keep_all = TRUE)
   } else {
     # Overall selection: top N by combined magnitude (default behavior)
     genes_to_plot <- loadings_subset %>%
-      dplyr::arrange(dplyr::desc(magnitude)) %>%
-      head(top_n)
+      dplyr::arrange(dplyr::desc(.data$magnitude)) %>%
+      utils::head(top_n)
   }
 
   list(
@@ -1498,7 +1501,11 @@ step_log2 <- function(counts, dataset, counts_type) {
 step_batch_correction <- function(counts, dataset, batch_column, design_column = "None") {
   if (!is.null(batch_column) && nzchar(batch_column) && batch_column != "None") {
     if (any(is.na(dataset[[batch_column]]))) {
-      showNotification("Batch correction skipped: batch column contains NA values", type = "warning", duration = 8)
+      shiny::showNotification(
+        "Batch correction skipped: batch column contains NA values",
+        type = "warning",
+        duration = 8
+      )
     } else {
       counts <- apply_batch_correction(
         counts = counts,
@@ -1517,8 +1524,8 @@ step_batch_correction <- function(counts, dataset, batch_column, design_column =
 step_top_n_sd <- function(counts, dataset, top_n) {
   top_n <- min(top_n, nrow(counts))
   if (nrow(counts) > top_n) {
-    sds <- apply(counts, 1, sd, na.rm = FALSE)
-    top_features <- names(head(sort(sds, decreasing = TRUE), n = top_n))
+    sds <- apply(counts, 1, stats::sd, na.rm = FALSE)
+    top_features <- names(utils::head(sort(sds, decreasing = TRUE), n = top_n))
     counts <- counts[top_features, , drop = FALSE]
   }
   list(counts = counts, dataset = dataset)
@@ -1534,36 +1541,37 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
   pc_y <- input$pcaY
 
   # Base plot
-  p <- ggplot(pc_scores, aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]))
+  p <- ggplot2::ggplot(pc_scores, ggplot2::aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]))
 
   if (input$pcaAddEllipses) {
     p <- p +
-      stat_ellipse(
-        aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]),
+      ggplot2::stat_ellipse(
+        ggplot2::aes(colour = .data[[input$pcaFactor1]], fill = .data[[input$pcaFactor1]]),
         geom = "polygon",
         alpha = input$pcaEllipsesAlpha,
         show.legend = FALSE
       )
-    p <- p + scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
+    p <- p + ggplot2::scale_colour_manual(breaks = names(coloursPCA), values = as.character(coloursPCA))
   }
 
   if (input$pcaFactor2 == "None") {
-    p <- p + geom_point(size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA)
+    p <- p +
+      ggplot2::geom_point(size = input$dotSizePCA, alpha = input$alphaPCA, shape = 21, stroke = input$dotBorderPCA)
   } else {
     p <- p +
-      geom_point(
-        aes(shape = .data[[input$pcaFactor2]]),
+      ggplot2::geom_point(
+        ggplot2::aes(shape = .data[[input$pcaFactor2]]),
         size = input$dotSizePCA,
         alpha = input$alphaPCA,
         stroke = input$dotBorderPCA
       )
-    p <- p + scale_shape_manual(values = c(21, 22, 23, 24, 25, 8, 3, 4), labels = shapeLabels)
+    p <- p + ggplot2::scale_shape_manual(values = c(21, 22, 23, 24, 25, 8, 3, 4), labels = shapeLabels)
   }
 
   if (input$pcaShowNames) {
     p <- p +
-      geom_label_repel(
-        aes(label = Name, fill = .data[[input$pcaFactor1]]),
+      ggrepel::geom_label_repel(
+        ggplot2::aes(label = .data$Name, fill = .data[[input$pcaFactor1]]),
         force = 2,
         nudge_y = as.numeric(input$geneLabelNudgePCAY) / 10,
         nudge_x = as.numeric(input$geneLabelNudgePCAX) / 10,
@@ -1589,18 +1597,20 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
     y_lab <- pc_y
   }
 
-  p <- p + labs(x = x_lab, y = y_lab, fill = input$pcaFactor1)
+  p <- p + ggplot2::labs(x = x_lab, y = y_lab, fill = input$pcaFactor1)
 
   if (input$pcaAxesProp && !is.null(ordination_result$variance)) {
     pc_x_num <- as.numeric(gsub("\\D", "", pc_x))
     pc_y_num <- as.numeric(gsub("\\D", "", pc_y))
-    p <- p + coord_fixed(ratio = ordination_result$variance[pc_y_num] / ordination_result$variance[pc_x_num])
+    p <- p + ggplot2::coord_fixed(ratio = ordination_result$variance[pc_y_num] / ordination_result$variance[pc_x_num])
   }
 
-  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
-  p <- p + theme_bw(base_size = input$textSizePCA)
+  p <- p +
+    ggplot2::scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
+  p <- p + ggplot2::theme_bw(base_size = input$textSizePCA)
   face <- switch(input$boldPCA, "TRUE" = "bold", "FALSE" = "plain")
-  p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
+  p <- p +
+    ggplot2::theme(axis.text = ggplot2::element_text(face = face), axis.title = ggplot2::element_text(face = face))
   if (isTRUE(levelLabels$rich)) {
     p <- p + rich_label_theme(legend = TRUE)
   }
@@ -1608,25 +1618,25 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {
     p <- p +
-      theme(
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.y = element_blank()
+      ggplot2::theme(
+        panel.grid.major.x = ggplot2::element_blank(),
+        panel.grid.minor.x = ggplot2::element_blank(),
+        panel.grid.major.y = ggplot2::element_blank(),
+        panel.grid.minor.y = ggplot2::element_blank()
       )
   }
 
   # Conditionally hide axes
   if (!input$showAxesPCA) {
     p <- p +
-      theme(
-        axis.line = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        panel.border = element_blank()
+      ggplot2::theme(
+        axis.line = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        panel.border = ggplot2::element_blank()
       )
   }
 
@@ -1662,27 +1672,27 @@ plot_ordination_biplot <- function(
   # Add arrow color column for per_pc mode
   if (selection_method == "per_pc" && "pc_source" %in% names(biplot_data$gene_data)) {
     biplot_data$gene_data <- biplot_data$gene_data %>%
-      dplyr::mutate(arrow_color = ifelse(pc_source == pc_x, arrow_colour$x, arrow_colour$y))
+      dplyr::mutate(arrow_color = ifelse(.data$pc_source == pc_x, arrow_colour$x, arrow_colour$y))
   } else {
     # Single color for all arrows
     biplot_data$gene_data$arrow_color <- if (is.list(arrow_colour)) arrow_colour$x else arrow_colour
   }
 
-  p <- ggplot()
+  p <- ggplot2::ggplot()
   p <- p +
-    geom_point(
+    ggplot2::geom_point(
       data = pc_scores,
-      aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]),
+      ggplot2::aes(x = .data[[pc_x]], y = .data[[pc_y]], fill = .data[[input$pcaFactor1]]),
       size = input$dotSizePCA,
       alpha = input$alphaPCA,
       shape = 21,
       stroke = input$dotBorderPCA
     )
   p <- p +
-    geom_segment(
+    ggplot2::geom_segment(
       data = biplot_data$gene_data,
-      aes(x = 0, y = 0, xend = pc_x_scaled, yend = pc_y_scaled, colour = arrow_color),
-      arrow = arrow(length = unit(0.2, "cm"), type = "closed"),
+      ggplot2::aes(x = 0, y = 0, xend = .data$pc_x_scaled, yend = .data$pc_y_scaled, colour = .data$arrow_color),
+      arrow = grid::arrow(length = grid::unit(0.2, "cm"), type = "closed"),
       linewidth = 0.5,
       alpha = 0.7
     )
@@ -1691,14 +1701,14 @@ plot_ordination_biplot <- function(
     biplot_data$gene_data$label <- biplot_data$gene_data$gene
   }
   p <- p +
-    geom_text_repel(
+    ggrepel::geom_text_repel(
       data = biplot_data$gene_data,
-      aes(x = pc_x_scaled, y = pc_y_scaled, label = label, colour = arrow_color),
+      ggplot2::aes(x = .data$pc_x_scaled, y = .data$pc_y_scaled, label = .data$label, colour = .data$arrow_color),
       size = input$textSizePCA / 4,
       fontface = "bold",
       max.overlaps = 20
     )
-  p <- p + scale_colour_identity() # Use the actual color values
+  p <- p + ggplot2::scale_colour_identity() # Use the actual color values
 
   # Axes
   if (!is.null(ordination_result$variance)) {
@@ -1711,11 +1721,13 @@ plot_ordination_biplot <- function(
     y_lab <- pc_y
   }
 
-  p <- p + labs(x = x_lab, y = y_lab, fill = input$pcaFactor1)
-  p <- p + scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
-  p <- p + theme_bw(base_size = input$textSizePCA)
+  p <- p + ggplot2::labs(x = x_lab, y = y_lab, fill = input$pcaFactor1)
+  p <- p +
+    ggplot2::scale_fill_manual(breaks = names(coloursPCA), values = as.character(coloursPCA), labels = fillLabels)
+  p <- p + ggplot2::theme_bw(base_size = input$textSizePCA)
   face <- switch(input$boldPCA, "TRUE" = "bold", "FALSE" = "plain")
-  p <- p + theme(axis.text = element_text(face = face), axis.title = element_text(face = face))
+  p <- p +
+    ggplot2::theme(axis.text = ggplot2::element_text(face = face), axis.title = ggplot2::element_text(face = face))
   if (isTRUE(levelLabels$rich)) {
     p <- p + rich_label_theme(legend = TRUE)
   }
@@ -1723,25 +1735,25 @@ plot_ordination_biplot <- function(
   # Conditionally hide grid lines
   if (!input$showLinesPCA) {
     p <- p +
-      theme(
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.y = element_blank()
+      ggplot2::theme(
+        panel.grid.major.x = ggplot2::element_blank(),
+        panel.grid.minor.x = ggplot2::element_blank(),
+        panel.grid.major.y = ggplot2::element_blank(),
+        panel.grid.minor.y = ggplot2::element_blank()
       )
   }
 
   # Conditionally hide axes
   if (!input$showAxesPCA) {
     p <- p +
-      theme(
-        axis.line = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        panel.border = element_blank()
+      ggplot2::theme(
+        axis.line = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        panel.border = ggplot2::element_blank()
       )
   }
 
@@ -1804,7 +1816,7 @@ make_qc_scatter <- function(
   df$types <- factor(df$types, levels = draw_order)
   df <- df[order(df$types), , drop = FALSE]
 
-  p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, colour = types)) +
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, colour = .data$types)) +
     ggplot2::geom_point(size = point_size, alpha = alpha) +
     ggplot2::scale_color_manual(values = types_colours)
   if (isTRUE(log_scale)) {

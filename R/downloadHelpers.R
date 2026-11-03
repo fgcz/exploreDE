@@ -58,14 +58,14 @@ export_plot_standard <- function(plot_object, filename, format = "pdf", dpi = 30
   # Greek in rich level labels is rewritten to the Symbol font for it.
   if (format == "pdf") {
     plot_object <- prepare_plot_for_pdf(plot_object)
-    pdf(file = filename, width = width, height = height)
+    grDevices::pdf(file = filename, width = width, height = height)
   } else if (format == "svg") {
-    svg(file = filename, width = width, height = height)
+    grDevices::svg(file = filename, width = width, height = height)
   } else if (format == "png") {
-    png(filename = filename, width = width, height = height, units = "in", res = as.numeric(dpi))
+    grDevices::png(filename = filename, width = width, height = height, units = "in", res = as.numeric(dpi))
   } else {
     warning("Unknown format '", format, "'. Defaulting to PDF.")
-    pdf(file = filename, width = width, height = height)
+    grDevices::pdf(file = filename, width = width, height = height)
   }
 
   # Print/Draw the plot
@@ -82,7 +82,7 @@ export_plot_standard <- function(plot_object, filename, format = "pdf", dpi = 30
     },
     finally = {
       # Ensure device is closed even if printing fails
-      dev.off()
+      grDevices::dev.off()
     }
   )
 }

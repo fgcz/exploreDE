@@ -75,10 +75,12 @@
   and a minimal Python writer) and `exploreDE-session-2.md` (session files).
 - README, the bring-your-own-data vignette, and the AI skill now cover
   writing files outside R, opening files from a link, and saving sessions.
+- The help pages of the `ExploreDataset*` classes describe every public method and its arguments.
 
 ## Removed
 
 - The App Data tab (deprecated).
+- `devtools` as a dependency: installing exploreDE no longer installs it. `dendextend` and `rlang`, which the package code calls, move from Suggests to Imports.
 
 # exploreDE 3.8.0
 

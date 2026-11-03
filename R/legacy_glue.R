@@ -69,7 +69,7 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
   factors_raw <- colnames(colData_raw)[grep("\\[Factor]", colnames(colData_raw))]
   factors <- gsub(" \\[.*", "", factors_raw)
   factors <- gsub(" ", "_", factors)
-  factorLevels <- setNames(
+  factorLevels <- stats::setNames(
     lapply(factors, function(f) levels(as.factor(dataset[[f]]))),
     factors
   )
@@ -112,9 +112,7 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
     if (isTRUE(param$featureLevel == "isoform")) {
       idOrder <- intersect(rd$transcript_id, rownames(countList[[i]]))
       countList[[i]] <- countList[[i]][idOrder, ]
-      rownames(countList[[i]]) <- rd$feature_id %>%
-        gsub("[:/()-]", ".", .) %>%
-        gsub(" ", ".", .)
+      rownames(countList[[i]]) <- gsub(" ", ".", gsub("[:/()-]", ".", rd$feature_id))
     } else {
       idOrder <- intersect(rd$gene_id, rownames(countList[[i]]))
       countList[[i]] <- countList[[i]][idOrder, ]
@@ -167,7 +165,7 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
     gStoreList$design <- dataTypeGStore
     gStoreList$designLevels <- NULL
     if (dataTypeGStore == "CrisprCountQC") {
-      gStoreList$sgRNA_to_gene <- setNames(
+      gStoreList$sgRNA_to_gene <- stats::setNames(
         gsub("_((sgrna)?[0-9]+|[+-]_[^_]+)_[ACGTN]+$", "", rd$feature_id, ignore.case = TRUE),
         rd$feature_id
       )
@@ -383,7 +381,7 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
   }
 
   factors <- eds$factor_names()
-  factorLevels <- setNames(lapply(factors, function(f) eds$factor_levels(f)), factors)
+  factorLevels <- stats::setNames(lapply(factors, function(f) eds$factor_levels(f)), factors)
 
   # ---- seqAnno = feature annotation + this contrast's DE stats ------------
   de <- eds$de(contrast) # feature_id, log2Ratio, pValue, fdr, gene_name, ...
@@ -469,14 +467,14 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
   ]
   contrasts <- gsub("constrast_", "", contrasts)
 
-  contrast_dfs <- setNames(
+  contrast_dfs <- stats::setNames(
     lapply(contrasts, function(con) {
       as.data.frame(SummarizedExperiment::rowData(se)[[paste0("constrast_", con)]])
     }),
     contrasts
   )
 
-  seqAnnoList <- setNames(
+  seqAnnoList <- stats::setNames(
     lapply(contrasts, function(con) {
       # .saint_standardise_de maps SAINT's log2_EFCs/BFDR -> log2Ratio/fdr and
       # adds an all-NA pValue (no-op for standard prolfqua frames); .de_order_idx
@@ -510,7 +508,7 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
   factors <- colnames(dataset)[
     grep("Sample|Name|names|channel|raw\\.file", colnames(dataset), invert = TRUE, ignore.case = TRUE)
   ]
-  factorLevels <- setNames(
+  factorLevels <- stats::setNames(
     lapply(factors, function(f) levels(as.factor(dataset[[f]]))),
     factors
   )
@@ -522,9 +520,9 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
   unsorted_sa <- standardise_columns(contrast_dfs[[contrasts[1]]])
   unsorted_sa$feature_id <- build_feature_id(unsorted_sa)
   raw_rn <- rownames(contrast_dfs[[contrasts[1]]])
-  fid_lookup <- setNames(unsorted_sa$feature_id, raw_rn)
+  fid_lookup <- stats::setNames(unsorted_sa$feature_id, raw_rn)
 
-  countList <- setNames(
+  countList <- stats::setNames(
     lapply(names(SummarizedExperiment::assays(se)), function(ass) {
       x <- SummarizedExperiment::assay(se, ass)
       mapped <- fid_lookup[rownames(x)]
