@@ -79,6 +79,7 @@
 ## Removed
 
 - The App Data tab (deprecated).
+- `devtools` as a dependency: installing exploreDE no longer installs it. `dendextend` and `rlang`, which the package code calls, move from Suggests to Imports.
 
 # exploreDE 3.8.0
 
