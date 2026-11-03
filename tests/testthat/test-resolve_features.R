@@ -1,6 +1,6 @@
 # ============================================================================
 # resolve_features — expands gene symbols / protein IDs to feature_ids based
-# on lookup tables attached to the inputDataReactive() return value.
+# on the lookup tables from eds$proteomics_choices().
 # ============================================================================
 
 make_resolve_mocks <- function(
@@ -8,9 +8,10 @@ make_resolve_mocks <- function(
   gene_lookup = NULL,
   protein_lookup = NULL
 ) {
+  lookups <- list(gene = gene_lookup, protein = protein_lookup)
   list(
     seqAnnoReactive = shiny::reactiveValues(sa = data.frame(feature_id = feature_ids)),
-    inputDataReactive = function() list(gene_lookup = gene_lookup, protein_lookup = protein_lookup)
+    eds = list(proteomics_choices = function(kind) list(lookup = lookups[[kind]]))
   )
 }
 
