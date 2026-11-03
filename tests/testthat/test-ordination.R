@@ -143,29 +143,31 @@ test_that("step_group_subset subsets counts and dataset to selected groups", {
 
 test_that("step_peptide_filter keeps only features with nrPeptides >= threshold", {
   counts <- matrix(1:12, nrow = 3, dimnames = list(c("f1", "f2", "f3"), paste0("s", 1:4)))
-  sa <- list(data.frame(feature_id = c("f1", "f2", "f3"), nrPeptides = c(3, 1, 5)))
+  de_df <- data.frame(feature_id = c("f1", "f2", "f3"), nrPeptides = c(3, 1, 5))
   ds <- data.frame(row.names = paste0("s", 1:4), cond = c("A", "A", "B", "B"))
 
-  out <- step_peptide_filter(counts, ds, sa, min_peptides = 3)
+  out <- step_peptide_filter(counts, ds, de_df, min_peptides = 3)
   expect_setequal(rownames(out$counts), c("f1", "f3"))
 })
 
-test_that("step_peptide_filter is a no-op when seqAnnoList or min_peptides is NULL", {
+test_that("step_peptide_filter is a no-op without a DE table, threshold or nrPeptides column", {
   counts <- matrix(1:12, nrow = 3, dimnames = list(c("f1", "f2", "f3"), paste0("s", 1:4)))
   ds <- data.frame(row.names = paste0("s", 1:4), cond = rep("A", 4))
+  de_df <- data.frame(feature_id = c("f1", "f2", "f3"), nrPeptides = c(3, 1, 5))
   expect_equal(step_peptide_filter(counts, ds, NULL, 3)$counts, counts)
-  expect_equal(step_peptide_filter(counts, ds, list(), NULL)$counts, counts)
+  expect_equal(step_peptide_filter(counts, ds, de_df, NULL)$counts, counts)
+  expect_equal(step_peptide_filter(counts, ds, de_df["feature_id"], 3)$counts, counts)
 })
 
-test_that("step_log2 log-transforms raw / normalised / TPM / FPKM counts only", {
+test_that("step_log2 log-transforms the linear-scale assays only", {
   counts <- matrix(1:4, nrow = 2)
   ds <- data.frame(cond = c("A", "B"))
-  expect_equal(step_log2(counts, ds, "Raw")$counts, log2(counts + 1))
-  expect_equal(step_log2(counts, ds, "Normalised")$counts, log2(counts + 1))
-  expect_equal(step_log2(counts, ds, "TPM")$counts, log2(counts + 1))
-  # Already-log counts: no-op
-  expect_equal(step_log2(counts, ds, "Normalised + Log2")$counts, counts)
-  expect_equal(step_log2(counts, ds, "VST")$counts, counts)
+  for (assay in c("counts", "normalised", "tpm", "fpkm")) {
+    expect_equal(step_log2(counts, ds, assay)$counts, log2(counts + 1), info = assay)
+  }
+  # Already-log assays: no-op
+  expect_equal(step_log2(counts, ds, "normalised_log2")$counts, counts)
+  expect_equal(step_log2(counts, ds, "vst")$counts, counts)
 })
 
 test_that("step_top_n_sd keeps the top N most variable features", {

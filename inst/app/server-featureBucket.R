@@ -59,14 +59,6 @@ bucket_clear <- function(source = "unknown") {
   featureBucket$version <- isolate(featureBucket$version) + 1L
 }
 
-parse_gene_text <- function(text) {
-  if (is.null(text) || text == "") {
-    return(character(0))
-  }
-  genes <- strsplit(text, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
-  genes[genes != ""]
-}
-
 # Resolve gene symbols / protein IDs to feature_ids when not in feature_id mode
 resolve_features <- function(input_genes, search_mode = "feature_id") {
   gene_lookup <- eds$proteomics_choices("gene")$lookup
