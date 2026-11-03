@@ -332,7 +332,7 @@ is_url <- function(dataDir) {
 
 
 # =============================================================================
-# Boxplot / barplot helpers (from server-boxplot.R, server-multi-boxplot.R)
+# Boxplot / barplot helpers (used by server-boxplot.R, server-multi-boxplot.R)
 # =============================================================================
 
 #' dataSummary
@@ -362,7 +362,7 @@ dataSummary <- function(data, varname, groupnames) {
 
 
 # =============================================================================
-# Heatmap helpers (from server-heatmap2.R)
+# Heatmap helpers (used by server-heatmap2.R)
 # =============================================================================
 
 #' select_genes_by_sd
@@ -661,7 +661,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
 
 
 # =============================================================================
-# Summary / methods-text helpers (from server-summary.R)
+# Summary / methods-text helpers (used by server-summary.R)
 # =============================================================================
 
 #' count_result_summary
@@ -1130,7 +1130,7 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 
 
 # =============================================================================
-# Ordination helpers (from server-ordination.R)
+# Ordination helpers (used by server-ordination.R)
 # NOTE: plot_ordination_samples and plot_ordination_biplot take a Shiny
 # `input` object; step_batch_correction calls showNotification(). These
 # will error if called outside a Shiny session.
@@ -1422,9 +1422,9 @@ step_group_subset <- function(counts, dataset, factor_col, groups) {
 #' step_peptide_filter
 #' Cascade step: keep features with >= min_peptides entries (proteomics only).
 #' @noRd
-step_peptide_filter <- function(counts, dataset, seqAnnoList, min_peptides) {
-  if (!is.null(seqAnnoList) && !is.null(min_peptides)) {
-    keep <- seqAnnoList[[1]]$feature_id[seqAnnoList[[1]]$nrPeptides >= min_peptides]
+step_peptide_filter <- function(counts, dataset, de_df, min_peptides) {
+  if (!is.null(de_df) && !is.null(min_peptides) && "nrPeptides" %in% colnames(de_df)) {
+    keep <- de_df$feature_id[de_df$nrPeptides >= min_peptides]
     counts <- counts[rownames(counts) %in% keep, , drop = FALSE]
   }
   list(counts = counts, dataset = dataset)
@@ -1434,7 +1434,8 @@ step_peptide_filter <- function(counts, dataset, seqAnnoList, min_peptides) {
 #' Cascade step: log2(counts + 1) for count types that are not already log-scale.
 #' @noRd
 step_log2 <- function(counts, dataset, counts_type) {
-  if (counts_type %in% c("TPM", "FPKM", "Raw", "Normalised")) {
+  # Linear-scale assay keys that benefit from log2 transform
+  if (counts_type %in% c("tpm", "fpkm", "counts", "normalised")) {
     counts <- log2(counts + 1)
   }
   list(counts = counts, dataset = dataset)
@@ -1635,10 +1636,14 @@ plot_ordination_biplot <- function(
       linewidth = 0.5,
       alpha = 0.7
     )
+  # Arrow labels: optional display label (e.g. gene symbol), else the feature_id
+  if (!"label" %in% names(biplot_data$gene_data)) {
+    biplot_data$gene_data$label <- biplot_data$gene_data$gene
+  }
   p <- p +
     geom_text_repel(
       data = biplot_data$gene_data,
-      aes(x = pc_x_scaled, y = pc_y_scaled, label = gene, colour = arrow_color),
+      aes(x = pc_x_scaled, y = pc_y_scaled, label = label, colour = arrow_color),
       size = input$textSizePCA / 4,
       fontface = "bold",
       max.overlaps = 20
