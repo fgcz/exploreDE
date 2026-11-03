@@ -484,15 +484,6 @@ output$heatmapTabTitle <- renderUI({
   }
 })
 
-# Helper function to select genes by standard deviation (for CountQC data)
-select_genes_by_sd <- function(counts, top_n = 2000) {
-  # Calculate SD for each gene
-  gene_sds <- apply(counts, 1, sd, na.rm = TRUE)
-  # Sort by SD (descending) and take top N
-  top_genes <- names(head(sort(gene_sds, decreasing = TRUE), n = top_n))
-  return(top_genes)
-}
-
 ht_opt$message <- FALSE
 
 # figure making ----
