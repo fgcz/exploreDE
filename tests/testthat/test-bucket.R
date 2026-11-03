@@ -1,20 +1,24 @@
 # ============================================================================
 # Feature-bucket API tests — bucket_add / bucket_remove / bucket_clear
 #
-# These functions reference `featureBucket`, `seqAnnoReactive` and
-# `inputDataReactive` via lexical scope. We rebind the function's environment
-# to one holding our mock reactives (via with_mock_env, defined in
-# helper-mock_reactives.R).
+# These functions reference `featureBucket`, `seqAnnoReactive` and `eds` via
+# lexical scope. We rebind the function's environment to one holding our mock
+# reactives (via with_mock_env, defined in helper-mock_reactives.R).
 #
 # All reactiveValues reads need a reactive context, so every call is wrapped
 # in shiny::isolate().
 # ============================================================================
 
-make_bucket_mocks <- function(feature_ids = c("A", "B", "C"), sgRNA_to_gene = NULL, initial = character(0)) {
+make_bucket_mocks <- function(
+  feature_ids = c("A", "B", "C"),
+  sgRNA_to_gene = NULL,
+  initial = character(0),
+  sa = data.frame(feature_id = feature_ids)
+) {
   list(
     featureBucket = shiny::reactiveValues(features = initial, version = 0L),
-    seqAnnoReactive = shiny::reactiveValues(sa = data.frame(feature_id = feature_ids)),
-    inputDataReactive = function() list(sgRNA_to_gene = sgRNA_to_gene)
+    seqAnnoReactive = shiny::reactiveValues(sa = sa),
+    eds = list(feature_ids = function() feature_ids, sgrna_to_gene = function() sgRNA_to_gene)
   )
 }
 
@@ -60,6 +64,14 @@ test_that("bucket_add accepts gene-level names when sgRNA_to_gene is present (Cr
 
   shiny::isolate(fn(c("GENE_A", "sg2")))
   expect_setequal(shiny::isolate(m$featureBucket$features), c("GENE_A", "sg2"))
+})
+
+test_that("bucket_add accepts any dataset feature when there is no DE table (counts-only upload)", {
+  m <- make_bucket_mocks(feature_ids = c("A", "B"), sa = NULL)
+  fn <- with_mock_env(bucket_add, !!!m)
+
+  shiny::isolate(fn(c("B", "not_a_gene")))
+  expect_equal(shiny::isolate(m$featureBucket$features), "B")
 })
 
 

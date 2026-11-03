@@ -23,58 +23,12 @@ featureBucket <- reactiveValues(
 
 # --- API functions ---
 
-bucket_add <- function(new_features, source = "unknown") {
-  # Counts-only uploads have no DE table (sa is NULL); the valid feature
-  # universe is then simply every feature in the dataset.
-  valid_ids <- if (!is.null(seqAnnoReactive$sa)) {
-    seqAnnoReactive$sa$feature_id
-  } else {
-    eds$feature_ids()
-  }
-  # Also accept gene-level names for CrisprCountQC collapsed mode
-  sg <- eds$sgrna_to_gene()
-  if (!is.null(sg)) {
-    valid_ids <- c(valid_ids, unique(sg))
-  }
-  valid <- new_features[new_features %in% valid_ids & new_features != ""]
-  current <- isolate(featureBucket$features)
-  to_add <- setdiff(valid, current)
-  if (length(to_add) > 0) {
-    featureBucket$features <- c(current, to_add)
-    featureBucket$version <- isolate(featureBucket$version) + 1L
-  }
-}
-
-bucket_remove <- function(to_remove, source = "unknown") {
-  current <- isolate(featureBucket$features)
-  remaining <- current[!current %in% to_remove]
-  if (length(remaining) != length(current)) {
-    featureBucket$features <- remaining
-    featureBucket$version <- isolate(featureBucket$version) + 1L
-  }
-}
-
-bucket_clear <- function(source = "unknown") {
-  featureBucket$features <- character(0)
-  featureBucket$version <- isolate(featureBucket$version) + 1L
-}
-
-# Resolve gene symbols / protein IDs to feature_ids when not in feature_id mode
-resolve_features <- function(input_genes, search_mode = "feature_id") {
-  gene_lookup <- eds$proteomics_choices("gene")$lookup
-  protein_lookup <- eds$proteomics_choices("protein")$lookup
-  if (search_mode == "gene_name" && !is.null(gene_lookup)) {
-    expanded <- unlist(gene_lookup[input_genes], use.names = FALSE)
-    direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
-    return(unique(c(expanded, direct)))
-  }
-  if (search_mode == "protein_Id" && !is.null(protein_lookup)) {
-    expanded <- unlist(protein_lookup[input_genes], use.names = FALSE)
-    direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
-    return(unique(c(expanded, direct)))
-  }
-  return(input_genes)
-}
+# Defined in R/helperFunctions.R; bound to this scope so they see featureBucket,
+# seqAnnoReactive and eds.
+bucket_add <- bind_to_scope(bucket_add)
+bucket_remove <- bind_to_scope(bucket_remove)
+bucket_clear <- bind_to_scope(bucket_clear)
+resolve_features <- bind_to_scope(resolve_features)
 
 # --- Centralised bucket UI rendering (one per participating tab) ---
 fb_tabs <- c("boxplot", "volcano", "heatmap", "deg")

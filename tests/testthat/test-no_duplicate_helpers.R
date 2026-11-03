@@ -20,15 +20,7 @@ test_that("app files do not redefine package functions", {
   app_dir <- system.file("app", package = "exploreDE")
   files <- list.files(app_dir, pattern = "^(server-.*|app)\\.R$", full.names = TRUE)
   expect_gt(length(files), 10)
-  # Still defined in both places: they read server-scope reactives (next step of issue #10)
-  pending <- c(
-    "bucket_add",
-    "bucket_remove",
-    "bucket_clear",
-    "resolve_features",
-    "make_rep_heatmap",
-    "make_rep_dendrogram"
-  )
+  # Helpers that read session reactives are bound with bind_to_scope(), which is not a definition
   redefined <- intersect(app_function_names(files), ls(asNamespace("exploreDE"), all.names = TRUE))
-  expect_setequal(setdiff(redefined, pending), character(0))
+  expect_setequal(redefined, character(0))
 })
