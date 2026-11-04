@@ -97,10 +97,17 @@ ExploreDatasetSE_CountQC <- R6::R6Class(
       rownames(rd) <- rownames(se)
 
       # Build feature_id via scuttle::uniquifyFeatureNames where gene_id +
-      # gene_name are present (genomics CountQC). CRISPR CountQC inherits
-      # this .prep() but its rowData has no gene_id/gene_name, so feature_id
-      # falls through to rownames(se) (guide IDs).
-      rd$feature_id <- if (all(c("gene_id", "gene_name") %in% colnames(rd))) {
+      # gene_name are present (genomics CountQC). Isoform-level data (e.g.
+      # Kallisto) has several rows per gene, so it must be keyed on
+      # transcript_id, as in ExploreDatasetSE_RNASeq; keying on gene_id gives
+      # duplicate feature_ids and the rownames assignment below fails.
+      # CRISPR CountQC inherits this .prep() but its rowData has no
+      # gene_id/gene_name, so feature_id falls through to rownames(se)
+      # (guide IDs).
+      is_isoform <- identical(cfg$feature_id_kind, "isoform")
+      rd$feature_id <- if (is_isoform && all(c("transcript_id", "gene_name") %in% colnames(rd))) {
+        scuttle::uniquifyFeatureNames(ID = rd$transcript_id, names = rd$gene_name)
+      } else if (all(c("gene_id", "gene_name") %in% colnames(rd))) {
         scuttle::uniquifyFeatureNames(ID = rd$gene_id, names = rd$gene_name)
       } else {
         rownames(rd)
