@@ -305,6 +305,22 @@ test_that("rnaseq isoform is detected from a transcript_id column", {
   expect_identical(eds$data_type(), "RNASeq")
 })
 
+test_that("rnaseq isoform h5ad: Gene Symbol lookup groups a gene's transcripts", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  rd <- p$rowdata
+  rd$transcript_id <- paste0("ENST", seq_len(nrow(rd)))
+  rd$gene_name <- paste0("G", ceiling(seq_len(nrow(rd)) / 2)) # 2 transcripts per gene
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(p$counts, out = out, omics = "rnaseq", coldata = p$coldata, rowdata = rd)
+  eds <- new_explore_dataset(out)
+  gc <- eds$proteomics_choices("gene")
+  expect_setequal(gc$choices, unique(rd$gene_name))
+  expect_length(gc$lookup[["G1"]], 2L)
+  expect_true(all(gc$lookup[["G1"]] %in% eds$feature_ids()))
+  expect_setequal(unlist(gc$lookup, use.names = FALSE), eds$feature_ids())
+})
+
 test_that("a gene-level transcript_id list (SUSHI style) does not flip rnaseq to isoform", {
   skip_if_no_anndataR()
   p <- make_toy_pieces()

@@ -585,6 +585,12 @@ ExploreDatasetH5AD <- R6::R6Class(
           gene = list(choices = gene_choices, lookup = gene_lookup),
           protein = list(choices = protein_choices, lookup = protein_lookup)
         )
+      } else if (identical(cfg$feature_id_kind, "isoform")) {
+        # Isoform RNA-seq: gene symbol -> transcripts, as for the SE backends.
+        gcol <- intersect(c("label_gene_symbol", "gene_name", "gene_symbol"), colnames(var))
+        if (length(gcol)) {
+          private$.config$proteomics <- eds_isoform_gene_choices(var$feature_id, var[[gcol[[1]]]])
+        }
       }
 
       # de_dfs: canonical varm + legacy aliases (log2Ratio/pValue/fdr) so

@@ -46,6 +46,21 @@ test_that("CountQC isoform-level: feature_id keyed on transcript_id, no duplicat
   expect_true(all(grepl("_ENST", fid))) # every gene here has 2 transcripts
   expect_identical(sort(rownames(eds$assay("counts"))), sort(fid))
   expect_silent(validate_explore_dataset(eds))
+
+  # Gene Symbol search: each gene resolves to all of its transcripts.
+  gc <- eds$proteomics_choices("gene")
+  genes <- unique(SummarizedExperiment::rowData(se)$gene_name)
+  expect_identical(gc$choices, genes)
+  for (g in genes) {
+    expect_setequal(gc$lookup[[g]], eds$features()$feature_id[eds$features()$gene_name == g])
+    expect_length(gc$lookup[[g]], 2L)
+  }
+  expect_null(eds$proteomics_choices("protein")$lookup)
+})
+
+test_that("CountQC gene-level: no gene -> feature lookup (search radio stays hidden)", {
+  eds <- new_explore_dataset(fx_countqc()$se)
+  expect_null(eds$proteomics_choices("gene")$lookup)
 })
 
 test_that("CrisprCountQC: subclass + sgrna_to_gene populated", {

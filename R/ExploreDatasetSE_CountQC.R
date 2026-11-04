@@ -127,6 +127,10 @@ ExploreDatasetSE_CountQC <- R6::R6Class(
       rownames(rd) <- rd$feature_id
       private$.features_df <- rd
 
+      if (is_isoform && "gene_name" %in% colnames(rd)) {
+        private$.config$proteomics <- eds_isoform_gene_choices(rd$feature_id, rd$gene_name)
+      }
+
       private$.de_dfs <- list() # no DE
       private$.fid_lookup <- setNames(rd$feature_id, rownames(se))
     }

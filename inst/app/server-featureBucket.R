@@ -289,6 +289,9 @@ label_rows <- function(mat, mode = "feature_id", width = NULL) {
 
 lapply(c("heatmap", "ordination", "volcano", "multiTile"), function(tab) {
   output[[paste0("fb_label_mode_", tab)]] <- renderUI({
+    # Isoform feature_ids already carry the gene symbol (Gene_ENST...), and
+    # labelling by symbol alone would make a gene's transcripts indistinguishable.
+    req(!identical(eds$feature_id_kind(), "isoform"))
     has_gene <- !is.null(eds$proteomics_choices("gene")$lookup)
     has_protein <- !is.null(eds$proteomics_choices("protein")$lookup)
     req(has_gene || has_protein)
