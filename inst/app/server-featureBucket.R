@@ -21,6 +21,12 @@ featureBucket <- reactiveValues(
   version = 0L
 )
 
+# "Search by" mode (Feature ID / Gene Symbol / Protein ID) of the bucket tabs
+# (fb_input_tabs). ONE app-wide value, like activeContrast: A switch on any tab
+# clears the shared bucket and re-points every tab's selectize, so all their
+# radios have to show the same mode.
+fbSearchMode <- reactiveVal("feature_id")
+
 # --- API functions ---
 
 bucket_add <- function(new_features, source = "unknown") {
@@ -217,7 +223,7 @@ lapply(fb_reset_tabs, function(tab) {
     bucket_clear(source = paste0("reset_", tab))
     # Clear ALL selectize and textarea inputs across ALL tabs,
     # respecting the current search mode so choices stay consistent
-    mode <- input[[paste0("fb_search_by_", tab)]] %||% "feature_id"
+    mode <- fbSearchMode()
     gene_ch <- eds$proteomics_choices("gene")$choices
     protein_ch <- eds$proteomics_choices("protein")$choices
     choices <- if (mode == "gene_name" && !is.null(gene_ch)) {
@@ -233,10 +239,11 @@ lapply(fb_reset_tabs, function(tab) {
     }
     # Clear volcano staged genes
     volcanoStagedGenes$brushGenes <- character(0)
-    # Null out figure reactives to clear all bucket-driven plots
-    figuresDataReactive$boxplot <- NULL
-    figuresDataReactive$barplot <- NULL
-    figuresDataReactive$heatmapCustom <- NULL
+    # Boxplot / barplot / custom heatmap are NOT nulled here: They follow their
+    # own tab's fb_keep_<tab>, which empties when that tab next shows the
+    # bucket. Nulling them from here, while their tab is hidden, left them
+    # blank for good if the bucket was refilled with the same features
+    # (fb_keep_<tab> then never changes, so nothing redraws them).
     figuresDataReactive$volcanoStatic <- NULL
     figuresDataReactive$volcanoMA <- NULL
     figuresDataReactive$volcanoPlotly <- NULL
@@ -356,7 +363,9 @@ lapply(c(fb_input_tabs, "correlation", "multiBoxplot", "multiTile"), function(ta
       inputId = paste0("fb_search_by_", tab),
       label = "Search by:",
       choices = choices,
-      selected = "feature_id",
+      # Bucket tabs open on the app-wide mode; a radio first drawn later (e.g.
+      # Heatmap > Custom) must not reset it to Feature ID.
+      selected = if (tab %in% fb_input_tabs) isolate(fbSearchMode()) else "feature_id",
       inline = TRUE
     )
   })
@@ -364,22 +373,30 @@ lapply(c(fb_input_tabs, "correlation", "multiBoxplot", "multiTile"), function(ta
 
 lapply(fb_input_tabs, function(tab) {
   observeEvent(input[[paste0("fb_search_by_", tab)]], ignoreInit = TRUE, {
+    mode <- input[[paste0("fb_search_by_", tab)]]
     if (isTRUE(restoring())) {
+      fbSearchMode(mode)
       return()
     } # save-state restore guard
-    mode <- input[[paste0("fb_search_by_", tab)]]
+    # Not a switch: The radio was just drawn, or was synced from another tab.
+    # (Treating its first draw as a switch emptied the bucket and blanked the
+    # boxplot whenever Heatmap > Custom was opened.)
+    if (identical(mode, fbSearchMode())) {
+      return()
+    }
+    fbSearchMode(mode)
+    for (t in setdiff(fb_input_tabs, tab)) {
+      updateRadioButtons(session, paste0("fb_search_by_", t), selected = mode)
+    }
 
-    # Clear everything — search mode change invalidates bucket contents
+    # Clear everything — search mode change invalidates bucket contents.
+    # Bucket-driven plots (boxplot, barplot, custom heatmap) follow their own
+    # tab's bucket, so they are not nulled here (see the reset handler above).
     bucket_clear(source = paste0("search_mode_", tab))
     for (t in fb_input_tabs) {
       updateTextAreaInput(session, paste0("fb_text_", t), value = "")
     }
     volcanoStagedGenes$brushGenes <- character(0)
-    # Clear bucket-driven plots (boxplot, heatmap) but NOT volcano/MA
-    # — volcano renders all points independently; only labels come from bucket
-    figuresDataReactive$boxplot <- NULL
-    figuresDataReactive$barplot <- NULL
-    figuresDataReactive$heatmapCustom <- NULL
 
     # Update selectize choices for the new mode across all tabs
     gene_ch <- eds$proteomics_choices("gene")$choices
