@@ -3,6 +3,17 @@
 # JLR 2025 employee and project restrictions, username coming from app.R, projectFromUrl from above, be careful that ldap-utils in installed in bash and you can access LDAP (certificate installed?)
 username <- Sys.getenv("SHINYPROXY_USERNAME")
 
+# An R library mounted next to the app, for a package staged here before it is
+# in fgcz_base_image: apbCatalogR, which reads raw APB results. Set
+# EXPLOREDE_EXTRA_LIB to use another folder (e.g. a test install on /scratch).
+local({
+  extra <- Sys.getenv("EXPLOREDE_EXTRA_LIB", "/srv/shiny-server/rlib_staging")
+  if (nzchar(extra) && dir.exists(extra)) {
+    .libPaths(c(extra, .libPaths()))
+    cat("extra R library:", extra, "\n")
+  }
+})
+
 cat("loading packages...\n\n")
 packagesToLoad <- c(
   "shiny",

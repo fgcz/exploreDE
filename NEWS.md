@@ -1,3 +1,18 @@
+# exploreDE (development version)
+
+## New features
+
+- Opens raw APB (apb2) results: An `.h5ad` with `uns["apb"]` and no
+  `schema_version` is read through apbCatalogR (Suggests) and converted to
+  `exploreDE/1.0` in memory, as APB Export's `explorede` output maps it, except
+  that decoys are dropped and contaminants flagged (`var$is_contaminant`). Fields
+  the catalogue can't answer (e.g. an unreviewed rule) come from the file's own
+  records, listed in `uns$provenance$catalogue_fallbacks`. Spec §11. Without
+  apbCatalogR, such a file is refused with a message.
+- `app.R` adds an extra R library to `.libPaths()` when it exists:
+  `/srv/shiny-server/rlib_staging`, or `EXPLOREDE_EXTRA_LIB`. For a package
+  staged there before it is in `fgcz_base_image`.
+
 # exploreDE 3.9.0
 
 ## Breaking changes

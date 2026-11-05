@@ -80,9 +80,11 @@ Suggests:
   knitr,
   rmarkdown,
   withr,
-  devtools
+  devtools,
+  apbCatalogR
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Remotes:
-  github::scverse/anndataR
+  github::scverse/anndataR,
+  github::anndata-omics-bridge/apbCatalogR@1be7b1d7
 Config/roxygen2/version: 8.1.1

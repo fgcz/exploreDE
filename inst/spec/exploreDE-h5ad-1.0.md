@@ -434,6 +434,42 @@ joins `var` onto each on the feature id.
 exploreDE 3.9.0 stops on this layout with "varm matrix has N columns but
 varm_columns names 0".
 
+## 11. Accepted input — raw APB (apb2) results
+
+An [apb2](https://github.com/anndata-omics-bridge/apb2) result is **not**
+`exploreDE/1.0`: It keeps the quantification software's own column names and
+records what they mean in `uns["apb"]`. exploreDE detects it by
+`uns["apb"]` without `uns["schema_version"]` (APB Export's `explorede` output
+carries both, and is read as canonical) and without `uns["prolfquapp"]`. It
+reads the file with apbCatalogR (`read_parsed_levels()`), which knows apb2's
+layout, finds fields by meaning in the `apb` catalogue, and converts one level
+to `exploreDE/1.0` in memory (`anndata_from_apb_raw()` in `R/apb_raw_h5ad.R`).
+apbCatalogR is optional: Without it, a raw APB file is refused with a message.
+
+The mapping is APB Export's `explorede` target (rules v1_0), so a raw result
+and its export load alike, with two differences:
+
+| | `explorede` export | Raw APB in exploreDE |
+|---|---|---|
+| Decoys | Kept | Dropped (count in `uns["provenance"]["decoys_dropped"]`) |
+| Contaminants | Kept, unmarked | Kept, `var["is_contaminant"]` |
+
+| exploreDE/1.0 | From the apb2 level |
+|---|---|
+| level | `protein`, else `peptide`, else `peptidoform_ion` (→ `feature_id_kind` `protein` / `peptide` / `precursor`); other levels are refused |
+| `layers["intensities"]`, `X` | log2 of `X`, the rule's primary layer; zeros and values ≤ 0 missing |
+| `layers["intensities_raw"]` | `X`, linear; zeros missing |
+| `obs` index, `sample_id`, `sample_label` | The obs key column (one per run; multiplexed designs are refused) |
+| `obs["factor_<x>"]` | SDRF `factor_value_<x>` and prolfquapp `group*` / `bait*` columns, named in `[a-z0-9_]`, sorted categories; other annotation columns pass through |
+| `var` index (`feature_id`) | `protein_assignment`; at peptide / precursor level `<protein>_<peptide>` / `<protein>_<ProForma ion>`, dropping features without a protein |
+| `var["label_protein_id"]` | `protein_assignment` |
+| `var["label_gene_symbol"]` | FASTA gene name, else the leading id, else `protein_assignment`: first `;` member, `NAME` of `db\|ACC\|NAME`; with the peptide / ion appended below protein level |
+| `var["description"]` | FASTA description, when the result has a FASTA check |
+| `uns["provenance"]` | `source_format = "apb2"`, the level, the primary layer's name, the software, apbCatalogR and catalogue versions, and any fields read from the file's own records because the catalogue could not answer (`catalogue_fallbacks`, e.g. an unreviewed rule) |
+
+`uns["apb"]` keeps the level's APB record. The DE and pathway tabs are hidden:
+A raw result has no contrasts.
+
 ---
 
 ## Version history
@@ -443,3 +479,4 @@ varm_columns names 0".
 | 2026-04-17 | draft 0.1 | Planning draft (archived). |
 | 2026-10-29 | 1.0 | First written spec of what the reader and writer actually do; proteomics profile; prolfquapp dialect. |
 | 2026-10-30 | 1.0 | Format unchanged. `nullable-string-array` text is read (the deployed app has `anndataR` 1.2.3); `uns["de"]` relaxed from MUST to SHOULD (exploreDE 3.9.0 reader fix); optional `used_in_test` DE column. |
+| 2026-11-05 | 1.0 | Format unchanged. §11: Raw APB (apb2) results are read through apbCatalogR. |

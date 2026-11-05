@@ -63,16 +63,25 @@ detect_se_shape <- function(se) {
 #' @export
 new_explore_dataset <- function(input, config = NULL) {
   # AnnData input (a live anndataR object or a `.h5ad` path). A prolfquapp DEA
-  # AnnData is rebuilt into its proteomics SE (see prolfquapp_h5ad.R); any other
-  # AnnData is canonical and routes to the H5AD backend — the "bring your own
-  # data" path.
+  # AnnData is rebuilt into its proteomics SE (see prolfquapp_h5ad.R); a raw APB
+  # (apb2) result is read through apbCatalogR and converted (apb_raw_h5ad.R); any
+  # other AnnData is canonical and routes to the H5AD backend — the "bring your
+  # own data" path.
   if (
     inherits(input, "AbstractAnnData") ||
       (is.character(input) && length(input) == 1L && grepl("\\.h5ad$", input, ignore.case = TRUE))
   ) {
+    # A raw APB result is read from its file by apbCatalogR; peek at /uns first,
+    # so the file isn't read twice.
+    if (is.character(input) && .h5ad_is_apb_raw(.h5ad_uns_names(input))) {
+      return(ExploreDatasetH5AD$new(anndata_from_apb_raw(.apb_read(input)), config = config))
+    }
     adata <- if (inherits(input, "AbstractAnnData")) input else .h5ad_read(input)
     if (is_prolfquapp_anndata(adata)) {
       return(new_explore_dataset(se_from_prolfquapp_anndata(adata), config = config))
+    }
+    if (.h5ad_is_apb_raw(names(adata$uns))) {
+      stop("A raw APB result is read from its .h5ad file: Pass the file's path, not the AnnData.", call. = FALSE)
     }
     return(ExploreDatasetH5AD$new(adata, config = config))
   }
