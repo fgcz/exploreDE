@@ -13,7 +13,7 @@
 #'
 #' @param ref_build A `ref_build`/`refBuild` string, or `NA`/`NULL`.
 #' @return `"Human"`, `"Mouse"`, `"Rat"`, or `NULL`.
-#' @export
+#' @noRd
 kegg_species_label <- function(ref_build) {
   if (is.null(ref_build) || is.na(ref_build) || !nzchar(ref_build)) {
     return(NULL)
@@ -30,7 +30,7 @@ kegg_species_label <- function(ref_build) {
 #'
 #' @param df A feature or DE table (`data.frame`).
 #' @return Character vector of the GO columns present, possibly empty.
-#' @export
+#' @noRd
 go_annotation_columns <- function(df) {
   intersect(c("GO BP", "GO MF", "GO CC"), colnames(df))
 }
@@ -43,7 +43,7 @@ go_annotation_columns <- function(df) {
 #' @param df A feature or DE table (`data.frame`).
 #' @param go_id A GO id, e.g. `"GO:0006955"`.
 #' @return Logical vector, one per row; all `FALSE` without GO columns.
-#' @export
+#' @noRd
 features_in_go_term <- function(df, go_id) {
   hit <- rep(FALSE, nrow(df))
   for (col in go_annotation_columns(df)) {
@@ -71,7 +71,7 @@ features_in_go_term <- function(df, go_id) {
 #'   - skip = TRUE  → caller must abort batch correction entirely
 #'   - skip = FALSE, design = NULL → run removeBatchEffect without a design
 #'   - skip = FALSE, design = <matrix> → run with the design
-#' @export
+#' @noRd
 batch_correction_design <- function(dataset, designColumn, batchColumn) {
   null_design <- list(design = NULL, skip = FALSE, msg = NULL)
   skipped <- function(msg) list(design = NULL, skip = TRUE, msg = msg)
@@ -134,7 +134,7 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
 #' @param batchCol Column name of batch factor, or "None" to skip entirely
 #' @param designCol Column name of design factor, or "None"
 #' @return The (possibly batch-corrected) counts matrix
-#' @export
+#' @noRd
 apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
   if (is.null(batchCol) || !nzchar(batchCol) || batchCol == "None") {
     return(counts)
@@ -194,7 +194,7 @@ apply_batch_correction <- function(counts, dataset, batchCol, designCol) {
 #' deciding pattern matches exactly one column.
 #' @param df A data.frame (typically from rowData contrast)
 #' @return The same data.frame with standardised column names
-#' @export
+#' @noRd
 standardise_columns <- function(df) {
   # dictionary concept -> legacy column name it is renamed to
   rowdata_concepts <- c(
@@ -230,7 +230,7 @@ standardise_columns <- function(df) {
 #' Uses canonical column names (after standardisation).
 #' @param df A standardised data.frame with canonical column names
 #' @return Character vector of unique feature IDs
-#' @export
+#' @noRd
 build_feature_id <- function(df) {
   pid <- df$protein_Id
 
@@ -256,7 +256,7 @@ build_feature_id <- function(df) {
 #' @param counts A numeric matrix with sgRNA rows and sample columns
 #' @param sgRNA_to_gene Named character vector: names are sgRNA feature IDs, values are gene names
 #' @return A numeric matrix with gene-level rows
-#' @export
+#' @noRd
 collapse_guides_to_genes <- function(counts, sgRNA_to_gene, exclude = NULL) {
   common <- intersect(rownames(counts), names(sgRNA_to_gene))
   counts <- counts[common, , drop = FALSE]
@@ -268,7 +268,7 @@ collapse_guides_to_genes <- function(counts, sgRNA_to_gene, exclude = NULL) {
 }
 
 #' convert_genomics_se
-#' @export
+#' @noRd
 convert_genomics_se <- function(se, dataDir, param = NULL) {
   # Delegates to the ExploreDataset hierarchy + legacy_gStoreList_from_eds()
   # shim (byte-equivalent to the pre-2026-05 converter it replaced; that
@@ -279,7 +279,7 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
 }
 
 #' convert_proteomics_se
-#' @export
+#' @noRd
 convert_proteomics_se <- function(se) {
   # Phase 1 (2026-05-15): body delegates to the ExploreDataset hierarchy +
   # legacy_gStoreList_from_eds() shim. See convert_genomics_se() for context.
@@ -290,7 +290,7 @@ convert_proteomics_se <- function(se) {
 }
 
 #' generateParams
-#' @export
+#' @noRd
 generateParams <- function(
   sampleGroup = "diff",
   refGroup = "undiff",
@@ -325,14 +325,14 @@ generateParams <- function(
 #' Test whether a dataDir string is a URL (http/https) rather than a local path.
 #' @param dataDir Character string
 #' @return Logical scalar
-#' @export
+#' @noRd
 is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))
 }
 
 
 # =============================================================================
-# Boxplot / barplot helpers (from server-boxplot.R, server-multi-boxplot.R)
+# Boxplot / barplot helpers (used by server-boxplot.R, server-multi-boxplot.R)
 # =============================================================================
 
 #' dataSummary
@@ -341,7 +341,7 @@ is_url <- function(dataDir) {
 #' @param varname Column to summarise
 #' @param groupnames Character vector of grouping columns
 #' @return data.frame with one row per group combination
-#' @export
+#' @noRd
 dataSummary <- function(data, varname, groupnames) {
   summary_func <- function(x, col) {
     c(
@@ -362,7 +362,7 @@ dataSummary <- function(data, varname, groupnames) {
 
 
 # =============================================================================
-# Heatmap helpers (from server-heatmap2.R)
+# Heatmap helpers (used by server-heatmap2.R)
 # =============================================================================
 
 #' select_genes_by_sd
@@ -371,7 +371,7 @@ dataSummary <- function(data, varname, groupnames) {
 #' @param counts Numeric matrix (features x samples)
 #' @param top_n Number of features to keep (default 2000)
 #' @return Character vector of rownames for the top features
-#' @export
+#' @noRd
 select_genes_by_sd <- function(counts, top_n = 2000) {
   gene_sds <- apply(counts, 1, sd, na.rm = TRUE)
   top_genes <- names(head(sort(gene_sds, decreasing = TRUE), n = top_n))
@@ -380,9 +380,25 @@ select_genes_by_sd <- function(counts, top_n = 2000) {
 
 
 # =============================================================================
-# Feature bucket API (from server-featureBucket.R)
+# Server-scope binding
+# =============================================================================
+
+#' bind_to_scope
+#' Return a copy of `fn` whose free variables resolve in `env`. server-*.R
+#' use it for the helpers below that read per-session reactives, e.g.
+#' `bucket_add <- bind_to_scope(bucket_add)`.
+#' @param fn Function defined in R/
+#' @param env Environment to resolve free variables in (default: the caller)
+#' @noRd
+bind_to_scope <- function(fn, env = parent.frame()) {
+  environment(fn) <- env
+  fn
+}
+
+# =============================================================================
+# Feature bucket API (used by server-featureBucket.R, bound there with bind_to_scope())
 # NOTE: bucket_add/remove/clear and resolve_features reference the Shiny
-# reactives `featureBucket`, `seqAnnoReactive`, and `inputDataReactive()`.
+# reactives `featureBucket`, `seqAnnoReactive`, and `eds`.
 # They will error if called outside a Shiny session.
 # =============================================================================
 
@@ -390,12 +406,19 @@ select_genes_by_sd <- function(counts, top_n = 2000) {
 #' Add features to the central feature bucket reactive store.
 #' @param new_features Character vector of feature IDs (or gene-level names in CrisprCountQC collapsed mode)
 #' @param source Label for telemetry / debugging
-#' @export
+#' @noRd
 bucket_add <- function(new_features, source = "unknown") {
-  valid_ids <- seqAnnoReactive$sa$feature_id
+  # Counts-only uploads have no DE table (sa is NULL); the valid feature
+  # universe is then simply every feature in the dataset.
+  valid_ids <- if (!is.null(seqAnnoReactive$sa)) {
+    seqAnnoReactive$sa$feature_id
+  } else {
+    eds$feature_ids()
+  }
   # Also accept gene-level names for CrisprCountQC collapsed mode
-  if (!is.null(inputDataReactive()$sgRNA_to_gene)) {
-    valid_ids <- c(valid_ids, unique(inputDataReactive()$sgRNA_to_gene))
+  sg <- eds$sgrna_to_gene()
+  if (!is.null(sg)) {
+    valid_ids <- c(valid_ids, unique(sg))
   }
   valid <- new_features[new_features %in% valid_ids & new_features != ""]
   current <- isolate(featureBucket$features)
@@ -410,7 +433,7 @@ bucket_add <- function(new_features, source = "unknown") {
 #' Remove features from the central feature bucket.
 #' @param to_remove Character vector of feature IDs
 #' @param source Label for telemetry
-#' @export
+#' @noRd
 bucket_remove <- function(to_remove, source = "unknown") {
   current <- isolate(featureBucket$features)
   remaining <- current[!current %in% to_remove]
@@ -423,7 +446,7 @@ bucket_remove <- function(to_remove, source = "unknown") {
 #' bucket_clear
 #' Empty the central feature bucket.
 #' @param source Label for telemetry
-#' @export
+#' @noRd
 bucket_clear <- function(source = "unknown") {
   featureBucket$features <- character(0)
   featureBucket$version <- isolate(featureBucket$version) + 1L
@@ -433,7 +456,7 @@ bucket_clear <- function(source = "unknown") {
 #' Split a textarea string of gene names by whitespace / comma / slash / newline / tab.
 #' @param text Character scalar
 #' @return Character vector of non-empty tokens
-#' @export
+#' @noRd
 parse_gene_text <- function(text) {
   if (is.null(text) || text == "") {
     return(character(0))
@@ -447,15 +470,17 @@ parse_gene_text <- function(text) {
 #' @param input_genes Character vector of user input tokens
 #' @param search_mode One of "feature_id", "gene_name", "protein_Id"
 #' @return Character vector of feature_ids
-#' @export
+#' @noRd
 resolve_features <- function(input_genes, search_mode = "feature_id") {
-  if (search_mode == "gene_name" && !is.null(inputDataReactive()$gene_lookup)) {
-    expanded <- unlist(inputDataReactive()$gene_lookup[input_genes], use.names = FALSE)
+  gene_lookup <- eds$proteomics_choices("gene")$lookup
+  protein_lookup <- eds$proteomics_choices("protein")$lookup
+  if (search_mode == "gene_name" && !is.null(gene_lookup)) {
+    expanded <- unlist(gene_lookup[input_genes], use.names = FALSE)
     direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
     return(unique(c(expanded, direct)))
   }
-  if (search_mode == "protein_Id" && !is.null(inputDataReactive()$protein_lookup)) {
-    expanded <- unlist(inputDataReactive()$protein_lookup[input_genes], use.names = FALSE)
+  if (search_mode == "protein_Id" && !is.null(protein_lookup)) {
+    expanded <- unlist(protein_lookup[input_genes], use.names = FALSE)
     direct <- input_genes[input_genes %in% seqAnnoReactive$sa$feature_id]
     return(unique(c(expanded, direct)))
   }
@@ -464,7 +489,7 @@ resolve_features <- function(input_genes, search_mode = "feature_id") {
 
 
 # =============================================================================
-# Replicability helpers (from server-replicability.R)
+# Replicability helpers (used by server-replicability.R, bound there with bind_to_scope())
 # NOTE: reference Shiny `input` from the enclosing scope.
 # =============================================================================
 
@@ -472,7 +497,7 @@ resolve_features <- function(input_genes, search_mode = "feature_id") {
 #' Render the replicability correlation heatmap.
 #' @param data List containing `corr` (correlation matrix) and `dataset` (sample metadata)
 #' @param title_suffix String appended to heatmap title
-#' @export
+#' @noRd
 make_rep_heatmap <- function(data, title_suffix = "") {
   req(data)
 
@@ -529,7 +554,15 @@ make_rep_heatmap <- function(data, title_suffix = "") {
 
     anno_df <- dataset[, input$replicabilityFactors, drop = FALSE]
 
-    # Legend shows the Colours-tab display labels (plain text)
+    # Legend shows the Colours-tab display labels: rich ones via legends
+    # built at draw time by draw_heatmap() (see R/level_labels.R)
+    repRich <- any(vapply(
+      input$replicabilityFactors,
+      function(f) {
+        is_rich_labels(level_labels(input, f, names(colourList[[f]])))
+      },
+      logical(1)
+    ))
     annoLegendParam <- lapply(input$replicabilityFactors, function(f) {
       levs <- names(colourList[[f]])
       list(at = levs, labels = unname(level_labels(input, f, levs, mode = "plain")))
@@ -539,11 +572,22 @@ make_rep_heatmap <- function(data, title_suffix = "") {
     ha_top <- HeatmapAnnotation(
       df = anno_df,
       col = colourList,
-      show_legend = TRUE,
+      show_legend = !repRich,
       annotation_legend_param = annoLegendParam,
       annotation_name_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
       gp = gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
     )
+    if (repRich) {
+      attr(ha_top, "rich_legends") <- lapply(input$replicabilityFactors, function(f) {
+        heatmap_legend_spec(
+          title = f,
+          labels = level_labels(input, f, names(colourList[[f]]), force_rich = TRUE),
+          fill = colourList[[f]],
+          title_gp = gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
+          labels_gp = gpar(fontsize = input$replicabilityTextSize)
+        )
+      })
+    }
 
     ha_left <- rowAnnotation(
       df = anno_df,
@@ -589,14 +633,20 @@ make_rep_heatmap <- function(data, title_suffix = "") {
     column_title_gp = gpar(fontsize = input$replicabilityTextSize + 2, fontface = "bold")
   )
 
-  draw(hm, merge_legend = TRUE, padding = unit(c(10, 10, 10, 10), "mm"))
+  draw_heatmap(
+    hm,
+    merge_legend = TRUE,
+    padding = unit(c(10, 10, 10, 10), "mm"),
+    legend_dx = input$replicabilityLegendDX,
+    legend_dy = input$replicabilityLegendDY
+  )
 }
 
 #' make_rep_dendrogram
 #' Render the replicability dendrogram with coloured labels / coloured bars.
 #' @param data List containing `hclust` (hclust object) and `dataset` (sample metadata)
 #' @param title_suffix String appended to title
-#' @export
+#' @noRd
 make_rep_dendrogram <- function(data, title_suffix = "") {
   req(data)
   dend <- as.dendrogram(data$hclust)
@@ -661,7 +711,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
 
 
 # =============================================================================
-# Summary / methods-text helpers (from server-summary.R)
+# Summary / methods-text helpers (used by server-summary.R)
 # =============================================================================
 
 #' count_result_summary
@@ -670,7 +720,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
 #' @param param SUSHI parameter list (`metadata(se)$param`).
 #' @param se The SUSHI deResult `SummarizedExperiment`.
 #' @return A one-column data.frame of settings.
-#' @export
+#' @noRd
 count_result_summary <- function(param, se) {
   specified <- function(x) !is.null(x) && length(x) > 0 && !is.na(x[1]) && nzchar(x[1])
   md <- S4Vectors::metadata(se)
@@ -701,7 +751,7 @@ count_result_summary <- function(param, se) {
 #' Inspect input_dataset.tsv to guess whether STAR / Kallisto / FeatureCounts was used.
 #' @param dataDir Analysis directory containing ../input_dataset.tsv
 #' @return Character: one of "STAR", "Kallisto", "FeatureCounts", "Unknown"
-#' @export
+#' @noRd
 detectAligner <- function(dataDir) {
   tryCatch(
     {
@@ -739,7 +789,7 @@ detectAligner <- function(dataDir) {
 #' @param dataDir Analysis directory string
 #' @param param Parameter list
 #' @return Character: "DESeq2" or "edgeR"
-#' @export
+#' @noRd
 detectDEMethod <- function(dataDir, param) {
   # First check directory path - most reliable
   if (grepl("DESeq2", dataDir, ignore.case = TRUE)) {
@@ -780,7 +830,7 @@ detectDEMethod <- function(dataDir, param) {
 #' Pretty-print a reference build path like "Homo_sapiens/GENCODE/GRCh38.p13/.../Release_42-..."
 #' @param ref_build Character reference build path
 #' @return Human-readable string (e.g. "GENCODE human genome build GRCh38.p13 (Release 42)")
-#' @export
+#' @noRd
 formatRefBuild <- function(ref_build) {
   # If ref_build is already formatted nicely, return as-is
   if (!grepl("/", ref_build)) {
@@ -824,7 +874,7 @@ formatRefBuild <- function(ref_build) {
 #' Scan preprocessing logs in `dirname(dataDir)` for the fastp version string.
 #' @param dataDir Analysis directory
 #' @return Version string or NULL
-#' @export
+#' @noRd
 getFastpVersion <- function(dataDir) {
   tryCatch(
     {
@@ -851,7 +901,7 @@ getFastpVersion <- function(dataDir) {
 #' Look up installed versions of the given R packages (used for methods-text).
 #' @param packages Character vector of package names
 #' @return Named character vector of versions (or "version unavailable")
-#' @export
+#' @noRd
 getPackageVersions <- function(packages) {
   versions <- sapply(packages, function(pkg) {
     tryCatch(
@@ -873,7 +923,7 @@ getPackageVersions <- function(packages) {
 #' @param run_go Logical; include clusterProfiler citation
 #' @param ref_build Reference build path (optional; drives GENCODE citation)
 #' @return Named list of citation strings
-#' @export
+#' @noRd
 buildCitationsList <- function(aligner, de_method, run_go = FALSE, ref_build = NULL) {
   citations <- list()
 
@@ -933,7 +983,7 @@ buildCitationsList <- function(aligner, de_method, run_go = FALSE, ref_build = N
 #' @param se SummarizedExperiment (for library-size info)
 #' @param raw_reads_text Optional prefix describing raw-read counts
 #' @return Named list of methods paragraphs
-#' @export
+#' @noRd
 generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_versions, se, raw_reads_text = "") {
   sections <- list()
 
@@ -1130,7 +1180,7 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 
 
 # =============================================================================
-# Ordination helpers (from server-ordination.R)
+# Ordination helpers (used by server-ordination.R)
 # NOTE: plot_ordination_samples and plot_ordination_biplot take a Shiny
 # `input` object; step_batch_correction calls showNotification(). These
 # will error if called outside a Shiny session.
@@ -1142,7 +1192,7 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 #' @param center Logical
 #' @param scale Logical
 #' @return List with scores, loadings, variance, method, component_names, removed_samples
-#' @export
+#' @noRd
 calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
   # Remove samples with missing values
   completeCases <- complete.cases(counts)
@@ -1185,7 +1235,7 @@ calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
 #' @param method Distance method passed to vegan::vegdist
 #' @param nmds Logical, run NMDS instead of PCoA
 #' @return List with scores, loadings (NULL), variance / stress, method, component_names
-#' @export
+#' @noRd
 calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
   # Remove samples with missing values
   completeCases <- complete.cases(counts)
@@ -1282,7 +1332,7 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
 #' @param family One of "poi", "nb", "binom"
 #' @param X Optional covariate matrix
 #' @return List with scores, loadings (NULL), variance (NULL), method, component_names
-#' @export
+#' @noRd
 calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
   if (nrow(counts) < 3 || ncol(counts) < 3) {
     return(NULL)
@@ -1347,7 +1397,7 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
 #' @param pc_y PC index or name for Y
 #' @param selection_method One of "overall", "per_pc", "manual"
 #' @return List with sample_data, gene_data, pc_x_name, pc_y_name
-#' @export
+#' @noRd
 prepare_biplot_data <- function(
   ordination_result,
   top_n = 10,
@@ -1412,7 +1462,7 @@ prepare_biplot_data <- function(
 
 #' step_group_subset
 #' Cascade step: subset counts and dataset to the specified groups.
-#' @export
+#' @noRd
 step_group_subset <- function(counts, dataset, factor_col, groups) {
   dataset <- dataset[dataset[[factor_col]] %in% groups, ]
   counts <- counts[, rownames(dataset), drop = FALSE]
@@ -1421,10 +1471,10 @@ step_group_subset <- function(counts, dataset, factor_col, groups) {
 
 #' step_peptide_filter
 #' Cascade step: keep features with >= min_peptides entries (proteomics only).
-#' @export
-step_peptide_filter <- function(counts, dataset, seqAnnoList, min_peptides) {
-  if (!is.null(seqAnnoList) && !is.null(min_peptides)) {
-    keep <- seqAnnoList[[1]]$feature_id[seqAnnoList[[1]]$nrPeptides >= min_peptides]
+#' @noRd
+step_peptide_filter <- function(counts, dataset, de_df, min_peptides) {
+  if (!is.null(de_df) && !is.null(min_peptides) && "nrPeptides" %in% colnames(de_df)) {
+    keep <- de_df$feature_id[de_df$nrPeptides >= min_peptides]
     counts <- counts[rownames(counts) %in% keep, , drop = FALSE]
   }
   list(counts = counts, dataset = dataset)
@@ -1432,9 +1482,10 @@ step_peptide_filter <- function(counts, dataset, seqAnnoList, min_peptides) {
 
 #' step_log2
 #' Cascade step: log2(counts + 1) for count types that are not already log-scale.
-#' @export
+#' @noRd
 step_log2 <- function(counts, dataset, counts_type) {
-  if (counts_type %in% c("TPM", "FPKM", "Raw", "Normalised")) {
+  # Linear-scale assay keys that benefit from log2 transform
+  if (counts_type %in% c("tpm", "fpkm", "counts", "normalised")) {
     counts <- log2(counts + 1)
   }
   list(counts = counts, dataset = dataset)
@@ -1443,7 +1494,7 @@ step_log2 <- function(counts, dataset, counts_type) {
 #' step_batch_correction
 #' Cascade step: apply limma::removeBatchEffect via apply_batch_correction().
 #' Calls showNotification() on failure / NA batch; never throws.
-#' @export
+#' @noRd
 step_batch_correction <- function(counts, dataset, batch_column, design_column = "None") {
   if (!is.null(batch_column) && nzchar(batch_column) && batch_column != "None") {
     if (any(is.na(dataset[[batch_column]]))) {
@@ -1462,7 +1513,7 @@ step_batch_correction <- function(counts, dataset, batch_column, design_column =
 
 #' step_top_n_sd
 #' Cascade step: keep top-N features by row-wise SD.
-#' @export
+#' @noRd
 step_top_n_sd <- function(counts, dataset, top_n) {
   top_n <- min(top_n, nrow(counts))
   if (nrow(counts) > top_n) {
@@ -1475,7 +1526,7 @@ step_top_n_sd <- function(counts, dataset, top_n) {
 
 #' plot_ordination_samples
 #' Render the sample-only ordination scatter plot (no gene arrows).
-#' @export
+#' @noRd
 plot_ordination_samples <- function(ordination_result, pc_scores, input, coloursPCA, levelLabels = NULL) {
   fillLabels <- if (is.null(levelLabels$fill)) ggplot2::waiver() else levelLabels$fill
   shapeLabels <- if (is.null(levelLabels$shape)) ggplot2::waiver() else levelLabels$shape
@@ -1584,7 +1635,7 @@ plot_ordination_samples <- function(ordination_result, pc_scores, input, colours
 
 #' plot_ordination_biplot
 #' Render the ordination biplot (samples + feature arrows).
-#' @export
+#' @noRd
 plot_ordination_biplot <- function(
   ordination_result,
   pc_scores,
@@ -1635,10 +1686,14 @@ plot_ordination_biplot <- function(
       linewidth = 0.5,
       alpha = 0.7
     )
+  # Arrow labels: optional display label (e.g. gene symbol), else the feature_id
+  if (!"label" %in% names(biplot_data$gene_data)) {
+    biplot_data$gene_data$label <- biplot_data$gene_data$gene
+  }
   p <- p +
     geom_text_repel(
       data = biplot_data$gene_data,
-      aes(x = pc_x_scaled, y = pc_y_scaled, label = gene, colour = arrow_color),
+      aes(x = pc_x_scaled, y = pc_y_scaled, label = label, colour = arrow_color),
       size = input$textSizePCA / 4,
       fontface = "bold",
       max.overlaps = 20
@@ -1717,7 +1772,7 @@ plot_ordination_biplot <- function(
 #' @param show_fold_bands Whether to draw the dashed fold-change guide lines.
 #'   Default TRUE.
 #' @return ggplot object
-#' @export
+#' @noRd
 make_qc_scatter <- function(
   x,
   y,
@@ -1798,7 +1853,7 @@ make_qc_scatter <- function(
 #' @param width_cols Named list with `low`, `mid`, `high` colours for Width mode.
 #' @return A list with `types` (character vector), `colours` (named char),
 #'   and `draw_order` (level order for z-ordering).
-#' @export
+#' @noRd
 build_qc_scatter_types <- function(
   rd,
   mode,
@@ -1866,7 +1921,7 @@ build_qc_scatter_types <- function(
 #' this before matching seqAnno$feature_id against signal rownames.
 #' @param x Character vector of feature_ids
 #' @return Character vector with init-compatible substitutions applied
-#' @export
+#' @noRd
 transform_feature_id <- function(x) {
   gsub(" ", ".", gsub("[:/()-]", ".", x), fixed = FALSE)
 }
@@ -1879,7 +1934,7 @@ transform_feature_id <- function(x) {
 #' @param signal Count/signal matrix with rownames to align
 #' @param rd A data frame with a `feature_id` column
 #' @return list(signal = aligned matrix, rd = subset of rd that matched)
-#' @export
+#' @noRd
 align_signal_to_seqanno <- function(signal, rd) {
   align <- match(rd$feature_id, rownames(signal))
   if (any(is.na(align))) {

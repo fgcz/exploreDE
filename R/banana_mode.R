@@ -169,7 +169,7 @@ dGRhdGU6bW9kaWZ5ADIwMjYtMDgtMjhUMTA6NDY6NTcrMDA6MDAMMUSaAAAAAElFTkSuQmCC
 #' Absolute path to the decoded marker PNG (written to the session tempdir on
 #' first call, cached thereafter). Returns "" if it can't be written.
 #' @return length-1 character path ("" on failure)
-#' @export
+#' @noRd
 banana_png_path <- function() {
   .banana_safe(
     {
@@ -188,7 +188,7 @@ banana_png_path <- function() {
 #' Significance tier (0-4) for a p-value / FDR. Shared cutpoints with the
 #' asterisk ladder: <=1e-4 -> 4, <=1e-3 -> 3, <=1e-2 -> 2, <=0.05 -> 1, else 0.
 #' @return integer scalar
-#' @export
+#' @noRd
 banana_tier <- function(p) {
   if (length(p) == 0L || is.na(p)) {
     return(0L)
@@ -212,7 +212,7 @@ banana_tier <- function(p) {
 #' banana code path is entered.
 #' @param toggle The raw bananaMode() reactive value.
 #' @return logical scalar
-#' @export
+#' @noRd
 banana_on <- function(toggle) {
   isTRUE(toggle) &&
     nzchar(.banana_b64) &&
@@ -222,7 +222,7 @@ banana_on <- function(toggle) {
 }
 
 #' Decoded marker raster (RGBA array), cached. NULL on any failure.
-#' @export
+#' @noRd
 banana_raster <- function() {
   .banana_safe(
     {
@@ -243,7 +243,7 @@ banana_raster <- function() {
 #' <img> markdown for n markers -- for ggtext::geom_richtext labels.
 #' @param n integer count; px display height in pixels.
 #' @return length-1 character ("" when n < 1 or the asset is unavailable)
-#' @export
+#' @noRd
 banana_md <- function(n, px = 16L) {
   n <- as.integer(n)
   if (is.na(n) || n < 1L) {
@@ -260,7 +260,7 @@ banana_md <- function(n, px = 16L) {
 #' Draw n markers in a centred horizontal row at (x, y) -- for a ComplexHeatmap
 #' cell_fun (call inside the cell viewport). Never throws.
 #' @param n integer count; h glyph size (a grid unit).
-#' @export
+#' @noRd
 banana_grid <- function(n, x, y, h = grid::unit(4.2, "mm")) {
   .banana_safe(
     {
@@ -288,7 +288,7 @@ banana_grid <- function(n, x, y, h = grid::unit(4.2, "mm")) {
 #' @param y numeric -- scalar or a vector aligned to nrow(data) -- bracket-line y.
 #' @param fdr_col,facet_col column names in data.
 #' @param px marker display height in px.
-#' @export
+#' @noRd
 banana_layer <- function(data, x, y, fdr_col, facet_col = "Feature", px = 16L) {
   .banana_safe(
     {

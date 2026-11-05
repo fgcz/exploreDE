@@ -20,6 +20,8 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
     },
     ignoreInit = TRUE,
     {
+      # KEGG covers human, mouse and rat only; for other species spp is NULL and switch() below would fail.
+      req(spp)
       # tryCatch({
       if (input$pTypeKEGG == "Raw") {
         pTypeKEGG <- "pValue"

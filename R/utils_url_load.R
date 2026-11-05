@@ -14,7 +14,7 @@
 #' `container-env`.
 #'
 #' @return Character vector of URL prefixes.
-#' @export
+#' @noRd
 url_load_sources <- function() {
   env <- Sys.getenv("EXPLOREDE_URL_SOURCES", "")
   if (nzchar(env)) {
@@ -33,7 +33,7 @@ url_load_sources <- function() {
 #' @param url Character(1).
 #' @param sources URL prefixes, by default [url_load_sources()].
 #' @return `TRUE`, or `FALSE` with attribute `reason`.
-#' @export
+#' @noRd
 url_load_allowed <- function(url, sources = url_load_sources()) {
   no <- function(reason) structure(FALSE, reason = reason)
   if (!is.character(url) || length(url) != 1L || is.na(url)) {
@@ -67,7 +67,7 @@ url_load_allowed <- function(url, sources = url_load_sources()) {
 #' @param max_bytes Size limit (1 GB, as for uploads).
 #' @param timeout Seconds.
 #' @return `dest`, invisibly. Stops with a short message on failure.
-#' @export
+#' @noRd
 url_load_fetch <- function(url, dest, max_bytes = 1000 * 1024^2, timeout = 600) {
   ok <- url_load_allowed(url)
   if (!isTRUE(ok)) {
