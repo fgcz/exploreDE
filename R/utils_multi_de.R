@@ -19,7 +19,7 @@
 #' @return `list(path, root, project, link)` (`link` is root-relative, the
 #'   form a saved session stores), or `NULL` when the link is rejected or holds
 #'   no DE result.
-#' @export
+#' @noRd
 multi_resolve_dataset <- function(link, roots) {
   if (!is.character(link) || length(link) != 1L || is.na(link)) {
     return(NULL)
@@ -65,7 +65,7 @@ multi_resolve_dataset <- function(link, roots) {
 #'   by the app's `ldap_lookup()`.
 #' @param project Character(1), e.g. `"p1000"`.
 #' @return `TRUE` or `FALSE`.
-#' @export
+#' @noRd
 ldap_allows_project <- function(lookup, project) {
   roles <- lookup$roles %||% character()
   if ("R_2" %in% roles) {
@@ -87,7 +87,7 @@ ldap_allows_project <- function(lookup, project) {
 #' @param path A result directory holding `deResult.rds` or `deResult.qs2`.
 #' @return The converted list, with `ora` / `gsea` when GO was run, or `NULL`
 #'   when the directory holds no DE result.
-#' @export
+#' @noRd
 multi_load_de_result <- function(path) {
   if (file.exists(file.path(path, "deResult.rds"))) {
     se <- readRDS(file.path(path, "deResult.rds"))

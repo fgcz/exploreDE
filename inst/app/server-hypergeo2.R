@@ -118,7 +118,7 @@ oraPlotReactive <- reactiveValues(
 # by the observers/outputs. Single-contrast data fires it once.
 ora <- NULL
 ei <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
-param <- list()
+oraParam <- list()
 design <- ""
 sel <- list()
 .id2sym <- function(ids) ids
@@ -141,7 +141,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         p$featureLevel <- eds$feature_id_kind()
       }
       p$fdrThreshORA <- .enr_fdr_thresh("ora")
-      param <<- p
+      oraParam <<- p
 
       # Significant-gene selections, with bothGenes synthesised when the backend
       # only provides up/down (uploaded h5ad).
@@ -238,11 +238,11 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       }
       # ORA thresholds
       oraThresholds <- data.frame(check.names = FALSE, "ORA Cut-Offs" = character())
-      oraThresholds["Input DE P-value", "ORA Cut-Offs"] <- param$pValThreshGO %||% NA
-      oraThresholds["Input DE Log2 Ratio", "ORA Cut-Offs"] <- param$log2RatioThreshGO %||% NA
+      oraThresholds["Input DE P-value", "ORA Cut-Offs"] <- oraParam$pValThreshGO %||% NA
+      oraThresholds["Input DE Log2 Ratio", "ORA Cut-Offs"] <- oraParam$log2RatioThreshGO %||% NA
       oraThresholds["Input up-regulated DE total", "ORA Cut-Offs"] <- length(sel$upGenes)
       oraThresholds["Input down-regulated DE total", "ORA Cut-Offs"] <- length(sel$downGenes)
-      oraThresholds["Output ORA Term FDR", "ORA Cut-Offs"] <- param$fdrThreshORA
+      oraThresholds["Output ORA Term FDR", "ORA Cut-Offs"] <- oraParam$fdrThreshORA
       output$oraThreshOverview <- function() {
         oraThresholds %>%
           kable(
@@ -257,7 +257,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       }
 
       # Isoform-level aggregation UI (only shown for isoform data)
-      if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+      if (!is.null(oraParam$featureLevel) && oraParam$featureLevel == "isoform") {
         output$oraIsoformAggUI <- renderUI({
           tagList(
             box(
@@ -358,7 +358,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
             caption = paste0(
               "Click pathways in this table to add them to the figures on the right. ",
               "Only pathways with FDR <= ",
-              param$fdrThreshORA,
+              oraParam$fdrThreshORA,
               " are listed."
             ),
             options = list(
@@ -378,7 +378,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
             DT::formatSignif(columns = "FDR", digits = 3) %>%
             DT::formatStyle(
               columns = "FDR",
-              color = styleInterval(cuts = param$fdrThreshORA, values = c("green", "black")),
+              color = styleInterval(cuts = oraParam$fdrThreshORA, values = c("green", "black")),
               fontWeight = "bold"
             )
         })
@@ -430,11 +430,11 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       # plotted -- enrichplot already silently drops the rest from the native
       # plots, so apply the same rule to every figure and say so.
       sel_rows <- input$selectedTable_ORA_rows_selected
-      sel_rows <- sel_rows[!is.na(rdf$p.adjust[sel_rows]) & rdf$p.adjust[sel_rows] <= param$fdrThreshORA]
+      sel_rows <- sel_rows[!is.na(rdf$p.adjust[sel_rows]) & rdf$p.adjust[sel_rows] <= oraParam$fdrThreshORA]
       n_dropped <- length(input$selectedTable_ORA_rows_selected) - length(sel_rows)
       if (n_dropped > 0) {
         showNotification(
-          paste0(n_dropped, " selected pathway(s) with FDR > ", param$fdrThreshORA, " not added to the figures."),
+          paste0(n_dropped, " selected pathway(s) with FDR > ", oraParam$fdrThreshORA, " not added to the figures."),
           id = "oraFdrDrop",
           type = "warning"
         )
@@ -453,7 +453,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       # Relabel to gene symbols where possible (no-op when already symbols).
       names(log2RatioORA) <- .id2sym(gene_ids_ora)
       # For isoform data, aggregate multiple transcripts per gene
-      if (!is.null(param$featureLevel) && param$featureLevel == "isoform") {
+      if (!is.null(oraParam$featureLevel) && oraParam$featureLevel == "isoform") {
         agg_method <- if (!is.null(input$oraIsoformAgg)) input$oraIsoformAgg else "maxabs"
         na_safe <- function(fn) {
           function(x) {

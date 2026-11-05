@@ -11,6 +11,7 @@
 # helperFunctions.R calls functions from these packages without namespace
 # qualifiers (it was written for a Shiny app context where all are attached).
 # Attach them explicitly here since devtools::load_all() doesn't attach Imports.
+skip_if_not_installed("dendextend")
 library(grid) # gpar()
 library(dendextend) # labels_colors<-
 library(ComplexHeatmap) # HeatmapAnnotation, Heatmap, draw
@@ -97,7 +98,8 @@ test_that("make_rep_heatmap runs with Colours-tab level labels", {
     replicabilityFactors = "cond",
     GroupColourcondA = "red",
     GroupColourcondB = "blue",
-    GroupLabelcondA = "<i>Il4ra</i><sup>fl/fl</sup> &Delta;"
+    # No Greek: this helper draws plain labels straight onto the base pdf() device below
+    GroupLabelcondA = "<i>Il4ra</i><sup>fl/fl</sup>"
   ))
   fn <- with_mock_env(make_rep_heatmap, input = input)
 

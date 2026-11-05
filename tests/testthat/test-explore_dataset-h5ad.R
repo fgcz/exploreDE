@@ -125,6 +125,53 @@ test_that("de_columns maps non-standard DE column names", {
   expect_lt(max(abs(de[common, "effect_log2fc"] - ref[common]), na.rm = TRUE), 1e-6)
 })
 
+test_that("de() carries a description even when the features have none", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces() # rowdata has gene_name, no description
+  out <- withr::local_tempfile(fileext = ".h5ad")
+
+  build_explore_h5ad(
+    p$counts,
+    out = out,
+    omics = "rnaseq",
+    coldata = p$coldata,
+    rowdata = p$rowdata,
+    de = list(treated_vs_control = p$de_df),
+    de_columns = list(effect_log2fc = "LFC", score_pvalue = "P", score_fdr = "Q")
+  )
+
+  de <- new_explore_dataset(out)$de("treated_vs_control")
+  expect_true("description" %in% colnames(de))
+  expect_equal(de$description, de$gene_name)
+})
+
+test_that("the missing description falls back to the gene name, not the protein id", {
+  skip_if_no_anndataR()
+  # In RNA-seq the feature id is the gene name; proteomics ids (P001) differ from gene names (Gene001).
+  p <- make_toy_prot("protein")
+  de_df <- data.frame(
+    row.names = rownames(p$intensities),
+    LFC = seq(-2, 2, length.out = nrow(p$intensities)),
+    P = seq(0.001, 0.5, length.out = nrow(p$intensities)),
+    Q = seq(0.01, 0.9, length.out = nrow(p$intensities))
+  )
+  out <- withr::local_tempfile(fileext = ".h5ad")
+
+  build_explore_h5ad(
+    p$intensities,
+    out = out,
+    omics = "proteomics",
+    coldata = p$coldata,
+    rowdata = p$rowdata,
+    de = list(B_vs_A = de_df),
+    de_columns = list(effect_log2fc = "LFC", score_pvalue = "P", score_fdr = "Q")
+  )
+
+  de <- new_explore_dataset(out)$de("B_vs_A")
+  expect_equal(de$description, de$gene_name)
+  expect_false(any(de$description == de$feature_id))
+})
+
 # ---- 4. pathway ANNOTATION (A) in rowData -----------------------------------
 
 test_that("rowData pathway annotation surfaces as GO columns (tile/heatmap capability)", {
@@ -786,6 +833,7 @@ test_that("unused levels are dropped even when the order is honoured", {
 # Minimal real clusterProfiler S4 objects. Constructed rather than fixtured
 # because the point under test is the S4 -> tidy derivation, not the contents.
 .fake_enrich <- function(cls = "enrichResult", padj = c(.001, .09, .6)) {
+  testthat::skip_if_not_installed("DOSE") # loads the class definitions
   methods::new(
     cls,
     result = data.frame(
@@ -803,6 +851,7 @@ test_that("unused levels are dropped even when the order is honoured", {
 # actually reads (enrichmentScore/NES/qvalue/core_enrichment/setSize) — the
 # existing .fake_enrich() only covers ORA columns.
 .fake_gsea_enrich <- function(cls = "gseaResult", n = 3, padj = c(.001, .02, .4)) {
+  testthat::skip_if_not_installed("DOSE") # loads the class definitions
   methods::new(
     cls,
     result = data.frame(

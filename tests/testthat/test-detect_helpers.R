@@ -63,7 +63,7 @@ test_that("detectDEMethod defaults to DESeq2 when no signals present", {
 })
 
 test_that("count_result_summary matches ezRun::makeCountResultSummary on the shipped SUSHI example", {
-  se <- readRDS(test_path("../../inst/examples/genomics/deResult.rds"))
+  se <- readRDS(system.file("examples", "genomics", "deResult.rds", package = "exploreDE"))
   ours <- count_result_summary(S4Vectors::metadata(se)$param, se)
   expect_s3_class(ours, "data.frame")
   expect_true(all(c("Analysis:", "Reference:", "Method:") %in% rownames(ours)))
