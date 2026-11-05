@@ -389,7 +389,7 @@
   # feature_level: detection-with-override, then level-aware feature_id.
   level <- .resolve_feature_level(omics_type, rd, feature_level)
   fid <- .build_fid_for_level(level, base_ids, gid, sym, rd, id_col = explicit_id_col)
-  id2fid <- setNames(fid, base_ids) # user identifiers -> canonical fid
+  id2fid <- stats::setNames(fid, base_ids) # user identifiers -> canonical fid
 
   # -- obs (samples) : factors get "factor_" prefix; others carried plain -----
   obs <- .as_df_keep_names(coldata)
@@ -655,19 +655,19 @@
     for (rn in names(results)) {
       obj <- results[[rn]]
       if (is.data.frame(obj)) {
-        enr_tidy[[slot]] <- c(enr_tidy[[slot]], setNames(list(obj), rn))
+        enr_tidy[[slot]] <- c(enr_tidy[[slot]], stats::setNames(list(obj), rn))
       } else if (!.contains_native_cp(obj)) {
         tidy <- .enr_tidy_from_native(obj, method = rn)
         if (!is.null(tidy)) {
-          enr_tidy[[slot]] <- c(enr_tidy[[slot]], setNames(list(tidy), rn))
+          enr_tidy[[slot]] <- c(enr_tidy[[slot]], stats::setNames(list(tidy), rn))
         }
       } else {
         tidy <- .enr_tidy_from_native(obj, method = rn, padj_max = .padj_max_for(enrichment_padj_max, rn))
         if (!is.null(tidy)) {
-          enr_tidy[[slot]] <- c(enr_tidy[[slot]], setNames(list(tidy), rn))
+          enr_tidy[[slot]] <- c(enr_tidy[[slot]], stats::setNames(list(tidy), rn))
           sup <- .enr_support_from_native(obj, tidy)
           if (!is.null(sup)) {
-            enr_support[[slot]] <- c(enr_support[[slot]], setNames(list(sup), rn))
+            enr_support[[slot]] <- c(enr_support[[slot]], stats::setNames(list(sup), rn))
           }
         }
       }

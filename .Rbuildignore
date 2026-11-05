@@ -15,3 +15,5 @@
 ^Makefile$
 ^make$
 ^\.githooks$
+^CITATION\.cff$
+^SKILLS\.md$

@@ -112,6 +112,10 @@ ExploreDatasetH5AD <- R6::R6Class(
   inherit = ExploreDataset,
 
   public = list(
+    #' @description Read a canonical `.h5ad` or take a live AnnData, build the config from it unless one is given,
+    #'   and prepare the feature and DE tables.
+    #' @param input An `anndataR` AnnData object, or a path to an existing `.h5ad` file.
+    #' @param config Optional pre-built config list; built from the AnnData when `NULL`.
     initialize = function(input, config = NULL) {
       adata <- if (inherits(input, "AbstractAnnData")) {
         input
@@ -131,11 +135,16 @@ ExploreDatasetH5AD <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description The AnnData parts read at construction, as `list(obs, var, layers, varm, uns)` of plain R
+    #'   objects.
     backend = function() {
       list(obs = private$.obs, var = private$.var, layers = private$.layers, varm = private$.varm, uns = private$.uns)
     },
+    #' @description Returns `"h5ad"`.
     backend_kind = function() "h5ad",
 
+    #' @description Sample metadata from `obs`, with the `factor_` prefix stripped from column names and a `Name`
+    #'   column added when missing.
     samples = function() {
       cd <- private$.obs
       colnames(cd) <- .h5ad_strip_factor(colnames(cd))
@@ -153,13 +162,20 @@ ExploreDatasetH5AD <- R6::R6Class(
       cd
     },
 
+    #' @description Feature annotation from `var`, with `feature_id` and `display_name` columns, ordered by the
+    #'   p-value of the primary contrast.
     features = function() private$.features_df,
 
+    #' @description DE table of one contrast from `varm`, with the legacy aliases `log2Ratio`, `pValue` and `fdr`
+    #'   added; an empty data.frame when the slot is missing. Errors on an unknown contrast.
+    #' @param contrast Contrast name, one of `contrasts()`.
     de = function(contrast) {
       stopifnot(contrast %in% self$contrasts())
       private$.de_dfs[[contrast]] %||% data.frame()
     },
 
+    #' @description Canonical assay names from the config's assay map whose layer exists; computed assays are
+    #'   always included.
     assay_names = function() {
       keys <- names(private$.config$assay_map %||% list())
       keys[vapply(
@@ -172,6 +188,11 @@ ExploreDatasetH5AD <- R6::R6Class(
       )]
     },
 
+    #' @description One assay as a features x samples matrix (the layer transposed); `normalised`,
+    #'   `normalised_log2`, `vst`, `fpkm` and `tpm` are computed when the config maps them to no layer.
+    #' @param name Canonical assay name, one of `assay_names()`.
+    #' @param features Feature IDs (rows) to keep; `NULL` keeps all.
+    #' @param samples Sample IDs (columns) to keep; `NULL` keeps all.
     assay = function(name, features = NULL, samples = NULL) {
       layer_key <- private$.config$assay_map[[name]]
       m <- if (!is.null(layer_key)) {
@@ -199,6 +220,10 @@ ExploreDatasetH5AD <- R6::R6Class(
       m
     },
 
+    #' @description Enrichment results of one contrast and kind: decoded from the serialised objects in older files,
+    #'   otherwise rebuilt from `uns$enrichment` and `uns$enrichment_support`.
+    #' @param contrast Contrast name, one of `contrasts()`.
+    #' @param kind `"ora"` or `"gsea"`.
     enrichment = function(contrast, kind) {
       stopifnot(kind %in% c("ora", "gsea"))
       stopifnot(contrast %in% self$contrasts())
@@ -226,6 +251,10 @@ ExploreDatasetH5AD <- R6::R6Class(
     # Prefer the stored tidy mirror; fall back to the base class, which derives
     # it from the native objects. So a new file costs no decode at all, and an
     # old one still works.
+    #' @description Tidy enrichment table of one contrast and kind: the table stored in `uns$enrichment` when
+    #'   present, otherwise derived from `enrichment()` as in the base class.
+    #' @param contrast Contrast name, one of `contrasts()`.
+    #' @param kind `"ora"` or `"gsea"`.
     enrichment_table = function(contrast, kind) {
       stopifnot(kind %in% c("ora", "gsea"))
       slot <- sub("^de_", "", private$.contrast_slot[[contrast]] %||% contrast)
@@ -238,6 +267,9 @@ ExploreDatasetH5AD <- R6::R6Class(
 
     # Canonical spec drops enrichInput; reconstruct on demand from varm + var
     # so the (accessor-migrated) pathway modules have what they need.
+    #' @description Enrichment inputs rebuilt from the DE table: `features()`, log2 fold changes sorted decreasing,
+    #'   and up/down feature selections at the contrast's FDR and log2FC thresholds.
+    #' @param contrast Contrast name, one of `contrasts()`.
     enrichment_input = function(contrast) {
       de <- tryCatch(self$de(contrast), error = function(e) NULL)
       if (is.null(de) || !nrow(de)) {
