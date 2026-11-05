@@ -117,15 +117,29 @@
 
 # One FASTA column of a level from varm, as apb-export looks it up: The
 # `fasta_validation` table, then `fasta`. NULL when the result has no FASTA.
-.apb_fasta_col <- function(adata, col) {
+.apb_fasta_col <- function(adata, col, tables = c("fasta_validation", "fasta")) {
   varm <- adata$varm %||% list()
-  for (tbl in c("fasta_validation", "fasta")) {
+  for (tbl in tables) {
     d <- varm[[tbl]]
     if (!is.null(d) && col %in% colnames(d)) {
-      return(as.character(as.data.frame(d)[[col]]))
+      return(as.data.frame(d)[[col]])
     }
   }
   NULL
+}
+
+# Contaminants, as apb-export's `LevelSources.contaminants()`: apb2's vendor
+# marking (the `apb` kind `contaminant`), or the FASTA check's match against the
+# contaminant entries (`varm["fasta_validation"]["fasta_matches_contaminant"]`).
+.apb_contaminants <- function(adata, marked) {
+  marked <- as.logical(marked)
+  marked[is.na(marked)] <- FALSE
+  fasta <- as.logical(.apb_fasta_col(adata, "fasta_matches_contaminant", tables = "fasta_validation"))
+  if (length(fasta) == length(marked)) {
+    fasta[is.na(fasta)] <- FALSE
+    return(list(value = marked | fasta, sources = c("apb contaminant", "FASTA fasta_matches_contaminant")))
+  }
+  list(value = marked, sources = "apb contaminant")
 }
 
 # A short display name, as apb-export's `short_name`: Per row, the first input
@@ -249,9 +263,9 @@ anndata_from_apb_raw <- function(result, level = NULL, drop_decoys = TRUE) {
     stop("This APB result does not identify its ", spec$kind, "s.", call. = FALSE)
   }
   decoy <- as.logical(field("decoy", "apb_Decoy") %||% rep(FALSE, nrow(var)))
-  contaminant <- as.logical(field("contaminant", "apb_Contaminant") %||% rep(FALSE, nrow(var)))
   decoy[is.na(decoy)] <- FALSE
-  contaminant[is.na(contaminant)] <- FALSE
+  contaminants <- .apb_contaminants(adata, field("contaminant", "apb_Contaminant") %||% rep(FALSE, nrow(var)))
+  contaminant <- contaminants$value
 
   # Feature ids and labels.
   # Non-empty parts joined with `_`, as apb-export's `join_nonempty`.
@@ -268,6 +282,9 @@ anndata_from_apb_raw <- function(result, level = NULL, drop_decoys = TRUE) {
     append = unit
   )
   description <- .apb_fasta_col(adata, fasta$description)
+  if (!is.null(description)) {
+    description <- as.character(description)
+  }
 
   # Which features to keep: drop decoys and, below protein level, features
   # without a protein (as the `explorede` rules do).
@@ -358,6 +375,7 @@ anndata_from_apb_raw <- function(result, level = NULL, drop_decoys = TRUE) {
         software = rule[["software_name"]] %||% NA_character_,
         decoys_dropped = sum(!not_decoy),
         features_without_protein_dropped = if (is.null(unit)) 0L else sum(no_protein & not_decoy),
+        contaminant_sources = contaminants$sources,
         catalogue_fallbacks = fallbacks
       ),
       .apb_versions()

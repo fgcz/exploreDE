@@ -452,7 +452,7 @@ and its export load alike, with two differences:
 | | `explorede` export | Raw APB in exploreDE |
 |---|---|---|
 | Decoys | Kept | Dropped (count in `uns["provenance"]["decoys_dropped"]`) |
-| Contaminants | Kept, unmarked | Kept, `var["is_contaminant"]` |
+| Contaminants | Kept, unmarked | Kept, `var["is_contaminant"]`: apb2's vendor marking (`apb` kind `contaminant`), or the FASTA check's `varm["fasta_validation"]["fasta_matches_contaminant"]`, as apb-export's other targets mark them |
 
 | exploreDE/1.0 | From the apb2 level |
 |---|---|

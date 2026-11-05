@@ -56,6 +56,22 @@ test_that(".apb_obs_annotations renames SDRF and prolfquapp factors, sorted, and
   expect_equal(out$characteristics_biological_replicate, c(1, 2, 3))
 })
 
+test_that(".apb_contaminants: the vendor marking, or the FASTA check's contaminant match", {
+  marked <- c(TRUE, FALSE, FALSE, NA)
+  no_fasta <- .apb_contaminants(list(varm = list()), marked)
+  expect_equal(no_fasta$value, c(TRUE, FALSE, FALSE, FALSE))
+  expect_equal(no_fasta$sources, "apb contaminant")
+
+  with_fasta <- list(varm = list(fasta_validation = data.frame(fasta_matches_contaminant = c(FALSE, TRUE, NA, FALSE))))
+  out <- .apb_contaminants(with_fasta, marked)
+  expect_equal(out$value, c(TRUE, TRUE, FALSE, FALSE))
+  expect_equal(out$sources, c("apb contaminant", "FASTA fasta_matches_contaminant"))
+
+  # apb-export reads the match from fasta_validation only.
+  other_table <- list(varm = list(fasta = data.frame(fasta_matches_contaminant = c(TRUE, TRUE, TRUE, TRUE))))
+  expect_equal(.apb_contaminants(other_table, marked)$value, c(TRUE, FALSE, FALSE, FALSE))
+})
+
 test_that("raw APB detection: uns['apb'] without schema_version or prolfquapp", {
   expect_true(.h5ad_is_apb_raw(c("apb", "protein")))
   expect_false(.h5ad_is_apb_raw(c("apb", "schema_version", "omics_type"))) # APB Export's explorede output
@@ -81,7 +97,8 @@ test_that("protein level: log2 intensities with zeros missing, decoys dropped, c
   expect_equal(ad$uns$provenance$decoys_dropped, sum(decoy))
   expect_equal(ad$var_names, lvl$var$Protein_Group[!decoy])
   expect_equal(ad$var$label_protein_id, lvl$var$Protein_Group[!decoy])
-  expect_type(ad$var$is_contaminant, "logical")
+  expect_equal(ad$var$is_contaminant, as.logical(lvl$var$apb_Contaminant[!decoy]))
+  expect_equal(ad$uns$provenance$contaminant_sources, "apb contaminant")
 
   x <- as.matrix(lvl$X)[, !decoy, drop = FALSE]
   raw <- ad$layers$intensities_raw
