@@ -75,3 +75,18 @@ test_that("RNA-seq isoform-level: feature_id_kind = isoform", {
   expect_identical(eds$feature_id_kind(), "isoform")
   expect_silent(validate_explore_dataset(eds))
 })
+
+test_that("RNA-seq isoform-level: Gene Symbol lookup covers every transcript", {
+  eds <- new_explore_dataset(fx_rnaseq_isoform()$se)
+  f <- eds$features()
+  gc <- eds$proteomics_choices("gene")
+  expect_false(is.null(gc$lookup))
+  expect_setequal(gc$choices, unique(f$gene_name[!is.na(f$gene_name) & nzchar(f$gene_name)]))
+  expect_setequal(unlist(gc$lookup, use.names = FALSE), f$feature_id[!is.na(f$gene_name) & nzchar(f$gene_name)])
+  g <- names(which.max(lengths(gc$lookup)))
+  expect_setequal(gc$lookup[[g]], f$feature_id[f$gene_name %in% g])
+})
+
+test_that("RNA-seq gene-level: no gene -> feature lookup", {
+  expect_null(new_explore_dataset(fx_rnaseq_gene()$se)$proteomics_choices("gene")$lookup)
+})

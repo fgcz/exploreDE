@@ -245,6 +245,17 @@ debouncedFeatures <- reactive({
 }) %>%
   debounce(200)
 
+# An emptied bucket clears the plots here. boxplotCountsReactive() req()s at
+# least one feature, so the clearing branch in the drawing observer below never
+# runs for an empty bucket; the bucket reset / search-mode handlers no longer
+# null these figures from other tabs (see server-featureBucket.R).
+observeEvent(debouncedFeatures(), ignoreNULL = FALSE, ignoreInit = TRUE, {
+  if (!length(debouncedFeatures())) {
+    figuresDataReactive$boxplot <- NULL
+    figuresDataReactive$barplot <- NULL
+  }
+})
+
 boxplotCountsReactive <- eventReactive(
   {
     debouncedFeatures()
