@@ -9,8 +9,7 @@ reference and implements the accessor contract uniformly for every
 SE shape. Concrete subclasses (`ExploreDatasetSE_RNASeq`,
 `_CountQC`, `_CrisprCountQC`, `_Proteomics`) override two private
 methods only:
-}
-\details{
+
 - `.build_config(se)` — returns the per-instance config list at
   `$initialize()` time
 - `.prep()` — populates `private$.features_df`, `private$.de_dfs`,
@@ -20,174 +19,250 @@ This class is not instantiable on its own — instantiate a concrete
 subclass instead.
 }
 \section{Super class}{
-\code{\link[exploreDE:ExploreDataset]{exploreDE::ExploreDataset}} -> \code{ExploreDatasetSE}
+\code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{ExploreDatasetSE}
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-ExploreDatasetSE-new}{\code{ExploreDatasetSE$new()}}
-\item \href{#method-ExploreDatasetSE-backend}{\code{ExploreDatasetSE$backend()}}
-\item \href{#method-ExploreDatasetSE-backend_kind}{\code{ExploreDatasetSE$backend_kind()}}
-\item \href{#method-ExploreDatasetSE-samples}{\code{ExploreDatasetSE$samples()}}
-\item \href{#method-ExploreDatasetSE-features}{\code{ExploreDatasetSE$features()}}
-\item \href{#method-ExploreDatasetSE-de}{\code{ExploreDatasetSE$de()}}
-\item \href{#method-ExploreDatasetSE-assay_names}{\code{ExploreDatasetSE$assay_names()}}
-\item \href{#method-ExploreDatasetSE-assay}{\code{ExploreDatasetSE$assay()}}
-\item \href{#method-ExploreDatasetSE-enrichment}{\code{ExploreDatasetSE$enrichment()}}
-\item \href{#method-ExploreDatasetSE-enrichment_input}{\code{ExploreDatasetSE$enrichment_input()}}
-\item \href{#method-ExploreDatasetSE-clone}{\code{ExploreDatasetSE$clone()}}
+  \itemize{
+    \item \href{#method-ExploreDatasetSE-initialize}{\code{ExploreDatasetSE$new()}}
+    \item \href{#method-ExploreDatasetSE-backend}{\code{ExploreDatasetSE$backend()}}
+    \item \href{#method-ExploreDatasetSE-backend_kind}{\code{ExploreDatasetSE$backend_kind()}}
+    \item \href{#method-ExploreDatasetSE-samples}{\code{ExploreDatasetSE$samples()}}
+    \item \href{#method-ExploreDatasetSE-features}{\code{ExploreDatasetSE$features()}}
+    \item \href{#method-ExploreDatasetSE-de}{\code{ExploreDatasetSE$de()}}
+    \item \href{#method-ExploreDatasetSE-assay_names}{\code{ExploreDatasetSE$assay_names()}}
+    \item \href{#method-ExploreDatasetSE-assay}{\code{ExploreDatasetSE$assay()}}
+    \item \href{#method-ExploreDatasetSE-enrichment}{\code{ExploreDatasetSE$enrichment()}}
+    \item \href{#method-ExploreDatasetSE-enrichment_input}{\code{ExploreDatasetSE$enrichment_input()}}
+    \item \href{#method-ExploreDatasetSE-clone}{\code{ExploreDatasetSE$clone()}}
+  }
 }
-}
-\if{html}{\out{
-<details><summary>Inherited methods</summary>
+\if{html}{\out{<details><summary>Inherited methods</summary>
 <ul>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="all_pathways"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-all_pathways'><code>exploreDE::ExploreDataset$all_pathways()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="assay_label"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-assay_label'><code>exploreDE::ExploreDataset$assay_label()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="background_expression"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-background_expression'><code>exploreDE::ExploreDataset$background_expression()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="contrast_label"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-contrast_label'><code>exploreDE::ExploreDataset$contrast_label()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="contrast_meta"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-contrast_meta'><code>exploreDE::ExploreDataset$contrast_meta()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="contrasts"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-contrasts'><code>exploreDE::ExploreDataset$contrasts()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="data_type"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-data_type'><code>exploreDE::ExploreDataset$data_type()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="de_all"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-de_all'><code>exploreDE::ExploreDataset$de_all()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="de_display_extras"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-de_display_extras'><code>exploreDE::ExploreDataset$de_display_extras()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="enrichment_filter"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-enrichment_filter'><code>exploreDE::ExploreDataset$enrichment_filter()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="enrichment_kinds"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-enrichment_kinds'><code>exploreDE::ExploreDataset$enrichment_kinds()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="enrichment_table"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-enrichment_table'><code>exploreDE::ExploreDataset$enrichment_table()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="factor_levels"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-factor_levels'><code>exploreDE::ExploreDataset$factor_levels()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="factor_names"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-factor_names'><code>exploreDE::ExploreDataset$factor_names()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_display"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_display'><code>exploreDE::ExploreDataset$feature_display()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_id_kind"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_id_kind'><code>exploreDE::ExploreDataset$feature_id_kind()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_ids"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_ids'><code>exploreDE::ExploreDataset$feature_ids()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_assay'><code>exploreDE::ExploreDataset$has_assay()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_de"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_de'><code>exploreDE::ExploreDataset$has_de()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_enrichment"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_enrichment'><code>exploreDE::ExploreDataset$has_enrichment()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_pvalue"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_pvalue'><code>exploreDE::ExploreDataset$has_pvalue()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="n_features"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-n_features'><code>exploreDE::ExploreDataset$n_features()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="n_samples"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-n_samples'><code>exploreDE::ExploreDataset$n_samples()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="omics_class"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-omics_class'><code>exploreDE::ExploreDataset$omics_class()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="organism"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-organism'><code>exploreDE::ExploreDataset$organism()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_assay'><code>exploreDE::ExploreDataset$primary_assay()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_assay_name'><code>exploreDE::ExploreDataset$primary_assay_name()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_contrast"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_contrast'><code>exploreDE::ExploreDataset$primary_contrast()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_grouping"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_grouping'><code>exploreDE::ExploreDataset$primary_grouping()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="print"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-print'><code>exploreDE::ExploreDataset$print()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="proteomics_choices"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-proteomics_choices'><code>exploreDE::ExploreDataset$proteomics_choices()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay'><code>exploreDE::ExploreDataset$raw_assay()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay_name'><code>exploreDE::ExploreDataset$raw_assay_name()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="ref_build"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-ref_build'><code>exploreDE::ExploreDataset$ref_build()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="sample_factor"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-sample_factor'><code>exploreDE::ExploreDataset$sample_factor()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="sample_ids"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-sample_ids'><code>exploreDE::ExploreDataset$sample_ids()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="secondary_grouping"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-secondary_grouping'><code>exploreDE::ExploreDataset$secondary_grouping()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="sgrna_to_gene"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-sgrna_to_gene'><code>exploreDE::ExploreDataset$sgrna_to_gene()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="source"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-source'><code>exploreDE::ExploreDataset$source()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="all_pathways"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-all_pathways'><code>ExploreDataset$all_pathways()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="assay_label"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-assay_label'><code>ExploreDataset$assay_label()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="background_expression"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-background_expression'><code>ExploreDataset$background_expression()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="contrast_label"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-contrast_label'><code>ExploreDataset$contrast_label()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="contrast_meta"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-contrast_meta'><code>ExploreDataset$contrast_meta()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="contrasts"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-contrasts'><code>ExploreDataset$contrasts()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="data_type"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-data_type'><code>ExploreDataset$data_type()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="de_all"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-de_all'><code>ExploreDataset$de_all()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="de_display_extras"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-de_display_extras'><code>ExploreDataset$de_display_extras()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="enrichment_filter"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-enrichment_filter'><code>ExploreDataset$enrichment_filter()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="enrichment_kinds"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-enrichment_kinds'><code>ExploreDataset$enrichment_kinds()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="enrichment_table"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-enrichment_table'><code>ExploreDataset$enrichment_table()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="factor_levels"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-factor_levels'><code>ExploreDataset$factor_levels()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="factor_names"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-factor_names'><code>ExploreDataset$factor_names()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_display"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_display'><code>ExploreDataset$feature_display()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_id_kind"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_id_kind'><code>ExploreDataset$feature_id_kind()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_ids"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_ids'><code>ExploreDataset$feature_ids()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_assay'><code>ExploreDataset$has_assay()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_de"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_de'><code>ExploreDataset$has_de()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_enrichment"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_enrichment'><code>ExploreDataset$has_enrichment()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_pvalue"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_pvalue'><code>ExploreDataset$has_pvalue()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="n_features"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-n_features'><code>ExploreDataset$n_features()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="n_samples"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-n_samples'><code>ExploreDataset$n_samples()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="omics_class"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-omics_class'><code>ExploreDataset$omics_class()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="organism"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-organism'><code>ExploreDataset$organism()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_assay'><code>ExploreDataset$primary_assay()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_assay_name'><code>ExploreDataset$primary_assay_name()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_contrast"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_contrast'><code>ExploreDataset$primary_contrast()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_grouping"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_grouping'><code>ExploreDataset$primary_grouping()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="print"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-print'><code>ExploreDataset$print()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="proteomics_choices"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-proteomics_choices'><code>ExploreDataset$proteomics_choices()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay'><code>ExploreDataset$raw_assay()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay_name'><code>ExploreDataset$raw_assay_name()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="ref_build"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-ref_build'><code>ExploreDataset$ref_build()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="sample_factor"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-sample_factor'><code>ExploreDataset$sample_factor()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="sample_ids"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-sample_ids'><code>ExploreDataset$sample_ids()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="secondary_grouping"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-secondary_grouping'><code>ExploreDataset$secondary_grouping()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="sgrna_to_gene"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-sgrna_to_gene'><code>ExploreDataset$sgrna_to_gene()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="source"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-source'><code>ExploreDataset$source()</code></a></span></li>
 </ul>
-</details>
-}}
+</details>}}
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ExploreDatasetSE-new"></a>}}
-\if{latex}{\out{\hypertarget{method-ExploreDatasetSE-new}{}}}
-\subsection{Method \code{new()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$new(se, config = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<a id="method-ExploreDatasetSE-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-ExploreDatasetSE-initialize}{}}}
+\subsection{\code{ExploreDatasetSE$new()}}{
+  Wrap a `SummarizedExperiment`: store it, build the config from it unless one is given, and
+  prepare the feature and DE tables.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$new(se, config = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{se}}{A `SummarizedExperiment`.}
+      \item{\code{config}}{Optional pre-built config list; built from `se` by the subclass when `NULL`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-backend"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-backend}{}}}
-\subsection{Method \code{backend()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$backend()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$backend()}}{
+  The wrapped `SummarizedExperiment`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$backend()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-backend_kind"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-backend_kind}{}}}
-\subsection{Method \code{backend_kind()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$backend_kind()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$backend_kind()}}{
+  Returns `"se"`.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$backend_kind()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-samples"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-samples}{}}}
-\subsection{Method \code{samples()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$samples()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$samples()}}{
+  Sample metadata from `colData()`, with the SUSHI ` [Factor]` suffix stripped from column names,
+  rownames set to sample IDs, and a `Name` column added.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$samples()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-features"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-features}{}}}
-\subsection{Method \code{features()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$features()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$features()}}{
+  Feature annotation table, prepared from `rowData()` by the subclass.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$features()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-de"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-de}{}}}
-\subsection{Method \code{de()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$de(contrast)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$de()}}{
+  DE table of one contrast, prepared from `rowData()` by the subclass; an empty data.frame when
+  none was prepared. Errors on an unknown contrast.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$de(contrast)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-assay_names"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-assay_names}{}}}
-\subsection{Method \code{assay_names()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$assay_names()}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$assay_names()}}{
+  Canonical assay names from the config's assay map whose SE assay exists; computed assays are
+  always included.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$assay_names()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-assay}{}}}
-\subsection{Method \code{assay()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$assay(name, features = NULL, samples = NULL)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$assay()}}{
+  One assay as a features x samples matrix with rows renamed to feature IDs; `normalised_log2`,
+  `vst`, `fpkm` and `tpm` are computed when the config maps them to no SE assay.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$assay(name, features = NULL, samples = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Canonical assay name, one of `assay_names()`.}
+      \item{\code{features}}{Feature IDs (rows) to keep; `NULL` keeps all.}
+      \item{\code{samples}}{Sample IDs (columns) to keep; `NULL` keeps all.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-enrichment"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-enrichment}{}}}
-\subsection{Method \code{enrichment()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$enrichment(contrast, kind)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$enrichment()}}{
+  Enrichment results of one kind, read from `metadata(se)` and flattened to a named list; an empty
+  list when absent. `contrast` is not used.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$enrichment(contrast, kind)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{contrast}}{Contrast name; not used by this backend.}
+      \item{\code{kind}}{`"ora"` or `"gsea"`.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-enrichment_input"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-enrichment_input}{}}}
-\subsection{Method \code{enrichment_input()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$enrichment_input(contrast)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$enrichment_input()}}{
+  Enrichment inputs read from `metadata(se)$enrichInput`, with `NULL` fields and no selections when
+  absent. `contrast` is not used.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$enrichment_input(contrast)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{contrast}}{Contrast name; not used by this backend.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExploreDatasetSE-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExploreDatasetSE$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{ExploreDatasetSE$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDatasetSE$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

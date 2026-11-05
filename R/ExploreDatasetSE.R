@@ -20,6 +20,10 @@ ExploreDatasetSE <- R6::R6Class(
   inherit = ExploreDataset,
 
   public = list(
+    #' @description Wrap a `SummarizedExperiment`: store it, build the config from it unless one is given, and
+    #'   prepare the feature and DE tables.
+    #' @param se A `SummarizedExperiment`.
+    #' @param config Optional pre-built config list; built from `se` by the subclass when `NULL`.
     initialize = function(se, config = NULL) {
       stopifnot(inherits(se, "SummarizedExperiment"))
       private$.se <- se
@@ -28,7 +32,9 @@ ExploreDatasetSE <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description The wrapped `SummarizedExperiment`.
     backend = function() private$.se,
+    #' @description Returns `"se"`.
     backend_kind = function() "se",
 
     # samples(): uniform colData read. SUSHI's `[Factor]` suffix is stripped
@@ -39,6 +45,8 @@ ExploreDatasetSE <- R6::R6Class(
     # A `Name` column is added matching the legacy converters: factor-typed
     # for genomics, plain character for proteomics. Rownames are colnames(se)
     # where available, else cd$Name / cd$name fallback.
+    #' @description Sample metadata from `colData()`, with the SUSHI ` [Factor]` suffix stripped from column names,
+    #'   rownames set to sample IDs, and a `Name` column added.
     samples = function() {
       cd <- data.frame(SummarizedExperiment::colData(private$.se), check.names = FALSE, stringsAsFactors = FALSE)
       colnames(cd) <- gsub(" \\[.*", "", colnames(cd))
@@ -85,13 +93,19 @@ ExploreDatasetSE <- R6::R6Class(
       cd
     },
 
+    #' @description Feature annotation table, prepared from `rowData()` by the subclass.
     features = function() private$.features_df,
 
+    #' @description DE table of one contrast, prepared from `rowData()` by the subclass; an empty data.frame when
+    #'   none was prepared. Errors on an unknown contrast.
+    #' @param contrast Contrast name, one of `contrasts()`.
     de = function(contrast) {
       stopifnot(contrast %in% self$contrasts())
       private$.de_dfs[[contrast]] %||% data.frame()
     },
 
+    #' @description Canonical assay names from the config's assay map whose SE assay exists; computed assays are
+    #'   always included.
     assay_names = function() {
       backend_keys <- SummarizedExperiment::assayNames(private$.se)
       keys <- names(private$.config$assay_map %||% list())
@@ -105,6 +119,11 @@ ExploreDatasetSE <- R6::R6Class(
       )]
     },
 
+    #' @description One assay as a features x samples matrix with rows renamed to feature IDs; `normalised_log2`,
+    #'   `vst`, `fpkm` and `tpm` are computed when the config maps them to no SE assay.
+    #' @param name Canonical assay name, one of `assay_names()`.
+    #' @param features Feature IDs (rows) to keep; `NULL` keeps all.
+    #' @param samples Sample IDs (columns) to keep; `NULL` keeps all.
     assay = function(name, features = NULL, samples = NULL) {
       v <- private$.config$assay_map[[name]]
       m <- if (!is.null(v)) {
@@ -140,6 +159,10 @@ ExploreDatasetSE <- R6::R6Class(
       m
     },
 
+    #' @description Enrichment results of one kind, read from `metadata(se)` and flattened to a named list; an empty
+    #'   list when absent. `contrast` is not used.
+    #' @param contrast Contrast name; not used by this backend.
+    #' @param kind `"ora"` or `"gsea"`.
     enrichment = function(contrast, kind) {
       stopifnot(kind %in% c("ora", "gsea"))
       loc <- private$.config$enrichment_locator[[kind]]$se
@@ -153,6 +176,9 @@ ExploreDatasetSE <- R6::R6Class(
       eds_flatten_cp_results(obj)
     },
 
+    #' @description Enrichment inputs read from `metadata(se)$enrichInput`, with `NULL` fields and no selections when
+    #'   absent. `contrast` is not used.
+    #' @param contrast Contrast name; not used by this backend.
     enrichment_input = function(contrast) {
       ei <- S4Vectors::metadata(private$.se)$enrichInput
       if (is.null(ei)) {

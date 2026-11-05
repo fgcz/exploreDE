@@ -117,6 +117,10 @@ ExploreDatasetParquet <- R6::R6Class(
   inherit = ExploreDatasetH5AD,
 
   public = list(
+    #' @description Read the parquet directory (manifest, obs, var, layers, varm, uns), build the config unless one
+    #'   is given, prepare the feature and DE tables, and warn when the source `.h5ad` has changed since export.
+    #' @param input Path to the parquet directory.
+    #' @param config Optional pre-built config list; derived from `uns.json` when omitted.
     initialize = function(input, config = NULL) {
       if (!is.character(input) || length(input) != 1L || !dir.exists(input)) {
         stop("ExploreDatasetParquet: input must be a path to a parquet directory")
@@ -170,6 +174,7 @@ ExploreDatasetParquet <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description Returns `"parquet"`.
     backend_kind = function() "parquet",
 
     # Hydrate-then-delegate. The payloads live in their own files so that
@@ -177,22 +182,31 @@ ExploreDatasetParquet <- R6::R6Class(
     # 13 MB of a 29 MB export). The first call for a contrast pulls the blobs
     # in, after which the inherited implementation runs against exactly the
     # structure it expects — no forked decode logic.
+    #' @description Enrichment results of one contrast and kind: reads the contrast's enrichment payload files on
+    #'   first use, then defers to the `.h5ad` backend's implementation.
+    #' @param contrast Contrast name, one of `contrasts()`.
+    #' @param kind `"ora"` or `"gsea"`.
     enrichment = function(contrast, kind) {
       private$.hydrate_enrichment(contrast)
       super$enrichment(contrast, kind)
     },
 
     # The manifest as written, for diagnostics.
+    #' @description The parsed `manifest.json` of the parquet directory.
     manifest = function() private$.manifest,
 
     # Where the Rust process put the files. Useful for diagnostics and for the
     # app to clean up its temp dir on exit.
+    #' @description Path of the parquet directory.
     source_dir = function() private$.dir,
 
     # Full content check against the source .h5ad, as opposed to the cheap
     # size/mtime comparison done at load. Returns TRUE when the recorded md5
     # still matches, FALSE when it does not, and NA when there is nothing to
     # check against (a live AnnData was exported, or the source has moved).
+    #' @description Compare the md5 of the source `.h5ad` with the one recorded in the manifest: `TRUE` when it
+    #'   matches, `FALSE` when not, `NA` when there is nothing to check against.
+    #' @param path Path to the source `.h5ad`; `NULL` (default) uses the path recorded in the manifest.
     verify_source = function(path = NULL) {
       src <- private$.manifest$source %||% list()
       p <- path %||% src$path
@@ -207,6 +221,7 @@ ExploreDatasetParquet <- R6::R6Class(
     # the package is there (this class also runs on the cluster, under test)
     # and an empty vector when it is not, which is what the callers already
     # treat as "this dataset has no GO annotation".
+    #' @description GO terms as in the base class, but an empty vector when clusterProfiler is not installed.
     all_pathways = function() {
       if (!requireNamespace("clusterProfiler", quietly = TRUE)) {
         return(character(0))

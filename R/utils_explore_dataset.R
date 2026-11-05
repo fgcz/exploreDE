@@ -224,7 +224,7 @@ eds_isoform_gene_choices <- function(feature_id, gene) {
 eds_flatten_cp_results <- function(x, prefix = "") {
   if (inherits(x, c("enrichResult", "gseaResult")) || is.data.frame(x)) {
     nm <- if (nzchar(prefix)) prefix else "default"
-    return(setNames(list(x), nm))
+    return(stats::setNames(list(x), nm))
   }
   if (is.list(x) && length(x)) {
     out <- list()
@@ -443,7 +443,7 @@ eds_load_se <- function(input) {
   lists <- Filter(function(gl) length(gl) > 0L, lists)
   if (length(lists)) {
     shared <- all(vapply(lists, identical, logical(1), lists[[1]]))
-    use <- if (shared) setNames(lists[1], "*") else lists
+    use <- if (shared) stats::setNames(lists[1], "*") else lists
     out$gene_list <- do.call(
       rbind,
       lapply(names(use), function(ont) {
@@ -469,7 +469,7 @@ eds_load_se <- function(input) {
   }
   gsea <- identical(support$class, "gseaResult")
   onts <- unique(tidy$ontology)
-  setNames(
+  stats::setNames(
     lapply(onts, function(ont) {
       r <- tidy[tidy$ontology == ont, setdiff(colnames(tidy), c("method", "ontology")), drop = FALSE]
       r <- r[, vapply(r, function(col) !all(is.na(col)), logical(1)), drop = FALSE] # rbind.fill padding
