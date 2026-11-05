@@ -190,6 +190,26 @@ eds_infer_organism <- function(param) {
   gsub("_", " ", parts[1], fixed = TRUE)
 }
 
+# Gene symbol -> transcript feature_ids for isoform-level RNA-seq / CountQC.
+# Fills the same config$proteomics slot the peptide-of-protein picker reads, so
+# "Search by: Gene Symbol" (Boxplot, Volcano, Heatmap, Correlation, Multi DE)
+# selects every transcript of a gene. Unlike proteomics, single-transcript
+# genes (feature_id == symbol) are kept, so any gene can be found by symbol.
+eds_isoform_gene_choices <- function(feature_id, gene) {
+  fid <- as.character(feature_id)
+  gene <- as.character(gene)
+  valid <- !is.na(gene) & nzchar(gene)
+  gene_choices <- gene_lookup <- NULL
+  if (any(valid)) {
+    gene_choices <- unique(gene[valid])
+    gene_lookup <- split(fid[valid], factor(gene[valid], levels = gene_choices))
+  }
+  list(
+    gene = list(choices = gene_choices, lookup = gene_lookup),
+    protein = list(choices = NULL, lookup = NULL)
+  )
+}
+
 # Recursive flatten of nested clusterProfiler results into a single named list.
 # clusterProfiler outputs are typically nested as
 # `list(BP = enrichResult, MF = enrichResult, ...)` or deeper for ORA with

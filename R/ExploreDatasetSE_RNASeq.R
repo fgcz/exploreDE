@@ -174,6 +174,11 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
       }
       private$.features_df <- rd
 
+      # After the p-value sort, so Gene Symbol choices list significant genes first.
+      if (is_isoform && "gene_name" %in% colnames(rd)) {
+        private$.config$proteomics <- eds_isoform_gene_choices(rd$feature_id, rd$gene_name)
+      }
+
       # RNA-seq has DE columns inline in rowData (one contrast).
       contrast <- cfg$primary_contrast
       private$.de_dfs <- setNames(
