@@ -96,6 +96,4 @@ Suggests:
   devtools
 VignetteBuilder: knitr
 Config/testthat/edition: 3
-Remotes:
-  github::scverse/anndataR
 Config/roxygen2/version: 8.1.1
