@@ -12,6 +12,11 @@ permissions:
 jobs:
   pkgdown:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      # Bioconductor 3.24 (devel until 2026-11-25) ships anndataR >= 1.3, which
+      # exploreDE needs; 3.23 has 1.2.3. Drop this once 3.24 is the release.
+      R_BIOC_VERSION: "3.24"
 
     steps:
       - uses: actions/checkout@v6.0.3
@@ -29,9 +34,7 @@ jobs:
       - name: Install R dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          # anndataR from GitHub until Bioconductor ships >= 1.3 (Bioc 3.24);
-          # DESCRIPTION depends on the Bioconductor package.
-          extra-packages: any::pkgdown, local::., github::scverse/anndataR
+          extra-packages: any::pkgdown, local::.
           needs: website
 
       - name: Build pkgdown site
