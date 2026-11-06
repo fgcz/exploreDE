@@ -171,9 +171,12 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
       )
     }
   } else if (dataTypeGStore == "RNASeq") {
-    pValueColumn <- grep("^p[-_]?value$", colnames(rd), value = TRUE, ignore.case = TRUE)[[1]]
-    rd <- rd[order(rd[[pValueColumn]]), ]
-    genes <- rd$feature_id[order(rd$pValue)]
+    # The p-value column is found through the column dictionary.
+    pValueColumn <- eds_match_col(colnames(rd), eds_de_column_patterns$score_pvalue)
+    if (!is.null(pValueColumn)) {
+      rd <- rd[order(rd[[pValueColumn]], na.last = TRUE), , drop = FALSE]
+    }
+    genes <- rd$feature_id
 
     dataset[[param$groupingName]] <- factor(
       dataset[[param$groupingName]],

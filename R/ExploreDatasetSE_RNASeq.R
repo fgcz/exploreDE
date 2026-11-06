@@ -177,9 +177,10 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
       # which sorts gs$seqAnno (and therefore gs$countList rownames and
       # gs$genes) by pValue ascending. Users see most-significant features
       # first in autocompletes and top-N filters.
-      pval_col <- grep("^p[._]?value$", colnames(rd), value = TRUE, ignore.case = TRUE)
-      if (length(pval_col) >= 1) {
-        rd <- rd[order(rd[[pval_col[1]]], na.last = TRUE), , drop = FALSE]
+      # The p-value column is found through the column dictionary.
+      pval_col <- eds_match_col(colnames(rd), eds_de_column_patterns$score_pvalue)
+      if (!is.null(pval_col)) {
+        rd <- rd[order(rd[[pval_col]], na.last = TRUE), , drop = FALSE]
       }
       private$.features_df <- rd
 
