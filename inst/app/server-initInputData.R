@@ -213,6 +213,11 @@ record_project <- function(projectFromUrl, dataDir = NULL) {
 # LDAP. Looked up once per session and shared by the ?data= check and every
 # multi-DE dataset (ldap_allows_project() in R/utils_multi_de.R).
 ldap_lookup <- function(user) {
+  # No user (SHINYPROXY_USERNAME unset): no roles and no projects, without
+  # asking LDAP for "(cn=)".
+  if (!nzchar(user)) {
+    return(list(roles = character(), projects = character()))
+  }
   query <- paste0(
     "ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' ",
     shQuote(paste0("(cn=", user, ")")),

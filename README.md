@@ -26,6 +26,8 @@ package. On a server, `?data=` opens a dataset from the link:
   `EXPLOREDE_URL_SOURCES` to change the list). Plain `https://` only, no
   redirects, up to 1 GB.
 
+The LDAP check takes the user from the `SHINYPROXY_USERNAME` environment variable, read once per R process, so run the app behind ShinyProxy with one container per user. Without that variable (plain Shiny Server, for example) every gStore link is refused; the demo, uploads and `https://` links still work.
+
 ## Bring your own data
 
 exploreDE reads one file format: an `.h5ad` (AnnData) file in the
