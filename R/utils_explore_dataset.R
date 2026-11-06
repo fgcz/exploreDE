@@ -600,3 +600,10 @@ assay_is_log2 <- function(eds, key) {
   }
   isTRUE(key %in% c("normalised_log2", "vst"))
 }
+
+# ---- feature lists in the Multi DE Upset / Venn tab ---------------------------
+# One feature id per line. Ids come from the loaded file, so they are rendered
+# as text (escaped by htmltools), never as HTML.
+feature_list_ui <- function(ids) {
+  shiny::tags$div(lapply(ids, shiny::tags$div))
+}
