@@ -2,19 +2,19 @@
 % Please edit documentation in R/ExploreDatasetSE_CountQC.R
 \name{ExploreDatasetSE_CountQC}
 \alias{ExploreDatasetSE_CountQC}
-\title{Concrete subclass for SUSHI CountQC `SummarizedExperiment` outputs}
+\title{Concrete subclass for SUSHI CountQC \code{SummarizedExperiment} outputs}
 \value{
-An R6 class generator; `$new()` returns an
-  `ExploreDatasetSE_CountQC` object.
+An R6 class generator; \verb{$new()} returns an
+\code{ExploreDatasetSE_CountQC} object.
 }
 \description{
-Top-level `rowData(se)` carries feature annotations; there are no
-DE results. May include a `presentFlag` / `isPresent` assay used
+Top-level \code{rowData(se)} carries feature annotations; there are no
+DE results. May include a \code{presentFlag} / \code{isPresent} assay used
 as the QC denominator.
 }
 \details{
-Inherits the accessor contract from [ExploreDataset] via
-[ExploreDatasetSE]; overrides only `.build_config()` and `.prep()`.
+Inherits the accessor contract from \link{ExploreDataset} via
+\link{ExploreDatasetSE}; overrides only \code{.build_config()} and \code{.prep()}.
 }
 \examples{
 library(SummarizedExperiment)

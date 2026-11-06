@@ -2,12 +2,12 @@
 % Please edit documentation in R/ExploreDatasetParquet.R
 \name{ExploreDatasetParquet}
 \alias{ExploreDatasetParquet}
-\title{Concrete `ExploreDataset` backend over a parquet directory}
+\title{Concrete \code{ExploreDataset} backend over a parquet directory}
 \description{
 The exploreDElight backend. Reads the parquet directory a native Rust
-process writes from a canonical exploreDE/1.0 `.h5ad`, and satisfies the
+process writes from a canonical exploreDE/1.0 \code{.h5ad}, and satisfies the
 same accessor contract as every other backend. Inherits all config
-derivation and DE assembly from [ExploreDatasetH5AD]; only the loader
+derivation and DE assembly from \link{ExploreDatasetH5AD}; only the loader
 differs.
 }
 \keyword{internal}
@@ -81,7 +81,7 @@ differs.
 \if{latex}{\out{\hypertarget{method-ExploreDatasetParquet-initialize}{}}}
 \subsection{\code{ExploreDatasetParquet$new()}}{
   Read the parquet directory (manifest, obs, var, layers, varm, uns), build the config unless one
-  is given, prepare the feature and DE tables, and warn when the source `.h5ad` has changed since export.
+is given, prepare the feature and DE tables, and warn when the source \code{.h5ad} has changed since export.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetParquet$new(input, config = NULL)}
@@ -91,7 +91,7 @@ differs.
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{input}}{Path to the parquet directory.}
-      \item{\code{config}}{Optional pre-built config list; derived from `uns.json` when omitted.}
+      \item{\code{config}}{Optional pre-built config list; derived from \code{uns.json} when omitted.}
     }
     \if{html}{\out{</div>}}
   }
@@ -101,7 +101,7 @@ differs.
 \if{html}{\out{<a id="method-ExploreDatasetParquet-backend_kind"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetParquet-backend_kind}{}}}
 \subsection{\code{ExploreDatasetParquet$backend_kind()}}{
-  Returns `"parquet"`.
+  Returns \code{"parquet"}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetParquet$backend_kind()}
@@ -114,7 +114,7 @@ differs.
 \if{latex}{\out{\hypertarget{method-ExploreDatasetParquet-enrichment}{}}}
 \subsection{\code{ExploreDatasetParquet$enrichment()}}{
   Enrichment results of one contrast and kind: reads the contrast's enrichment payload files on
-  first use, then defers to the `.h5ad` backend's implementation.
+first use, then defers to the \code{.h5ad} backend's implementation.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetParquet$enrichment(contrast, kind)}
@@ -123,8 +123,8 @@ differs.
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
-      \item{\code{kind}}{`"ora"` or `"gsea"`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
+      \item{\code{kind}}{\code{"ora"} or \code{"gsea"}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -134,7 +134,7 @@ differs.
 \if{html}{\out{<a id="method-ExploreDatasetParquet-manifest"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetParquet-manifest}{}}}
 \subsection{\code{ExploreDatasetParquet$manifest()}}{
-  The parsed `manifest.json` of the parquet directory.
+  The parsed \code{manifest.json} of the parquet directory.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetParquet$manifest()}
@@ -158,8 +158,8 @@ differs.
 \if{html}{\out{<a id="method-ExploreDatasetParquet-verify_source"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetParquet-verify_source}{}}}
 \subsection{\code{ExploreDatasetParquet$verify_source()}}{
-  Compare the md5 of the source `.h5ad` with the one recorded in the manifest: `TRUE` when it
-  matches, `FALSE` when not, `NA` when there is nothing to check against.
+  Compare the md5 of the source \code{.h5ad} with the one recorded in the manifest: \code{TRUE} when it
+matches, \code{FALSE} when not, \code{NA} when there is nothing to check against.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetParquet$verify_source(path = NULL)}
@@ -168,7 +168,7 @@ differs.
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{path}}{Path to the source `.h5ad`; `NULL` (default) uses the path recorded in the manifest.}
+      \item{\code{path}}{Path to the source \code{.h5ad}; \code{NULL} (default) uses the path recorded in the manifest.}
     }
     \if{html}{\out{</div>}}
   }

@@ -2,17 +2,17 @@
 % Please edit documentation in R/ExploreDatasetH5AD.R
 \name{ExploreDatasetH5AD}
 \alias{ExploreDatasetH5AD}
-\title{Concrete `ExploreDataset` backend over a canonical AnnData (`.h5ad`)}
+\title{Concrete \code{ExploreDataset} backend over a canonical AnnData (\code{.h5ad})}
 \value{
-An R6 class generator; `$new()` returns an `ExploreDatasetH5AD`
-  object.
+An R6 class generator; \verb{$new()} returns an \code{ExploreDatasetH5AD}
+object.
 }
 \description{
 Reads a canonical exploreDE/1.0 AnnData and implements the accessor
-contract inherited from [ExploreDataset]. Accepts a path to a `.h5ad`
-file or a live `anndataR` object. This is the backend for user-supplied
+contract inherited from \link{ExploreDataset}. Accepts a path to a \code{.h5ad}
+file or a live \code{anndataR} object. This is the backend for user-supplied
 data ("bring your own data") and the eventual single backend once
-producers emit canonical `.h5ad` directly.
+producers emit canonical \code{.h5ad} directly.
 }
 \examples{
 library(SummarizedExperiment)
@@ -98,8 +98,8 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-initialize"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-initialize}{}}}
 \subsection{\code{ExploreDatasetH5AD$new()}}{
-  Read a canonical `.h5ad` or take a live AnnData, build the config from it unless one is given,
-  and prepare the feature and DE tables.
+  Read a canonical \code{.h5ad} or take a live AnnData, build the config from it unless one is given,
+and prepare the feature and DE tables.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$new(input, config = NULL)}
@@ -108,8 +108,8 @@ head(eds$de("B_vs_A"))
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{input}}{An `anndataR` AnnData object, or a path to an existing `.h5ad` file.}
-      \item{\code{config}}{Optional pre-built config list; built from the AnnData when `NULL`.}
+      \item{\code{input}}{An \code{anndataR} AnnData object, or a path to an existing \code{.h5ad} file.}
+      \item{\code{config}}{Optional pre-built config list; built from the AnnData when \code{NULL}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -119,8 +119,8 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-backend"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-backend}{}}}
 \subsection{\code{ExploreDatasetH5AD$backend()}}{
-  The AnnData parts read at construction, as `list(obs, var, layers, varm, uns)` of plain R
-  objects.
+  The AnnData parts read at construction, as \code{list(obs, var, layers, varm, uns)} of plain R
+objects.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$backend()}
@@ -132,7 +132,7 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-backend_kind"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-backend_kind}{}}}
 \subsection{\code{ExploreDatasetH5AD$backend_kind()}}{
-  Returns `"h5ad"`.
+  Returns \code{"h5ad"}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$backend_kind()}
@@ -144,8 +144,8 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-samples"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-samples}{}}}
 \subsection{\code{ExploreDatasetH5AD$samples()}}{
-  Sample metadata from `obs`, with the `factor_` prefix stripped from column names and a `Name`
-  column added when missing.
+  Sample metadata from \code{obs}, with the \code{factor_} prefix stripped from column names and a \code{Name}
+column added when missing.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$samples()}
@@ -157,8 +157,8 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-features"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-features}{}}}
 \subsection{\code{ExploreDatasetH5AD$features()}}{
-  Feature annotation from `var`, with `feature_id` and `display_name` columns, ordered by the
-  p-value of the primary contrast.
+  Feature annotation from \code{var}, with \code{feature_id} and \code{display_name} columns, ordered by the
+p-value of the primary contrast.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$features()}
@@ -170,8 +170,8 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-de"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-de}{}}}
 \subsection{\code{ExploreDatasetH5AD$de()}}{
-  DE table of one contrast from `varm`, with the legacy aliases `log2Ratio`, `pValue` and `fdr`
-  added; an empty data.frame when the slot is missing. Errors on an unknown contrast.
+  DE table of one contrast from \code{varm}, with the legacy aliases \code{log2Ratio}, \code{pValue} and \code{fdr}
+added; an empty data.frame when the slot is missing. Errors on an unknown contrast.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$de(contrast)}
@@ -180,7 +180,7 @@ head(eds$de("B_vs_A"))
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -191,7 +191,7 @@ head(eds$de("B_vs_A"))
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-assay_names}{}}}
 \subsection{\code{ExploreDatasetH5AD$assay_names()}}{
   Canonical assay names from the config's assay map whose layer exists; computed assays are
-  always included.
+always included.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$assay_names()}
@@ -203,8 +203,8 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-assay}{}}}
 \subsection{\code{ExploreDatasetH5AD$assay()}}{
-  One assay as a features x samples matrix (the layer transposed); `normalised`,
-  `normalised_log2`, `vst`, `fpkm` and `tpm` are computed when the config maps them to no layer.
+  One assay as a features x samples matrix (the layer transposed); \code{normalised},
+\code{normalised_log2}, \code{vst}, \code{fpkm} and \code{tpm} are computed when the config maps them to no layer.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$assay(name, features = NULL, samples = NULL)}
@@ -213,9 +213,9 @@ head(eds$de("B_vs_A"))
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{name}}{Canonical assay name, one of `assay_names()`.}
-      \item{\code{features}}{Feature IDs (rows) to keep; `NULL` keeps all.}
-      \item{\code{samples}}{Sample IDs (columns) to keep; `NULL` keeps all.}
+      \item{\code{name}}{Canonical assay name, one of \code{assay_names()}.}
+      \item{\code{features}}{Feature IDs (rows) to keep; \code{NULL} keeps all.}
+      \item{\code{samples}}{Sample IDs (columns) to keep; \code{NULL} keeps all.}
     }
     \if{html}{\out{</div>}}
   }
@@ -226,7 +226,7 @@ head(eds$de("B_vs_A"))
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-enrichment}{}}}
 \subsection{\code{ExploreDatasetH5AD$enrichment()}}{
   Enrichment results of one contrast and kind: decoded from the serialised objects in older files,
-  otherwise rebuilt from `uns$enrichment` and `uns$enrichment_support`.
+otherwise rebuilt from \code{uns$enrichment} and \code{uns$enrichment_support}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$enrichment(contrast, kind)}
@@ -235,8 +235,8 @@ head(eds$de("B_vs_A"))
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
-      \item{\code{kind}}{`"ora"` or `"gsea"`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
+      \item{\code{kind}}{\code{"ora"} or \code{"gsea"}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -246,8 +246,8 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-enrichment_table"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-enrichment_table}{}}}
 \subsection{\code{ExploreDatasetH5AD$enrichment_table()}}{
-  Tidy enrichment table of one contrast and kind: the table stored in `uns$enrichment` when
-  present, otherwise derived from `enrichment()` as in the base class.
+  Tidy enrichment table of one contrast and kind: the table stored in \code{uns$enrichment} when
+present, otherwise derived from \code{enrichment()} as in the base class.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$enrichment_table(contrast, kind)}
@@ -256,8 +256,8 @@ head(eds$de("B_vs_A"))
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
-      \item{\code{kind}}{`"ora"` or `"gsea"`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
+      \item{\code{kind}}{\code{"ora"} or \code{"gsea"}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -267,8 +267,8 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-enrichment_input"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-enrichment_input}{}}}
 \subsection{\code{ExploreDatasetH5AD$enrichment_input()}}{
-  Enrichment inputs rebuilt from the DE table: `features()`, log2 fold changes sorted decreasing,
-  and up/down feature selections at the contrast's FDR and log2FC thresholds.
+  Enrichment inputs rebuilt from the DE table: \code{features()}, log2 fold changes sorted decreasing,
+and up/down feature selections at the contrast's FDR and log2FC thresholds.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$enrichment_input(contrast)}
@@ -277,7 +277,7 @@ head(eds$de("B_vs_A"))
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
     }
     \if{html}{\out{</div>}}
   }

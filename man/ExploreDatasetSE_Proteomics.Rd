@@ -2,24 +2,24 @@
 % Please edit documentation in R/ExploreDatasetSE_Proteomics.R
 \name{ExploreDatasetSE_Proteomics}
 \alias{ExploreDatasetSE_Proteomics}
-\title{Concrete subclass for FGCZ proteomics `SummarizedExperiment` outputs}
+\title{Concrete subclass for FGCZ proteomics \code{SummarizedExperiment} outputs}
 \value{
-An R6 class generator; `$new()` returns an
-  `ExploreDatasetSE_Proteomics` object.
+An R6 class generator; \verb{$new()} returns an
+\code{ExploreDatasetSE_Proteomics} object.
 }
 \description{
-Reads from a prolfqua-derived SE. Top-level `rowData(se)` is sparse;
+Reads from a prolfqua-derived SE. Top-level \code{rowData(se)} is sparse;
 feature metadata and per-contrast DE statistics live nested inside
-`rowData(se)$constrast_<name>` DataFrames (note the SUSHI typo is
+\verb{rowData(se)$constrast_<name>} DataFrames (note the SUSHI typo is
 preserved). The first contrast is the source of truth for feature
-metadata. `feature_id` is **built** from `protein_Id` (+ `site` /
-`peptide_Id` to disambiguate), and the assay matrices' rownames are
-remapped via `.fid_lookup` since SE rownames do not match the built
-`feature_id`s.
+metadata. \code{feature_id} is \strong{built} from \code{protein_Id} (+ \code{site} /
+\code{peptide_Id} to disambiguate), and the assay matrices' rownames are
+remapped via \code{.fid_lookup} since SE rownames do not match the built
+\code{feature_id}s.
 }
 \details{
-Inherits the accessor contract from [ExploreDataset] via
-[ExploreDatasetSE]; overrides `.build_config()` and `.prep()`.
+Inherits the accessor contract from \link{ExploreDataset} via
+\link{ExploreDatasetSE}; overrides \code{.build_config()} and \code{.prep()}.
 }
 \examples{
 se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))

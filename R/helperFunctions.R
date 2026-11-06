@@ -37,7 +37,7 @@ go_annotation_columns <- function(df) {
 
 #' features_in_go_term
 #' Which rows of a feature table are annotated to one GO term, looking in
-#' whichever GO columns the table has (see [go_annotation_columns()]). Each
+#' whichever GO columns the table has (see `go_annotation_columns()`). Each
 #' column holds `"; "`-separated GO ids; `NA` means no annotation.
 #'
 #' @param df A feature or DE table (`data.frame`).

@@ -1,0 +1,32 @@
+url: https://fgcz.github.io/exploreDE/
+
+template:
+  bootstrap: 5
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    github:
+      icon: fa-github
+      href: https://github.com/fgcz/exploreDE
+      aria-label: GitHub repository
+
+reference:
+  - title: Run the app
+    contents:
+      - exploreDE
+  - title: Build and check exploreDE files
+    desc: Write an `.h5ad` in the exploreDE/1.0 layout, open it as a dataset, and check it.
+    contents:
+      - build_explore_h5ad
+      - new_explore_dataset
+      - validate_explore_dataset
+  - title: Dataset classes
+    desc: The accessor API the app reads every dataset through, one class per storage backend.
+    contents:
+      - ExploreDataset
+      - ExploreDatasetH5AD
+      - ExploreDatasetSE
+      - starts_with("ExploreDatasetSE_")

@@ -2,21 +2,21 @@
 % Please edit documentation in R/ExploreDatasetSE_RNASeq.R
 \name{ExploreDatasetSE_RNASeq}
 \alias{ExploreDatasetSE_RNASeq}
-\title{Concrete subclass for SUSHI RNA-seq `SummarizedExperiment` outputs}
+\title{Concrete subclass for SUSHI RNA-seq \code{SummarizedExperiment} outputs}
 \value{
-An R6 class generator; `$new()` returns an
-  `ExploreDatasetSE_RNASeq` object.
+An R6 class generator; \verb{$new()} returns an
+\code{ExploreDatasetSE_RNASeq} object.
 }
 \description{
 Reads from a SUSHI ezApp DESeq2 / edgeR / limma result. Top-level
-`rowData(se)` carries feature annotations plus inline DE columns for
-the single contrast described by `param$comparison`. Optional
-pre-computed `enrichResult` / `gseaResult` objects live in
-`metadata(se)`.
+\code{rowData(se)} carries feature annotations plus inline DE columns for
+the single contrast described by \code{param$comparison}. Optional
+pre-computed \code{enrichResult} / \code{gseaResult} objects live in
+\code{metadata(se)}.
 }
 \details{
-Inherits the accessor contract from [ExploreDataset] via
-[ExploreDatasetSE]; overrides only `.build_config()` and `.prep()`.
+Inherits the accessor contract from \link{ExploreDataset} via
+\link{ExploreDatasetSE}; overrides only \code{.build_config()} and \code{.prep()}.
 }
 \examples{
 se <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))

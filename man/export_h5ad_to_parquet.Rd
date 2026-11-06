@@ -2,24 +2,24 @@
 % Please edit documentation in R/export_parquet_dir.R
 \name{export_h5ad_to_parquet}
 \alias{export_h5ad_to_parquet}
-\title{Export a canonical `.h5ad` to the parquet directory exploreDElight reads}
+\title{Export a canonical \code{.h5ad} to the parquet directory exploreDElight reads}
 \usage{
 export_h5ad_to_parquet(input, out, quiet = TRUE)
 }
 \arguments{
-\item{input}{Path to a canonical exploreDE/1.0 `.h5ad`, or a live
-`anndataR` object.}
+\item{input}{Path to a canonical exploreDE/1.0 \code{.h5ad}, or a live
+\code{anndataR} object.}
 
 \item{out}{Output directory; created if absent.}
 
 \item{quiet}{Suppress per-layer progress messages.}
 }
 \value{
-`out`, invisibly.
+\code{out}, invisibly.
 }
 \description{
-Writes the directory layout consumed by [ExploreDatasetParquet]:
-`manifest.json`, `obs.parquet`, `var.parquet`, `uns.json`,
-`layers/<name>.parquet` and `varm/<slot>.parquet`.
+Writes the directory layout consumed by \link{ExploreDatasetParquet}:
+\code{manifest.json}, \code{obs.parquet}, \code{var.parquet}, \code{uns.json},
+\verb{layers/<name>.parquet} and \verb{varm/<slot>.parquet}.
 }
 \keyword{internal}

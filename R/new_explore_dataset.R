@@ -47,7 +47,7 @@ detect_se_shape <- function(se) {
 #'
 #' Factory function: loads the input (or accepts a live
 #' `SummarizedExperiment`), classifies its shape via
-#' [detect_se_shape()], and returns the appropriate concrete subclass.
+#' `detect_se_shape()`, and returns the appropriate concrete subclass.
 #'
 #' Accepted inputs:
 #' - A live `SummarizedExperiment` object.

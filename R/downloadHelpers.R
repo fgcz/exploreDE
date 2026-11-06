@@ -87,7 +87,7 @@ export_plot_standard <- function(plot_object, filename, format = "pdf", dpi = 30
 
 #' Generate Consistent Filename
 #'
-#' Creates a standardized filename in the format: [design]_[base]_[suffix].[ext]
+#' Creates a standardized filename in the format: `[design]_[base]_[suffix].[ext]`
 #'
 #' @param base_name Core name of the file (e.g., "volcano", "heatmap")
 #' @param suffix Optional suffix (e.g., "counts", "stats")

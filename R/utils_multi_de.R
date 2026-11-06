@@ -80,9 +80,9 @@ ldap_allows_project <- function(lookup, project) {
 #' Load one SUSHI DE result directory for the multi-DE tabs
 #'
 #' Reads `deResult.rds` (or `deResult.qs2`), converts it with
-#' [convert_genomics_se()], makes sure a `log2Ratio` column exists, and adds a
+#' `convert_genomics_se()`, makes sure a `log2Ratio` column exists, and adds a
 #' `Label` column ("ID\\nDescription") to its ORA and GSEA results. Only call it
-#' on a directory returned by [multi_resolve_dataset()].
+#' on a directory returned by `multi_resolve_dataset()`.
 #'
 #' @param path A result directory holding `deResult.rds` or `deResult.qs2`.
 #' @return The converted list, with `ora` / `gsea` when GO was run, or `NULL`

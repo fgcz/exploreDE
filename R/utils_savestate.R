@@ -67,7 +67,7 @@ save_state_fingerprint <- function(eds, dataDir = NULL) {
 #' match (this also covers the NA-dataDir teaching/local case, and catches a
 #' dataset regenerated in place).
 #'
-#' @param a,b Fingerprints from [save_state_fingerprint()] (or `NULL`).
+#' @param a,b Fingerprints from `save_state_fingerprint()` (or `NULL`).
 #' @return `TRUE` only if the two denote the same dataset.
 #' @noRd
 save_state_fp_match <- function(a, b) {
@@ -121,7 +121,7 @@ restore_default_value <- function(id, computed_default, valid = NULL, restoring,
 
 #' Pick the restorable Multi DE widgets from a Shiny input snapshot
 #'
-#' Keeps the `multi*` inputs [save_state_filter_inputs()] leaves out, minus the
+#' Keeps the `multi*` inputs `save_state_filter_inputs()` leaves out, minus the
 #' ones a restore must not replay: File uploads, the project browser's
 #' checkboxes, the order bucket (the dataset order is restored directly),
 #' table-selection and download echoes, and action buttons.

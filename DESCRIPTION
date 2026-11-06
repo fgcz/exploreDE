@@ -15,7 +15,7 @@ Description: A Shiny application to help users explore and enjoy their 'omics
   FGCZ SUSHI and prolfqua pipelines. App settings are saved and restored as
   JSON session files.
 License: MIT + file LICENSE
-URL: https://github.com/fgcz/exploreDE
+URL: https://fgcz.github.io/exploreDE/, https://github.com/fgcz/exploreDE
 BugReports: https://github.com/fgcz/exploreDE/issues
 biocViews: Software, ShinyApps, GUI, Visualization, DifferentialExpression,
   GeneExpression, RNASeq, Transcriptomics, Proteomics, CRISPR,
@@ -97,4 +97,5 @@ Suggests:
   devtools
 VignetteBuilder: knitr
 Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.1.1

@@ -4,16 +4,16 @@
 \alias{ExploreDatasetSE_CrisprCountQC}
 \title{Concrete subclass for CRISPR Mageck CountQC outputs}
 \value{
-An R6 class generator; `$new()` returns an
-  `ExploreDatasetSE_CrisprCountQC` object.
+An R6 class generator; \verb{$new()} returns an
+\code{ExploreDatasetSE_CrisprCountQC} object.
 }
 \description{
-Identical to [ExploreDatasetSE_CountQC] plus a sgRNA → gene mapping
+Identical to \link{ExploreDatasetSE_CountQC} plus a sgRNA → gene mapping
 parsed from the SE feature IDs, which are assumed to follow the
-`GENE_<n>_<SEQUENCE>` convention.
+\verb{GENE_<n>_<SEQUENCE>} convention.
 }
 \details{
-Inherits `.prep()` from [ExploreDatasetSE_CountQC] unchanged.
+Inherits \code{.prep()} from \link{ExploreDatasetSE_CountQC} unchanged.
 }
 \examples{
 library(SummarizedExperiment)

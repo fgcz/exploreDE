@@ -7,19 +7,19 @@
 exploreDE(file = NULL, ...)
 }
 \arguments{
-\item{file}{Optional path to an exploreDE `.h5ad`, a SummarizedExperiment
-`.rds`/`.qs2`, or a SUSHI result directory.}
+\item{file}{Optional path to an exploreDE \code{.h5ad}, a SummarizedExperiment
+\code{.rds}/\code{.qs2}, or a SUSHI result directory.}
 
-\item{...}{Passed to [shiny::runApp()] (e.g. `port`, `launch.browser`).}
+\item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}} (e.g. \code{port}, \code{launch.browser}).}
 }
 \value{
-Called to run the app; returns the value passed to [shiny::stopApp()]
-  when the app stops (usually `NULL`), as [shiny::runApp()] does.
+Called to run the app; returns the value passed to \code{\link[shiny:stopApp]{shiny::stopApp()}}
+when the app stops (usually \code{NULL}), as \code{\link[shiny:runApp]{shiny::runApp()}} does.
 }
 \description{
-Opens the app locally. With no `file`, it starts on the landing page, where
-you can upload an `.h5ad` built with [build_explore_h5ad()] or load the demo
-dataset. With `file`, it opens straight into that dataset.
+Opens the app locally. With no \code{file}, it starts on the landing page, where
+you can upload an \code{.h5ad} built with \code{\link[=build_explore_h5ad]{build_explore_h5ad()}} or load the demo
+dataset. With \code{file}, it opens straight into that dataset.
 }
 \examples{
 if (interactive()) {

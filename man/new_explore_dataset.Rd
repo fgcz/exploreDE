@@ -2,7 +2,7 @@
 % Please edit documentation in R/new_explore_dataset.R
 \name{new_explore_dataset}
 \alias{new_explore_dataset}
-\title{Construct an `ExploreDataset` instance from a path, URL, or SE}
+\title{Construct an \code{ExploreDataset} instance from a path, URL, or SE}
 \usage{
 new_explore_dataset(input, config = NULL)
 }
@@ -12,21 +12,23 @@ new_explore_dataset(input, config = NULL)
 \item{config}{Optional pre-built config list; advanced use only.}
 }
 \value{
-An object inheriting from [ExploreDataset].
+An object inheriting from \link{ExploreDataset}.
 }
 \description{
 Factory function: loads the input (or accepts a live
-`SummarizedExperiment`), classifies its shape via
-[detect_se_shape()], and returns the appropriate concrete subclass.
+\code{SummarizedExperiment}), classifies its shape via
+\code{detect_se_shape()}, and returns the appropriate concrete subclass.
 }
 \details{
 Accepted inputs:
-- A live `SummarizedExperiment` object.
-- A character path to an `.rds` / `.qs2` file.
-- A character path to a `.RData` file (Mageck EzResult convention).
-- A character path to a directory containing one of the standard
-  SUSHI artefacts (`deResult.rds`, `rawData_final.rds`, etc.).
-- An `http(s)://` URL pointing at an `.rds` file.
+\itemize{
+\item A live \code{SummarizedExperiment} object.
+\item A character path to an \code{.rds} / \code{.qs2} file.
+\item A character path to a \code{.RData} file (Mageck EzResult convention).
+\item A character path to a directory containing one of the standard
+SUSHI artefacts (\code{deResult.rds}, \code{rawData_final.rds}, etc.).
+\item An \verb{http(s)://} URL pointing at an \code{.rds} file.
+}
 }
 \examples{
 # From a live SummarizedExperiment
