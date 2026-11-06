@@ -26,7 +26,7 @@ observe({
       "RNASeq" = "Normalised + Log2",
       "CountQC" = "Normalised + Log2",
       "CrisprCountQC" = "Normalised + Log2",
-      "proteomics" = "transformedData",
+      "proteomics" = "intensities",
       "Normalised + Log2" # Fallback
     )
   )
@@ -276,11 +276,11 @@ multiBoxplotCountsReactive <- eventReactive(
     countsBoxplot <- d$countList[[input$multiBoxplotCounts]]
 
     # Transformations
-    # prolfquapp assays on log2 scale: transformedData, imputedData (rawData,
-    # ibaq and nr_children are not).
+    # Proteomics: the transformed intensities are log2, the raw ones are not
+    # (as assay_is_log2()).
     is_logged <- input$multiBoxplotCounts %in%
       c("Normalised + Log2", "VST") ||
-      (d$dataType == "proteomics" && input$multiBoxplotCounts %in% c("transformedData", "imputedData"))
+      (d$dataType == "proteomics" && identical(input$multiBoxplotCounts, "intensities"))
     if (input$multiBoxplotCountsLog) {
       if (d$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         if (input$multiBoxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
