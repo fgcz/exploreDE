@@ -124,6 +124,8 @@ build_explore_h5ad(
 ```
 
 `de` and `pathways` are named by contrast; add one entry per contrast.
+Name a contrast `<test>_vs_<reference>`, where both groups are levels of
+one `coldata` factor (`diff_vs_undiff` above); other names are an error.
 
 Pathway results can be clusterProfiler objects (`enrichResult`,
 `gseaResult`), plain data.frames, or nested lists of either (as above:

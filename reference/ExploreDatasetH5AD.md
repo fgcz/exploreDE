@@ -209,9 +209,8 @@ when the config maps them to no layer.
 
 ### `ExploreDatasetH5AD$enrichment()`
 
-Enrichment results of one contrast and kind: decoded from the serialised
-objects in older files, otherwise rebuilt from `uns$enrichment` and
-`uns$enrichment_support`.
+Enrichment results of one contrast and kind, rebuilt from
+`uns$enrichment` and `uns$enrichment_support`.
 
 #### Usage
 

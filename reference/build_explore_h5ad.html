@@ -112,7 +112,9 @@ per-feature pathway annotation columns, e.g. <code>GO BP</code>).</p></dd>
 
 <dt id="arg-de">de<a class="anchor" aria-label="anchor" href="#arg-de"></a></dt>
 <dd><p>Optional named list of DE tables keyed by contrast
-(<code>DESeqResults</code> / <code>data.frame</code>). Columns are recognised by the column
+(<code>DESeqResults</code> / <code>data.frame</code>). Name each contrast
+<code>&lt;test&gt;_vs_&lt;reference&gt;</code>, with both groups levels of one <code>coldata</code>
+factor (an error otherwise). Columns are recognised by the column
 dictionary (<code>inst/dictionaries/column_patterns.json</code>), overridable with
 <code>de_columns</code>. An optional extra score column (e.g. SAINTexpress's
 <code>SaintScore</code>) is picked up by the dictionary alone and shown for display

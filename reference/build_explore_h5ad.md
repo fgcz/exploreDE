@@ -64,7 +64,9 @@ build_explore_h5ad(
 - de:
 
   Optional named list of DE tables keyed by contrast (`DESeqResults` /
-  `data.frame`). Columns are recognised by the column dictionary
+  `data.frame`). Name each contrast `<test>_vs_<reference>`, with both
+  groups levels of one `coldata` factor (an error otherwise). Columns
+  are recognised by the column dictionary
   (`inst/dictionaries/column_patterns.json`), overridable with
   `de_columns`. An optional extra score column (e.g. SAINTexpress's
   `SaintScore`) is picked up by the dictionary alone and shown for

@@ -16,8 +16,9 @@ validate_explore_dataset(eds, strict = TRUE)
 
 - strict:
 
-  If `TRUE` (default), [`stop()`](https://rdrr.io/r/base/stop.html) on
-  the first failure. If `FALSE`, returns `list(ok, errors)`.
+  If `TRUE` (default), [`stop()`](https://rdrr.io/r/base/stop.html)
+  listing every failure. If `FALSE`, returns `list(ok, errors)` and
+  never throws: a failing accessor is recorded as an error.
 
 ## Value
 
@@ -32,13 +33,14 @@ Invisibly, `TRUE` on success (strict mode); or
 2.  Cross-references resolve: `factor_names()` are columns of
     [`samples()`](https://rdrr.io/pkg/Biobase/man/class.MIAME.html);
     every [`contrasts()`](https://rdrr.io/r/stats/contrasts.html) entry
-    has a working [`de()`](https://rdrr.io/r/utils/dataentry.html);
-    `primary_grouping()` is a member of `factor_names()`;
-    `primary_contrast()` is in
+    has a working [`de()`](https://rdrr.io/r/utils/dataentry.html) with
+    the `effect_log2fc` and `score_fdr` columns; `primary_grouping()` is
+    a member of `factor_names()`; `primary_contrast()` is in
     [`contrasts()`](https://rdrr.io/r/stats/contrasts.html) (or `NA`).
 
-3.  Sample / feature alignment: assay rownames / colnames agree with
-    `sample_ids()` / `feature_ids()`.
+3.  Assays: `raw_assay_name()` and `primary_assay_name()` are in
+    `assay_names()`, and the raw assay's rownames / colnames agree with
+    `feature_ids()` / `sample_ids()`.
 
 Cost is proportional to the number of contrasts (one `de(c)` round-trip
 each) plus a small constant of other accessor calls.

@@ -208,7 +208,10 @@ its metadata.</p>
 <span><span class="co">#&gt; Loading required namespace: DOSE</span></span>
 <span><span class="co">#&gt; </span></span></code></pre></div>
 <p><code>de</code> and <code>pathways</code> are named by contrast; add
-one entry per contrast.</p>
+one entry per contrast. Name a contrast
+<code>&lt;test&gt;_vs_&lt;reference&gt;</code>, where both groups are
+levels of one <code>coldata</code> factor (<code>diff_vs_undiff</code>
+above); other names are an error.</p>
 <p>Pathway results can be clusterProfiler objects
 (<code>enrichResult</code>, <code>gseaResult</code>), plain data.frames,
 or nested lists of either (as above: BP/MF/CC × up/down/both). A plain

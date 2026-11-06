@@ -2,6 +2,88 @@
 
 ## exploreDE 3.10.0
 
+- Security: an `.h5ad` can no longer run code when its pathway tabs
+  open. The reader decoded `uns$enrichment_native` with
+  [`unserialize()`](https://rdrr.io/r/base/serialize.html), which runs
+  code embedded in the file; that block is now ignored, and
+  [`export_h5ad_to_parquet()`](https://fgcz.github.io/exploreDE/reference/export_h5ad_to_parquet.md)
+  no longer copies it. Files written before 2026-09-25 that carry their
+  ORA/GSEA results only in that block show no enrichment; rebuild them
+  with
+  [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md).
+- Security: a `?data=` link whose path contains “zip” no longer loads a
+  fixed 2023 proteomics dataset over `ssh` before the access check; that
+  leftover debugging branch is removed.
+- Security: Multi DE “Browse Projects” lists a project’s analysis
+  folders only for users with access to it. A link the user was denied
+  no longer leaves its project browsable after loading the demo or an
+  upload.
+- [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  aligns every count matrix to the samples by column name. A second
+  matrix (for example `tpm`) with its samples in another order was
+  stored under the wrong sample labels; a matrix with different samples
+  is now an error.
+- [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  keeps the values of duplicated feature ids. Every duplicate after the
+  first was stored as an all-NA row, although the warning said the ids
+  were made unique.
+- [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  stops when two count matrices map to the same layer (for example `raw`
+  and `counts`) or two contrast names to the same storage key (for
+  example `B_vs_A` and `b-vs-a`). Before, one of them was silently
+  dropped.
+- DE Table: the significance calculator and the “selected” and
+  “filtered” downloads always use the selected contrast. Each contrast
+  change registered another copy of their handlers, so after switching,
+  a copy for an earlier contrast could answer, and selected row numbers
+  could be applied to the earlier contrast’s table.
+- Breaking: an `.h5ad` must carry `uns` `schema_version`
+  (`"exploreDE/1.0"`), `omics_type` and `feature_id_kind`, as the spec
+  requires; a file without them is refused with a message naming the
+  missing key. Before, defaults were filled in: a proteomics file with a
+  missing or misspelt `omics_type` loaded as RNA-seq (VST and
+  normalisation computed on log2 intensities), and any AnnData loaded as
+  exploreDE/1.0. Files written by
+  [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  carry all three.
+- Breaking:
+  [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  requires contrast names of the form `<test>_vs_<reference>`, with both
+  groups levels of one `coldata` factor, and records that factor as
+  `factor_used`. Before, it stored any name split at `_vs_` as the
+  groups (`contrast1` gave the reference group “NA”).
+- [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  writes proteomics layers under the spec’s names: a single matrix as
+  `intensities`, raw ones (`raw`, `counts`) as `intensities_raw`.
+  Before, the single matrix became `counts`. `uns$de` records
+  `model = "DESeq2"` only for DESeq2 results, instead of for every
+  table, and `enrichment_filter$padj_max` only for pathway tables that
+  were filtered.
+- [`validate_explore_dataset()`](https://fgcz.github.io/exploreDE/reference/validate_explore_dataset.md)
+  also fails on DE tables without `effect_log2fc` or `score_fdr`, and on
+  a raw or primary assay that is not offered. With `strict = FALSE` it
+  no longer throws when
+  [`samples()`](https://rdrr.io/pkg/Biobase/man/class.MIAME.html) fails,
+  and records a failing `assay_names()` instead of skipping the check.
+- The DESCRIPTION declares every package the app uses: pathview,
+  enrichplot, KEGGREST, ggvenn, cowplot, colorspace, scales and tidyr
+  were missing, so on a fresh install the app failed at startup
+  (pathview) or when reaching the Venn diagram (ggvenn). The two
+  `shinyalert` pop-ups are now Shiny’s own modal and notification, so
+  shinyalert is no longer needed.
+- Heatmap and Ordination treat peptide and phospho datasets like protein
+  datasets when choosing the batch-correction defaults: with two
+  factors, the design is locked to the group factor, as Boxplot and
+  Correlation already did. Before, the design defaulted to “None”, so
+  batch correction did not protect the group effect. All four tabs now
+  use one rule.
+- Batch correction is no longer applied to raw (linear) proteomics
+  intensities as if they were log2: the tabs say that log-scale data is
+  needed, as they do for raw RNA-seq counts. Only the transformed
+  intensities count as log2.
+- The proteomics Volcano download file names carry the contrast, and the
+  colour-template file name the dataset’s design label. Both used to
+  take a value set by the ORA tab.
 - The version follows Bioconductor’s numbering, where an even middle
   number marks a release.
 - anndataR is installed from Bioconductor: the DESCRIPTION no longer has

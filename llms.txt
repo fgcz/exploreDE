@@ -4,6 +4,9 @@ exploreDE is a Shiny app for exploring differential expression results
 from RNA-seq, proteomics and CRISPR screens, and for making
 publication-quality figures from them.
 
+Documentation website: <https://fgcz.github.io/exploreDE/> (help pages,
+the bring-your-own-data vignette, changelog).
+
 ## Install and run
 
 ``` r

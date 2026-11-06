@@ -22,8 +22,6 @@ only the loader differs.
 
 - [`ExploreDatasetParquet$backend_kind()`](#method-ExploreDatasetParquet-backend_kind)
 
-- [`ExploreDatasetParquet$enrichment()`](#method-ExploreDatasetParquet-enrichment)
-
 - [`ExploreDatasetParquet$manifest()`](#method-ExploreDatasetParquet-manifest)
 
 - [`ExploreDatasetParquet$source_dir()`](#method-ExploreDatasetParquet-source_dir)
@@ -77,6 +75,7 @@ Inherited methods
 - [`ExploreDatasetH5AD$assay_names()`](https://fgcz.github.io/exploreDE/reference/ExploreDatasetH5AD.html#method-assay_names)
 - [`ExploreDatasetH5AD$backend()`](https://fgcz.github.io/exploreDE/reference/ExploreDatasetH5AD.html#method-backend)
 - [`ExploreDatasetH5AD$de()`](https://fgcz.github.io/exploreDE/reference/ExploreDatasetH5AD.html#method-de)
+- [`ExploreDatasetH5AD$enrichment()`](https://fgcz.github.io/exploreDE/reference/ExploreDatasetH5AD.html#method-enrichment)
 - [`ExploreDatasetH5AD$enrichment_input()`](https://fgcz.github.io/exploreDE/reference/ExploreDatasetH5AD.html#method-enrichment_input)
 - [`ExploreDatasetH5AD$enrichment_table()`](https://fgcz.github.io/exploreDE/reference/ExploreDatasetH5AD.html#method-enrichment_table)
 - [`ExploreDatasetH5AD$features()`](https://fgcz.github.io/exploreDE/reference/ExploreDatasetH5AD.html#method-features)
@@ -113,29 +112,6 @@ Returns `"parquet"`.
 #### Usage
 
     ExploreDatasetParquet$backend_kind()
-
-------------------------------------------------------------------------
-
-### `ExploreDatasetParquet$enrichment()`
-
-Enrichment results of one contrast and kind: reads the contrast's
-enrichment payload files on first use, then defers to the `.h5ad`
-backend's implementation.
-
-#### Usage
-
-    ExploreDatasetParquet$enrichment(contrast, kind)
-
-#### Arguments
-
-- `contrast`:
-
-  Contrast name, one of
-  [`contrasts()`](https://rdrr.io/r/stats/contrasts.html).
-
-- `kind`:
-
-  `"ora"` or `"gsea"`.
 
 ------------------------------------------------------------------------
 

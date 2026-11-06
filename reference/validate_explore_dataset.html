@@ -54,8 +54,9 @@
 
 
 <dt id="arg-strict">strict<a class="anchor" aria-label="anchor" href="#arg-strict"></a></dt>
-<dd><p>If <code>TRUE</code> (default), <code><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop()</a></code> on the first failure.
-If <code>FALSE</code>, returns <code>list(ok, errors)</code>.</p></dd>
+<dd><p>If <code>TRUE</code> (default), <code><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop()</a></code> listing every failure.
+If <code>FALSE</code>, returns <code>list(ok, errors)</code> and never throws: a failing
+accessor is recorded as an error.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -69,11 +70,13 @@ If <code>FALSE</code>, returns <code>list(ok, errors)</code>.</p></dd>
 <ol><li><p>The runtime class is a concrete <code>ExploreDataset</code> subclass — not
 the abstract base or intermediate.</p></li>
 <li><p>Cross-references resolve: <code>factor_names()</code> are columns of
-<code><a href="https://rdrr.io/pkg/Biobase/man/class.MIAME.html" class="external-link">samples()</a></code>; every <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code> entry has a working <code><a href="https://rdrr.io/r/utils/dataentry.html" class="external-link">de()</a></code>;
+<code><a href="https://rdrr.io/pkg/Biobase/man/class.MIAME.html" class="external-link">samples()</a></code>; every <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code> entry has a working <code><a href="https://rdrr.io/r/utils/dataentry.html" class="external-link">de()</a></code> with
+the <code>effect_log2fc</code> and <code>score_fdr</code> columns;
 <code>primary_grouping()</code> is a member of <code>factor_names()</code>;
 <code>primary_contrast()</code> is in <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code> (or <code>NA</code>).</p></li>
-<li><p>Sample / feature alignment: assay rownames / colnames agree
-with <code>sample_ids()</code> / <code>feature_ids()</code>.</p></li>
+<li><p>Assays: <code>raw_assay_name()</code> and <code>primary_assay_name()</code> are in
+<code>assay_names()</code>, and the raw assay's rownames / colnames agree
+with <code>feature_ids()</code> / <code>sample_ids()</code>.</p></li>
 </ol><p>Cost is proportional to the number of contrasts (one <code>de(c)</code>
 round-trip each) plus a small constant of other accessor calls.</p>
     </div>
