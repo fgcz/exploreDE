@@ -75,6 +75,23 @@
   no longer throws when
   [`samples()`](https://rdrr.io/pkg/Biobase/man/class.MIAME.html) fails,
   and records a failing `assay_names()` instead of skipping the check.
+- Multi DE Manual Import loads the datasets when all twelve link boxes
+  are filled; before, nothing loaded. An import file whose first cell is
+  empty no longer ends the session.
+- Proteomics results whose `protein_Id` has gaps (SAINT, for example)
+  load: a missing id is replaced by the row name. Before, one missing id
+  stopped the dataset from loading, and two or more could replace every
+  feature id by its row name. A table without a `protein_Id` column is
+  refused with a message that lists its columns.
+- Batch correction is skipped, with a message, when the batch or design
+  column has missing values. A missing value in the design column
+  stopped the tab with “number of rows of matrices must match”.
+- Ordination (PCA, PCoA, NMDS) leaves out features with missing values
+  instead of samples. Proteomics data has missing values in every
+  sample, so when “Use top n features” covered all features (the default
+  for datasets with fewer than 500), no plot appeared.
+- Ordination: FGCZ staff see the “Preprocessing order” settings again;
+  everybody saw the staff-only message instead.
 - The DESCRIPTION declares every package the app uses: pathview,
   enrichplot, KEGGREST, ggvenn, cowplot, colorspace, scales and tidyr
   were missing, so on a fresh install the app failed at startup
