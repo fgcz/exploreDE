@@ -555,7 +555,7 @@
       if (!col %in% colnames(can)) {
         can[[col]] <- rep(NA_real_, length(fid))
       }
-      if (col %in% colnames(d)) can[[col]][pos] <- suppressWarnings(as.numeric(d[[col]]))[ok]
+      if (col %in% colnames(d)) can[[col]][pos] <- eds_as_numeric(d[[col]])[ok]
     }
     # Whether each feature entered the test (e.g. SUSHI's usedInTest), when the
     # DE table says so; found by the dictionary only. Features the table

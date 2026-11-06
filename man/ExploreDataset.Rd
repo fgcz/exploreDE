@@ -79,7 +79,7 @@ try(ExploreDataset$new())
     \item \href{#method-ExploreDataset-proteomics_choices}{\code{ExploreDataset$proteomics_choices()}}
     \item \href{#method-ExploreDataset-all_pathways}{\code{ExploreDataset$all_pathways()}}
     \item \href{#method-ExploreDataset-source}{\code{ExploreDataset$source()}}
-    \item \href{#method-ExploreDataset-print}{\code{ExploreDataset$print()}}
+    \item \href{#method-ExploreDataset-format}{\code{ExploreDataset$format()}}
     \item \href{#method-ExploreDataset-clone}{\code{ExploreDataset$clone()}}
   }
 }
@@ -788,14 +788,14 @@ try(ExploreDataset$new())
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ExploreDataset-print"></a>}}
-\if{latex}{\out{\hypertarget{method-ExploreDataset-print}{}}}
-\subsection{\code{ExploreDataset$print()}}{
-  Print a summary of the dataset (type, dimensions, factors, contrasts, assays, enrichment)
-  and return the object invisibly.
+\if{html}{\out{<a id="method-ExploreDataset-format"></a>}}
+\if{latex}{\out{\hypertarget{method-ExploreDataset-format}{}}}
+\subsection{\code{ExploreDataset$format()}}{
+  Summary of the dataset (type, dimensions, factors, contrasts, assays, enrichment), one
+  line per element. `print()` on the object shows these lines.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExploreDataset$print(...)}
+    \preformatted{ExploreDataset$format(...)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{

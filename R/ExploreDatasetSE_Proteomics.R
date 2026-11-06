@@ -23,10 +23,10 @@
     return(d)
   }
   if ("log2_EFCs" %in% colnames(d) && !"log2Ratio" %in% colnames(d)) {
-    d$log2Ratio <- suppressWarnings(as.numeric(d$log2_EFCs))
+    d$log2Ratio <- eds_as_numeric(d$log2_EFCs)
   }
   if ("BFDR" %in% colnames(d) && !"fdr" %in% colnames(d)) {
-    d$fdr <- suppressWarnings(as.numeric(d$BFDR))
+    d$fdr <- eds_as_numeric(d$BFDR)
   }
   if (!"pValue" %in% colnames(d)) {
     d$pValue <- NA_real_

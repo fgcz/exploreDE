@@ -211,15 +211,18 @@ standardise_columns <- function(df) {
 
   orig <- colnames(df)
   current <- orig
-  rename <- function(patterns, to) {
+  rename <- function(current, patterns, to) {
     src <- eds_match_col(orig, patterns, unique = TRUE)
-    if (!is.null(src)) current[match(src, orig)] <<- to
+    if (!is.null(src)) {
+      current[match(src, orig)] <- to
+    }
+    current
   }
   for (concept in rowdata_concepts) {
-    rename(eds_rowdata_column_patterns[[concept]], concept)
+    current <- rename(current, eds_rowdata_column_patterns[[concept]], concept)
   }
   for (concept in names(de_concepts)) {
-    rename(eds_de_column_patterns[[concept]], de_concepts[[concept]])
+    current <- rename(current, eds_de_column_patterns[[concept]], de_concepts[[concept]])
   }
   colnames(df) <- current
   df
