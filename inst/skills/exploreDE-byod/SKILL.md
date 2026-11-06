@@ -59,7 +59,8 @@ Optional:
 - `rowdata`: per-feature annotation (IDs, symbols, description, GO columns).
   Every column is kept.
 - `de`: named list, one DE table (data.frame / `DESeqResults`) per contrast,
-  e.g. `list(Treat_vs_Ctrl = res)`. Only the recognised statistics are kept
+  e.g. `list(Treat_vs_Ctrl = res)`, where `Treat` and `Ctrl` are levels of one
+  `coldata` factor (other names are an error). Only the recognised statistics are kept
   per contrast (log2 fold change, p-value, FDR, optional extra score, optional
   `usedInTest` flag); other
   DE columns are dropped, so put per-feature information in `rowdata`.

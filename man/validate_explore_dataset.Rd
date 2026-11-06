@@ -9,8 +9,9 @@ validate_explore_dataset(eds, strict = TRUE)
 \arguments{
 \item{eds}{An \code{ExploreDataset} instance.}
 
-\item{strict}{If \code{TRUE} (default), \code{stop()} on the first failure.
-If \code{FALSE}, returns \code{list(ok, errors)}.}
+\item{strict}{If \code{TRUE} (default), \code{stop()} listing every failure.
+If \code{FALSE}, returns \code{list(ok, errors)} and never throws: a failing
+accessor is recorded as an error.}
 }
 \value{
 Invisibly, \code{TRUE} on success (strict mode); or
@@ -24,11 +25,13 @@ Checks subclass-agnostic invariants by walking the accessor API:
 \item The runtime class is a concrete \code{ExploreDataset} subclass — not
 the abstract base or intermediate.
 \item Cross-references resolve: \code{factor_names()} are columns of
-\code{samples()}; every \code{contrasts()} entry has a working \code{de()};
+\code{samples()}; every \code{contrasts()} entry has a working \code{de()} with
+the \code{effect_log2fc} and \code{score_fdr} columns;
 \code{primary_grouping()} is a member of \code{factor_names()};
 \code{primary_contrast()} is in \code{contrasts()} (or \code{NA}).
-\item Sample / feature alignment: assay rownames / colnames agree
-with \code{sample_ids()} / \code{feature_ids()}.
+\item Assays: \code{raw_assay_name()} and \code{primary_assay_name()} are in
+\code{assay_names()}, and the raw assay's rownames / colnames agree
+with \code{feature_ids()} / \code{sample_ids()}.
 }
 
 Cost is proportional to the number of contrasts (one \code{de(c)}

@@ -42,7 +42,9 @@ object that carries it.}
 per-feature pathway annotation columns, e.g. \verb{GO BP}).}
 
 \item{de}{Optional named list of DE tables keyed by contrast
-(\code{DESeqResults} / \code{data.frame}). Columns are recognised by the column
+(\code{DESeqResults} / \code{data.frame}). Name each contrast
+\verb{<test>_vs_<reference>}, with both groups levels of one \code{coldata}
+factor (an error otherwise). Columns are recognised by the column
 dictionary (\code{inst/dictionaries/column_patterns.json}), overridable with
 \code{de_columns}. An optional extra score column (e.g. SAINTexpress's
 \code{SaintScore}) is picked up by the dictionary alone and shown for display

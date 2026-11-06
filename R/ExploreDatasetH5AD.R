@@ -28,6 +28,38 @@
 # SE subclass's "test_vs_reference" convention.
 .h5ad_safe <- function(x) gsub("[^A-Za-z0-9_]+", "_", x)
 
+# Spec section 7.1: schema_version, omics_type and feature_id_kind are MUST.
+# Refuse a file without them instead of guessing: the old defaults loaded a
+# proteomics file with a missing or misspelt omics_type as RNA-seq (intensities
+# treated as counts) and any AnnData as exploreDE/1.0.
+.h5ad_require_identity <- function(uns) {
+  fail <- function(what) {
+    stop(
+      "not an exploreDE/1.0 .h5ad: ",
+      what,
+      " (see inst/spec/exploreDE-h5ad-1.0.md, section 7.1)",
+      call. = FALSE
+    )
+  }
+  one <- function(key) {
+    v <- uns[[key]]
+    if (is.null(v) || !length(v) || is.na(v[[1]]) || !nzchar(v[[1]])) {
+      fail(sprintf("uns[\"%s\"] is missing", key))
+    }
+    as.character(v[[1]])
+  }
+  sv <- one("schema_version")
+  if (sv != "exploreDE/1.0") {
+    fail(sprintf("uns[\"schema_version\"] is \"%s\"", sv))
+  }
+  ot <- one("omics_type")
+  if (!ot %in% c("proteomics", "rnaseq_bulk", "crispr_countqc")) {
+    fail(sprintf("uns[\"omics_type\"] is \"%s\", not proteomics, rnaseq_bulk or crispr_countqc", ot))
+  }
+  one("feature_id_kind")
+  invisible(TRUE)
+}
+
 # Find a per-feature gene-length column for FPKM/TPM, tolerant of source (SUSHI
 # featWidth, featureCounts Length, a GTF-derived gene_length, …). Preference-
 # ordered; matches with or without a canonical "label_" prefix. NULL if none.
@@ -365,17 +397,15 @@ ExploreDatasetH5AD <- R6::R6Class(
 
     .build_config = function() {
       uns <- private$.uns
-      omics_type <- uns$omics_type %||% "rnaseq_bulk"
-      omics_class <- if (grepl("proteomic", omics_type)) "proteomics" else "genomics"
-      # feature_id_kind is stamped by the writer (gene/isoform/protein/peptide/
-      # phospho/sgrna); fall back to the hierarchy unit for older files.
-      feature_id_kind <- uns$feature_id_kind %||% uns$hierarchy$unit %||% "gene"
+      .h5ad_require_identity(uns)
+      omics_type <- uns[["omics_type"]]
+      omics_class <- if (omics_type == "proteomics") "proteomics" else "genomics"
+      feature_id_kind <- uns[["feature_id_kind"]]
       data_type <- switch(
         omics_type,
         rnaseq_bulk = "RNASeq",
         crispr_countqc = "CrisprCountQC",
-        proteomics = switch(feature_id_kind, peptide = "peptidomics", phospho = "phosphoproteomics", "proteomics"),
-        "RNASeq"
+        proteomics = switch(feature_id_kind, peptide = "peptidomics", phospho = "phosphoproteomics", "proteomics")
       )
 
       factor_cols <- grep("^factor_", colnames(private$.obs), value = TRUE)
@@ -518,7 +548,7 @@ ExploreDatasetH5AD <- R6::R6Class(
       }
 
       list(
-        schema_version = uns$schema_version %||% "exploreDE/1.0",
+        schema_version = uns[["schema_version"]],
         omics_class = omics_class,
         data_type = data_type,
         organism = (private$.obs$organism %||% NA_character_)[1],
@@ -552,7 +582,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         proteomics = NULL,
         source = list(
           backend_kind = "h5ad",
-          schema_version = uns$schema_version %||% "exploreDE/1.0",
+          schema_version = uns[["schema_version"]],
           built_at = Sys.time()
         )
       )

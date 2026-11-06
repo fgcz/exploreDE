@@ -40,8 +40,13 @@
 # so the reader can expose them as intensities rather than RNA-seq "counts".
 # Unknown names pass through unchanged (map is a NAMED VECTOR, so `[[` on an
 # absent key errors — look up by membership, never `map[[key]]` blind).
-.canon_count_name <- function(nm) {
+# For proteomics, raw-count names mean the raw intensities (spec section 4:
+# `intensities` MUST, `intensities_raw` SHOULD; there is no `counts` layer).
+.canon_count_name <- function(nm, omics_type) {
   key <- gsub("[^a-z0-9]+", "", tolower(nm))
+  if (omics_type == "proteomics" && key %in% c("counts", "count", "raw", "rawcounts")) {
+    return("intensities_raw")
+  }
   map <- c(
     counts = "counts",
     count = "counts",
@@ -329,14 +334,15 @@
 # -- counts: normalise to a named list keyed by canonical layer names -------
 # Also returns the feature ids (from the primary matrix, made unique) and the
 # sample ids every other part is aligned to.
-.assemble_counts <- function(counts, coldata) {
+.assemble_counts <- function(counts, coldata, omics_type) {
   if (is.matrix(counts) || inherits(counts, "Matrix")) {
-    counts <- list(counts = counts)
+    # A single proteomics matrix is the analysis-ready one (spec section 4).
+    counts <- stats::setNames(list(counts), if (omics_type == "proteomics") "intensities" else "counts")
   }
   if (!length(counts)) {
     stop("build_explore_h5ad: at least one count matrix is required")
   }
-  canon <- vapply(names(counts) %||% "counts", .canon_count_name, character(1))
+  canon <- vapply(names(counts) %||% "counts", .canon_count_name, character(1), omics_type = omics_type)
   if (anyDuplicated(canon)) {
     dup <- unique(canon[duplicated(canon)])
     stop(sprintf(
@@ -348,7 +354,7 @@
   names(counts) <- canon
   counts <- lapply(counts, as.matrix)
 
-  primary <- if ("counts" %in% names(counts)) counts[["counts"]] else counts[[1]]
+  primary <- counts[["counts"]] %||% counts[["intensities"]] %||% counts[[1]]
   base_ids <- rownames(primary) %||% as.character(seq_len(nrow(primary)))
   sample_ids <- colnames(primary) %||% rownames(as.data.frame(coldata))
   if (anyDuplicated(base_ids)) {
@@ -621,7 +627,31 @@
 # SAINTexpress's SaintScore) — see .assemble_de_mapping(). It is
 # display-only this milestone (like nrPeptides), so it rides in varm but is
 # never wired into the FDR threshold path.
-.assemble_de <- function(de, de_columns, per_contrast_map, fid, id2fid, factor_prefixed) {
+# The factor whose values hold both groups of a contrast named
+# "<test>_vs_<reference>" (or SUSHI's "<test>--over--<reference>"). Spec section
+# 7.3: test_group and reference_group MUST be levels of that factor, so a name
+# that does not split into two of its levels is an error, not a guess.
+.contrast_factor <- function(cn, grp, obs, factor_prefixed) {
+  if (length(grp) == 2L) {
+    for (f in factor_prefixed) {
+      if (all(grp %in% as.character(obs[[f]]))) {
+        return(f)
+      }
+    }
+  }
+  levels_txt <- vapply(
+    factor_prefixed,
+    function(f) sprintf("%s: %s", sub("^factor_", "", f), paste(unique(as.character(obs[[f]])), collapse = ", ")),
+    character(1)
+  )
+  stop(sprintf(
+    "build_explore_h5ad: name contrast '%s' as '<test>_vs_<reference>', both groups levels of one factor (%s)",
+    cn,
+    if (length(levels_txt)) paste(levels_txt, collapse = "; ") else "no factors in coldata"
+  ))
+}
+
+.assemble_de <- function(de, de_model, de_columns, per_contrast_map, fid, id2fid, obs, factor_prefixed) {
   varm <- list()
   uns_de <- list()
   de_slot <- list()
@@ -644,14 +674,19 @@
     de_slot[[cn]] <- slot
     varm[[paste0("de_", slot)]] <- one$table
     grp <- strsplit(cn, "_vs_|--over--")[[1]]
-    uns_de[[slot]] <- list(
-      assay_used = "counts",
-      factor_used = factor_prefixed[1] %||% NA_character_,
-      test_group = grp[1] %||% NA_character_,
-      reference_group = grp[2] %||% NA_character_,
-      contrast_formula = cn,
-      model = "DESeq2"
+    meta <- list(
+      factor_used = .contrast_factor(cn, grp, obs, factor_prefixed),
+      test_group = grp[1],
+      reference_group = grp[2],
+      contrast_formula = cn
     )
+    # model and assay_used are informational (spec 7.3, SHOULD / MAY): write
+    # them only when known, rather than "DESeq2" / "counts" for every table.
+    if (identical(de_model[[cn]], "DESeq2")) {
+      meta$model <- "DESeq2"
+      meta$assay_used <- "counts"
+    }
+    uns_de[[slot]] <- meta
   }
   list(varm = varm, uns_de = uns_de, de_slot = de_slot, score_src = score_src)
 }
@@ -724,6 +759,7 @@
 .assemble_pathways <- function(pathways, de, de_slot, enrichment_padj_max) {
   enr_support <- list()
   enr_tidy <- list()
+  filtered <- character() # methods whose tables were cut at padj_max
   bad_keys <- setdiff(names(pathways), names(de))
   if (length(bad_keys)) {
     warning(sprintf(
@@ -750,6 +786,7 @@
       } else {
         tidy <- .enr_tidy_from_native(obj, method = rn, padj_max = .padj_max_for(enrichment_padj_max, rn))
         if (!is.null(tidy)) {
+          filtered <- union(filtered, rn)
           enr_tidy[[slot]] <- c(enr_tidy[[slot]], stats::setNames(list(tidy), rn))
           sup <- .enr_support_from_native(obj, tidy)
           if (!is.null(sup)) {
@@ -759,10 +796,24 @@
       }
     }
   }
-  list(tidy = enr_tidy, support = enr_support)
+  methods <- unique(unlist(lapply(enr_tidy, names)))
+  list(tidy = enr_tidy, support = enr_support, filtered = filtered, methods = methods)
 }
 
 # -- uns : schema, design, DE metadata, enrichment and declared mappings ------
+# The enrichment filter to record: the caller's threshold when every stored
+# method was filtered, the per-method thresholds of the filtered ones when only
+# some were, NULL when none was.
+.recorded_padj_max <- function(enr, enrichment_padj_max) {
+  if (!length(enr$filtered)) {
+    return(NULL)
+  }
+  if (setequal(enr$filtered, enr$methods)) {
+    return(enrichment_padj_max)
+  }
+  stats::setNames(lapply(enr$filtered, function(m) .padj_max_for(enrichment_padj_max, m)), enr$filtered)
+}
+
 .assemble_uns <- function(
   omics_type,
   level,
@@ -788,8 +839,9 @@
     # significant" from "enrichment was never run" — three very
     # different things that all look like an absent row.
     enrichment_filter = list(
-      # one number, or a list keyed by method (ora / gsea)
-      padj_max = if (length(enr$tidy)) enrichment_padj_max else NULL,
+      # one number, or a list keyed by method (ora / gsea); only for methods
+      # whose tables were filtered (data.frames are stored as given)
+      padj_max = .recorded_padj_max(enr, enrichment_padj_max),
       column = "p.adjust"
     ),
     reference_genome = as.character(ref_build),
@@ -823,6 +875,7 @@
   feature_level = NULL,
   rowdata = NULL,
   de = list(),
+  de_model = character(),
   de_columns = NULL,
   pathways = list(),
   enrichment_padj_max = 0.1,
@@ -834,7 +887,7 @@
   ref_build = NA_character_
 ) {
   omics_type <- .omics_type_of(omics)
-  cnt <- .assemble_counts(counts, coldata)
+  cnt <- .assemble_counts(counts, coldata, omics_type)
   base_ids <- cnt$base_ids
   f <- .assemble_feature_ids(base_ids, rowdata, rowdata_columns, omics_type, feature_level, feature_id, gene_symbol)
   id2fid <- stats::setNames(f$fid, base_ids) # user identifiers -> canonical fid
@@ -844,7 +897,7 @@
   layers <- .assemble_layers(cnt$counts, base_ids, cnt$sample_ids, f$fid)
 
   per_contrast_map <- .de_columns_per_contrast(de_columns, de)
-  de_parts <- .assemble_de(de, de_columns, per_contrast_map, f$fid, id2fid, factor_prefixed)
+  de_parts <- .assemble_de(de, de_model, de_columns, per_contrast_map, f$fid, id2fid, obs, factor_prefixed)
   map_de <- .assemble_de_mapping(de, de_columns, per_contrast_map, de_parts$de_slot, de_parts$score_src)
   map_feature <- .assemble_feature_mapping(rowdata_columns, f$id_col, f$sym_col)
   enr <- .assemble_pathways(pathways, de, de_parts$de_slot, enrichment_padj_max)
@@ -860,7 +913,7 @@
     map_de,
     map_feature
   )
-  X <- layers[["counts"]] %||% layers[[1]]
+  X <- layers[["counts"]] %||% layers[["intensities"]] %||% layers[[1]]
   list(X = X, layers = layers, obs = obs, var = var, varm = de_parts$varm, uns = uns)
 }
 
@@ -907,7 +960,9 @@
 #' @param rowdata Optional per-feature annotation (feature names/symbols/ids and
 #'   per-feature pathway annotation columns, e.g. `GO BP`).
 #' @param de Optional named list of DE tables keyed by contrast
-#'   (`DESeqResults` / `data.frame`). Columns are recognised by the column
+#'   (`DESeqResults` / `data.frame`). Name each contrast
+#'   `<test>_vs_<reference>`, with both groups levels of one `coldata`
+#'   factor (an error otherwise). Columns are recognised by the column
 #'   dictionary (`inst/dictionaries/column_patterns.json`), overridable with
 #'   `de_columns`. An optional extra score column (e.g. SAINTexpress's
 #'   `SaintScore`) is picked up by the dictionary alone and shown for display
@@ -1005,6 +1060,9 @@ build_explore_h5ad <- function(
     stop("build_explore_h5ad: `coldata` is required (no rich object supplied it)")
   }
 
+  # The test is known only for DESeq2 results; recorded before the tables
+  # become plain data.frames.
+  de_model <- vapply(de, function(d) if (inherits(d, "DESeqResults")) "DESeq2" else NA_character_, character(1))
   de <- lapply(de, .as_df_keep_names)
 
   parts <- .assemble_parts(
@@ -1014,6 +1072,7 @@ build_explore_h5ad <- function(
     feature_level = feature_level,
     rowdata = rowdata,
     de = de,
+    de_model = de_model,
     de_columns = de_columns,
     rowdata_columns = rowdata_columns,
     pathways = pathways,

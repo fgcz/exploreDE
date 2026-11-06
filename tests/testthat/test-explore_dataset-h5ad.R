@@ -1231,3 +1231,85 @@ test_that("a 0/1 used_in_test column (as some writers store booleans) reads as l
   expect_type(d$usedInTest, "logical")
   expect_identical(sum(d$usedInTest), sum(res$used_in_test))
 })
+
+# ---- spec conformance: identity keys (reader) and on-disk layout (writer) ----
+
+test_that("an AnnData without the exploreDE identity keys is refused, not read as RNA-seq", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  ad <- anndataR::AnnData(
+    X = t(p$counts),
+    obs = p$coldata,
+    var = data.frame(row.names = rownames(p$counts))
+  )
+  expect_error(new_explore_dataset(ad), "not an exploreDE/1.0 .h5ad.*schema_version")
+})
+
+test_that("a missing or unknown omics_type is refused", {
+  skip_if_no_anndataR()
+  pr <- make_toy_prot("protein")
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(pr$intensities, out = out, omics = "proteomics", coldata = pr$coldata, rowdata = pr$rowdata)
+  ad <- anndataR::read_h5ad(out, as = "InMemoryAnnData")
+  u <- ad$uns
+  u$omics_type <- NULL
+  ad$uns <- u
+  expect_error(new_explore_dataset(ad), "omics_type")
+  u$omics_type <- "Proteomics"
+  ad$uns <- u
+  expect_error(new_explore_dataset(ad), "omics_type")
+})
+
+test_that("proteomics files carry the spec's layer names: intensities, intensities_raw", {
+  skip_if_no_anndataR()
+  pr <- make_toy_prot("protein")
+  one <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(pr$intensities, out = one, omics = "proteomics", coldata = pr$coldata, rowdata = pr$rowdata)
+  expect_identical(names(anndataR::read_h5ad(one, as = "InMemoryAnnData")$layers), "intensities")
+
+  two <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    list(raw = 2^pr$intensities, transformed = pr$intensities),
+    out = two,
+    omics = "proteomics",
+    coldata = pr$coldata,
+    rowdata = pr$rowdata
+  )
+  expect_setequal(names(anndataR::read_h5ad(two, as = "InMemoryAnnData")$layers), c("intensities_raw", "intensities"))
+  e <- new_explore_dataset(two)
+  expect_equal(sort(as.vector(e$assay("intensities"))), sort(as.vector(pr$intensities)))
+})
+
+test_that("contrast groups must be levels of a factor; model is written only for DESeq2 results", {
+  skip_if_no_anndataR()
+  dds <- make_toy_dds()
+  res <- DESeq2::results(dds, contrast = c("condition", "treated", "control"))
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_error(
+    build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(contrast1 = res)),
+    "<test>_vs_<reference>"
+  )
+  expect_error(
+    build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(Treat_vs_Ctrl = res)),
+    "condition: "
+  )
+
+  build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(treated_vs_control = res))
+  d <- anndataR::read_h5ad(out, as = "InMemoryAnnData")$uns$de$treated_vs_control
+  expect_identical(c(d$test_group, d$reference_group, d$factor_used), c("treated", "control", "factor_condition"))
+  expect_identical(d$model, "DESeq2")
+
+  build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(treated_vs_control = as.data.frame(res)))
+  d <- anndataR::read_h5ad(out, as = "InMemoryAnnData")$uns$de$treated_vs_control
+  expect_null(d$model)
+  expect_null(d$assay_used)
+})
+
+test_that("enrichment_filter records padj_max only for tables that were filtered", {
+  skip_if_no_anndataR()
+  tab <- data.frame(ID = c("GO:1", "GO:2"), Description = c("a", "b"), p.adjust = c(0.01, 0.9))
+  out <- .toy_with_pathways(list(ora = tab))
+  u <- anndataR::read_h5ad(out, as = "InMemoryAnnData")$uns
+  expect_null(u$enrichment_filter$padj_max)
+  expect_equal(nrow(u$enrichment$treated_vs_control$ora), 2L) # stored as given
+})

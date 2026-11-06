@@ -286,7 +286,7 @@ test_that("exporting a live AnnData records no source rather than a fake one", {
     X = matrix(as.double(1:6), nrow = 2, dimnames = list(c("s1", "s2"), c("a", "b", "c"))),
     obs = data.frame(row.names = c("s1", "s2"), factor_g = factor(c("x", "y"))),
     var = data.frame(row.names = c("a", "b", "c"), description = c("A", "B", "C")),
-    uns = list(schema_version = "exploreDE/1.0")
+    uns = list(schema_version = "exploreDE/1.0", omics_type = "rnaseq_bulk", feature_id_kind = "gene")
   )
   export_h5ad_to_parquet(ad, d)
   # Nothing to be stale against, so verify_source() must say "unknown" (NA),

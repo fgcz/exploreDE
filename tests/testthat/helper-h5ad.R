@@ -185,6 +185,7 @@ se_to_canonical_h5ad <- function(se, out) {
     uns = list(
       schema_version = "exploreDE/1.0",
       omics_type = "rnaseq_bulk",
+      feature_id_kind = "gene",
       hierarchy = list(levels = "gene", unit = "gene"),
       design = list(factors = fn, grouping = fn[1]),
       de = uns_de,
