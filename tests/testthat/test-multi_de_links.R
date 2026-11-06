@@ -100,3 +100,15 @@ test_that("multi_load_de_result loads a real SUSHI DESeq2 result", {
   out <- multi_load_de_result(res$path)
   expect_true("log2Ratio" %in% colnames(out$seqAnno))
 })
+
+test_that("multi_load_de_result gives the demo result's record, samples included", {
+  path <- system.file("examples/genomics", package = "exploreDE")
+  rec <- multi_load_de_result(path)
+  expect_identical(rec$dataType, "RNASeq")
+  expect_true(all(c("feature_id", "log2Ratio", "pValue", "fdr", "usedInTest") %in% colnames(rec$seqAnno)))
+  expect_equal(nrow(rec$dataset), 9L)
+  expect_true(all(rec$factors %in% colnames(rec$dataset)))
+  expect_match(rec$param$comparison, "--over--", fixed = TRUE)
+  expect_true(all(c("Raw", "Normalised + Log2") %in% names(rec$countList)))
+  expect_true("Label" %in% colnames(.res_df(rec$ora[[1]][[1]])))
+})

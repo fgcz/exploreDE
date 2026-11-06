@@ -79,13 +79,13 @@ ldap_allows_project <- function(lookup, project) {
 
 #' Load one SUSHI DE result directory for the multi-DE tabs
 #'
-#' Reads `deResult.rds` (or `deResult.qs2`), converts it with
-#' `convert_genomics_se()`, makes sure a `log2Ratio` column exists, and adds a
-#' `Label` column ("ID\\nDescription") to its ORA and GSEA results. Only call it
-#' on a directory returned by `multi_resolve_dataset()`.
+#' Reads `deResult.rds` (or `deResult.qs2`) and builds its Multi-DE record with
+#' `legacy_multi_contrast_from_eds()`, the converter every dataset in the
+#' Multi-DE tabs goes through. Only call it on a directory returned by
+#' `multi_resolve_dataset()`.
 #'
 #' @param path A result directory holding `deResult.rds` or `deResult.qs2`.
-#' @return The converted list, with `ora` / `gsea` when GO was run, or `NULL`
+#' @return The Multi-DE record, with `ora` / `gsea` when GO was run, or `NULL`
 #'   when the directory holds no DE result.
 #' @noRd
 multi_load_de_result <- function(path) {
@@ -96,50 +96,6 @@ multi_load_de_result <- function(path) {
   } else {
     return(NULL)
   }
-  formatted <- convert_genomics_se(se, path)
-
-  # Compatibility fix: Ensure log2Ratio exists (for the multiDEG tabs)
-  if (!"log2Ratio" %in% colnames(formatted$seqAnno)) {
-    lfcCol <- grep(
-      "^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc)$",
-      colnames(formatted$seqAnno),
-      value = TRUE,
-      ignore.case = TRUE
-    )
-    if (length(lfcCol) > 0) {
-      formatted$seqAnno$log2Ratio <- formatted$seqAnno[[lfcCol[1]]]
-    }
-  }
-
-  # "ID\nDescription" labels for the ORA / GSEA plots (as multiDEG did)
-  add_labels <- function(er) {
-    er@result$Label <- ""
-    for (j in seq_along(er@result$Description)) {
-      desc <- er@result$Description[j]
-      if (nchar(desc) > 35) {
-        desc <- substr(desc, 1, 45)
-      }
-      er@result$Label[j] <- paste0(er@result$ID[j], "\n", desc)
-    }
-    er
-  }
-  if (!is.null(formatted$param$runGO) && formatted$param$runGO) {
-    ora <- S4Vectors::metadata(se)$enrichResult
-    if (!is.null(ora)) {
-      for (ont in names(ora)) {
-        for (sig in names(ora[[ont]])) {
-          if (nrow(ora[[ont]][[sig]]) >= 2) ora[[ont]][[sig]] <- add_labels(ora[[ont]][[sig]])
-        }
-      }
-      formatted$ora <- ora
-    }
-    gsea <- S4Vectors::metadata(se)$enrichResultGSEA
-    if (!is.null(gsea)) {
-      for (ont in names(gsea)) {
-        if (nrow(gsea[[ont]]) >= 2) gsea[[ont]] <- add_labels(gsea[[ont]])
-      }
-      formatted$gsea <- gsea
-    }
-  }
-  formatted
+  eds <- new_explore_dataset(se)
+  legacy_multi_contrast_from_eds(eds, eds$primary_contrast())
 }
