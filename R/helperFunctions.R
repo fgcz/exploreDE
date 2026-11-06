@@ -77,12 +77,30 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
   skipped <- function(msg) list(design = NULL, skip = TRUE, msg = msg)
   warned <- function(msg) list(design = NULL, skip = FALSE, msg = msg)
 
+  # model.matrix() drops rows with NA, so a design or batch with missing values
+  # no longer lines up with the samples: skip instead.
+  has_batch <- !is.null(batchColumn) &&
+    nzchar(batchColumn) &&
+    batchColumn != "None" &&
+    batchColumn %in% colnames(dataset)
+  if (has_batch && anyNA(dataset[[batchColumn]])) {
+    return(skipped(sprintf(
+      "Batch column '%s' has missing values \u2014 batch correction skipped.",
+      batchColumn
+    )))
+  }
   if (is.null(designColumn) || !nzchar(designColumn) || designColumn == "None") {
     return(null_design)
   }
   if (!designColumn %in% colnames(dataset)) {
     return(skipped(sprintf(
       "Design column '%s' missing from sample metadata \u2014 batch correction skipped.",
+      designColumn
+    )))
+  }
+  if (anyNA(dataset[[designColumn]])) {
+    return(skipped(sprintf(
+      "Design column '%s' has missing values \u2014 batch correction skipped.",
       designColumn
     )))
   }
@@ -95,28 +113,18 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
     )))
   }
 
-  design <- tryCatch(stats::model.matrix(~grp), error = function(e) e)
-  if (inherits(design, "error")) {
-    return(skipped(sprintf(
-      "Could not build design matrix from '%s': %s \u2014 batch correction skipped.",
-      designColumn,
-      conditionMessage(design)
-    )))
-  }
+  design <- stats::model.matrix(~grp)
 
-  if (!is.null(batchColumn) && nzchar(batchColumn) && batchColumn != "None" && batchColumn %in% colnames(dataset)) {
+  if (has_batch) {
     batch <- factor(dataset[[batchColumn]])
     if (nlevels(batch) >= 2) {
-      batch_mm <- tryCatch(stats::model.matrix(~batch), error = function(e) NULL)
-      if (!is.null(batch_mm)) {
-        combined <- cbind(batch_mm, design[, -1, drop = FALSE])
-        if (qr(combined)$rank < ncol(combined)) {
-          return(warned(sprintf(
-            "Batch ('%s') and design ('%s') are confounded \u2014 batch correction applied without a design matrix.",
-            batchColumn,
-            designColumn
-          )))
-        }
+      combined <- cbind(stats::model.matrix(~batch), design[, -1, drop = FALSE])
+      if (qr(combined)$rank < ncol(combined)) {
+        return(warned(sprintf(
+          "Batch ('%s') and design ('%s') are confounded \u2014 batch correction applied without a design matrix.",
+          batchColumn,
+          designColumn
+        )))
       }
     }
   }
@@ -1518,22 +1526,12 @@ step_log2 <- function(counts, dataset, counts_type) {
 #' Calls showNotification() on failure / NA batch; never throws.
 #' @noRd
 step_batch_correction <- function(counts, dataset, batch_column, design_column = "None") {
-  if (!is.null(batch_column) && nzchar(batch_column) && batch_column != "None") {
-    if (any(is.na(dataset[[batch_column]]))) {
-      shiny::showNotification(
-        "Batch correction skipped: batch column contains NA values",
-        type = "warning",
-        duration = 8
-      )
-    } else {
-      counts <- apply_batch_correction(
-        counts = counts,
-        dataset = dataset,
-        batchCol = batch_column,
-        designCol = design_column
-      )
-    }
-  }
+  counts <- apply_batch_correction(
+    counts = counts,
+    dataset = dataset,
+    batchCol = batch_column,
+    designCol = design_column
+  )
   list(counts = counts, dataset = dataset)
 }
 
