@@ -353,10 +353,10 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
 #' Reconstructs the single-contrast gStoreList shape the Multi-DE modules
 #' consume (`seqAnno`, `dataset`, `countList`, `param`, `design`,
 #' `ora`/`gsea`, ...) for one contrast of a (possibly multi-contrast)
-#' genomics dataset — used to fan an uploaded `.h5ad` out into the Multi-DE
-#' data-selection list, the way the proteomics auto-load already does.
+#' dataset, genomics or proteomics, from any backend. The Multi-DE auto-load
+#' fans a loaded dataset out into one record per contrast with it.
 #'
-#' @param eds An `ExploreDataset` instance (genomics).
+#' @param eds An `ExploreDataset` instance.
 #' @param contrast A single contrast name (must be in `eds$contrasts()`).
 #' @return A named list with the legacy per-contrast Multi-DE shape.
 #' @noRd
@@ -402,9 +402,10 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
     fpkm = "FPKM",
     tpm = "TPM"
   )
+  # Assays without a legacy name (proteomics intensities) keep their key.
   countList <- list()
   for (a in eds$assay_names()) {
-    countList[[assay_alias[[a]] %||% a]] <- eds$assay(a)
+    countList[[if (a %in% names(assay_alias)) assay_alias[[a]] else a]] <- eds$assay(a)
   }
 
   # ---- param --------------------------------------------------------------
@@ -426,7 +427,9 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
   )
 
   out <- list(
-    dataType = eds$data_type(),
+    # The Multi-DE modules test for "proteomics", whatever the level
+    # (data_type() can be "phosphoproteomics" or "peptidomics").
+    dataType = if (eds$omics_class() == "proteomics") "proteomics" else eds$data_type(),
     se = NULL,
     param = param,
     seqAnno = seqAnno,
