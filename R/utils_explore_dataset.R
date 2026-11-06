@@ -607,3 +607,18 @@ assay_is_log2 <- function(eds, key) {
 feature_list_ui <- function(ids) {
   shiny::tags$div(lapply(ids, shiny::tags$div))
 }
+
+# ---- Heatmap: annotations of aggregated (mean / median) columns ---------------
+# With "Show Mean/Median" the Heatmap has one column per level of the grouping
+# factor. Another factor can annotate those columns only when it has a single
+# value within each level. Returns list(varies, values): values holds that
+# value per level (named by level), varies is TRUE when some level has several.
+aggregated_annotation <- function(design, group_col, factor_col, levels) {
+  per_level <- lapply(levels, function(lvl) {
+    unique(as.character(design[[factor_col]][design[[group_col]] %in% lvl]))
+  })
+  list(
+    varies = any(lengths(per_level) > 1L),
+    values = stats::setNames(vapply(per_level, function(v) v[1], character(1)), levels)
+  )
+}
