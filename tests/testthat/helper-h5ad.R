@@ -108,7 +108,7 @@ se_to_canonical_h5ad <- function(se, out) {
     obs$organism <- sub("/.*", "", param$refBuild)
   }
 
-  rd <- as.data.frame(SummarizedExperiment::rowData(se), check.names = FALSE)
+  rd <- as.data.frame(SummarizedExperiment::rowData(se), optional = TRUE)
   fid <- scuttle::uniquifyFeatureNames(rd$gene_id, rd$gene_name)
   fid[grep("^_", fid)] <- gsub("_", "", fid[grep("^_", fid)])
   var <- data.frame(
