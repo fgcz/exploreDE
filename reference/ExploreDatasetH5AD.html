@@ -401,27 +401,20 @@ and up/down feature selections at the contrast's FDR and log2FC thresholds.</p><
 <span class="r-out co"><span class="r-pr">#&gt;</span>   assays:           intensities, intensities_raw</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   enrichment:       (none)</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">eds</span><span class="op">$</span><span class="fu">de</span><span class="op">(</span><span class="st">"B_vs_A"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        effect_log2fc score_pvalue    score_fdr feature_id log2Ratio</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG3      2.076169 2.407749e-07 0.0001329935     P0AFG3  2.076169</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0AC41      2.207672 3.166968e-07 0.0001329935     P0AC41  2.207672</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7W1      2.232960 3.207217e-07 0.0001329935     P0A7W1  2.232960</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7V0      2.290956 4.111082e-07 0.0001329935     P0A7V0  2.290956</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> A1L429     -7.134870 5.272144e-07 0.0001459329     A1L429 -7.134870</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG6      2.690083 7.449241e-07 0.0001562791     P0AFG6  2.690083</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>              pValue          fdr gene_name usedInTest gene_id</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG3 2.407749e-07 0.0001329935    P0AFG3       TRUE  P0AFG3</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0AC41 3.166968e-07 0.0001329935    P0AC41       TRUE  P0AC41</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7W1 3.207217e-07 0.0001329935    P0A7W1       TRUE  P0A7W1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7V0 4.111082e-07 0.0001329935    P0A7V0       TRUE  P0A7V0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> A1L429 5.272144e-07 0.0001459329    A1L429       TRUE  A1L429</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG6 7.449241e-07 0.0001562791    P0AFG6       TRUE  P0AFG6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                  description</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG3  sp_P0AFG3_ODO1_ECOLI</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0AC41  sp_P0AC41_SDHA_ECOLI</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7W1   sp_P0A7W1_RS5_ECOLI</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7V0   sp_P0A7V0_RS2_ECOLI</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> A1L429 sp_A1L429_GG12C_HUMAN</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG6  sp_P0AFG6_ODO2_ECOLI</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        effect_log2fc score_pvalue    score_fdr feature_id gene_name gene_id</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG3      2.076169 2.407749e-07 0.0001329935     P0AFG3    P0AFG3  P0AFG3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0AC41      2.207672 3.166968e-07 0.0001329935     P0AC41    P0AC41  P0AC41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7W1      2.232960 3.207217e-07 0.0001329935     P0A7W1    P0A7W1  P0A7W1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7V0      2.290956 4.111082e-07 0.0001329935     P0A7V0    P0A7V0  P0A7V0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> A1L429     -7.134870 5.272144e-07 0.0001459329     A1L429    A1L429  A1L429</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG6      2.690083 7.449241e-07 0.0001562791     P0AFG6    P0AFG6  P0AFG6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                  description log2Ratio       pValue          fdr usedInTest</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG3  sp_P0AFG3_ODO1_ECOLI  2.076169 2.407749e-07 0.0001329935       TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0AC41  sp_P0AC41_SDHA_ECOLI  2.207672 3.166968e-07 0.0001329935       TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7W1   sp_P0A7W1_RS5_ECOLI  2.232960 3.207217e-07 0.0001329935       TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0A7V0   sp_P0A7V0_RS2_ECOLI  2.290956 4.111082e-07 0.0001329935       TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> A1L429 sp_A1L429_GG12C_HUMAN -7.134870 5.272144e-07 0.0001459329       TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> P0AFG6  sp_P0AFG6_ODO2_ECOLI  2.690083 7.449241e-07 0.0001562791       TRUE</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

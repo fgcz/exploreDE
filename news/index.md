@@ -101,6 +101,37 @@
 - The README says how the `?data=` LDAP check identifies the user
   (`SHINYPROXY_USERNAME`, one ShinyProxy container per user), and that
   without it every gStore link is refused.
+- Every backend builds its DE table the same way: SAINT `.h5ad` results
+  are sorted by FDR, as SAINT `SummarizedExperiment`s are (they kept
+  feature order), and an RNA-seq `SummarizedExperiment` without a
+  `usedInTest` column marks as tested the features with a p-value, as
+  `.h5ad` files do (it had no such column).
+- Multi DE opens canonical proteomics `.h5ad` files and Parquet
+  directories: their contrasts are loaded into the Multi DE tabs, as for
+  a prolfquapp result; before, the tabs stayed empty. All proteomics
+  data now goes through the same converter, so the Multi-Contrast
+  Boxplot offers the intensities as `intensities` / `intensities_raw`
+  instead of the result’s own assay names (`transformedData`,
+  `imputedData`, …).
+- The Multi DE “Integrated DE Table” shows each contrast’s p-value. It
+  looked for a `pvalue` column, while the results carry `pValue`, so the
+  column was never there.
+- Multi DE results added through Browse Projects or Manual Import are
+  read like the dataset in the main tabs, with the sample table taken
+  from the result itself. Before, it came from `../input_dataset.tsv`,
+  and a result without that file got an empty sample table.
+- An RNA-seq `SummarizedExperiment` whose p-value column is named
+  `P Value` lists its features by p-value, as one named `pValue` or
+  `P.Value` does.
+- An `.h5ad` written by another tool, with gene symbols in a `gene_name`
+  or `gene_symbol` column instead of `label_gene_symbol`, labels its
+  features with those symbols; before, the labels were the feature ids,
+  while the gene picker offered the symbols.
+- DE QC offers the GC content and gene width plots for `.h5ad` files
+  that carry feature lengths and GC content. Files written by
+  [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  store them as `label_featwidth` and `label_gc`, which the DE table
+  never picked up, so only the standard view was offered.
 - The DESCRIPTION declares every package the app uses: pathview,
   enrichplot, KEGGREST, ggvenn, cowplot, colorspace, scales and tidyr
   were missing, so on a fresh install the app failed at startup
