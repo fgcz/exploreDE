@@ -4,49 +4,17 @@ req(eds)
 # .h5ad surfaces GSEA just like a SUSHI SE. eds$enrichment() returns a FLAT list
 # whose keys are BP/MF/CC for the SE backend and gsea/BP... for h5ad — strip the
 # prefix so both normalise to the BP/MF/CC the rest of this module indexes by.
-contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
+gseaContrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
 
-# See server-hypergeo2.R for the identical rationale: a cell in `gsea` below is
-# EITHER a real clusterProfiler S4 object (native path, unchanged) or a plain
-# tidy data.frame (a BYO dataset with no clusterProfiler object at all).
-.is_native <- function(x) inherits(x, c("enrichResult", "gseaResult"))
-.res_df <- function(x) if (.is_native(x)) x@result else x
-
-# FDR threshold for "ora" / "gsea": the SUSHI parameter (fdrThreshORA /
-# fdrThreshGSEA) for an SE; for an h5ad, the per-method value that
-# build_explore_h5ad() recorded in uns$enrichment_filter; otherwise 0.05.
-.enr_fdr_thresh <- function(kind) {
-  p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else NULL
-  v <- switch(kind, ora = p$fdrThreshORA, gsea = p$fdrThreshGSEA)
-  if (is.null(v)) {
-    f <- eds$enrichment_filter()
-    if (is.list(f)) v <- f[[kind]]
-  }
-  if (is.null(v) || is.na(v)) 0.05 else as.numeric(v)
-}
-# Keep only the terms with p.adjust <= thr. ezRun stores every tested term (the
-# full table goes to its Excel export); the app, like the HTML report, only
-# ever shows the significant ones.
-.enr_keep_sig <- function(x, thr) {
-  df <- .res_df(x)
-  if (!is.data.frame(df) || !nrow(df) || !"p.adjust" %in% colnames(df)) {
-    return(x)
-  }
-  keep <- !is.na(df$p.adjust) & df$p.adjust <= thr
-  if (.is_native(x)) {
-    x@result <- df[keep, , drop = FALSE]
-    x
-  } else {
-    df[keep, , drop = FALSE]
-  }
-}
+# .is_native(), .res_df(), .enr_keep_sig() and .enr_fdr_thresh(eds, kind) are in
+# R/utils_explore_dataset.R (shared by the ORA and GSEA modules).
 
 .gsea_raw <- function() {
-  if (is.null(contrast)) {
+  if (is.null(gseaContrast)) {
     return(NULL)
   }
   g <- list()
-  flat <- eds$enrichment(contrast, "gsea")
+  flat <- eds$enrichment(gseaContrast, "gsea")
   if (length(flat)) {
     names(flat) <- sub("^gsea/", "", names(flat))
     g <- flat
@@ -56,13 +24,13 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
   # its `ontology` column the same way enrichment() names its leaves. Native
   # always wins where both exist (it alone carries geneList/geneSets, needed
   # for cnetplot/ridgeplot/gseaplot2 below).
-  tab <- eds$enrichment_table(contrast, "gsea")
+  tab <- eds$enrichment_table(gseaContrast, "gsea")
   if (is.data.frame(tab) && nrow(tab) && "ontology" %in% colnames(tab)) {
     for (k in unique(tab$ontology)) {
       if (is.null(g[[k]])) g[[k]] <- tab[tab$ontology == k, , drop = FALSE]
     }
   }
-  g <- lapply(g, .enr_keep_sig, thr = .enr_fdr_thresh("gsea"))
+  g <- lapply(g, .enr_keep_sig, thr = .enr_fdr_thresh(eds, "gsea"))
   if (!length(g)) {
     return(NULL)
   }
@@ -112,24 +80,24 @@ gseaToUse <- reactiveValues(er = NULL)
 # deep observers see the latest without being re-registered (no stacking). For a
 # single-contrast dataset selectedContrast() is constant, so this fires once.
 gsea <- NULL
-ei <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
+gseaEi <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
 gseaParam <- list()
-design <- ""
-.id2sym <- function(ids) ids
+gseaDesign <- ""
+.gseaId2sym <- function(ids) ids
 
 # Higher priority than the gseaType observer below so the module vars are fresh
 # before that observer reads them on a contrast switch.
 observeEvent(
   selectedContrast(),
   {
-    contrast <<- selectedContrast()
+    gseaContrast <<- selectedContrast()
     gsea <<- .gsea_raw()
-    ei <<- if (!is.null(contrast)) {
-      eds$enrichment_input(contrast)
+    gseaEi <<- if (!is.null(gseaContrast)) {
+      eds$enrichment_input(gseaContrast)
     } else {
       list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
     }
-    design <<- if (!is.null(contrast)) eds$contrast_label(contrast) else ""
+    gseaDesign <<- if (!is.null(gseaContrast)) eds$contrast_label(gseaContrast) else ""
 
     # GSEA thresholds / featureLevel: SUSHI SE metadata$param, else defaults.
     p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else list()
@@ -139,13 +107,13 @@ observeEvent(
     if (is.null(p$featureLevel)) {
       p$featureLevel <- eds$feature_id_kind()
     }
-    p$fdrThreshGSEA <- .enr_fdr_thresh("gsea")
+    p$fdrThreshGSEA <- .enr_fdr_thresh(eds, "gsea")
     gseaParam <<- p
 
     # Backend-agnostic gene-id -> symbol remap (no-op when feature_ids are already
     # symbols, e.g. an uploaded h5ad), so labels never blank out.
-    .id2sym <<- local({
-      sa <- ei$seq_anno
+    .gseaId2sym <<- local({
+      sa <- gseaEi$seq_anno
       gid <- gsym <- NULL
       if (!is.null(sa)) {
         gid <- if ("gene_id" %in% colnames(sa)) {
@@ -183,7 +151,7 @@ observeEvent(
     )
 
     output$gseaDesign <- renderText({
-      design
+      gseaDesign
     })
 
     # GSEA overview table
@@ -295,7 +263,7 @@ observeEvent(
         # Rebuild geneName from core_enrichment via the backend-agnostic remap
         # (falls back to the raw ID where no symbol is known).
         rdf$geneName <- sapply(strsplit(rdf$core_enrichment, "/"), function(ids) {
-          paste(.id2sym(ids), collapse = "/")
+          paste(.gseaId2sym(ids), collapse = "/")
         })
         rdf_symbol <- rdf
         # Convert core enrichment from gene IDs to gene names
@@ -303,7 +271,7 @@ observeEvent(
           rdf_symbol$core_enrichment,
           function(genes_string) {
             gene_ids <- strsplit(genes_string, "/")[[1]]
-            paste(.id2sym(gene_ids), collapse = "/")
+            paste(.gseaId2sym(gene_ids), collapse = "/")
           },
           character(1),
           USE.NAMES = FALSE
@@ -314,10 +282,10 @@ observeEvent(
         colsToTable <- c("Description", "enrichmentScore", "NES", "p.adjust", "core_enrichment")
       }
       # Prepare log2 ratio data for plotting (store raw, aggregate in plot observer)
-      log2RatioGSEA <- ei$ranked_l2fc
+      log2RatioGSEA <- gseaEi$ranked_l2fc
       gene_ids_gsea <- names(log2RatioGSEA)
       # Relabel to gene symbols where possible (no-op when already symbols).
-      names(log2RatioGSEA) <- .id2sym(gene_ids_gsea)
+      names(log2RatioGSEA) <- .gseaId2sym(gene_ids_gsea)
       log2RatioGSEA <- sort(log2RatioGSEA, decreasing = TRUE)
 
       # Update reactive values. gseaplot2/ridgeplot/cnetplot/slice need the
@@ -399,7 +367,7 @@ output$dlTable_GSEA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = "GSEA_Results",
-      design_name = design,
+      design_name = gseaDesign,
       extension = "xlsx"
     )
   },
@@ -516,7 +484,7 @@ observeEvent(
     if (!is.null(input$gseaVisFilterMode) && input$gseaVisFilterMode != "none") {
       # Per-gene p-values for optional visualisation filtering, from the
       # enrichment input's annotation; absent for uploads -> filter degrades off.
-      seqAnno <- ei$seq_anno
+      seqAnno <- gseaEi$seq_anno
 
       # Determine which p-value column to use
       pval_col <- if (!is.null(input$gseaVisPType) && input$gseaVisPType == "FDR") "fdr" else "pValue"
@@ -825,7 +793,7 @@ output$dlPlot_cnetGSEA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_network"),
-      design_name = design,
+      design_name = gseaDesign,
       extension = tolower(input$downloadFormatGSEA)
     )
   },
@@ -856,7 +824,7 @@ output$dlPlot_heatmapGSEA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_heatmap"),
-      design_name = design,
+      design_name = gseaDesign,
       extension = tolower(input$downloadFormatGSEA)
     )
   },
@@ -889,7 +857,7 @@ output$dlPlot_runningScoreGSEA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_runningscore"),
-      design_name = design,
+      design_name = gseaDesign,
       extension = tolower(input$downloadFormatGSEA)
     )
   },
@@ -920,7 +888,7 @@ output$dlPlot_ridgeGSEA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_ridgeplot"),
-      design_name = design,
+      design_name = gseaDesign,
       extension = tolower(input$downloadFormatGSEA)
     )
   },
@@ -951,7 +919,7 @@ output$dlPlot_upsetGSEA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_upset"),
-      design_name = design,
+      design_name = gseaDesign,
       extension = tolower(input$downloadFormatGSEA)
     )
   },
@@ -981,7 +949,7 @@ output$dlPlot_lollipopGSEA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_GSEA, "_", input$gseaType, "_lollipop"),
-      design_name = design,
+      design_name = gseaDesign,
       extension = tolower(input$downloadFormatGSEA)
     )
   },

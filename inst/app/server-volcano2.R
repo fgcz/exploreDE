@@ -328,20 +328,13 @@ volcanoResultsList <- eventReactive(
     if (eds$omics_class() == "proteomics") {
       req(!is.null(selectedContrast()))
       req(selectedContrast() %in% eds$contrasts())
+      design <- eds$contrast_label(selectedContrast())
       seqAnnoFilt <- eds$de(selectedContrast())
       if (!is.null(input$nrPeptideVolcano)) {
         if (any(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano)) {
           seqAnnoFilt <- seqAnnoFilt[which(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano), ]
         } else {
-          shinyalert::shinyalert(
-            title = "Oops!",
-            text = "No features with this number of peptides!",
-            type = "error",
-            closeOnClickOutside = TRUE,
-            showCancelButton = FALSE,
-            showConfirmButton = TRUE,
-            timer = 5000
-          )
+          showNotification("No features with this number of peptides!", type = "error", duration = 5)
         }
       }
       if (!is.null(input$showImputedVolcano)) {

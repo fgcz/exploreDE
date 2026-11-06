@@ -1,5 +1,5 @@
 test_that("convert_genomics_se on RNASeq gene-level fixture returns expected structure", {
-  fx <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene_gstore()
   out <- convert_genomics_se(fx$se, fx$dataDir)
 
   # --- Top-level shape -------------------------------------------------------

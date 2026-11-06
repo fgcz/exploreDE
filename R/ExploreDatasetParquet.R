@@ -23,10 +23,9 @@
 #    manifest.json               schema, source identity, orientation, factor levels
 #    obs.parquet                 `_index` = sample id, + sample metadata columns
 #    var.parquet                 `_index` = feature id, + feature annotation columns
-#    uns.json                    uns, MINUS the enrichment payloads
+#    uns.json                    uns, without serialised R objects
 #    layers/<name>.parquet       `_index` = feature id, one column per sample
 #    varm/<slot>.parquet         `_index` = feature id, + DE stat columns
-#    enrichment/<slot>__<kind>.b64   hoisted base64 payloads, read on demand
 #
 # =============================================================================
 
@@ -177,20 +176,6 @@ ExploreDatasetParquet <- R6::R6Class(
     #' @description Returns `"parquet"`.
     backend_kind = function() "parquet",
 
-    # Hydrate-then-delegate. The payloads live in their own files so that
-    # loading a dataset does not pay for enrichment nobody asked for (measured:
-    # 13 MB of a 29 MB export). The first call for a contrast pulls the blobs
-    # in, after which the inherited implementation runs against exactly the
-    # structure it expects — no forked decode logic.
-    #' @description Enrichment results of one contrast and kind: reads the contrast's enrichment payload files on
-    #'   first use, then defers to the `.h5ad` backend's implementation.
-    #' @param contrast Contrast name, one of `contrasts()`.
-    #' @param kind `"ora"` or `"gsea"`.
-    enrichment = function(contrast, kind) {
-      private$.hydrate_enrichment(contrast)
-      super$enrichment(contrast, kind)
-    },
-
     # The manifest as written, for diagnostics.
     #' @description The parsed `manifest.json` of the parquet directory.
     manifest = function() private$.manifest,
@@ -233,26 +218,6 @@ ExploreDatasetParquet <- R6::R6Class(
   private = list(
     .dir = NULL,
     .manifest = NULL,
-    .hydrated = character(),
-
-    # Pull the hoisted base64 payloads for one contrast into .uns, once.
-    .hydrate_enrichment = function(contrast) {
-      slot <- sub("^de_", "", private$.contrast_slot[[contrast]] %||% contrast)
-      if (slot %in% private$.hydrated) {
-        return(invisible(NULL))
-      }
-      files <- (private$.manifest$enrichment_files %||% list())[[slot]]
-      for (kind in names(files %||% list())) {
-        f <- file.path(private$.dir, "enrichment", files[[kind]])
-        if (!file.exists(f)) {
-          next
-        }
-        private$.uns$enrichment_native[[slot]][[kind]] <-
-          paste(readLines(f, warn = FALSE), collapse = "")
-      }
-      private$.hydrated <- c(private$.hydrated, slot)
-      invisible(NULL)
-    },
 
     # A parquet directory is a derived cache. If the file it came from is still
     # where the manifest says and has since changed, every number in this object

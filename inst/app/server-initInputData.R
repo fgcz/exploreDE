@@ -65,6 +65,22 @@ selectedContrast <- reactive({
   if (!is.null(sel) && nzchar(sel) && sel %in% cs) sel else eds$primary_contrast()
 })
 
+# The label of the selected contrast for titles and download file names, used
+# by every tab. Defined once here: the data modules share one environment, so
+# a copy in a module would replace this one for all of them.
+designReactive <- reactive({
+  req(inputDataReactive())
+  eds <- inputDataReactive()$.eds
+  if (eds$has_de()) {
+    contrast <- selectedContrast()
+    eds$contrast_label(contrast)
+  } else if (eds$omics_class() == "proteomics") {
+    "No contrast selected"
+  } else {
+    eds$data_type() # QC fallback — no DE, use the data type name
+  }
+})
+
 base::lapply(names(contrast_selector_ids), function(tab) {
   id <- contrast_selector_ids[[tab]]
   output[[paste0("contrastSelectorUI_", tab)]] <- renderUI({
@@ -175,9 +191,12 @@ resolve_from_url <- function(dataUrl) {
   NULL
 }
 
-# Record project dir for multi-analysis browsing.
-record_project <- function(projectFromUrl) {
-  multiProjectInfo$currentDataDir <- NULL
+# Record the project dir (and the loaded dataset's dir) for multi-analysis
+# browsing; NULL forgets both. Call only after the dataset has passed the
+# access check, so a denied project never becomes browsable.
+record_project <- function(projectFromUrl, dataDir = NULL) {
+  multiProjectInfo$projectDir <- NULL
+  multiProjectInfo$currentDataDir <- dataDir
   if (is.null(projectFromUrl) || is.na(projectFromUrl) || projectFromUrl == "") {
     return(invisible())
   }
@@ -232,20 +251,6 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
     } else {
       readRDS(dataDir)
     }
-    return(list(se = se, seUnfiltered = NULL, dataDir = dataDir))
-  }
-  if (grepl("zip", dataDir)) {
-    myTempFile <- tempfile(fileext = ".rds", tmpdir = ".") #
-    res <- system(
-      paste(
-        "ssh fgcz-ms.uzh.ch unzip -c -qq /srv/www/htdocs/p30385/bfabric/Proteomics/DEA_FragPipe-DiaNN/2023/2023-09/2023-09-22/workunit_293901/2360252.zip '\\*rds' > ",
-        myTempFile
-      )
-    )
-    if (res != 0) {
-      message("download failed")
-    }
-    se <- readRDS(myTempFile)
     return(list(se = se, seUnfiltered = NULL, dataDir = dataDir))
   }
 
@@ -306,7 +311,6 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
     } else if (file.exists(file.path(dataDir, "deResult.qs2"))) {
       se <- qs2::qs_read(file.path(dataDir, "deResult.qs2"), nthreads = 4)
     }
-    multiProjectInfo$currentDataDir <- dataDir
     # If CountQC, load that (we use only the 'present' genes because it has the normalised counts in the assays)
   } else if (grepl("CountQC|ExploreMageckCounts", dataDir)) {
     dataDir <- dirname(dataDir)
@@ -349,11 +353,11 @@ load_from_url <- function(dataUrl) {
   if (is.null(resolved)) {
     return(invisible())
   }
-  record_project(resolved$projectFromUrl)
   loaded <- load_sushi_se(resolved$dataDir, resolved$dataType, resolved$projectFromUrl)
   if (is.null(loaded)) {
     return(invisible())
   }
+  record_project(resolved$projectFromUrl, loaded$dataDir)
   set_eds_from_se(loaded$se, loaded$seUnfiltered, loaded$dataDir)
 }
 

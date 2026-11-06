@@ -5,18 +5,21 @@
 #' 1. The runtime class is a concrete `ExploreDataset` subclass — not
 #'    the abstract base or intermediate.
 #' 2. Cross-references resolve: `factor_names()` are columns of
-#'    `samples()`; every `contrasts()` entry has a working `de()`;
+#'    `samples()`; every `contrasts()` entry has a working `de()` with
+#'    the `effect_log2fc` and `score_fdr` columns;
 #'    `primary_grouping()` is a member of `factor_names()`;
 #'    `primary_contrast()` is in `contrasts()` (or `NA`).
-#' 3. Sample / feature alignment: assay rownames / colnames agree
-#'    with `sample_ids()` / `feature_ids()`.
+#' 3. Assays: `raw_assay_name()` and `primary_assay_name()` are in
+#'    `assay_names()`, and the raw assay's rownames / colnames agree
+#'    with `feature_ids()` / `sample_ids()`.
 #'
 #' Cost is proportional to the number of contrasts (one `de(c)`
 #' round-trip each) plus a small constant of other accessor calls.
 #'
 #' @param eds An `ExploreDataset` instance.
-#' @param strict If `TRUE` (default), `stop()` on the first failure.
-#'   If `FALSE`, returns `list(ok, errors)`.
+#' @param strict If `TRUE` (default), `stop()` listing every failure.
+#'   If `FALSE`, returns `list(ok, errors)` and never throws: a failing
+#'   accessor is recorded as an error.
 #' @return Invisibly, `TRUE` on success (strict mode); or
 #'   `list(ok = logical(1), errors = character)` (non-strict mode).
 #' @examples
@@ -85,26 +88,46 @@ validate_explore_dataset <- function(eds, strict = TRUE) {
     }
     if (!is.data.frame(de)) {
       add(sprintf("de('%s') is not a data.frame.", c))
+      next
+    }
+    # The two DE statistics the spec requires (section 5); the app's volcano,
+    # tables and enrichment inputs fail without them.
+    missing_stats <- setdiff(c("effect_log2fc", "score_fdr"), colnames(de))
+    if (length(missing_stats)) {
+      add(sprintf("de('%s') lacks column(s): %s", c, paste(missing_stats, collapse = ", ")))
     }
   }
 
-  # 3. Sample / feature alignment (against raw assay)
-  raw_name <- tryCatch(eds$raw_assay_name(), error = function(e) {
-    add(paste0("raw_assay_name() failed: ", conditionMessage(e)))
-    NA_character_
+  # 3. The raw and primary assays are offered, and the raw assay is aligned
+  # to the samples and features.
+  an <- tryCatch(eds$assay_names(), error = function(e) {
+    add(paste0("assay_names() failed: ", conditionMessage(e)))
+    character()
   })
-  if (!is.na(raw_name) && raw_name %in% (tryCatch(eds$assay_names(), error = function(e) character()))) {
+  for (acc in c("raw_assay_name", "primary_assay_name")) {
+    nm <- tryCatch(eds[[acc]](), error = function(e) {
+      add(sprintf("%s() failed: %s", acc, conditionMessage(e)))
+      NA_character_
+    })
+    if (!is.na(nm) && !nm %in% an) {
+      add(sprintf("%s() '%s' is not in assay_names().", acc, nm))
+    }
+  }
+  raw_name <- tryCatch(eds$raw_assay_name(), error = function(e) NA_character_)
+  if (!is.na(raw_name) && raw_name %in% an) {
     a <- tryCatch(eds$raw_assay(), error = function(e) {
       add(paste0("raw_assay() failed: ", conditionMessage(e)))
       NULL
     })
+    fids <- tryCatch(eds$feature_ids(), error = function(e) {
+      add(paste0("feature_ids() failed: ", conditionMessage(e)))
+      NULL
+    })
     if (!is.null(a)) {
-      sids <- eds$sample_ids()
-      fids <- eds$feature_ids()
-      if (!is.null(colnames(a)) && !all(colnames(a) %in% sids)) {
+      if (!is.null(colnames(a)) && !all(colnames(a) %in% rownames(samples_df))) {
         add("raw_assay() colnames are not a subset of sample_ids().")
       }
-      if (!is.null(rownames(a)) && !all(rownames(a) %in% fids)) {
+      if (!is.null(fids) && !is.null(rownames(a)) && !all(rownames(a) %in% fids)) {
         add("raw_assay() rownames are not a subset of feature_ids().")
       }
     }

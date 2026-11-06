@@ -4,53 +4,17 @@ req(eds)
 # .h5ad surfaces ORA like a SUSHI SE. eds$enrichment() returns a FLAT list keyed
 # BP/upGenes... (SE) or ora/BP/upGenes... (h5ad); strip the prefix and rebuild
 # the ontology x direction nesting this module indexes as ora[[type]][[dir]].
-contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
+oraContrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
 
-# A cell in the ora[[type]][[dir]] structure below is EITHER a real
-# clusterProfiler S4 object (the native path -- existing behaviour, unchanged)
-# or a plain tidy data.frame (a BYO dataset whose pathway data was never a
-# clusterProfiler object at all -- see plans/exploredelight/enrichment_detach_plan.md). These
-# two helpers let the rest of this module read either uniformly; only the
-# genuinely S4-only plots (cnetplot/barplot/dotplot, which dispatch on the
-# class) need to branch on `.is_native()`.
-.is_native <- function(x) inherits(x, c("enrichResult", "gseaResult"))
-.res_df <- function(x) if (.is_native(x)) x@result else x
-
-# FDR threshold for "ora" / "gsea": the SUSHI parameter (fdrThreshORA /
-# fdrThreshGSEA) for an SE; for an h5ad, the per-method value that
-# build_explore_h5ad() recorded in uns$enrichment_filter; otherwise 0.05.
-.enr_fdr_thresh <- function(kind) {
-  p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else NULL
-  v <- switch(kind, ora = p$fdrThreshORA, gsea = p$fdrThreshGSEA)
-  if (is.null(v)) {
-    f <- eds$enrichment_filter()
-    if (is.list(f)) v <- f[[kind]]
-  }
-  if (is.null(v) || is.na(v)) 0.05 else as.numeric(v)
-}
-# Keep only the terms with p.adjust <= thr. ezRun stores every tested term (the
-# full table goes to its Excel export); the app, like the HTML report, only
-# ever shows the significant ones.
-.enr_keep_sig <- function(x, thr) {
-  df <- .res_df(x)
-  if (!is.data.frame(df) || !nrow(df) || !"p.adjust" %in% colnames(df)) {
-    return(x)
-  }
-  keep <- !is.na(df$p.adjust) & df$p.adjust <= thr
-  if (.is_native(x)) {
-    x@result <- df[keep, , drop = FALSE]
-    x
-  } else {
-    df[keep, , drop = FALSE]
-  }
-}
+# .is_native(), .res_df(), .enr_keep_sig() and .enr_fdr_thresh(eds, kind) are in
+# R/utils_explore_dataset.R (shared by the ORA and GSEA modules).
 
 .ora_raw <- function() {
-  if (is.null(contrast)) {
+  if (is.null(oraContrast)) {
     return(NULL)
   }
   nested <- list()
-  flat <- eds$enrichment(contrast, "ora")
+  flat <- eds$enrichment(oraContrast, "ora")
   if (length(flat)) {
     names(flat) <- sub("^ora/", "", names(flat))
     for (k in names(flat)) {
@@ -71,7 +35,7 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
   # rebuild objects from). Objects always win where both exist (cnetplot below
   # needs one), so this only ADDS cells, never overwrites one already set from
   # `flat` above.
-  tab <- eds$enrichment_table(contrast, "ora")
+  tab <- eds$enrichment_table(oraContrast, "ora")
   if (is.data.frame(tab) && nrow(tab) && "ontology" %in% colnames(tab)) {
     for (k in unique(tab$ontology)) {
       parts <- strsplit(k, "/", fixed = TRUE)[[1]]
@@ -87,7 +51,7 @@ contrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
       }
     }
   }
-  thr <- .enr_fdr_thresh("ora")
+  thr <- .enr_fdr_thresh(eds, "ora")
   nested <- lapply(nested, function(d) lapply(d, .enr_keep_sig, thr = thr))
   if (!length(nested)) {
     return(NULL)
@@ -117,21 +81,21 @@ oraPlotReactive <- reactiveValues(
 # block below (higher priority than the oraType observer that reads it) and read
 # by the observers/outputs. Single-contrast data fires it once.
 ora <- NULL
-ei <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
+oraEi <- list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
 oraParam <- list()
-design <- ""
+oraDesign <- ""
 sel <- list()
-.id2sym <- function(ids) ids
+.oraId2sym <- function(ids) ids
 
 if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
   observeEvent(
     selectedContrast(),
     {
       # Get data through the accessor layer (backend-agnostic).
-      contrast <<- selectedContrast()
+      oraContrast <<- selectedContrast()
       ora <<- .ora_raw()
-      ei <<- eds$enrichment_input(contrast)
-      design <<- if (!is.null(contrast)) eds$contrast_label(contrast) else ""
+      oraEi <<- eds$enrichment_input(oraContrast)
+      oraDesign <<- if (!is.null(oraContrast)) eds$contrast_label(oraContrast) else ""
       # ORA thresholds / featureLevel: SUSHI SE metadata$param, else defaults.
       p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else list()
       if (is.null(p)) {
@@ -140,12 +104,12 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       if (is.null(p$featureLevel)) {
         p$featureLevel <- eds$feature_id_kind()
       }
-      p$fdrThreshORA <- .enr_fdr_thresh("ora")
+      p$fdrThreshORA <- .enr_fdr_thresh(eds, "ora")
       oraParam <<- p
 
       # Significant-gene selections, with bothGenes synthesised when the backend
       # only provides up/down (uploaded h5ad).
-      s <- ei$selections %||% list()
+      s <- oraEi$selections %||% list()
       if (is.null(s$bothGenes)) {
         s$bothGenes <- union(s$upGenes, s$downGenes)
       }
@@ -153,8 +117,8 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
 
       # Backend-agnostic gene-id -> symbol remap (no-op when feature_ids are already
       # symbols, e.g. an uploaded h5ad), so labels never blank out.
-      .id2sym <<- local({
-        sa <- ei$seq_anno
+      .oraId2sym <<- local({
+        sa <- oraEi$seq_anno
         gid <- gsym <- NULL
         if (!is.null(sa)) {
           gid <- if ("gene_id" %in% colnames(sa)) {
@@ -184,7 +148,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       })
 
       output$oraDesign <- renderText({
-        design
+        oraDesign
       })
 
       # Download full ORA results file
@@ -192,7 +156,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         filename = function() {
           generate_filename(
             base_name = paste0("ORA_Results"),
-            design_name = design,
+            design_name = oraDesign,
             extension = "xlsx"
           )
         },
@@ -341,7 +305,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
         }
         # Rebuild geneName from geneID via the backend-agnostic remap.
         rdf$geneName <- sapply(strsplit(rdf$geneID, "/"), function(ids) {
-          paste(.id2sym(ids), collapse = "/")
+          paste(.oraId2sym(ids), collapse = "/")
         })
         output$selectedTable_ORA <- DT::renderDataTable({
           oraDfToShow <- rdf[, c("Label", "GeneRatio", "p.adjust", "geneName")]
@@ -448,10 +412,10 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
 
       # Get log2FCs of genes for network plot
       sigGeneIds <- sel[[input$oraDirection]]
-      log2RatioORA <- ei$ranked_l2fc[names(ei$ranked_l2fc) %in% sigGeneIds]
+      log2RatioORA <- oraEi$ranked_l2fc[names(oraEi$ranked_l2fc) %in% sigGeneIds]
       gene_ids_ora <- names(log2RatioORA)
       # Relabel to gene symbols where possible (no-op when already symbols).
-      names(log2RatioORA) <- .id2sym(gene_ids_ora)
+      names(log2RatioORA) <- .oraId2sym(gene_ids_ora)
       # For isoform data, aggregate multiple transcripts per gene
       if (!is.null(oraParam$featureLevel) && oraParam$featureLevel == "isoform") {
         agg_method <- if (!is.null(input$oraIsoformAgg)) input$oraIsoformAgg else "maxabs"
@@ -480,7 +444,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
       if (!is.null(input$oraVisFilterMode) && input$oraVisFilterMode != "none") {
         # Per-gene p-values (from the enrichment input's annotation; absent for
         # uploads -> filter degrades off).
-        seqAnno <- ei$seq_anno
+        seqAnno <- oraEi$seq_anno
 
         # Determine which p-value column to use
         pval_col <- if (!is.null(input$oraVisPType) && input$oraVisPType == "FDR") "fdr" else "pValue"
@@ -522,7 +486,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
 
       # Rebuild geneName from geneID via the backend-agnostic remap.
       rdf$geneName <- sapply(strsplit(rdf$geneID, "/"), function(ids) {
-        paste(.id2sym(ids), collapse = "/")
+        paste(.oraId2sym(ids), collapse = "/")
       })
 
       # In "genes" mode, also remove filtered genes from the enrichment result
@@ -822,7 +786,7 @@ output$dlPlot_cnetORA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_ORA, "_", input$oraType, "_network"),
-      design_name = design,
+      design_name = oraDesign,
       extension = tolower(input$downloadFormatORA)
     )
   },
@@ -852,7 +816,7 @@ output$dlPlot_barORA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_ORA, "_", input$oraType, "_bar"),
-      design_name = design,
+      design_name = oraDesign,
       extension = tolower(input$downloadFormatORA)
     )
   },
@@ -882,7 +846,7 @@ output$dlPlot_dotORA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_ORA, "_", input$oraType, "_dot"),
-      design_name = design,
+      design_name = oraDesign,
       extension = tolower(input$downloadFormatORA)
     )
   },
@@ -912,7 +876,7 @@ output$dlPlot_heatmapORA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_ORA, "_", input$oraType, "_heatmap"),
-      design_name = design,
+      design_name = oraDesign,
       extension = tolower(input$downloadFormatORA)
     )
   },
@@ -944,7 +908,7 @@ output$dlPlot_upsetORA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_ORA, "_", input$oraType, "_upset"),
-      design_name = design,
+      design_name = oraDesign,
       extension = tolower(input$downloadFormatORA)
     )
   },
@@ -974,7 +938,7 @@ output$dlPlot_lollipopORA <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = paste0(input$filename_ORA, "_", input$oraType, "_lollipop"),
-      design_name = design,
+      design_name = oraDesign,
       extension = tolower(input$downloadFormatORA)
     )
   },

@@ -145,7 +145,7 @@ check_countList <- function(eds, gs, fx_name, name_map) {
 # -----------------------------------------------------------------------------
 
 test_that("RNA-seq gene: cross-API equivalence", {
-  fx <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene_gstore()
   eds <- new_explore_dataset(fx$se)
   gs <- legacy_gStoreList_from_eds(eds, se = fx$se, dataDir = fx$dataDir)
 

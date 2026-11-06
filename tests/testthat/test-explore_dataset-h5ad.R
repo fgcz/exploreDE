@@ -100,6 +100,74 @@ test_that("counts as a named collection of matrices exposes each assay", {
   expect_lt(max(abs(a - tpm[rownames(a), colnames(a)]), na.rm = TRUE), 1e-6)
 })
 
+test_that("a second matrix with its samples in another order is stored aligned by sample name", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  tpm <- p$normalised * 1.5
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    list(counts = p$counts, tpm = tpm[, rev(colnames(tpm))]),
+    out = out,
+    omics = "rnaseq",
+    coldata = p$coldata
+  )
+  a <- new_explore_dataset(out)$assay("tpm")
+  s1 <- colnames(p$counts)[1]
+  expect_equal(unname(a[, s1]), unname(tpm[rownames(a), s1]))
+})
+
+test_that("a matrix that lacks a sample is an error, not a misaligned layer", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_error(
+    build_explore_h5ad(
+      list(counts = p$counts, tpm = p$normalised[, -1]),
+      out = out,
+      omics = "rnaseq",
+      coldata = p$coldata
+    ),
+    "same samples"
+  )
+})
+
+test_that("duplicated feature ids keep their values in every layer", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  cts <- p$counts
+  rownames(cts)[2] <- rownames(cts)[1]
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_warning(
+    build_explore_h5ad(cts, out = out, omics = "rnaseq", coldata = p$coldata),
+    "made unique"
+  )
+  raw <- new_explore_dataset(out)$raw_assay()
+  expect_false(anyNA(raw))
+  dup_id <- make.unique(rownames(cts))[2]
+  expect_equal(unname(raw[dup_id, colnames(cts)]), unname(cts[2, ]))
+})
+
+test_that("count matrices that map to the same layer name are an error", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_error(
+    build_explore_h5ad(list(raw = p$counts, counts = p$counts), out = out, omics = "rnaseq", coldata = p$coldata),
+    "same|layer name"
+  )
+})
+
+test_that("contrast names that map to the same storage key are an error", {
+  skip_if_no_anndataR()
+  dds <- make_toy_dds()
+  res <- DESeq2::results(dds, contrast = c("condition", "treated", "control"))
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_error(
+    build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list("B_vs_A" = res, "b-vs-a" = res)),
+    "same storage key"
+  )
+})
+
 # ---- 3. DE with non-canonical columns via explicit mapping ------------------
 
 test_that("de_columns maps non-standard DE column names", {
@@ -1013,11 +1081,12 @@ test_that("a nested tree of PLAIN data.frames (no clusterProfiler object anywher
   expect_length(e$backend()$uns$enrichment_native, 0L)
 })
 
-test_that("older files that carry only serialised objects (enrichment_native) still read", {
+test_that("serialised objects in older files (enrichment_native) are never unserialised", {
   skip_if_no_anndataR()
-  # Backwards compatibility: files written before 2026-09-25 carry the
-  # clusterProfiler objects themselves (gzip + base64 serialise) and, the
-  # oldest, no tidy block. Rebuild one of those by hand: the writer no longer
+  # Files written before 2026-09-25 carry the clusterProfiler objects
+  # themselves (gzip + base64 serialise) and, the oldest, no tidy block.
+  # unserialize() on file content can run code, so the reader ignores them:
+  # such a file shows no enrichment. Rebuild one by hand: the writer no longer
   # produces this format.
   obj <- .fake_enrich(padj = c(.001, .09, .6))
   out <- .toy_with_pathways(list(ora = obj))
@@ -1034,13 +1103,11 @@ test_that("older files that carry only serialised objects (enrichment_native) st
   anndataR::write_h5ad(ad, old, mode = "w")
 
   e <- new_explore_dataset(old)
-  expect_identical(e$enrichment_kinds(), "ora")
-  d <- e$enrichment_table("treated_vs_control", "ora")
-  expect_equal(nrow(d), 3L) # derived live, so unfiltered
-  expect_true(is.na(e$enrichment_filter())) # and it says it was not filtered
-  objs <- e$enrichment("treated_vs_control", "ora")
-  expect_true(methods::is(objs[["ora"]], "enrichResult"))
-  expect_equal(nrow(objs[["ora"]]@result), 3L) # the stored object, unfiltered
+  expect_false(e$has_enrichment())
+  expect_identical(e$enrichment_kinds(), character(0))
+  expect_length(e$enrichment("treated_vs_control", "ora"), 0L)
+  # Decoding the payload would give 3 rows.
+  expect_equal(NROW(e$enrichment_table("treated_vs_control", "ora")), 0L)
 })
 
 test_that("new files store no serialised objects; enrichment() rebuilds them from table + support block", {
@@ -1163,4 +1230,86 @@ test_that("a 0/1 used_in_test column (as some writers store booleans) reads as l
   d <- new_explore_dataset(adata)$de("treated_vs_control")
   expect_type(d$usedInTest, "logical")
   expect_identical(sum(d$usedInTest), sum(res$used_in_test))
+})
+
+# ---- spec conformance: identity keys (reader) and on-disk layout (writer) ----
+
+test_that("an AnnData without the exploreDE identity keys is refused, not read as RNA-seq", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  ad <- anndataR::AnnData(
+    X = t(p$counts),
+    obs = p$coldata,
+    var = data.frame(row.names = rownames(p$counts))
+  )
+  expect_error(new_explore_dataset(ad), "not an exploreDE/1.0 .h5ad.*schema_version")
+})
+
+test_that("a missing or unknown omics_type is refused", {
+  skip_if_no_anndataR()
+  pr <- make_toy_prot("protein")
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(pr$intensities, out = out, omics = "proteomics", coldata = pr$coldata, rowdata = pr$rowdata)
+  ad <- anndataR::read_h5ad(out, as = "InMemoryAnnData")
+  u <- ad$uns
+  u$omics_type <- NULL
+  ad$uns <- u
+  expect_error(new_explore_dataset(ad), "omics_type")
+  u$omics_type <- "Proteomics"
+  ad$uns <- u
+  expect_error(new_explore_dataset(ad), "omics_type")
+})
+
+test_that("proteomics files carry the spec's layer names: intensities, intensities_raw", {
+  skip_if_no_anndataR()
+  pr <- make_toy_prot("protein")
+  one <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(pr$intensities, out = one, omics = "proteomics", coldata = pr$coldata, rowdata = pr$rowdata)
+  expect_identical(names(anndataR::read_h5ad(one, as = "InMemoryAnnData")$layers), "intensities")
+
+  two <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    list(raw = 2^pr$intensities, transformed = pr$intensities),
+    out = two,
+    omics = "proteomics",
+    coldata = pr$coldata,
+    rowdata = pr$rowdata
+  )
+  expect_setequal(names(anndataR::read_h5ad(two, as = "InMemoryAnnData")$layers), c("intensities_raw", "intensities"))
+  e <- new_explore_dataset(two)
+  expect_equal(sort(as.vector(e$assay("intensities"))), sort(as.vector(pr$intensities)))
+})
+
+test_that("contrast groups must be levels of a factor; model is written only for DESeq2 results", {
+  skip_if_no_anndataR()
+  dds <- make_toy_dds()
+  res <- DESeq2::results(dds, contrast = c("condition", "treated", "control"))
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_error(
+    build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(contrast1 = res)),
+    "<test>_vs_<reference>"
+  )
+  expect_error(
+    build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(Treat_vs_Ctrl = res)),
+    "condition: "
+  )
+
+  build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(treated_vs_control = res))
+  d <- anndataR::read_h5ad(out, as = "InMemoryAnnData")$uns$de$treated_vs_control
+  expect_identical(c(d$test_group, d$reference_group, d$factor_used), c("treated", "control", "factor_condition"))
+  expect_identical(d$model, "DESeq2")
+
+  build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list(treated_vs_control = as.data.frame(res)))
+  d <- anndataR::read_h5ad(out, as = "InMemoryAnnData")$uns$de$treated_vs_control
+  expect_null(d$model)
+  expect_null(d$assay_used)
+})
+
+test_that("enrichment_filter records padj_max only for tables that were filtered", {
+  skip_if_no_anndataR()
+  tab <- data.frame(ID = c("GO:1", "GO:2"), Description = c("a", "b"), p.adjust = c(0.01, 0.9))
+  out <- .toy_with_pathways(list(ora = tab))
+  u <- anndataR::read_h5ad(out, as = "InMemoryAnnData")$uns
+  expect_null(u$enrichment_filter$padj_max)
+  expect_equal(nrow(u$enrichment$treated_vs_control$ora), 2L) # stored as given
 })

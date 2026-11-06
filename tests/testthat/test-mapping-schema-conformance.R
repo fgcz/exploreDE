@@ -17,8 +17,9 @@ schema_path <- system.file("schema", "exploreDE_mapping.schema.json", package = 
 
 .mapping_validator <- function() {
   testthat::skip_if_not_installed("jsonvalidate")
+  # The schema ships with the package; a missing one is a failure, not a skip.
   if (!nzchar(schema_path)) {
-    testthat::skip("exploreDE_mapping.schema.json not found")
+    stop("inst/schema/exploreDE_mapping.schema.json not found")
   }
   jsonvalidate::json_validator(schema_path, engine = "ajv")
 }

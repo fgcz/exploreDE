@@ -151,9 +151,8 @@ houseCols <- c(
   "#999933" # Olive (Tol)
 )
 houseCols <- paste0(houseCols, "FF")
-n <- 60
-qual_col_pals <- brewer.pal.info[brewer.pal.info$category == "qual", ]
-col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+# col_vector (all qualitative ColorBrewer colours) is defined in
+# server-summary.R, which app.R sources into the same environment first.
 colourPaletteList2 <- list(
   "House colours" = houseCols,
   "Paired" = brewer.pal(12, "Paired"),
@@ -221,6 +220,12 @@ observeEvent(input$multiRefreshProjects, {
   }
 
   projectDir <- multiProjectInfo$projectDir
+  # Listing a project's folders needs the same access as loading from it.
+  # Proteomics links record their project without an LDAP check.
+  if (!multi_access_ok(list(root = dirname(projectDir), project = basename(projectDir)))) {
+    showNotification("You do not have access to this project's datasets.", type = "warning")
+    return(NULL)
+  }
 
   if (!dir.exists(projectDir)) {
     showNotification(paste("Could not find project directory:", projectDir), type = "warning")

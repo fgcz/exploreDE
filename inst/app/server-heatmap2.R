@@ -173,30 +173,20 @@ observe({
     ignoreInit = TRUE
   )
 
-  # Batch + design dropdowns — see server-boxplot.R for the decision table.
-  .dt <- eds$data_type()
-  .factors <- eds$factor_names()
-  .grouping <- eds$primary_grouping()
-  .secondary <- eds$secondary_grouping()
-  .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
-  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, NA_character_)
-  # Proteomics grouping: SUSHI "G_" if present, else the primary grouping (h5ad).
-  .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
-  if (eds$omics_class() == "proteomics") {
-    .deDesignCol <- .protGroup
-  }
-
-  batchChoices <- c("None", .factors)
-  batchDefault <- if (.twoFactor) .secondary else "None"
-  updateSelectInput(session = session, inputId = "heatmapBatch", choices = batchChoices, selected = batchDefault)
-
-  designChoices <- if (.dt %in% c("RNASeq", "proteomics") && .twoFactor) {
-    c("None", .deDesignCol)
-  } else {
-    c("None", .factors)
-  }
-  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = .protGroup, "None")
-  updateSelectInput(session = session, inputId = "heatmapDesign", choices = designChoices, selected = designDefault)
+  # Batch + design dropdowns: batch_design_defaults() in R/utils_explore_dataset.R.
+  bd <- batch_design_defaults(eds)
+  updateSelectInput(
+    session = session,
+    inputId = "heatmapBatch",
+    choices = bd$batch_choices,
+    selected = bd$batch_default
+  )
+  updateSelectInput(
+    session = session,
+    inputId = "heatmapDesign",
+    choices = bd$design_choices,
+    selected = bd$design_default
+  )
 
   # Update p-value type based on data type. FDR-only producers (no raw p-value,
   # e.g. SAINTexpress) are locked to FDR so the significance filter is not an
@@ -643,7 +633,7 @@ observeEvent(
       }
     }
     # Log2 and batch correction on FULL matrix (all genes, all samples) before subsetting
-    is_logged <- input$heatmapCounts %in% c("normalised_log2", "vst") || eds$omics_class() == "proteomics"
+    is_logged <- assay_is_log2(eds, input$heatmapCounts)
     if (input$heatmapLog2 & input$heatmapCounts %in% c("tpm", "fpkm", "normalised", "counts")) {
       countsHeatmap <- log2(countsHeatmap + 1)
       is_logged <- TRUE

@@ -5,25 +5,6 @@ se <- eds$backend() # SE-only escape hatch for legacy helpers below
 # The contrast selector (canonical `contrastSelected` + per-tab mirrors) is
 # rendered and synced in server-initInputData.R; modules read selectedContrast().
 
-# Create reactive for design to use across all outputs and download handlers
-designReactive <- reactive({
-  if (eds$data_type() == "RNASeq") {
-    if (eds$has_de()) {
-      return(eds$contrast_label(selectedContrast()))
-    }
-    return("") # counts-only upload: no contrast to label
-  } else if (eds$omics_class() == "proteomics") {
-    if (isTruthy(selectedContrast())) {
-      return(selectedContrast())
-    } else {
-      return("No contrast selected")
-    }
-  } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
-    return(eds$data_type()) # no contrast — legacy used the dataType string
-  }
-  return("Unknown")
-})
-
 catalystCols <- c(
   "#DC050C",
   "#FB8072",
@@ -199,7 +180,7 @@ output$dlColourTemplate <- downloadHandler(
   filename = function() {
     generate_filename(
       base_name = "colour_template",
-      design_name = design,
+      design_name = designReactive(),
       extension = "xlsx"
     )
   },
@@ -229,13 +210,11 @@ observeEvent(input$importColourFile, {
   colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
 
   if (any(!importedColours$Level %in% colourTemplate$Level)) {
-    shinyalert::shinyalert(
+    showModal(modalDialog(
       title = "Uh oh...",
-      text = "You uploaded a file that has different factors and/or levels to the dataset. Are you sure it's from this study?",
-      closeOnEsc = TRUE,
-      closeOnClickOutside = TRUE,
-      showCancelButton = TRUE
-    )
+      "You uploaded a file that has different factors and/or levels to the dataset. Are you sure it's from this study?",
+      easyClose = TRUE
+    ))
   } else {
     lapply(importedColours$Level, function(l) {
       updateColourInput(session = session, inputId = l, value = importedColours$Colour[importedColours$Level == l])

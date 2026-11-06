@@ -6,20 +6,6 @@
 #   $factors, $dataset, $sgRNA_to_gene, $dataType, $countList, $design
 # ---------------------------------------------------------------------------
 
-# Create reactive for design to use across all outputs and download handlers
-designReactive <- reactive({
-  req(inputDataReactive())
-  eds <- inputDataReactive()$.eds
-  if (eds$has_de()) {
-    contrast <- selectedContrast()
-    eds$contrast_label(contrast)
-  } else if (eds$omics_class() == "proteomics") {
-    "No contrast selected"
-  } else {
-    eds$data_type() # QC fallback — no DE, use the data type name
-  }
-})
-
 # Update inputs
 observeEvent(inputDataReactive(), {
   eds <- inputDataReactive()$.eds

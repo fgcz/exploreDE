@@ -108,7 +108,7 @@ se_to_canonical_h5ad <- function(se, out) {
     obs$organism <- sub("/.*", "", param$refBuild)
   }
 
-  rd <- as.data.frame(SummarizedExperiment::rowData(se), check.names = FALSE)
+  rd <- as.data.frame(SummarizedExperiment::rowData(se), optional = TRUE)
   fid <- scuttle::uniquifyFeatureNames(rd$gene_id, rd$gene_name)
   fid[grep("^_", fid)] <- gsub("_", "", fid[grep("^_", fid)])
   var <- data.frame(
@@ -185,6 +185,7 @@ se_to_canonical_h5ad <- function(se, out) {
     uns = list(
       schema_version = "exploreDE/1.0",
       omics_type = "rnaseq_bulk",
+      feature_id_kind = "gene",
       hierarchy = list(levels = "gene", unit = "gene"),
       design = list(factors = fn, grouping = fn[1]),
       de = uns_de,

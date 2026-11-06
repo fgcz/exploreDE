@@ -28,17 +28,36 @@
 # SE subclass's "test_vs_reference" convention.
 .h5ad_safe <- function(x) gsub("[^A-Za-z0-9_]+", "_", x)
 
-# Decode a base64 native R object (clusterProfiler result). The current writer
-# gzip-compresses before base64; older files stored the raw serialise stream.
-# Try decompress-then-unserialise first, then fall back to raw unserialise.
-.h5ad_decode_native <- function(b64) {
-  if (is.null(b64) || !is.character(b64) || !nzchar(b64[[1]])) {
-    return(NULL)
+# Spec section 7.1: schema_version, omics_type and feature_id_kind are MUST.
+# Refuse a file without them instead of guessing: the old defaults loaded a
+# proteomics file with a missing or misspelt omics_type as RNA-seq (intensities
+# treated as counts) and any AnnData as exploreDE/1.0.
+.h5ad_require_identity <- function(uns) {
+  fail <- function(what) {
+    stop(
+      "not an exploreDE/1.0 .h5ad: ",
+      what,
+      " (see inst/spec/exploreDE-h5ad-1.0.md, section 7.1)",
+      call. = FALSE
+    )
   }
-  raw <- jsonlite::base64_dec(b64)
-  tryCatch(unserialize(memDecompress(raw, "gzip")), error = function(e) {
-    tryCatch(unserialize(raw), error = function(e2) NULL)
-  })
+  one <- function(key) {
+    v <- uns[[key]]
+    if (is.null(v) || !length(v) || is.na(v[[1]]) || !nzchar(v[[1]])) {
+      fail(sprintf("uns[\"%s\"] is missing", key))
+    }
+    as.character(v[[1]])
+  }
+  sv <- one("schema_version")
+  if (sv != "exploreDE/1.0") {
+    fail(sprintf("uns[\"schema_version\"] is \"%s\"", sv))
+  }
+  ot <- one("omics_type")
+  if (!ot %in% c("proteomics", "rnaseq_bulk", "crispr_countqc")) {
+    fail(sprintf("uns[\"omics_type\"] is \"%s\", not proteomics, rnaseq_bulk or crispr_countqc", ot))
+  }
+  one("feature_id_kind")
+  invisible(TRUE)
 }
 
 # Find a per-feature gene-length column for FPKM/TPM, tolerant of source (SUSHI
@@ -239,37 +258,24 @@ ExploreDatasetH5AD <- R6::R6Class(
       m
     },
 
-    #' @description Enrichment results of one contrast and kind: decoded from the serialised objects in older files,
-    #'   otherwise rebuilt from `uns$enrichment` and `uns$enrichment_support`.
+    #' @description Enrichment results of one contrast and kind, rebuilt from `uns$enrichment` and
+    #'   `uns$enrichment_support`.
     #' @param contrast Contrast name, one of `contrasts()`.
     #' @param kind `"ora"` or `"gsea"`.
     enrichment = function(contrast, kind) {
       stopifnot(kind %in% c("ora", "gsea"))
       stopifnot(contrast %in% self$contrasts())
-      # enrichment_native is keyed by the BARE contrast slot; contrast_slot
+      # The enrichment blocks are keyed by the BARE contrast slot; contrast_slot
       # carries the "de_" prefix (that's the varm key), so strip it.
+      # Files written before 2026-09-25 also carry serialised R objects in
+      # uns$enrichment_native. They are never read: unserialize() on file content
+      # can run code.
       slot <- sub("^de_", "", private$.contrast_slot[[contrast]] %||% contrast)
-      native <- private$.uns$enrichment_native[[slot]]
-      if (is.null(native)) {
-        return(private$.rebuild_enrichment(slot, kind))
-      }
-      # Files written before 2026-09-25 carry the serialised objects themselves.
-      pick <- if (kind == "gsea") "gsea" else setdiff(names(native), "gsea")
-      objs <- lapply(native[intersect(pick, names(native))], .h5ad_decode_native)
-      objs <- Filter(Negate(is.null), objs)
-      if (!length(objs)) {
-        return(list())
-      }
-      out <- list()
-      for (nm in names(objs)) {
-        out <- c(out, eds_flatten_cp_results(objs[[nm]], nm))
-      }
-      out
+      private$.rebuild_enrichment(slot, kind)
     },
 
     # Prefer the stored tidy mirror; fall back to the base class, which derives
-    # it from the native objects. So a new file costs no decode at all, and an
-    # old one still works.
+    # it from the rebuilt enrichment objects.
     #' @description Tidy enrichment table of one contrast and kind: the table stored in `uns$enrichment` when
     #'   present, otherwise derived from `enrichment()` as in the base class.
     #' @param contrast Contrast name, one of `contrasts()`.
@@ -391,17 +397,15 @@ ExploreDatasetH5AD <- R6::R6Class(
 
     .build_config = function() {
       uns <- private$.uns
-      omics_type <- uns$omics_type %||% "rnaseq_bulk"
-      omics_class <- if (grepl("proteomic", omics_type)) "proteomics" else "genomics"
-      # feature_id_kind is stamped by the writer (gene/isoform/protein/peptide/
-      # phospho/sgrna); fall back to the hierarchy unit for older files.
-      feature_id_kind <- uns$feature_id_kind %||% uns$hierarchy$unit %||% "gene"
+      .h5ad_require_identity(uns)
+      omics_type <- uns[["omics_type"]]
+      omics_class <- if (omics_type == "proteomics") "proteomics" else "genomics"
+      feature_id_kind <- uns[["feature_id_kind"]]
       data_type <- switch(
         omics_type,
         rnaseq_bulk = "RNASeq",
         crispr_countqc = "CrisprCountQC",
-        proteomics = switch(feature_id_kind, peptide = "peptidomics", phospho = "phosphoproteomics", "proteomics"),
-        "RNASeq"
+        proteomics = switch(feature_id_kind, peptide = "peptidomics", phospho = "phosphoproteomics", "proteomics")
       )
 
       factor_cols <- grep("^factor_", colnames(private$.obs), value = TRUE)
@@ -531,10 +535,10 @@ ExploreDatasetH5AD <- R6::R6Class(
         ref_build <- NA_character_
       }
 
-      # Enrichment objects are available from the serialised copy (older
-      # files) or rebuildable from the support block (current files).
+      # Enrichment kinds come from the support block only (spec §7.4): a method
+      # without one has no rebuildable objects, so it does not count.
       enrich_kinds <- character()
-      en <- uns$enrichment_native %||% uns$enrichment_support %||% list()
+      en <- uns$enrichment_support %||% list()
       if (length(en)) {
         first <- en[[1]]
         if (any(grepl("ora", names(first)))) {
@@ -544,7 +548,7 @@ ExploreDatasetH5AD <- R6::R6Class(
       }
 
       list(
-        schema_version = uns$schema_version %||% "exploreDE/1.0",
+        schema_version = uns[["schema_version"]],
         omics_class = omics_class,
         data_type = data_type,
         organism = (private$.obs$organism %||% NA_character_)[1],
@@ -578,7 +582,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         proteomics = NULL,
         source = list(
           backend_kind = "h5ad",
-          schema_version = uns$schema_version %||% "exploreDE/1.0",
+          schema_version = uns[["schema_version"]],
           built_at = Sys.time()
         )
       )

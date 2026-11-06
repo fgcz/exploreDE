@@ -341,10 +341,8 @@ observeEvent(
             output$UpsetIntersectGenesUI <- renderUI({
               HTML(paste0(ec, collapse = "<br>"))
             })
-            observeEvent(input$copy_link, {
-              text <- paste0(ec, collapse = "\n")
-              session$sendCustomMessage("txt", text)
-            })
+            # Read by the copy_link observer registered once at the top.
+            upsetGeneListToCopy(paste0(ec, collapse = "\n"))
             jsCall <- paste0('enrich({list: "', paste(ec, collapse = "\\n"), '", popup: true});')
             output$linkToEnrichr <- renderUI({
               HTML(paste0("<a href='javascript:void(0)' onclick='", jsCall, "'>Analyse at Enrichr website</a>"))
