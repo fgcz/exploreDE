@@ -235,7 +235,19 @@ standardise_columns <- function(df) {
 #' @return Character vector of unique feature IDs
 #' @noRd
 build_feature_id <- function(df) {
-  pid <- df$protein_Id
+  if (!"protein_Id" %in% colnames(df)) {
+    stop(
+      "build_feature_id(): no protein_Id column; columns are: ",
+      paste(colnames(df), collapse = ", "),
+      call. = FALSE
+    )
+  }
+  # A protein_Id can have gaps (SAINT): use the cleaned row name there, as the
+  # all-rows fallback below does, so no feature gets an NA id.
+  clean_rownames <- gsub("~[^~]+~", "_", rownames(df))
+  pid <- as.character(df$protein_Id)
+  missing_pid <- is.na(pid) | !nzchar(pid)
+  pid[missing_pid] <- clean_rownames[missing_pid]
 
   # If protein_Id is already unique, use it directly
   if (!anyDuplicated(pid)) {
@@ -250,7 +262,7 @@ build_feature_id <- function(df) {
   }
 
   # Fallback: cleaned raw rownames
-  gsub("~[^~]+~", "_", rownames(df))
+  clean_rownames
 }
 
 #' collapse_guides_to_genes
