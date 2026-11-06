@@ -63,13 +63,15 @@ for (side in c(-1, 1)) {
     features[[length(features) + 1]] <- dot_curve(
       side * eye_x + eye_width * t,
       eye_y + arc * eye_height * (1 - t^2),
-      size = 0.30
+      size = 0.30,
+      jitter = 0.005
     )
   }
   features[[length(features) + 1]] <- dot_curve(
     rep(side * eye_x, 5),
     seq(eye_y - 0.043, eye_y + 0.043, length.out = 5),
-    size = 0.30
+    size = 0.30,
+    jitter = 0.005
   )
 
   # Three whiskers fan out from each cheek; gaps preserve the scatter texture.
@@ -85,7 +87,8 @@ for (side in c(-1, 1)) {
       whisker_x,
       whisker_y,
       size = 0.30,
-      alpha = 0.95
+      alpha = 0.95,
+      jitter = 0.007
     )
   }
 
@@ -96,14 +99,14 @@ for (side in c(-1, 1)) {
     0.56 + 0.38 * t,
     size = 0.26,
     alpha = 0.75,
-    jitter = 0.006
+    jitter = 0.012
   )
   features[[length(features) + 1]] <- dot_curve(
     side * (0.53 + 0.17 * t),
     0.94 - 0.37 * t,
     size = 0.26,
     alpha = 0.75,
-    jitter = 0.006
+    jitter = 0.012
   )
 }
 
