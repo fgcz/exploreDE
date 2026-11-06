@@ -36,7 +36,9 @@ dot_curve <- function(x, y, colour, size = 0.48, alpha = 0.9, jitter = 0.002) {
   data.frame(
     x = x + stats::rnorm(length(x), sd = jitter),
     y = y + stats::rnorm(length(y), sd = jitter),
-    colour = colour, size = size, alpha = alpha
+    colour = colour,
+    size = size,
+    alpha = alpha
   )
 }
 
@@ -57,12 +59,15 @@ for (side in c(-1, 1)) {
     features[[length(features) + 1]] <- dot_curve(
       side * eye_x + eye_width * t,
       eye_y + arc * eye_height * (1 - t^2),
-      colour, size = 0.30
+      colour,
+      size = 0.30
     )
   }
   features[[length(features) + 1]] <- dot_curve(
-    rep(side * eye_x, 5), seq(eye_y - 0.043, eye_y + 0.043, length.out = 5),
-    colour, size = 0.30
+    rep(side * eye_x, 5),
+    seq(eye_y - 0.043, eye_y + 0.043, length.out = 5),
+    colour,
+    size = 0.30
   )
 
   # Three whiskers fan out from each cheek; gaps preserve the scatter texture.
@@ -75,19 +80,31 @@ for (side in c(-1, 1)) {
       rd <- rd[!near_dot, ]
     }
     features[[length(features) + 1]] <- dot_curve(
-      whisker_x, whisker_y, colour, size = 0.30, alpha = 0.95
+      whisker_x,
+      whisker_y,
+      colour,
+      size = 0.30,
+      alpha = 0.95
     )
   }
 
   # Dotted ear tips echo the two rising arms of the volcano.
   t <- seq(0, 1, length.out = 24)
   features[[length(features) + 1]] <- dot_curve(
-    side * (0.20 + 0.33 * t), 0.56 + 0.38 * t,
-    colour, size = 0.26, alpha = 0.75, jitter = 0.004
+    side * (0.20 + 0.33 * t),
+    0.56 + 0.38 * t,
+    colour,
+    size = 0.26,
+    alpha = 0.75,
+    jitter = 0.004
   )
   features[[length(features) + 1]] <- dot_curve(
-    side * (0.53 + 0.17 * t), 0.94 - 0.37 * t,
-    colour, size = 0.26, alpha = 0.75, jitter = 0.004
+    side * (0.53 + 0.17 * t),
+    0.94 - 0.37 * t,
+    colour,
+    size = 0.26,
+    alpha = 0.75,
+    jitter = 0.004
   )
 }
 
@@ -98,8 +115,11 @@ rd <- rd[!in_nose, ]
 t <- seq(0, 1, length.out = 10)
 for (side in c(-1, 1)) {
   features[[length(features) + 1]] <- dot_curve(
-    side * 0.10 * t, 0.135 - 0.035 * sin(pi * t),
-    fill, size = 0.27, alpha = 1
+    side * 0.10 * t,
+    0.135 - 0.035 * sin(pi * t),
+    fill,
+    size = 0.27,
+    alpha = 1
   )
 }
 face <- do.call(rbind, features)
@@ -131,9 +151,16 @@ sticker <- ggplot() +
   annotation_custom(ggplotGrob(volcano), xmin = -0.72, xmax = 0.72, ymin = -0.25, ymax = 0.67) +
   annotate(
     ggtext::GeomRichText,
-    x = 0, y = -0.46, label = paste0("explo<span style='color:", ns, "'>re</span>DE"), colour = "white",
-    size = 5.6, family = "Avenir Next", fontface = "bold",
-    fill = NA, label.colour = NA, label.padding = grid::unit(0, "pt")
+    x = 0,
+    y = -0.46,
+    label = paste0("explo<span style='color:", ns, "'>re</span>DE"),
+    colour = "white",
+    size = 5.6,
+    family = "Avenir Next",
+    fontface = "bold",
+    fill = NA,
+    label.colour = NA,
+    label.padding = grid::unit(0, "pt")
   ) +
   coord_fixed(xlim = c(-sqrt(3) / 2, sqrt(3) / 2), ylim = c(-1, 1), expand = FALSE) +
   theme_void() +
@@ -141,8 +168,12 @@ sticker <- ggplot() +
 
 dir.create(output_dir, showWarnings = FALSE)
 ggsave(
-  file.path(output_dir, "logo.png"), sticker,
-  width = sqrt(3), height = 2, dpi = 600, bg = "transparent",
+  file.path(output_dir, "logo.png"),
+  sticker,
+  width = sqrt(3),
+  height = 2,
+  dpi = 600,
+  bg = "transparent",
   device = ragg::agg_png
 )
 grDevices::dev.off()
