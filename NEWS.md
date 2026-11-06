@@ -4,6 +4,7 @@
 - Security: a `?data=` link whose path contains "zip" no longer loads a fixed 2023 proteomics dataset over `ssh` before the access check; that leftover debugging branch is removed.
 - Security: Multi DE "Browse Projects" lists a project's analysis folders only for users with access to it. A link the user was denied no longer leaves its project browsable after loading the demo or an upload.
 - Security: the Multi DE Upset/Venn tab shows the features of a selected intersection as text. It inserted the feature ids as HTML, so a dataset whose ids contained markup could run script in the viewer's browser. The "Analyse at Enrichr website" link is gone; it called a function the app never defined and did nothing.
+- `exploreDE()` no longer turns on `shiny::reactiveConsole()`, which stayed on in the calling R session after the app closed and hid errors from reading reactive values outside a reactive context.
 - `build_explore_h5ad()` aligns every count matrix to the samples by column name. A second matrix (for example `tpm`) with its samples in another order was stored under the wrong sample labels; a matrix with different samples is now an error.
 - `build_explore_h5ad()` keeps the values of duplicated feature ids. Every duplicate after the first was stored as an all-NA row, although the warning said the ids were made unique.
 - `build_explore_h5ad()` stops when two count matrices map to the same layer (for example `raw` and `counts`) or two contrast names to the same storage key (for example `B_vs_A` and `b-vs-a`). Before, one of them was silently dropped.
