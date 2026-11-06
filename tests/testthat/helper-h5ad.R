@@ -57,7 +57,7 @@ make_toy_pieces <- function() {
   list(
     counts = cnt,
     normalised = nrm,
-    coldata = as.data.frame(SummarizedExperiment::colData(dds), check.names = FALSE),
+    coldata = as.data.frame(SummarizedExperiment::colData(dds), optional = TRUE),
     de_df = de_df,
     rowdata = rowdata,
     contrast = "treated_vs_control"
