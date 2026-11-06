@@ -687,8 +687,15 @@ ExploreDatasetH5AD <- R6::R6Class(
           # As for a SUSHI rowData without one: the volcano and DE table select it by name.
           d$description <- d$gene_name
         }
-        for (col in c("gc", "featWidth")) {
-          if (col %in% colnames(fv) && !col %in% colnames(d)) d[[col]] <- fv[d$feature_id, col]
+        # Feature length and GC content for the DE QC bias plots, which read
+        # featWidth / gc from de(). build_explore_h5ad() stores them as
+        # label_featwidth / label_gc.
+        if (!is.null(cfg$featwidth_col) && !"featWidth" %in% colnames(d)) {
+          d$featWidth <- as.numeric(fv[d$feature_id, cfg$featwidth_col])
+        }
+        gc_col <- intersect(c("label_gc", "gc"), colnames(fv))
+        if (length(gc_col) && !"gc" %in% colnames(d)) {
+          d$gc <- as.numeric(fv[d$feature_id, gc_col[[1]]])
         }
         de_dfs[[key]] <- eds_finalise_de(d)
       }

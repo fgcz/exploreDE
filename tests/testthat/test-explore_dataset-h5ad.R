@@ -366,6 +366,27 @@ test_that("a .h5ad whose symbols are in a plain gene_name column shows them as f
   expect_identical(f$display_name, f$gene_name)
 })
 
+test_that("feature length and GC content from build_explore_h5ad() reach de() for the DE QC plots", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  n <- nrow(p$rowdata)
+  p$rowdata$featWidth <- seq(500, by = 10, length.out = n)
+  p$rowdata$gc <- seq(0.3, 0.6, length.out = n)
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    p$counts,
+    out = out,
+    omics = "rnaseq",
+    coldata = p$coldata,
+    rowdata = p$rowdata,
+    de = list(treated_vs_control = p$de_df),
+    de_columns = list(effect_log2fc = "LFC", score_pvalue = "P", score_fdr = "Q")
+  )
+  d <- new_explore_dataset(out)$de("treated_vs_control")
+  expect_equal(d$featWidth, p$rowdata[d$feature_id, "featWidth"])
+  expect_equal(d$gc, p$rowdata[d$feature_id, "gc"])
+})
+
 # ---- 5b. Multi-DE per-contrast fan-out (legacy_multi_contrast_from_eds) ------
 
 test_that("legacy_multi_contrast_from_eds fans a multi-contrast h5ad out per contrast", {
