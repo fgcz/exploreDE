@@ -111,6 +111,48 @@ eds_as_flag <- function(x) {
   as.logical(out)
 }
 
+# A p-value-safe ordering index for a DE/seqAnno frame: by raw p-value when it
+# carries usable values, else by fdr, else the identity order. Guards against
+# order(NULL) (missing column) and all-NA p-value producers (SAINTexpress).
+.de_order_idx <- function(d) {
+  col <- if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) {
+    "pValue"
+  } else if ("fdr" %in% colnames(d)) {
+    "fdr"
+  } else {
+    NULL
+  }
+  if (is.null(col)) seq_len(nrow(d)) else order(d[[col]], na.last = TRUE)
+}
+
+# The last step of every backend's DE table, so the backends agree:
+# - legacy aliases log2Ratio / pValue / fdr from the canonical columns, for the
+#   app modules that still read the legacy names;
+# - usedInTest, which features entered the test: the table's own used_in_test /
+#   usedInTest flag when it has one, else a usable raw p-value, else (FDR-only
+#   producers such as SAINTexpress) a non-NA fdr, else every feature;
+# - rows ordered by p-value, else by fdr (.de_order_idx()).
+eds_finalise_de <- function(d) {
+  aliases <- c(log2Ratio = "effect_log2fc", pValue = "score_pvalue", fdr = "score_fdr")
+  for (legacy in names(aliases)) {
+    if (!legacy %in% colnames(d) && aliases[[legacy]] %in% colnames(d)) {
+      d[[legacy]] <- d[[aliases[[legacy]]]]
+    }
+  }
+  d$usedInTest <- if ("used_in_test" %in% colnames(d)) {
+    eds_as_flag(d$used_in_test)
+  } else if ("usedInTest" %in% colnames(d)) {
+    eds_as_flag(d$usedInTest)
+  } else if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) {
+    !is.na(d$pValue)
+  } else if ("fdr" %in% colnames(d)) {
+    !is.na(d$fdr)
+  } else {
+    rep(TRUE, nrow(d))
+  }
+  d[.de_order_idx(d), , drop = FALSE]
+}
+
 # THE column matcher. Every piece of exploreDE that has to work out "which of
 # these columns is the FDR / the gene symbol / the protein id" goes through
 # here, against the one JSON dictionary. Patterns are tried in the order the

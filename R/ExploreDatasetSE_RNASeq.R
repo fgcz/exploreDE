@@ -191,7 +191,7 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
       # RNA-seq has DE columns inline in rowData (one contrast).
       contrast <- cfg$primary_contrast
       private$.de_dfs <- setNames(
-        list(eds_standardise_de_columns(rd)),
+        list(eds_finalise_de(eds_standardise_de_columns(rd))),
         contrast
       )
     }

@@ -391,10 +391,7 @@ legacy_multi_contrast_from_eds <- function(eds, contrast) {
   if (length(extra)) {
     seqAnno <- cbind(seqAnno, feats[de$feature_id, extra, drop = FALSE])
   }
-  if ("pValue" %in% colnames(seqAnno)) {
-    seqAnno <- seqAnno[order(seqAnno$pValue, na.last = TRUE), , drop = FALSE]
-  }
-  genes <- seqAnno$feature_id
+  genes <- seqAnno$feature_id # in eds$de() order (eds_finalise_de())
 
   # ---- countList (legacy display names) -----------------------------------
   assay_alias <- c(

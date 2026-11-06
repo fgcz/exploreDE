@@ -644,8 +644,8 @@ ExploreDatasetH5AD <- R6::R6Class(
         }
       }
 
-      # de_dfs: canonical varm + legacy aliases (log2Ratio/pValue/fdr) so
-      # modules still reading legacy names keep working. Sorted by p-value.
+      # de_dfs: canonical varm + the feature columns the app modules expect;
+      # eds_finalise_de() adds the legacy aliases and usedInTest, and sorts.
       de_dfs <- list()
       for (key in names(cfg$contrast_meta)) {
         slot <- private$.contrast_slot[[key]]
@@ -654,15 +654,6 @@ ExploreDatasetH5AD <- R6::R6Class(
           next
         }
         d$feature_id <- rownames(d)
-        if ("effect_log2fc" %in% colnames(d)) {
-          d$log2Ratio <- d$effect_log2fc
-        }
-        if ("score_pvalue" %in% colnames(d)) {
-          d$pValue <- d$score_pvalue
-        }
-        if ("score_fdr" %in% colnames(d)) {
-          d$fdr <- d$score_fdr
-        }
         # Optional extra score -> its declared display label (e.g. SaintScore),
         # so the DE table can surface it (display-only, like nrPeptides).
         if ("score" %in% colnames(d)) {
@@ -673,24 +664,6 @@ ExploreDatasetH5AD <- R6::R6Class(
         d$gene_name <- fv[d$feature_id, "display_name"]
         # Columns several app modules (DE table, volcano, DE QC) expect from a
         # SUSHI seqAnno; supply equivalents so those tabs work for uploaded data.
-        # usedInTest: which features entered the test. The file's own
-        # used_in_test flag when it has one (spec §5); else a usable p-value;
-        # when the producer carries no raw p-value (e.g. SAINTexpress, FDR only)
-        # fall back to the fdr column so the DE views are not silently emptied.
-        if ("used_in_test" %in% colnames(d)) {
-          d$usedInTest <- eds_as_flag(d$used_in_test)
-        } else if ("usedInTest" %in% colnames(d)) {
-          d$usedInTest <- eds_as_flag(d$usedInTest)
-        } else {
-          has_p <- "pValue" %in% colnames(d) && any(!is.na(d$pValue))
-          d$usedInTest <- if (has_p) {
-            !is.na(d$pValue)
-          } else if ("fdr" %in% colnames(d)) {
-            !is.na(d$fdr)
-          } else {
-            TRUE
-          }
-        }
         for (src in c("label_gene_id", "gene_id")) {
           if (src %in% colnames(fv) && !"gene_id" %in% colnames(d)) d$gene_id <- fv[d$feature_id, src]
         }
@@ -703,10 +676,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         for (col in c("gc", "featWidth")) {
           if (col %in% colnames(fv) && !col %in% colnames(d)) d[[col]] <- fv[d$feature_id, col]
         }
-        if ("score_pvalue" %in% colnames(d)) {
-          d <- d[order(d$score_pvalue, na.last = TRUE), , drop = FALSE]
-        }
-        de_dfs[[key]] <- d
+        de_dfs[[key]] <- eds_finalise_de(d)
       }
       private$.de_dfs <- de_dfs
 

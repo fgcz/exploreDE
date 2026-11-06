@@ -732,6 +732,28 @@ test_that("SAINT-shaped producer: FDR-only, no raw p-value", {
   expect_equal(d$usedInTest, !is.na(d$fdr))
 })
 
+test_that("SAINT-shaped producer: the DE table is ordered by FDR", {
+  skip_if_no_anndataR()
+  s <- make_saint_like()
+  s$de <- lapply(s$de, function(d) {
+    d$BFDR <- rev(d$BFDR)
+    d
+  })
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    list(intensities = s$intensities),
+    out = out,
+    omics = "proteomics",
+    feature_level = "protein",
+    coldata = s$coldata,
+    rowdata = s$rowdata,
+    de = s$de,
+    de_columns = list(effect_log2fc = "log2_EFCs", score_fdr = "BFDR")
+  )
+  d <- new_explore_dataset(out)$de("baitA_vs_eGFP")
+  expect_false(is.unsorted(d$fdr))
+})
+
 test_that("SAINT-shaped producer: SaintScore surfaces as a display-only extra", {
   skip_if_no_anndataR()
   eds <- build_saint()
