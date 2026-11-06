@@ -1,6 +1,6 @@
 # --- detectAligner on real fixture ------------------------------------------
 test_that("detectAligner identifies the aligner from the real RNASeq fixture's input_dataset.tsv", {
-  fx <- fx_rnaseq_gene()
+  fx <- fx_rnaseq_gene_gstore()
   aligner <- detectAligner(fx$dataDir)
   expect_true(aligner %in% c("STAR", "Kallisto", "FeatureCounts"), info = paste("got:", aligner))
 })
@@ -62,11 +62,35 @@ test_that("detectDEMethod defaults to DESeq2 when no signals present", {
   expect_equal(detectDEMethod("/foo/bar", list()), "DESeq2")
 })
 
-test_that("count_result_summary matches ezRun::makeCountResultSummary on the shipped SUSHI example", {
+test_that("count_result_summary gives the settings table of the shipped SUSHI example", {
   se <- readRDS(system.file("examples", "genomics", "deResult.rds", package = "exploreDE"))
   ours <- count_result_summary(S4Vectors::metadata(se)$param, se)
-  expect_s3_class(ours, "data.frame")
-  expect_true(all(c("Analysis:", "Reference:", "Method:") %in% rownames(ours)))
-  skip_if_not_installed("ezRun")
-  expect_identical(ours, ezRun::makeCountResultSummary(S4Vectors::metadata(se)$param, se))
+  # count_result_summary() ports ezRun::makeCountResultSummary(). ezRun is not
+  # on CRAN or Bioconductor, so it cannot be a test dependency: the expected
+  # table is pinned from exploreDE 3.10.0 instead of compared live.
+  expected <- data.frame(
+    settings = c(
+      "NGS two group analysis",
+      "Homo_sapiens/GENCODE/GRCh38.p13/Annotation/Release_42-2023-01-30",
+      "gene",
+      "est_counts",
+      "deseq2",
+      "diff--over--undiff",
+      "DESeq2_MedianRatio",
+      "3.322",
+      "10"
+    ),
+    row.names = c(
+      "Analysis:",
+      "Reference:",
+      "Feature level:",
+      "Data Column Used:",
+      "Method:",
+      "Comparison:",
+      "Normalization:",
+      "Log2 signal threshold:",
+      "Linear signal threshold:"
+    )
+  )
+  expect_identical(ours, expected)
 })

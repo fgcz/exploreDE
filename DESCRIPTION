@@ -82,7 +82,15 @@ Imports:
   tibble,
   xml2,
   dendextend,
-  rlang
+  rlang,
+  colorspace,
+  cowplot,
+  enrichplot,
+  ggvenn,
+  KEGGREST,
+  pathview,
+  scales,
+  tidyr
 Suggests:
   DOSE,
   testthat (>= 3.0.0),

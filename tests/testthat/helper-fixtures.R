@@ -4,7 +4,8 @@
 # Loads real SE objects from gstore (local paths) or pStore (URLs) and caches
 # them for the life of the R session. Each test references a fixture via the
 # `fx_*()` accessors below; if the underlying file / URL is unreachable, the
-# test skips gracefully (does not error).
+# test skips (fails instead when EXPLOREDE_FULL_FIXTURES is set). rnaseq_gene
+# is the shipped demo and always runs.
 #
 # Bioconductor generics are used unqualified inside R/helperFunctions.R
 # (metadata, assay, rowData, colData, ...). The installed app
@@ -22,7 +23,16 @@ suppressPackageStartupMessages({
 .fixture_cache <- new.env(parent = emptyenv())
 
 fixture_specs <- list(
+  # The package's demo dataset: this SUSHI comparison
+  # (p3009/o5638_DESeq2_diff--over--undiff), trimmed by
+  # inst/scripts/trim_demo_deResult.R. Shipped, so its tests run everywhere.
   rnaseq_gene = list(
+    kind = "genomics",
+    package_file = "examples/genomics/deResult.rds"
+  ),
+  # The same comparison in its SUSHI directory, for tests that read the files
+  # next to deResult.rds (../input_dataset.tsv: sample table, aligner).
+  rnaseq_gene_gstore = list(
     kind = "genomics",
     dataDir = "/srv/gstore/projects/p3009/o5638_DESeq2_diff--over--undiff_2024-11-20--12-29-40/diff--over--undiff",
     file = "deResult.rds"
@@ -73,10 +83,19 @@ load_fixture <- function(key) {
     return(cached)
   }
 
-  result <- if (spec$kind == "genomics") {
+  result <- if (spec$kind == "genomics" && !is.null(spec$package_file)) {
+    path <- system.file(spec$package_file, package = "exploreDE", mustWork = TRUE)
+    list(se = readRDS(path), dataDir = dirname(path), kind = "genomics", key = key)
+  } else if (spec$kind == "genomics") {
     path <- file.path(spec$dataDir, spec$file)
     if (!file.exists(path)) {
-      testthat::skip(sprintf("Fixture '%s' not found at %s", key, path))
+      # Skipped where /srv/gstore is not mounted (e.g. CI). Set
+      # EXPLOREDE_FULL_FIXTURES=1 to make a missing file a failure instead.
+      msg <- sprintf("Fixture '%s' not found at %s", key, path)
+      if (nzchar(Sys.getenv("EXPLOREDE_FULL_FIXTURES"))) {
+        stop(msg)
+      }
+      testthat::skip(msg)
     }
     list(se = readRDS(path), dataDir = spec$dataDir, kind = "genomics", key = key)
   } else if (spec$kind == "proteomics") {
@@ -96,6 +115,7 @@ load_fixture <- function(key) {
 }
 
 fx_rnaseq_gene <- function() load_fixture("rnaseq_gene")
+fx_rnaseq_gene_gstore <- function() load_fixture("rnaseq_gene_gstore")
 fx_rnaseq_isoform <- function() load_fixture("rnaseq_isoform")
 fx_countqc <- function() load_fixture("countqc")
 fx_crispr_countqc <- function() load_fixture("crispr_countqc")

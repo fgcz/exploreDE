@@ -229,13 +229,11 @@ observeEvent(input$importColourFile, {
   colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
 
   if (any(!importedColours$Level %in% colourTemplate$Level)) {
-    shinyalert::shinyalert(
+    showModal(modalDialog(
       title = "Uh oh...",
-      text = "You uploaded a file that has different factors and/or levels to the dataset. Are you sure it's from this study?",
-      closeOnEsc = TRUE,
-      closeOnClickOutside = TRUE,
-      showCancelButton = TRUE
-    )
+      "You uploaded a file that has different factors and/or levels to the dataset. Are you sure it's from this study?",
+      easyClose = TRUE
+    ))
   } else {
     lapply(importedColours$Level, function(l) {
       updateColourInput(session = session, inputId = l, value = importedColours$Colour[importedColours$Level == l])

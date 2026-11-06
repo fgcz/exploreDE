@@ -13,15 +13,16 @@ schema_path <- system.file("schema", "exploreDE_column_patterns.schema.json", pa
 
 .patterns_validator <- function() {
   testthat::skip_if_not_installed("jsonvalidate")
+  # The schema ships with the package; a missing one is a failure, not a skip.
   if (!nzchar(schema_path)) {
-    testthat::skip("exploreDE_column_patterns.schema.json not found")
+    stop("inst/schema/exploreDE_column_patterns.schema.json not found")
   }
   jsonvalidate::json_validator(schema_path, engine = "ajv")
 }
 
 test_that("column_patterns.json conforms to its own schema", {
   if (!nzchar(patterns_path)) {
-    testthat::skip("column_patterns.json not found")
+    stop("inst/dictionaries/column_patterns.json not found")
   }
   v <- .patterns_validator()
   expect_true(v(patterns_path))
