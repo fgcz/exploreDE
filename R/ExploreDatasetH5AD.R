@@ -150,11 +150,10 @@ ExploreDatasetH5AD <- R6::R6Class(
   inherit = ExploreDataset,
 
   public = list(
-    #' @description Read a canonical `.h5ad` or take a live AnnData, build the config from it unless one is given,
-    #'   and prepare the feature and DE tables.
+    #' @description Read a canonical `.h5ad` or take a live AnnData, build the config from it, and prepare the
+    #'   feature and DE tables.
     #' @param input An `anndataR` AnnData object, or a path to an existing `.h5ad` file.
-    #' @param config Optional pre-built config list; built from the AnnData when `NULL`.
-    initialize = function(input, config = NULL) {
+    initialize = function(input) {
       adata <- if (inherits(input, "AbstractAnnData")) {
         input
       } else if (is.character(input) && length(input) == 1L && file.exists(input)) {
@@ -168,7 +167,7 @@ ExploreDatasetH5AD <- R6::R6Class(
       private$.layers <- p$layers
       private$.varm <- p$varm
       private$.uns <- p$uns
-      private$.config <- config %||% private$.build_config()
+      private$.config <- private$.build_config()
       private$.prep()
       invisible(self)
     },

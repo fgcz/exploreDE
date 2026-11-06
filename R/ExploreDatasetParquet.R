@@ -107,8 +107,6 @@
 #' differs.
 #'
 #' @param input Path to the parquet directory.
-#' @param config Optional pre-built config list; derived from `uns.json` when
-#'   omitted.
 #'
 #' @keywords internal
 ExploreDatasetParquet <- R6::R6Class(
@@ -116,11 +114,10 @@ ExploreDatasetParquet <- R6::R6Class(
   inherit = ExploreDatasetH5AD,
 
   public = list(
-    #' @description Read the parquet directory (manifest, obs, var, layers, varm, uns), build the config unless one
-    #'   is given, prepare the feature and DE tables, and warn when the source `.h5ad` has changed since export.
+    #' @description Read the parquet directory (manifest, obs, var, layers, varm, uns), build the config, prepare
+    #'   the feature and DE tables, and warn when the source `.h5ad` has changed since export.
     #' @param input Path to the parquet directory.
-    #' @param config Optional pre-built config list; derived from `uns.json` when omitted.
-    initialize = function(input, config = NULL) {
+    initialize = function(input) {
       if (!is.character(input) || length(input) != 1L || !dir.exists(input)) {
         stop("ExploreDatasetParquet: input must be a path to a parquet directory")
       }
@@ -167,7 +164,7 @@ ExploreDatasetParquet <- R6::R6Class(
       private$.uns <- uns
       private$.dir <- input
       private$.manifest <- manifest
-      private$.config <- config %||% private$.build_config()
+      private$.config <- private$.build_config()
       private$.prep()
       private$.warn_if_stale()
       invisible(self)

@@ -96,18 +96,17 @@ dim(eds$raw_assay())
 \if{html}{\out{<a id="method-ExploreDatasetSE-initialize"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-initialize}{}}}
 \subsection{\code{ExploreDatasetSE$new()}}{
-  Wrap a \code{SummarizedExperiment}: store it, build the config from it unless one is given, and
-prepare the feature and DE tables.
+  Wrap a \code{SummarizedExperiment}: store it, build the config from it, and prepare the feature
+and DE tables.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExploreDatasetSE$new(se, config = NULL)}
+    \preformatted{ExploreDatasetSE$new(se)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{se}}{A \code{SummarizedExperiment}.}
-      \item{\code{config}}{Optional pre-built config list; built from \code{se} by the subclass when \code{NULL}.}
     }
     \if{html}{\out{</div>}}
   }
