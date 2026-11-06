@@ -18,6 +18,16 @@
   folders only for users with access to it. A link the user was denied
   no longer leaves its project browsable after loading the demo or an
   upload.
+- Security: the Multi DE Upset/Venn tab shows the features of a selected
+  intersection as text. It inserted the feature ids as HTML, so a
+  dataset whose ids contained markup could run script in the viewer’s
+  browser. The “Analyse at Enrichr website” link is gone; it called a
+  function the app never defined and did nothing.
+- [`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md)
+  no longer turns on
+  [`shiny::reactiveConsole()`](https://rdrr.io/pkg/shiny/man/reactiveConsole.html),
+  which stayed on in the calling R session after the app closed and hid
+  errors from reading reactive values outside a reactive context.
 - [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
   aligns every count matrix to the samples by column name. A second
   matrix (for example `tpm`) with its samples in another order was
