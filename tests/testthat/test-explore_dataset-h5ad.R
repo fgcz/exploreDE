@@ -340,6 +340,32 @@ test_that("pathway stats for a non-existent contrast warn", {
   )
 })
 
+test_that("a .h5ad whose symbols are in a plain gene_name column shows them as feature labels", {
+  skip_if_no_anndataR()
+  p <- make_toy_prot("protein")
+  rd <- p$rowdata
+  rd$protein_Id <- sprintf("P%03d", seq_len(nrow(rd)))
+  rd$gene_name <- sprintf("SYM%03d", seq_len(nrow(rd)))
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    list(intensities = p$intensities),
+    out = out,
+    omics = "proteomics",
+    coldata = p$coldata,
+    rowdata = rd
+  )
+  # Another writer's file: the symbol column is gene_name, not label_gene_symbol.
+  ad <- anndataR::read_h5ad(out, as = "InMemoryAnnData")
+  var <- ad$var
+  colnames(var)[colnames(var) == "label_gene_symbol"] <- "gene_name"
+  ad$var <- var
+  anndataR::write_h5ad(ad, out, mode = "w")
+
+  f <- new_explore_dataset(out)$features()
+  expect_false(identical(f$feature_id, f$gene_name))
+  expect_identical(f$display_name, f$gene_name)
+})
+
 # ---- 5b. Multi-DE per-contrast fan-out (legacy_multi_contrast_from_eds) ------
 
 test_that("legacy_multi_contrast_from_eds fans a multi-contrast h5ad out per contrast", {

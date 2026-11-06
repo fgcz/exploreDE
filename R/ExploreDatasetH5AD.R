@@ -60,6 +60,19 @@
   invisible(TRUE)
 }
 
+# Feature (var) columns per role, the spec's label_* name first; files from
+# other writers may carry the plain names. .h5ad_role_col() returns the first
+# one present, or NULL.
+.h5ad_role_cols <- list(
+  symbol = c("label_gene_symbol", "gene_name", "gene_symbol"),
+  gene_id = c("label_gene_id", "gene_id"),
+  protein_id = c("label_protein_id", "protein_id", "protein_Id")
+)
+.h5ad_role_col <- function(cols, role) {
+  hit <- intersect(.h5ad_role_cols[[role]], cols)
+  if (length(hit)) hit[[1]] else NULL
+}
+
 # Find a per-feature gene-length column for FPKM/TPM, tolerant of source (SUSHI
 # featWidth, featureCounts Length, a GTF-derived gene_length, …). Preference-
 # ordered; matches with or without a canonical "label_" prefix. NULL if none.
@@ -566,7 +579,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         } else {
           raw_layer_name
         },
-        display_name_field = "label_gene_symbol",
+        display_name_field = .h5ad_role_col(colnames(private$.var), "symbol") %||% NA_character_,
         description_field = "description",
         primary_contrast = if (length(cm)) names(cm)[[1]] else NA_character_,
         contrast_meta = cm,
@@ -612,20 +625,20 @@ ExploreDatasetH5AD <- R6::R6Class(
       # yields NULL protein choices, matching the SE backend).
       if (identical(cfg$omics_class, "proteomics")) {
         fid <- as.character(var$feature_id)
-        gcol <- intersect(c("label_gene_symbol", "gene_name", "gene_symbol"), colnames(var))
+        gcol <- .h5ad_role_col(colnames(var), "symbol")
         gene_lookup <- gene_choices <- NULL
-        if (length(gcol)) {
-          gene <- as.character(var[[gcol[[1]]]])
+        if (!is.null(gcol)) {
+          gene <- as.character(var[[gcol]])
           valid <- !is.na(gene) & nzchar(gene) & gene != fid
           if (any(valid)) {
             gene_lookup <- split(fid[valid], gene[valid])
             gene_choices <- unique(gene[valid])
           }
         }
-        pcol <- intersect(c("label_protein_id", "protein_id", "protein_Id"), colnames(var))
+        pcol <- .h5ad_role_col(colnames(var), "protein_id")
         protein_lookup <- protein_choices <- NULL
-        if (length(pcol)) {
-          pid <- as.character(var[[pcol[[1]]]])
+        if (!is.null(pcol)) {
+          pid <- as.character(var[[pcol]])
           valid <- !is.na(pid) & nzchar(pid) & pid != fid
           if (any(valid)) {
             protein_lookup <- split(fid[valid], pid[valid])
@@ -638,9 +651,9 @@ ExploreDatasetH5AD <- R6::R6Class(
         )
       } else if (identical(cfg$feature_id_kind, "isoform")) {
         # Isoform RNA-seq: gene symbol -> transcripts, as for the SE backends.
-        gcol <- intersect(c("label_gene_symbol", "gene_name", "gene_symbol"), colnames(var))
-        if (length(gcol)) {
-          private$.config$proteomics <- eds_isoform_gene_choices(var$feature_id, var[[gcol[[1]]]])
+        gcol <- .h5ad_role_col(colnames(var), "symbol")
+        if (!is.null(gcol)) {
+          private$.config$proteomics <- eds_isoform_gene_choices(var$feature_id, var[[gcol]])
         }
       }
 
@@ -664,8 +677,9 @@ ExploreDatasetH5AD <- R6::R6Class(
         d$gene_name <- fv[d$feature_id, "display_name"]
         # Columns several app modules (DE table, volcano, DE QC) expect from a
         # SUSHI seqAnno; supply equivalents so those tabs work for uploaded data.
-        for (src in c("label_gene_id", "gene_id")) {
-          if (src %in% colnames(fv) && !"gene_id" %in% colnames(d)) d$gene_id <- fv[d$feature_id, src]
+        gid_col <- .h5ad_role_col(colnames(fv), "gene_id")
+        if (!is.null(gid_col) && !"gene_id" %in% colnames(d)) {
+          d$gene_id <- fv[d$feature_id, gid_col]
         }
         if ("description" %in% colnames(fv) && !"description" %in% colnames(d)) {
           d$description <- fv[d$feature_id, "description"]
