@@ -336,7 +336,16 @@
   if (!length(counts)) {
     stop("build_explore_h5ad: at least one count matrix is required")
   }
-  names(counts) <- vapply(names(counts) %||% "counts", .canon_count_name, character(1))
+  canon <- vapply(names(counts) %||% "counts", .canon_count_name, character(1))
+  if (anyDuplicated(canon)) {
+    dup <- unique(canon[duplicated(canon)])
+    stop(sprintf(
+      "build_explore_h5ad: count matrices %s all map to the layer name(s) %s; pass one matrix per layer",
+      paste0("'", names(counts)[canon %in% dup], "'", collapse = ", "),
+      paste0("'", dup, "'", collapse = ", ")
+    ))
+  }
+  names(counts) <- canon
   counts <- lapply(counts, as.matrix)
 
   primary <- if ("counts" %in% names(counts)) counts[["counts"]] else counts[[1]]
@@ -492,8 +501,32 @@
   flip <- function(m) {
     m <- as.matrix(m)
     ids <- rownames(m) %||% base_ids
+    # Same uniquification as .assemble_counts() applied to base_ids, so a
+    # duplicated feature id matches its made-unique name instead of NA.
+    if (anyDuplicated(ids)) {
+      ids <- make.unique(ids)
+    }
     keep <- match(base_ids, ids) # align every matrix to primary
     m <- m[keep, , drop = FALSE]
+    # Align samples by name as well; a matrix without column names must
+    # already be in sample order.
+    if (!is.null(colnames(m))) {
+      if (!setequal(colnames(m), sample_ids)) {
+        stop(sprintf(
+          "build_explore_h5ad: every count matrix needs the same samples; missing: %s; extra: %s",
+          paste(setdiff(sample_ids, colnames(m)), collapse = ", "),
+          paste(setdiff(colnames(m), sample_ids), collapse = ", ")
+        ))
+      }
+      m <- m[, match(sample_ids, colnames(m)), drop = FALSE]
+    } else if (ncol(m) != length(sample_ids)) {
+      stop(
+        "build_explore_h5ad: a count matrix without column names has ",
+        ncol(m),
+        " columns, not ",
+        length(sample_ids)
+      )
+    }
     x <- t(m)
     dimnames(x) <- list(sample_ids, fid)
     if (is.logical(x)) {
@@ -593,6 +626,14 @@
   uns_de <- list()
   de_slot <- list()
   score_src <- list()
+  slots <- gsub("[^a-z0-9]+", "_", tolower(names(de)))
+  if (anyDuplicated(slots)) {
+    dup <- unique(slots[duplicated(slots)])
+    stop(sprintf(
+      "build_explore_h5ad: contrast names %s map to the same storage key; rename them",
+      paste0("'", names(de)[slots %in% dup], "'", collapse = ", ")
+    ))
+  }
   for (cn in names(de)) {
     mapping <- if (per_contrast_map) de_columns[[cn]] else de_columns
     one <- .assemble_de_table(cn, de[[cn]], mapping, fid, id2fid)

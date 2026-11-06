@@ -100,6 +100,74 @@ test_that("counts as a named collection of matrices exposes each assay", {
   expect_lt(max(abs(a - tpm[rownames(a), colnames(a)]), na.rm = TRUE), 1e-6)
 })
 
+test_that("a second matrix with its samples in another order is stored aligned by sample name", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  tpm <- p$normalised * 1.5
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    list(counts = p$counts, tpm = tpm[, rev(colnames(tpm))]),
+    out = out,
+    omics = "rnaseq",
+    coldata = p$coldata
+  )
+  a <- new_explore_dataset(out)$assay("tpm")
+  s1 <- colnames(p$counts)[1]
+  expect_equal(unname(a[, s1]), unname(tpm[rownames(a), s1]))
+})
+
+test_that("a matrix that lacks a sample is an error, not a misaligned layer", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_error(
+    build_explore_h5ad(
+      list(counts = p$counts, tpm = p$normalised[, -1]),
+      out = out,
+      omics = "rnaseq",
+      coldata = p$coldata
+    ),
+    "same samples"
+  )
+})
+
+test_that("duplicated feature ids keep their values in every layer", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  cts <- p$counts
+  rownames(cts)[2] <- rownames(cts)[1]
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_warning(
+    build_explore_h5ad(cts, out = out, omics = "rnaseq", coldata = p$coldata),
+    "made unique"
+  )
+  raw <- new_explore_dataset(out)$raw_assay()
+  expect_false(anyNA(raw))
+  dup_id <- make.unique(rownames(cts))[2]
+  expect_equal(unname(raw[dup_id, colnames(cts)]), unname(cts[2, ]))
+})
+
+test_that("count matrices that map to the same layer name are an error", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_error(
+    build_explore_h5ad(list(raw = p$counts, counts = p$counts), out = out, omics = "rnaseq", coldata = p$coldata),
+    "same|layer name"
+  )
+})
+
+test_that("contrast names that map to the same storage key are an error", {
+  skip_if_no_anndataR()
+  dds <- make_toy_dds()
+  res <- DESeq2::results(dds, contrast = c("condition", "treated", "control"))
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  expect_error(
+    build_explore_h5ad(dds, out = out, omics = "rnaseq", de = list("B_vs_A" = res, "b-vs-a" = res)),
+    "same storage key"
+  )
+})
+
 # ---- 3. DE with non-canonical columns via explicit mapping ------------------
 
 test_that("de_columns maps non-standard DE column names", {
