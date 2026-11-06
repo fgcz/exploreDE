@@ -25,18 +25,23 @@ rd$y <- sqrt(-log10(rd$pValue))
 rd <- rd[rd$y <= stats::quantile(rd$y, 0.995), ]
 rd$x <- rd$log2Ratio / 8
 rd$y <- rd$y / max(rd$y)
-sig <- !is.na(rd$fdr) & rd$fdr < 0.05
-rd$colour <- ifelse(sig & rd$x > 1 / 8, up, ifelse(sig & rd$x < -1 / 8, down, ns))
-rd <- rd[order(rd$colour != ns), ]
+
+# The volcano's cutoff region: |log2 fold change| > 1, above the p-value line
+# under which no gene has FDR < 0.05. All points, data and face alike, are
+# coloured by where they sit relative to it.
+x_cut <- 1 / 8
+y_cut <- min(rd$y[!is.na(rd$fdr) & rd$fdr < 0.05])
+volcano_colour <- function(x, y) {
+  ifelse(y < y_cut | abs(x) <= x_cut, ns, ifelse(x > 0, up, down))
+}
 
 # A little irregularity keeps the facial details in the same language as the
 # volcano: individual points, never a solid cartoon outline.
 set.seed(27)
-dot_curve <- function(x, y, colour, size = 0.48, alpha = 0.9, jitter = 0.002) {
+dot_curve <- function(x, y, size = 0.48, alpha = 0.9, jitter = 0.002) {
   data.frame(
     x = x + stats::rnorm(length(x), sd = jitter),
     y = y + stats::rnorm(length(y), sd = jitter),
-    colour = colour,
     size = size,
     alpha = alpha
   )
@@ -44,7 +49,6 @@ dot_curve <- function(x, y, colour, size = 0.48, alpha = 0.9, jitter = 0.002) {
 
 features <- list()
 for (side in c(-1, 1)) {
-  colour <- if (side < 0) down else up
   eye_x <- 0.29
   eye_y <- 0.36
   eye_width <- 0.14
@@ -59,14 +63,12 @@ for (side in c(-1, 1)) {
     features[[length(features) + 1]] <- dot_curve(
       side * eye_x + eye_width * t,
       eye_y + arc * eye_height * (1 - t^2),
-      colour,
       size = 0.30
     )
   }
   features[[length(features) + 1]] <- dot_curve(
     rep(side * eye_x, 5),
     seq(eye_y - 0.043, eye_y + 0.043, length.out = 5),
-    colour,
     size = 0.30
   )
 
@@ -82,56 +84,56 @@ for (side in c(-1, 1)) {
     features[[length(features) + 1]] <- dot_curve(
       whisker_x,
       whisker_y,
-      colour,
       size = 0.30,
       alpha = 0.95
     )
   }
 
   # Dotted ear tips echo the two rising arms of the volcano.
-  t <- seq(0, 1, length.out = 24)
+  t <- seq(0, 1, length.out = 34)
   features[[length(features) + 1]] <- dot_curve(
     side * (0.20 + 0.33 * t),
     0.56 + 0.38 * t,
-    colour,
     size = 0.26,
     alpha = 0.75,
-    jitter = 0.004
+    jitter = 0.006
   )
   features[[length(features) + 1]] <- dot_curve(
     side * (0.53 + 0.17 * t),
     0.94 - 0.37 * t,
-    colour,
     size = 0.26,
     alpha = 0.75,
-    jitter = 0.004
+    jitter = 0.006
   )
 }
 
 # Leave a downward triangular nose in the background colour by removing dots.
 in_nose <- rd$y >= 0.137 & rd$y <= 0.21 & abs(rd$x) <= 0.045 * (rd$y - 0.137) / (0.21 - 0.137)
 rd <- rd[!in_nose, ]
-# Mouth curves erase dots with the exact background colour.
-t <- seq(0, 1, length.out = 10)
-for (side in c(-1, 1)) {
-  features[[length(features) + 1]] <- dot_curve(
-    side * 0.10 * t,
-    0.135 - 0.035 * sin(pi * t),
-    fill,
-    size = 0.27,
-    alpha = 1
-  )
-}
-face <- do.call(rbind, features)
+
+# All points first, then one colouring rule for every one of them.
+points <- rbind(
+  data.frame(x = rd$x, y = rd$y, size = 0.13, alpha = 0.4, face = FALSE),
+  cbind(do.call(rbind, features), face = TRUE)
+)
+points$colour <- volcano_colour(points$x, points$y)
+points <- points[order(points$face, points$colour != ns), ]
 
 # Keep the highest outlying data points inside the hexagon's sloping shoulders.
-sticker_x <- rd$x / 2.10 * 1.44
-sticker_y <- -0.25 + (rd$y + 0.03) / 1.06 * 0.92
-rd <- rd[sticker_y < 0.90 - abs(sticker_x) / sqrt(3), ]
+sticker_x <- points$x / 2.10 * 1.44
+sticker_y <- -0.25 + (points$y + 0.03) / 1.06 * 0.92
+points <- points[sticker_y < 0.90 - abs(sticker_x) / sqrt(3), ]
+
+# Mouth curves erase dots with the exact background colour.
+t <- seq(0, 1, length.out = 10)
+mouth <- rbind(
+  dot_curve(-0.10 * t, 0.135 - 0.035 * sin(pi * t)),
+  dot_curve(0.10 * t, 0.135 - 0.035 * sin(pi * t))
+)
 
 volcano <- ggplot() +
-  geom_point(aes(x, y, colour = colour), rd, size = 0.13, alpha = 0.4, shape = 16) +
-  geom_point(aes(x, y, colour = colour, size = size, alpha = alpha), face, shape = 16) +
+  geom_point(aes(x, y, colour = colour, size = size, alpha = alpha), points, shape = 16) +
+  geom_point(aes(x, y), mouth, colour = fill, size = 0.27, shape = 16) +
   scale_colour_identity() +
   scale_size_identity() +
   scale_alpha_identity() +
