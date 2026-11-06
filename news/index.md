@@ -57,6 +57,12 @@
   [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
   carry all three.
 - Breaking:
+  [`new_explore_dataset()`](https://fgcz.github.io/exploreDE/reference/new_explore_dataset.md)
+  and the constructors of the `ExploreDataset*` classes no longer take a
+  `config` argument. Nothing in the package passed one; for an `.h5ad`
+  or a Parquet directory a supplied config made loading fail and skipped
+  the check that the file is exploreDE/1.0.
+- Breaking:
   [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
   requires contrast names of the form `<test>_vs_<reference>`, with both
   groups levels of one `coldata` factor, and records that factor as
@@ -92,6 +98,9 @@
   for datasets with fewer than 500), no plot appeared.
 - Ordination: FGCZ staff see the “Preprocessing order” settings again;
   everybody saw the staff-only message instead.
+- The README says how the `?data=` LDAP check identifies the user
+  (`SHINYPROXY_USERNAME`, one ShinyProxy container per user), and that
+  without it every gStore link is refused.
 - The DESCRIPTION declares every package the app uses: pathview,
   enrichplot, KEGGREST, ggvenn, cowplot, colorspace, scales and tidyr
   were missing, so on a fresh install the app failed at startup
@@ -114,9 +123,10 @@
 - The version follows Bioconductor’s numbering, where an even middle
   number marks a release.
 - anndataR is installed from Bioconductor: the DESCRIPTION no longer has
-  a `Remotes:` field pointing to GitHub. exploreDE needs anndataR \>=
-  1.3, which Bioconductor ships from release 3.24; until then, install
-  anndataR from GitHub (`scverse/anndataR`) yourself.
+  a `Remotes:` field pointing to GitHub, and requires anndataR \>= 1.2.3
+  (Bioconductor 3.23), the version the deployed app reads with. A file
+  that is not valid HDF5 is read once before the error is shown, not
+  three times.
 - The demo dataset (`inst/examples/genomics/deResult.rds`) is 4.4 MB
   instead of 34 MB. It shows the same samples, features, DE table and
   ORA/GSEA results; removed are parts the app never reads: the DESeq2
@@ -129,8 +139,7 @@
   categories, and the maintainer’s ORCID.
 - exploreDE has a hex sticker (`man/figures/logo.png`, drawn by
   `inst/scripts/make_hex_logo.R`): a volcano plot whose point density
-  draws a cat face. The README opens with what exploreDE is and says to
-  install anndataR from GitHub first.
+  draws a cat face. The README opens with what exploreDE is.
 - The hex sticker now has dotted cat eyes, ears and whiskers, a
   background-coloured mouth, and subdued grey “re” lettering. The README
   links the sticker to the full-size PNG.

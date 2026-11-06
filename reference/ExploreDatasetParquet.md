@@ -86,22 +86,18 @@ Inherited methods
 ### `ExploreDatasetParquet$new()`
 
 Read the parquet directory (manifest, obs, var, layers, varm, uns),
-build the config unless one is given, prepare the feature and DE tables,
-and warn when the source `.h5ad` has changed since export.
+build the config, prepare the feature and DE tables, and warn when the
+source `.h5ad` has changed since export.
 
 #### Usage
 
-    ExploreDatasetParquet$new(input, config = NULL)
+    ExploreDatasetParquet$new(input)
 
 #### Arguments
 
 - `input`:
 
   Path to the parquet directory.
-
-- `config`:
-
-  Optional pre-built config list; derived from `uns.json` when omitted.
 
 ------------------------------------------------------------------------
 

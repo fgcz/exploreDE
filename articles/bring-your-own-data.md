@@ -56,6 +56,8 @@ labels such as `organism`, `ref_build`, and `factors`.
 ``` r
 library(exploreDE)
 library(SummarizedExperiment)
+#> Warning: replacing previous import 'S4Arrays::makeNindexFromArrayViewport' by
+#> 'DelayedArray::makeNindexFromArrayViewport' when loading 'SummarizedExperiment'
 out_dir <- tempdir()
 ```
 

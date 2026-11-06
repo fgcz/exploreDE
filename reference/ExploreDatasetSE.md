@@ -96,23 +96,18 @@ Inherited methods
 
 ### `ExploreDatasetSE$new()`
 
-Wrap a `SummarizedExperiment`: store it, build the config from it unless
-one is given, and prepare the feature and DE tables.
+Wrap a `SummarizedExperiment`: store it, build the config from it, and
+prepare the feature and DE tables.
 
 #### Usage
 
-    ExploreDatasetSE$new(se, config = NULL)
+    ExploreDatasetSE$new(se)
 
 #### Arguments
 
 - `se`:
 
   A `SummarizedExperiment`.
-
-- `config`:
-
-  Optional pre-built config list; built from `se` by the subclass when
-  `NULL`.
 
 ------------------------------------------------------------------------
 

@@ -70,8 +70,7 @@
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"scverse/anndataR"</span><span class="op">)</span> <span class="co"># needs &gt;= 1.3 (Bioconductor 3.24)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"fgcz/exploreDE"</span><span class="op">)</span>   <span class="co"># pulls in the Bioconductor dependencies</span></span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"fgcz/exploreDE"</span><span class="op">)</span> <span class="co"># pulls in the Bioconductor dependencies (anndataR &gt;= 1.2.3: Bioconductor &gt;= 3.23)</span></span>
 <span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://fgcz.github.io/exploreDE/">exploreDE</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="op">)</span>                   <span class="co"># landing page: upload a file or load the demo</span></span>
@@ -83,6 +82,7 @@
 <li>
 <code>?data=&lt;percent-encoded https link to an .h5ad&gt;</code>: A file from an allowed source (by default APB Export jobs and public pStore; set <code>EXPLOREDE_URL_SOURCES</code> to change the list). Plain <code>https://</code> only, no redirects, up to 1 GB.</li>
 </ul>
+<p>The LDAP check takes the user from the <code>SHINYPROXY_USERNAME</code> environment variable, read once per R process, so run the app behind ShinyProxy with one container per user. Without that variable (plain Shiny Server, for example) every gStore link is refused; the demo, uploads and <code>https://</code> links still work.</p>
 </div>
 <div class="section level2">
 <h2 id="bring-your-own-data">Bring your own data<a class="anchor" aria-label="anchor" href="#bring-your-own-data"></a>

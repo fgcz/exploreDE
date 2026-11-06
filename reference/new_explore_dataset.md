@@ -7,7 +7,7 @@ and returns the appropriate concrete subclass.
 ## Usage
 
 ``` r
-new_explore_dataset(input, config = NULL)
+new_explore_dataset(input)
 ```
 
 ## Arguments
@@ -15,10 +15,6 @@ new_explore_dataset(input, config = NULL)
 - input:
 
   See above.
-
-- config:
-
-  Optional pre-built config list; advanced use only.
 
 ## Value
 

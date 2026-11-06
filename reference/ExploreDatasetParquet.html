@@ -117,17 +117,14 @@ differs.</p>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDatasetH5AD" data-id="samples"><a href="ExploreDatasetH5AD.html#method-samples"><code>ExploreDatasetH5AD$samples()</code></a></span></li>
 </ul></details></p><hr><a id="method-ExploreDatasetParquet-initialize"></a><div class="section">
 <h3 id="exploredatasetparquet-new-"><code>ExploreDatasetParquet$new()</code><a class="anchor" aria-label="anchor" href="#exploredatasetparquet-new-"></a></h3>
-<p>Read the parquet directory (manifest, obs, var, layers, varm, uns), build the config unless one
-is given, prepare the feature and DE tables, and warn when the source <code>.h5ad</code> has changed since export.</p><div class="section">
+<p>Read the parquet directory (manifest, obs, var, layers, varm, uns), build the config, prepare
+the feature and DE tables, and warn when the source <code>.h5ad</code> has changed since export.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/ExploreDatasetParquet.html">ExploreDatasetParquet</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">input</span>, config <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/ExploreDatasetParquet.html">ExploreDatasetParquet</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">input</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>input</code></dt>
 <dd><p>Path to the parquet directory.</p></dd>
-
-      <dt><code>config</code></dt>
-<dd><p>Optional pre-built config list; derived from <code>uns.json</code> when omitted.</p></dd>
 
 
 </dl><p></p></div>

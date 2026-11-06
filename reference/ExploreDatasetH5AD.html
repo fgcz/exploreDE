@@ -119,17 +119,14 @@ object.</p>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="source"><a href="ExploreDataset.html#method-source"><code>ExploreDataset$source()</code></a></span></li>
 </ul></details></p><hr><a id="method-ExploreDatasetH5AD-initialize"></a><div class="section">
 <h3 id="exploredataseth-ad-new-"><code>ExploreDatasetH5AD$new()</code><a class="anchor" aria-label="anchor" href="#exploredataseth-ad-new-"></a></h3>
-<p>Read a canonical <code>.h5ad</code> or take a live AnnData, build the config from it unless one is given,
-and prepare the feature and DE tables.</p><div class="section">
+<p>Read a canonical <code>.h5ad</code> or take a live AnnData, build the config from it, and prepare the
+feature and DE tables.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/ExploreDatasetH5AD.html">ExploreDatasetH5AD</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">input</span>, config <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/ExploreDatasetH5AD.html">ExploreDatasetH5AD</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">input</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>input</code></dt>
 <dd><p>An <code>anndataR</code> AnnData object, or a path to an existing <code>.h5ad</code> file.</p></dd>
-
-      <dt><code>config</code></dt>
-<dd><p>Optional pre-built config list; built from the AnnData when <code>NULL</code>.</p></dd>
 
 
 </dl><p></p></div>

@@ -90,21 +90,17 @@ Inherited methods
 ### `ExploreDatasetH5AD$new()`
 
 Read a canonical `.h5ad` or take a live AnnData, build the config from
-it unless one is given, and prepare the feature and DE tables.
+it, and prepare the feature and DE tables.
 
 #### Usage
 
-    ExploreDatasetH5AD$new(input, config = NULL)
+    ExploreDatasetH5AD$new(input)
 
 #### Arguments
 
 - `input`:
 
   An `anndataR` AnnData object, or a path to an existing `.h5ad` file.
-
-- `config`:
-
-  Optional pre-built config list; built from the AnnData when `NULL`.
 
 ------------------------------------------------------------------------
 
