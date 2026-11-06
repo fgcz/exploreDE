@@ -27,12 +27,25 @@ test_that("calculate_pca returns a well-shaped ordination result", {
   expect_equal(round(sum(res$variance), 2), 100)
 })
 
-test_that("calculate_pca drops samples with NAs and reports removed_samples", {
+test_that("calculate_pca drops features with NAs, keeps every sample, and reports removed_features", {
   m <- make_sample_counts()
   m[3, 1] <- NA
   res <- calculate_pca(m)
-  expect_equal(res$removed_samples, 1)
-  expect_false("s3" %in% res$scores$Name)
+  expect_equal(res$removed_features, 1)
+  expect_setequal(res$scores$Name, rownames(m))
+  expect_false("g1" %in% res$loadings$gene)
+})
+
+test_that("calculate_pca and calculate_pcoa keep all samples when every sample has an NA", {
+  # Proteomics: missing values in every sample, in a few features
+  m <- make_sample_counts(n_samples = 6, n_features = 20)
+  m[cbind(1:6, 1:6)] <- NA
+  pca <- calculate_pca(m)
+  expect_setequal(pca$scores$Name, rownames(m))
+  expect_equal(pca$removed_features, 6)
+  pcoa <- calculate_pcoa(m)
+  expect_setequal(pcoa$scores$Name, rownames(m))
+  expect_equal(pcoa$removed_features, 6)
 })
 
 test_that("calculate_pca returns NULL when matrix is too small", {

@@ -1221,12 +1221,13 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 #' @param counts Matrix with samples as rows, features as columns
 #' @param center Logical
 #' @param scale Logical
-#' @return List with scores, loadings, variance, method, component_names, removed_samples
+#' @return List with scores, loadings, variance, method, component_names, removed_features
 #' @noRd
 calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
-  # Remove samples with missing values
-  completeCases <- stats::complete.cases(counts)
-  counts_clean <- counts[completeCases, ]
+  # Remove features (columns) with missing values; proteomics has NAs in every
+  # sample, so dropping samples would leave none.
+  complete_features <- colSums(is.na(counts)) == 0
+  counts_clean <- counts[, complete_features, drop = FALSE]
 
   if (nrow(counts_clean) < 3 || ncol(counts_clean) < 3) {
     return(NULL)
@@ -1255,7 +1256,7 @@ calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
     variance = variance,
     method = "PCA",
     component_names = paste0("PC", seq_along(variance)),
-    removed_samples = sum(!completeCases)
+    removed_features = sum(!complete_features)
   )
 }
 
@@ -1267,9 +1268,9 @@ calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
 #' @return List with scores, loadings (NULL), variance / stress, method, component_names
 #' @noRd
 calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
-  # Remove samples with missing values
-  completeCases <- stats::complete.cases(counts)
-  counts_clean <- counts[completeCases, ]
+  # Remove features (columns) with missing values, as calculate_pca() does.
+  complete_features <- colSums(is.na(counts)) == 0
+  counts_clean <- counts[, complete_features, drop = FALSE]
 
   if (nrow(counts_clean) < 3 || ncol(counts_clean) < 3) {
     return(NULL)
@@ -1317,7 +1318,7 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
       stress = nmds_result$stress,
       method = "NMDS",
       component_names = component_names,
-      removed_samples = sum(!completeCases)
+      removed_features = sum(!complete_features)
     )
   } else {
     # Classical PCoA
@@ -1350,7 +1351,7 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
       stress = NULL,
       method = "PCoA",
       component_names = component_names,
-      removed_samples = sum(!completeCases)
+      removed_features = sum(!complete_features)
     )
   }
 }
