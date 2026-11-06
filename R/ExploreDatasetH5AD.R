@@ -79,12 +79,9 @@
   NULL
 }
 
-# Read a .h5ad into memory across anndataR versions (the in-memory arg name
-# has varied: as= is current; older builds used to=; default also works).
+# Read a .h5ad into memory (anndataR >= 1.2.3, see DESCRIPTION).
 .h5ad_read <- function(path) {
-  tryCatch(anndataR::read_h5ad(path, as = "InMemoryAnnData"), error = function(e) {
-    tryCatch(anndataR::read_h5ad(path, to = "InMemoryAnnData"), error = function(e2) anndataR::read_h5ad(path))
-  })
+  anndataR::read_h5ad(path, as = "InMemoryAnnData")
 }
 
 # Pull the concrete pieces out of an anndataR object as plain R structures, so

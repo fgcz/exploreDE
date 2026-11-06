@@ -8,8 +8,7 @@ Documentation website: <https://fgcz.github.io/exploreDE/> (help pages, the brin
 
 ```r
 install.packages("BiocManager")
-BiocManager::install("scverse/anndataR") # needs >= 1.3 (Bioconductor 3.24)
-BiocManager::install("fgcz/exploreDE")   # pulls in the Bioconductor dependencies
+BiocManager::install("fgcz/exploreDE") # pulls in the Bioconductor dependencies (anndataR >= 1.2.3: Bioconductor >= 3.23)
 
 library(exploreDE)
 exploreDE()                   # landing page: upload a file or load the demo
