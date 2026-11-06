@@ -317,3 +317,9 @@ one `.json` file. Upload it later on the same dataset to pick up where you
 left off; a session from a different dataset is refused. The file holds no
 data, and its format is described in
 `system.file("spec/exploreDE-session-2.md", package = "exploreDE")`.
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

@@ -3,6 +3,10 @@
 \name{ExploreDatasetSE_CountQC}
 \alias{ExploreDatasetSE_CountQC}
 \title{Concrete subclass for SUSHI CountQC `SummarizedExperiment` outputs}
+\value{
+An R6 class generator; `$new()` returns an
+  `ExploreDatasetSE_CountQC` object.
+}
 \description{
 Top-level `rowData(se)` carries feature annotations; there are no
 DE results. May include a `presentFlag` / `isPresent` assay used
@@ -11,6 +15,19 @@ as the QC denominator.
 \details{
 Inherits the accessor contract from [ExploreDataset] via
 [ExploreDatasetSE]; overrides only `.build_config()` and `.prep()`.
+}
+\examples{
+library(SummarizedExperiment)
+de_result <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))
+# A count table without DE results, as SUSHI's CountQC writes it
+se <- SummarizedExperiment(
+  assays = list(counts = assay(de_result, "counts")),
+  colData = colData(de_result),
+  rowData = rowData(de_result)[, c("gene_id", "gene_name", "description")]
+)
+eds <- ExploreDatasetSE_CountQC$new(se)
+eds
+eds$has_de()
 }
 \section{Super classes}{
 \code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{\link[exploreDE:ExploreDatasetSE]{ExploreDatasetSE}} -> \code{ExploreDatasetSE_CountQC}

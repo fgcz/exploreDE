@@ -76,6 +76,7 @@
 - README, the bring-your-own-data vignette, and the AI skill now cover
   writing files outside R, opening files from a link, and saving sessions.
 - The help pages of the `ExploreDataset*` classes describe every public method and its arguments.
+- Every exported function and class has a help-page example that runs on the shipped example datasets, and says what it returns. The DESCRIPTION gives the package's URL, bug tracker and Bioconductor categories.
 
 ## Removed
 

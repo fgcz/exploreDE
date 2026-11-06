@@ -32,3 +32,9 @@ Checks subclass-agnostic invariants by walking the accessor API:
 Cost is proportional to the number of contrasts (one `de(c)`
 round-trip each) plus a small constant of other accessor calls.
 }
+\examples{
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+eds <- new_explore_dataset(se)
+validate_explore_dataset(eds)
+validate_explore_dataset(eds, strict = FALSE)
+}

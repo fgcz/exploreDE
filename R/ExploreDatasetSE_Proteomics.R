@@ -62,6 +62,14 @@
 #' Inherits the accessor contract from [ExploreDataset] via
 #' [ExploreDatasetSE]; overrides `.build_config()` and `.prep()`.
 #'
+#' @return An R6 class generator; `$new()` returns an
+#'   `ExploreDatasetSE_Proteomics` object.
+#' @examples
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' eds <- ExploreDatasetSE_Proteomics$new(se)
+#' eds
+#' head(eds$feature_ids())
+#' head(eds$de(eds$primary_contrast()))
 #' @export
 ExploreDatasetSE_Proteomics <- R6::R6Class(
   classname = "ExploreDatasetSE_Proteomics",

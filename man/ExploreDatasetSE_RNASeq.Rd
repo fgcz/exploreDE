@@ -3,6 +3,10 @@
 \name{ExploreDatasetSE_RNASeq}
 \alias{ExploreDatasetSE_RNASeq}
 \title{Concrete subclass for SUSHI RNA-seq `SummarizedExperiment` outputs}
+\value{
+An R6 class generator; `$new()` returns an
+  `ExploreDatasetSE_RNASeq` object.
+}
 \description{
 Reads from a SUSHI ezApp DESeq2 / edgeR / limma result. Top-level
 `rowData(se)` carries feature annotations plus inline DE columns for
@@ -13,6 +17,14 @@ pre-computed `enrichResult` / `gseaResult` objects live in
 \details{
 Inherits the accessor contract from [ExploreDataset] via
 [ExploreDatasetSE]; overrides only `.build_config()` and `.prep()`.
+}
+\examples{
+se <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))
+eds <- ExploreDatasetSE_RNASeq$new(se)
+eds
+eds$contrasts()
+head(eds$de(eds$primary_contrast()))
+eds$enrichment_kinds()
 }
 \section{Super classes}{
 \code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{\link[exploreDE:ExploreDatasetSE]{ExploreDatasetSE}} -> \code{ExploreDatasetSE_RNASeq}

@@ -3,6 +3,10 @@
 \name{ExploreDataset}
 \alias{ExploreDataset}
 \title{Abstract base class for exploreDE's storage-agnostic dataset wrapper}
+\value{
+An R6 class generator. `$new()` always errors; the concrete
+  subclasses return an object inheriting from `ExploreDataset`.
+}
 \description{
 `ExploreDataset` defines the accessor contract that every concrete
 subclass must implement. It is not instantiable on its own — calling
@@ -13,6 +17,16 @@ Methods implemented on the base class read only from
 `private$.config` and are inherited unchanged by every subclass.
 Methods that touch the storage backend are virtual
 (`stop("not implemented")`) and must be overridden.
+}
+\examples{
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+eds <- new_explore_dataset(se)
+inherits(eds, "ExploreDataset")
+eds$contrasts()
+head(eds$de(eds$primary_contrast()))
+
+# The base class itself cannot be instantiated
+try(ExploreDataset$new())
 }
 \section{Methods}{
 \subsection{Public methods}{

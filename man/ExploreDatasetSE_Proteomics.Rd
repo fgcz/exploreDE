@@ -3,6 +3,10 @@
 \name{ExploreDatasetSE_Proteomics}
 \alias{ExploreDatasetSE_Proteomics}
 \title{Concrete subclass for FGCZ proteomics `SummarizedExperiment` outputs}
+\value{
+An R6 class generator; `$new()` returns an
+  `ExploreDatasetSE_Proteomics` object.
+}
 \description{
 Reads from a prolfqua-derived SE. Top-level `rowData(se)` is sparse;
 feature metadata and per-contrast DE statistics live nested inside
@@ -16,6 +20,13 @@ remapped via `.fid_lookup` since SE rownames do not match the built
 \details{
 Inherits the accessor contract from [ExploreDataset] via
 [ExploreDatasetSE]; overrides `.build_config()` and `.prep()`.
+}
+\examples{
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+eds <- ExploreDatasetSE_Proteomics$new(se)
+eds
+head(eds$feature_ids())
+head(eds$de(eds$primary_contrast()))
 }
 \section{Super classes}{
 \code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{\link[exploreDE:ExploreDatasetSE]{ExploreDatasetSE}} -> \code{ExploreDatasetSE_Proteomics}

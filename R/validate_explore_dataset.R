@@ -19,6 +19,11 @@
 #'   If `FALSE`, returns `list(ok, errors)`.
 #' @return Invisibly, `TRUE` on success (strict mode); or
 #'   `list(ok = logical(1), errors = character)` (non-strict mode).
+#' @examples
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' eds <- new_explore_dataset(se)
+#' validate_explore_dataset(eds)
+#' validate_explore_dataset(eds, strict = FALSE)
 #' @export
 validate_explore_dataset <- function(eds, strict = TRUE) {
   errors <- character()

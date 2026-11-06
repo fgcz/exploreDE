@@ -7,6 +7,20 @@
 #' Inherits the accessor contract from [ExploreDataset] via
 #' [ExploreDatasetSE]; overrides only `.build_config()` and `.prep()`.
 #'
+#' @return An R6 class generator; `$new()` returns an
+#'   `ExploreDatasetSE_CountQC` object.
+#' @examples
+#' library(SummarizedExperiment)
+#' de_result <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))
+#' # A count table without DE results, as SUSHI's CountQC writes it
+#' se <- SummarizedExperiment(
+#'   assays = list(counts = assay(de_result, "counts")),
+#'   colData = colData(de_result),
+#'   rowData = rowData(de_result)[, c("gene_id", "gene_name", "description")]
+#' )
+#' eds <- ExploreDatasetSE_CountQC$new(se)
+#' eds
+#' eds$has_de()
 #' @export
 ExploreDatasetSE_CountQC <- R6::R6Class(
   classname = "ExploreDatasetSE_CountQC",

@@ -14,6 +14,14 @@
 #' This class is not instantiable on its own — instantiate a concrete
 #' subclass instead.
 #'
+#' @return An R6 class generator; the concrete subclasses' `$new()` returns an
+#'   object inheriting from `ExploreDatasetSE`.
+#' @examples
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' eds <- new_explore_dataset(se)
+#' inherits(eds, "ExploreDatasetSE")
+#' eds$assay_names()
+#' dim(eds$raw_assay())
 #' @export
 ExploreDatasetSE <- R6::R6Class(
   classname = "ExploreDatasetSE",

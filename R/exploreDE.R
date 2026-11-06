@@ -7,11 +7,13 @@
 #' @param file Optional path to an exploreDE `.h5ad`, a SummarizedExperiment
 #'   `.rds`/`.qs2`, or a SUSHI result directory.
 #' @param ... Passed to [shiny::runApp()] (e.g. `port`, `launch.browser`).
+#' @return Called to run the app; returns the value passed to [shiny::stopApp()]
+#'   when the app stops (usually `NULL`), as [shiny::runApp()] does.
 #' @export
 #' @examples
-#' \dontrun{
-#' exploreDE()
-#' exploreDE("my_data.h5ad")
+#' if (interactive()) {
+#'   exploreDE()
+#'   exploreDE("my_data.h5ad")
 #' }
 exploreDE <- function(file = NULL, ...) {
   if (!is.null(file)) {

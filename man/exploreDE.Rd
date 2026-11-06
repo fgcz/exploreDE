@@ -12,14 +12,18 @@ exploreDE(file = NULL, ...)
 
 \item{...}{Passed to [shiny::runApp()] (e.g. `port`, `launch.browser`).}
 }
+\value{
+Called to run the app; returns the value passed to [shiny::stopApp()]
+  when the app stops (usually `NULL`), as [shiny::runApp()] does.
+}
 \description{
 Opens the app locally. With no `file`, it starts on the landing page, where
 you can upload an `.h5ad` built with [build_explore_h5ad()] or load the demo
 dataset. With `file`, it opens straight into that dataset.
 }
 \examples{
-\dontrun{
-exploreDE()
-exploreDE("my_data.h5ad")
+if (interactive()) {
+  exploreDE()
+  exploreDE("my_data.h5ad")
 }
 }

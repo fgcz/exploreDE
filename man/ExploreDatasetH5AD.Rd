@@ -3,12 +3,34 @@
 \name{ExploreDatasetH5AD}
 \alias{ExploreDatasetH5AD}
 \title{Concrete `ExploreDataset` backend over a canonical AnnData (`.h5ad`)}
+\value{
+An R6 class generator; `$new()` returns an `ExploreDatasetH5AD`
+  object.
+}
 \description{
 Reads a canonical exploreDE/1.0 AnnData and implements the accessor
 contract inherited from [ExploreDataset]. Accepts a path to a `.h5ad`
 file or a live `anndataR` object. This is the backend for user-supplied
 data ("bring your own data") and the eventual single backend once
 producers emit canonical `.h5ad` directly.
+}
+\examples{
+library(SummarizedExperiment)
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+de <- as.data.frame(rowData(se)$constrast_B_vs_A)
+path <- tempfile(fileext = ".h5ad")
+build_explore_h5ad(
+  x = list(raw = assay(se, "rawData"), transformed = assay(se, "transformedData")),
+  out = path,
+  omics = "proteomics",
+  coldata = colData(se),
+  rowdata = de,
+  factors = "G_",
+  de = list(B_vs_A = de)
+)
+eds <- ExploreDatasetH5AD$new(path)
+eds
+head(eds$de("B_vs_A"))
 }
 \section{Super class}{
 \code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{ExploreDatasetH5AD}

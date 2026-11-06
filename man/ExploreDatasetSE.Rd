@@ -3,6 +3,10 @@
 \name{ExploreDatasetSE}
 \alias{ExploreDatasetSE}
 \title{Abstract intermediate class for SE-backed datasets}
+\value{
+An R6 class generator; the concrete subclasses' `$new()` returns an
+  object inheriting from `ExploreDatasetSE`.
+}
 \description{
 `ExploreDatasetSE` holds the `SummarizedExperiment` backend
 reference and implements the accessor contract uniformly for every
@@ -17,6 +21,13 @@ methods only:
 
 This class is not instantiable on its own — instantiate a concrete
 subclass instead.
+}
+\examples{
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+eds <- new_explore_dataset(se)
+inherits(eds, "ExploreDatasetSE")
+eds$assay_names()
+dim(eds$raw_assay())
 }
 \section{Super class}{
 \code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{ExploreDatasetSE}

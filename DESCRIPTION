@@ -2,11 +2,23 @@ Package: exploreDE
 Type: Package
 Title: exploreDE
 Version: 3.9.0
-Author: Peter Leary [aut, cre]
-Maintainer: Peter Leary <peter.leary@uzh.ch>
-Description: A Shiny application to help users explore and enjoy their 'omics data, 
-  and make publication-quality figures. 
+Authors@R:
+  person("Peter", "Leary", email = "peter.leary@uzh.ch", role = c("aut", "cre"))
+Description: A Shiny application to help users explore and enjoy their 'omics
+  data, and make publication-quality figures. It shows differential expression
+  results from RNA-seq, proteomics and CRISPR screens as ordination plots,
+  heatmaps, volcano plots, box plots, GO and KEGG pathway views, and ORA and
+  GSEA tables. The app reads AnnData ('.h5ad') files in the exploreDE/1.0
+  layout, which build_explore_h5ad() writes from counts, sample tables, DE
+  tables and enrichment results, and the SummarizedExperiment results of the
+  FGCZ SUSHI and prolfqua pipelines. App settings are saved and restored as
+  JSON session files.
 License: MIT + file LICENSE
+URL: https://github.com/fgcz/exploreDE
+BugReports: https://github.com/fgcz/exploreDE/issues
+biocViews: Software, ShinyApps, GUI, Visualization, DifferentialExpression,
+  GeneExpression, RNASeq, Transcriptomics, Proteomics, CRISPR,
+  GeneSetEnrichment, Pathways, GO, KEGG
 Encoding: UTF-8
 Imports:
   shiny,

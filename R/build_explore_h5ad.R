@@ -790,6 +790,29 @@
 #'   (default: all character/factor-typed columns).
 #' @param gene_symbol,organism,ref_build Optional labels.
 #' @return The output path, invisibly.
+#' @examples
+#' library(SummarizedExperiment)
+#' # A prolfqua proteomics result: one contrast, nested in rowData
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' de <- as.data.frame(rowData(se)$constrast_B_vs_A)
+#' path <- build_explore_h5ad(
+#'   x = list(raw = assay(se, "rawData"), transformed = assay(se, "transformedData")),
+#'   out = tempfile(fileext = ".h5ad"),
+#'   omics = "proteomics",
+#'   coldata = colData(se),
+#'   rowdata = de,
+#'   factors = "G_",
+#'   de = list(B_vs_A = de)
+#' )
+#' file.exists(path)
+#'
+#' # Counts only
+#' counts_only <- build_explore_h5ad(
+#'   assay(se, "rawData"),
+#'   out = tempfile(fileext = ".h5ad"),
+#'   omics = "proteomics",
+#'   coldata = colData(se)
+#' )
 #' @export
 build_explore_h5ad <- function(
   x,

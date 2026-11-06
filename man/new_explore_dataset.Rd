@@ -28,3 +28,20 @@ Accepted inputs:
   SUSHI artefacts (`deResult.rds`, `rawData_final.rds`, etc.).
 - An `http(s)://` URL pointing at an `.rds` file.
 }
+\examples{
+# From a live SummarizedExperiment
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+eds <- new_explore_dataset(se)
+class(eds)[1]
+
+# From an .h5ad file written by build_explore_h5ad()
+path <- build_explore_h5ad(
+  SummarizedExperiment::assay(se, "rawData"),
+  out = tempfile(fileext = ".h5ad"),
+  omics = "proteomics",
+  coldata = SummarizedExperiment::colData(se)
+)
+eds_h5ad <- new_explore_dataset(path)
+class(eds_h5ad)[1]
+eds_h5ad$has_de()
+}

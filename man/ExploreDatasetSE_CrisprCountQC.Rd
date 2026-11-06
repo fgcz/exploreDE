@@ -3,6 +3,10 @@
 \name{ExploreDatasetSE_CrisprCountQC}
 \alias{ExploreDatasetSE_CrisprCountQC}
 \title{Concrete subclass for CRISPR Mageck CountQC outputs}
+\value{
+An R6 class generator; `$new()` returns an
+  `ExploreDatasetSE_CrisprCountQC` object.
+}
 \description{
 Identical to [ExploreDatasetSE_CountQC] plus a sgRNA → gene mapping
 parsed from the SE feature IDs, which are assumed to follow the
@@ -10,6 +14,22 @@ parsed from the SE feature IDs, which are assumed to follow the
 }
 \details{
 Inherits `.prep()` from [ExploreDatasetSE_CountQC] unchanged.
+}
+\examples{
+library(SummarizedExperiment)
+# Guide counts: 4 guides for each of 10 genes, named GENE_<n>_<SEQUENCE>
+set.seed(1)
+guides <- sprintf("GENE\%d_\%d_ACGTACGTACGT", rep(1:10, each = 4), rep(1:4, 10))
+counts <- matrix(rpois(40 * 4, 50), nrow = 40, dimnames = list(guides, paste0("S", 1:4)))
+samples <- S4Vectors::DataFrame(
+  `Condition [Factor]` = rep(c("ctrl", "treated"), each = 2),
+  row.names = colnames(counts),
+  check.names = FALSE
+)
+se <- SummarizedExperiment(assays = list(counts = counts), colData = samples)
+eds <- ExploreDatasetSE_CrisprCountQC$new(se)
+eds
+head(eds$sgrna_to_gene())
 }
 \section{Super classes}{
 \code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{\link[exploreDE:ExploreDatasetSE]{ExploreDatasetSE}} -> \code{\link[exploreDE:ExploreDatasetSE_CountQC]{ExploreDatasetSE_CountQC}} -> \code{ExploreDatasetSE_CrisprCountQC}

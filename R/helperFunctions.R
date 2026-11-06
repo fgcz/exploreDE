@@ -906,16 +906,20 @@ getFastpVersion <- function(dataDir) {
 #' @return Named character vector of versions (or "version unavailable")
 #' @noRd
 getPackageVersions <- function(packages) {
-  versions <- sapply(packages, function(pkg) {
-    tryCatch(
-      {
-        as.character(utils::packageVersion(pkg))
-      },
-      error = function(e) {
-        "version unavailable"
-      }
-    )
-  })
+  versions <- vapply(
+    packages,
+    function(pkg) {
+      tryCatch(
+        {
+          as.character(utils::packageVersion(pkg))
+        },
+        error = function(e) {
+          "version unavailable"
+        }
+      )
+    },
+    character(1)
+  )
   return(versions)
 }
 
@@ -1227,7 +1231,7 @@ calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
     loadings = tibble::as_tibble(pca_result$rotation, rownames = "gene"),
     variance = variance,
     method = "PCA",
-    component_names = paste0("PC", 1:length(variance)),
+    component_names = paste0("PC", seq_along(variance)),
     removed_samples = sum(!completeCases)
   )
 }
@@ -1280,7 +1284,7 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
     scores_mat <- vegan::scores(nmds_result)
 
     # Name the columns before converting to tibble
-    component_names <- paste0("NMDS", 1:ncol(scores_mat))
+    component_names <- paste0("NMDS", seq_len(ncol(scores_mat)))
     colnames(scores_mat) <- component_names
 
     list(
@@ -1309,12 +1313,12 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
 
     # Name the columns before converting to tibble
     n_dims <- ncol(pcoa_result$points)
-    component_names <- paste0("PCo", 1:n_dims)
+    component_names <- paste0("PCo", seq_len(n_dims))
     colnames(pcoa_result$points) <- component_names
 
     # Calculate variance explained - only for the dimensions we kept
     # cmdscale returns all eigenvalues, but we only use the first n_dims
-    variance_explained <- (pcoa_result$eig[1:n_dims] / sum(abs(pcoa_result$eig))) * 100
+    variance_explained <- (pcoa_result$eig[seq_len(n_dims)] / sum(abs(pcoa_result$eig))) * 100
 
     list(
       scores = tibble::as_tibble(pcoa_result$points, rownames = "Name"),
@@ -1368,7 +1372,7 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
       glmpca::glmpca(counts, L = L, fam = family, X = X)
     },
     error = function(e) {
-      warning("GLM-PCA error: ", e$message)
+      warning("GLM-PCA failed: ", conditionMessage(e))
       return(NULL)
     }
   )
@@ -1378,7 +1382,7 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
   }
 
   # Name the columns before converting to tibble
-  component_names <- paste0("dim", 1:L)
+  component_names <- paste0("dim", seq_len(L))
   colnames(glmpca_result$factors) <- component_names
 
   list(
