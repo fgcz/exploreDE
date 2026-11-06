@@ -1,0 +1,26 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://fgcz.github.io/exploreDE/404.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/LICENSE-text.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/SKILLS.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/articles/bring-your-own-data.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/articles/index.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/authors.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/index.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/news/index.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/ExploreDataset.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/ExploreDatasetH5AD.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/ExploreDatasetParquet.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/ExploreDatasetSE.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/ExploreDatasetSE_CountQC.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/ExploreDatasetSE_CrisprCountQC.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/ExploreDatasetSE_Proteomics.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/ExploreDatasetSE_RNASeq.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/exploreDE.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/export_h5ad_to_parquet.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/index.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/is_prolfquapp_anndata.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/new_explore_dataset.html</loc></url>
+<url><loc>https://fgcz.github.io/exploreDE/reference/validate_explore_dataset.html</loc></url>
+</urlset>
+

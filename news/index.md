@@ -1,0 +1,154 @@
+# Changelog
+
+## exploreDE 3.10.0
+
+- The version follows Bioconductor’s numbering, where an even middle
+  number marks a release.
+- anndataR is installed from Bioconductor: the DESCRIPTION no longer has
+  a `Remotes:` field pointing to GitHub. exploreDE needs anndataR \>=
+  1.3, which Bioconductor ships from release 3.24; until then, install
+  anndataR from GitHub (`scverse/anndataR`) yourself.
+- The demo dataset (`inst/examples/genomics/deResult.rds`) is 4.4 MB
+  instead of 34 MB. It shows the same samples, features, DE table and
+  ORA/GSEA results; removed are parts the app never reads: the DESeq2
+  object, the gene sets of GO terms that are in no result table, and
+  duplicate annotation columns. `inst/scripts/trim_demo_deResult.R`
+  records the trimming.
+- Every exported function and class has a help-page example that runs on
+  the shipped example datasets, and says what it returns. The
+  DESCRIPTION gives the package’s URL, bug tracker, Bioconductor
+  categories, and the maintainer’s ORCID.
+- exploreDE has a hex sticker (`man/figures/logo.png`, drawn by
+  `inst/scripts/make_hex_logo.R`): a volcano plot whose point density
+  draws a cat face. The README opens with what exploreDE is and says to
+  install anndataR from GitHub first.
+- The hex sticker now has dotted cat eyes, ears and whiskers, a
+  background-coloured mouth, and subdued grey “re” lettering. The README
+  links the sticker to the full-size PNG.
+- Documentation website at <https://fgcz.github.io/exploreDE/>
+  (pkgdown): the README, the help pages, the bring-your-own-data
+  vignette and this changelog, rebuilt on every push to `main`.
+- Help pages show code and links as such: backticks and `[function()]`
+  references in the documentation were printed literally before.
+- `ExploreDataset` objects print the same summary as before, now from a
+  [`format()`](https://rdrr.io/r/base/format.html) method: `format(eds)`
+  returns its lines, and the `eds$print()` method is gone (`print(eds)`
+  works as before).
+
+## exploreDE 3.9.0
+
+### Breaking changes
+
+- Saved sessions are `.json` only (format `exploreDE-session/2`). The
+  `.rds` session format is removed: An uploaded `.rds` is refused with a
+  message asking the user to save again as `.json`. Reading an `.rds`
+  can run code; reading JSON can’t. Save / Load Session is out of beta.
+- Only the documented API is exported:
+  [`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md),
+  [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md),
+  [`new_explore_dataset()`](https://fgcz.github.io/exploreDE/reference/new_explore_dataset.md),
+  [`validate_explore_dataset()`](https://fgcz.github.io/exploreDE/reference/validate_explore_dataset.md),
+  and the `ExploreDataset*` classes. The 89 app helpers
+  (`generateParams()`, `step_*()`, `banana_*()`, `save_state_*()`, …)
+  are internal, so `exploreDE::<helper>()` no longer works; the app gets
+  them by sourcing `R/` or, when installed, from the package namespace.
+
+### New features
+
+- Open an `.h5ad` from a link: `?data=<percent-encoded https URL>`, from
+  an allowed source (APB Export jobs and public pStore by default; set
+  `EXPLOREDE_URL_SOURCES` to change them). Plain `https://` only, no
+  redirects, up to 1 GB, then the same checks as an upload.
+- JSON session files also save and restore the Multi DE datasets, in
+  order, with their settings.
+- Per-tab contrast selectors throughout the app, kept in sync.
+- `.h5ad` DE tables can say which features entered the test: Optional
+  `used_in_test` column (spec §5).
+  [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  picks up a `usedInTest` / `used_in_test` column from the DE table
+  through the column dictionary, so files built from SUSHI results show
+  the same tested features as the SUSHI original. Without it, “tested”
+  still means a non-`NA` p-value.
+- Reads the prolfquapp DEA’s `AnnData.h5ad` and prolfquapp ≥ 2.10
+  `SummarizedExperiment` results.
+- Container RAM/CPU badge in the header.
+- GO behaves like KEGG: The GO parts of the app (tile plot selector,
+  heatmap GO sub-tab) appear only when the features carry GO annotation
+  columns, and any subset of `GO BP` / `GO MF` / `GO CC` works. The
+  Pathway Tile Plots tab shows when GO annotation or a supported KEGG
+  species is available, so human/mouse/rat data without GO columns now
+  get KEGG tiles. New exported helpers `go_annotation_columns()` and
+  `features_in_go_term()`.
+
+### Bug fixes
+
+- An `.h5ad` without `uns["de"]` loads as counts-only; before, `uns$de`
+  partial-matched `uns$design` and the file failed to load. Pathway
+  tables are read with `[[` for the same reason.
+- Multi DE: Dataset paths outside the data roots (or containing `..`)
+  are refused, and each dataset gets its own LDAP project check.
+- An empty feature bucket no longer prints “display:none;”.
+- GO tile plots and the GO heatmap work on `.h5ad` files: GO membership
+  is read from the features, not the DE table (which `.h5ad` files don’t
+  give GO columns). Before, they failed with “object ‘GO BP’ not found”.
+- GO tile plots skip features without a log2 fold change and draw no
+  stars for an `NA` p-value, instead of failing (“NA/NaN/Inf in foreign
+  function call”, “missing value where TRUE/FALSE needed”).
+- GO tabs follow the changed `twoGroups` output of ezRun; small ORA/GSEA
+  and volcano fixes.
+- `rhdf5` is a declared dependency, so `.h5ad` files load on a fresh
+  install; before, anndataR failed with “HDF5AnnData requires the rhdf5
+  package”.
+- The app gets the package’s functions, internal helpers included, when
+  it runs from the installed package, however it is started
+  ([`exploreDE::exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md),
+  or [`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html) on
+  `system.file("app", package = "exploreDE")`). Before, it needed
+  [`library(exploreDE)`](https://fgcz.github.io/exploreDE/) first
+  (‘could not find function “legend_offset_ui”’), and internal helpers
+  such as the prolfquapp `.h5ad` reader were never available.
+- The ORA and GSEA tabs keep their settings apart. Before, for an
+  uploaded `.h5ad`, the GSEA tab overwrote the ORA FDR threshold, and
+  the ORA table failed with “length(cuts) must be equal to
+  length(values) - 1”.
+- The Volcano and DE Table tabs work for an `.h5ad` whose features have
+  no `description` column (the description falls back to the gene name,
+  as for SUSHI results). Before, the volcano failed with “undefined
+  columns selected”.
+- Species without KEGG support (anything but human, mouse and rat):
+  Changing the contrast no longer ends the session with “EXPR must be a
+  length 1 vector”. An `.h5ad` with two or more contrasts hung on load.
+- Level labels with Greek letters, or with a space between two tags,
+  keep their formatting when a PDF device is open on Linux. Before, the
+  label check measured them on that device, failed, and fell back to
+  plain text.
+
+### Documentation
+
+- Written format specs in `inst/spec/`: `exploreDE-h5ad-1.0.md` (the
+  `.h5ad` layout, proteomics profile including precursor level,
+  prolfquapp dialects, and a minimal Python writer) and
+  `exploreDE-session-2.md` (session files).
+- README, the bring-your-own-data vignette, and the AI skill now cover
+  writing files outside R, opening files from a link, and saving
+  sessions.
+- The help pages of the `ExploreDataset*` classes describe every public
+  method and its arguments.
+
+### Removed
+
+- The App Data tab (deprecated).
+- `devtools` as a dependency: installing exploreDE no longer installs
+  it. `dendextend` and `rlang`, which the package code calls, move from
+  Suggests to Imports.
+
+## exploreDE 3.8.0
+
+- Project Jambon: One column dictionary with ordered patterns;
+  enrichment rebuilt from tidy tables on load;
+  [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  documented in the bring-your-own-data vignette and an AI skill;
+  `exploreDE(file)` opens a file directly, and the demo ships with the
+  package; ezRun dropped.
+- Level labels, heatmap legend sliders, feature bucket fixes, and “DEG”
+  → “DE” throughout the interface.
