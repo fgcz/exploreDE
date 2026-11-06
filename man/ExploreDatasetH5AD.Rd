@@ -225,8 +225,8 @@ always included.
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-enrichment"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-enrichment}{}}}
 \subsection{\code{ExploreDatasetH5AD$enrichment()}}{
-  Enrichment results of one contrast and kind: decoded from the serialised objects in older files,
-otherwise rebuilt from \code{uns$enrichment} and \code{uns$enrichment_support}.
+  Enrichment results of one contrast and kind, rebuilt from \code{uns$enrichment} and
+\code{uns$enrichment_support}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetH5AD$enrichment(contrast, kind)}

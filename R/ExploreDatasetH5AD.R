@@ -28,19 +28,6 @@
 # SE subclass's "test_vs_reference" convention.
 .h5ad_safe <- function(x) gsub("[^A-Za-z0-9_]+", "_", x)
 
-# Decode a base64 native R object (clusterProfiler result). The current writer
-# gzip-compresses before base64; older files stored the raw serialise stream.
-# Try decompress-then-unserialise first, then fall back to raw unserialise.
-.h5ad_decode_native <- function(b64) {
-  if (is.null(b64) || !is.character(b64) || !nzchar(b64[[1]])) {
-    return(NULL)
-  }
-  raw <- jsonlite::base64_dec(b64)
-  tryCatch(unserialize(memDecompress(raw, "gzip")), error = function(e) {
-    tryCatch(unserialize(raw), error = function(e2) NULL)
-  })
-}
-
 # Find a per-feature gene-length column for FPKM/TPM, tolerant of source (SUSHI
 # featWidth, featureCounts Length, a GTF-derived gene_length, …). Preference-
 # ordered; matches with or without a canonical "label_" prefix. NULL if none.
@@ -239,37 +226,24 @@ ExploreDatasetH5AD <- R6::R6Class(
       m
     },
 
-    #' @description Enrichment results of one contrast and kind: decoded from the serialised objects in older files,
-    #'   otherwise rebuilt from `uns$enrichment` and `uns$enrichment_support`.
+    #' @description Enrichment results of one contrast and kind, rebuilt from `uns$enrichment` and
+    #'   `uns$enrichment_support`.
     #' @param contrast Contrast name, one of `contrasts()`.
     #' @param kind `"ora"` or `"gsea"`.
     enrichment = function(contrast, kind) {
       stopifnot(kind %in% c("ora", "gsea"))
       stopifnot(contrast %in% self$contrasts())
-      # enrichment_native is keyed by the BARE contrast slot; contrast_slot
+      # The enrichment blocks are keyed by the BARE contrast slot; contrast_slot
       # carries the "de_" prefix (that's the varm key), so strip it.
+      # Files written before 2026-09-25 also carry serialised R objects in
+      # uns$enrichment_native. They are never read: unserialize() on file content
+      # can run code.
       slot <- sub("^de_", "", private$.contrast_slot[[contrast]] %||% contrast)
-      native <- private$.uns$enrichment_native[[slot]]
-      if (is.null(native)) {
-        return(private$.rebuild_enrichment(slot, kind))
-      }
-      # Files written before 2026-09-25 carry the serialised objects themselves.
-      pick <- if (kind == "gsea") "gsea" else setdiff(names(native), "gsea")
-      objs <- lapply(native[intersect(pick, names(native))], .h5ad_decode_native)
-      objs <- Filter(Negate(is.null), objs)
-      if (!length(objs)) {
-        return(list())
-      }
-      out <- list()
-      for (nm in names(objs)) {
-        out <- c(out, eds_flatten_cp_results(objs[[nm]], nm))
-      }
-      out
+      private$.rebuild_enrichment(slot, kind)
     },
 
     # Prefer the stored tidy mirror; fall back to the base class, which derives
-    # it from the native objects. So a new file costs no decode at all, and an
-    # old one still works.
+    # it from the rebuilt enrichment objects.
     #' @description Tidy enrichment table of one contrast and kind: the table stored in `uns$enrichment` when
     #'   present, otherwise derived from `enrichment()` as in the base class.
     #' @param contrast Contrast name, one of `contrasts()`.
@@ -531,10 +505,10 @@ ExploreDatasetH5AD <- R6::R6Class(
         ref_build <- NA_character_
       }
 
-      # Enrichment objects are available from the serialised copy (older
-      # files) or rebuildable from the support block (current files).
+      # Enrichment kinds come from the support block only (spec §7.4): a method
+      # without one has no rebuildable objects, so it does not count.
       enrich_kinds <- character()
-      en <- uns$enrichment_native %||% uns$enrichment_support %||% list()
+      en <- uns$enrichment_support %||% list()
       if (length(en)) {
         first <- en[[1]]
         if (any(grepl("ora", names(first)))) {

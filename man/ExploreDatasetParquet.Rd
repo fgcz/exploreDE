@@ -19,7 +19,6 @@ differs.
   \itemize{
     \item \href{#method-ExploreDatasetParquet-initialize}{\code{ExploreDatasetParquet$new()}}
     \item \href{#method-ExploreDatasetParquet-backend_kind}{\code{ExploreDatasetParquet$backend_kind()}}
-    \item \href{#method-ExploreDatasetParquet-enrichment}{\code{ExploreDatasetParquet$enrichment()}}
     \item \href{#method-ExploreDatasetParquet-manifest}{\code{ExploreDatasetParquet$manifest()}}
     \item \href{#method-ExploreDatasetParquet-source_dir}{\code{ExploreDatasetParquet$source_dir()}}
     \item \href{#method-ExploreDatasetParquet-verify_source}{\code{ExploreDatasetParquet$verify_source()}}
@@ -70,6 +69,7 @@ differs.
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDatasetH5AD" data-id="assay_names"><a href='../../exploreDE/html/ExploreDatasetH5AD.html#method-ExploreDatasetH5AD-assay_names'><code>ExploreDatasetH5AD$assay_names()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDatasetH5AD" data-id="backend"><a href='../../exploreDE/html/ExploreDatasetH5AD.html#method-ExploreDatasetH5AD-backend'><code>ExploreDatasetH5AD$backend()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDatasetH5AD" data-id="de"><a href='../../exploreDE/html/ExploreDatasetH5AD.html#method-ExploreDatasetH5AD-de'><code>ExploreDatasetH5AD$de()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDatasetH5AD" data-id="enrichment"><a href='../../exploreDE/html/ExploreDatasetH5AD.html#method-ExploreDatasetH5AD-enrichment'><code>ExploreDatasetH5AD$enrichment()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDatasetH5AD" data-id="enrichment_input"><a href='../../exploreDE/html/ExploreDatasetH5AD.html#method-ExploreDatasetH5AD-enrichment_input'><code>ExploreDatasetH5AD$enrichment_input()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDatasetH5AD" data-id="enrichment_table"><a href='../../exploreDE/html/ExploreDatasetH5AD.html#method-ExploreDatasetH5AD-enrichment_table'><code>ExploreDatasetH5AD$enrichment_table()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDatasetH5AD" data-id="features"><a href='../../exploreDE/html/ExploreDatasetH5AD.html#method-ExploreDatasetH5AD-features'><code>ExploreDatasetH5AD$features()</code></a></span></li>
@@ -105,27 +105,6 @@ is given, prepare the feature and DE tables, and warn when the source \code{.h5a
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetParquet$backend_kind()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ExploreDatasetParquet-enrichment"></a>}}
-\if{latex}{\out{\hypertarget{method-ExploreDatasetParquet-enrichment}{}}}
-\subsection{\code{ExploreDatasetParquet$enrichment()}}{
-  Enrichment results of one contrast and kind: reads the contrast's enrichment payload files on
-first use, then defers to the \code{.h5ad} backend's implementation.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ExploreDatasetParquet$enrichment(contrast, kind)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
-      \item{\code{kind}}{\code{"ora"} or \code{"gsea"}.}
-    }
     \if{html}{\out{</div>}}
   }
 }

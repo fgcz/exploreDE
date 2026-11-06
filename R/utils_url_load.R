@@ -1,7 +1,8 @@
 # =============================================================================
 # Loading an .h5ad from a URL (?data=https://...)
-# Used by inst/app/server-initInputData.R. Only .h5ad files are fetched (HDF5
-# holds data, never code), only from the URL prefixes in url_load_sources(),
+# Used by inst/app/server-initInputData.R. Only .h5ad files are fetched (the
+# reader never unserialises R objects stored in them, so a file cannot run
+# code), only from the URL prefixes in url_load_sources(),
 # without following redirects, and up to a size limit. The file then goes
 # through the same checks as an upload.
 # =============================================================================

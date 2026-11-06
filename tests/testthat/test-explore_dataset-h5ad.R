@@ -1013,11 +1013,12 @@ test_that("a nested tree of PLAIN data.frames (no clusterProfiler object anywher
   expect_length(e$backend()$uns$enrichment_native, 0L)
 })
 
-test_that("older files that carry only serialised objects (enrichment_native) still read", {
+test_that("serialised objects in older files (enrichment_native) are never unserialised", {
   skip_if_no_anndataR()
-  # Backwards compatibility: files written before 2026-09-25 carry the
-  # clusterProfiler objects themselves (gzip + base64 serialise) and, the
-  # oldest, no tidy block. Rebuild one of those by hand: the writer no longer
+  # Files written before 2026-09-25 carry the clusterProfiler objects
+  # themselves (gzip + base64 serialise) and, the oldest, no tidy block.
+  # unserialize() on file content can run code, so the reader ignores them:
+  # such a file shows no enrichment. Rebuild one by hand: the writer no longer
   # produces this format.
   obj <- .fake_enrich(padj = c(.001, .09, .6))
   out <- .toy_with_pathways(list(ora = obj))
@@ -1034,13 +1035,11 @@ test_that("older files that carry only serialised objects (enrichment_native) st
   anndataR::write_h5ad(ad, old, mode = "w")
 
   e <- new_explore_dataset(old)
-  expect_identical(e$enrichment_kinds(), "ora")
-  d <- e$enrichment_table("treated_vs_control", "ora")
-  expect_equal(nrow(d), 3L) # derived live, so unfiltered
-  expect_true(is.na(e$enrichment_filter())) # and it says it was not filtered
-  objs <- e$enrichment("treated_vs_control", "ora")
-  expect_true(methods::is(objs[["ora"]], "enrichResult"))
-  expect_equal(nrow(objs[["ora"]]@result), 3L) # the stored object, unfiltered
+  expect_false(e$has_enrichment())
+  expect_identical(e$enrichment_kinds(), character(0))
+  expect_length(e$enrichment("treated_vs_control", "ora"), 0L)
+  # Decoding the payload would give 3 rows.
+  expect_equal(NROW(e$enrichment_table("treated_vs_control", "ora")), 0L)
 })
 
 test_that("new files store no serialised objects; enrichment() rebuilds them from table + support block", {

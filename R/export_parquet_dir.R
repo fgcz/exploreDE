@@ -125,38 +125,12 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
     }
   }
 
-  # uns goes to JSON — except the enrichment payloads, which are hoisted out to
-  # their own files and read lazily.
-  #
-  # Measured on my_study.h5ad: uns.json was 13 MB of a 29 MB export, i.e. 45% of
-  # the whole transport, and jsonlite parsed all of it before the first plot
-  # could render — for data that is only needed if someone opens a pathway tab.
-  # The blobs are base64(zlib(R serialize)), so base64 adds 33% on top and JSON
-  # cannot compress it back.
-  #
-  # The KEY STRUCTURE stays in uns.json with empty-string values: the inherited
-  # .build_config() derives enrichment_kinds from names(uns$enrichment_native),
-  # so dropping the keys would make has_enrichment() report FALSE. Empty strings
-  # also mean an un-hydrated read degrades to an empty list rather than an
-  # error, because .h5ad_decode_native() already returns NULL on !nzchar().
+  # uns goes to JSON — without the serialised R objects that files written
+  # before 2026-09-25 carry in enrichment_native. No reader decodes them
+  # (unserialize() on file content can run code), and they were 13 MB of a
+  # 29 MB export.
   uns <- adata$uns %||% list()
-  native <- uns$enrichment_native %||% list()
-  enrichment_files <- list()
-  if (length(native)) {
-    dir.create(file.path(out, "enrichment"), recursive = TRUE, showWarnings = FALSE)
-    for (slot in names(native)) {
-      for (kind in names(native[[slot]])) {
-        b64 <- native[[slot]][[kind]]
-        if (!is.character(b64) || !length(b64) || !nzchar(b64[[1]])) {
-          next
-        }
-        fn <- paste0(slot, "__", kind, ".b64")
-        writeLines(b64[[1]], file.path(out, "enrichment", fn))
-        enrichment_files[[slot]][[kind]] <- fn
-        uns$enrichment_native[[slot]][[kind]] <- "" # keep the key, drop the payload
-      }
-    }
-  }
+  uns$enrichment_native <- NULL
   write(jsonlite::toJSON(uns, auto_unbox = TRUE, null = "null", digits = NA), file.path(out, "uns.json"))
 
   # Source identity. A parquet directory is a DERIVED CACHE, so without this a
@@ -189,7 +163,6 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
     layer_orientation = "features_x_samples",
     layers = layer_names,
     varm = varm_names,
-    enrichment_files = enrichment_files,
     factor_levels = factor_levels
   )
   write(jsonlite::toJSON(manifest, auto_unbox = TRUE, null = "null"), file.path(out, "manifest.json"))

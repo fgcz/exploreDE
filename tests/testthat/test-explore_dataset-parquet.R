@@ -216,30 +216,13 @@ test_that("a parquet table without _index is rejected rather than mis-read", {
   expect_error(exploreDE:::.pq_read_indexed(f), "_index")
 })
 
-# ---- 6. lazy enrichment -----------------------------------------------------
+# ---- 6. enrichment ----------------------------------------------------------
 
-test_that("enrichment payloads are hoisted out of uns.json, not inlined", {
+test_that("serialised enrichment objects from older files are not exported", {
   skip_if_no_parquet()
-  p <- toy_pair()
-  # The toy fixture carries no enrichment, so assert the shape of the rule
-  # rather than the presence of files: uns.json must not be carrying megabytes
-  # of base64. Measured on my_study.h5ad it was 13 MB of a 29 MB export,
-  # parsed before the first plot could render.
-  expect_lt(file.info(file.path(p$pq, "uns.json"))$size, 1e6)
-  m <- jsonlite::fromJSON(
-    file.path(p$pq, "manifest.json"),
-    simplifyVector = TRUE,
-    simplifyDataFrame = FALSE,
-    simplifyMatrix = FALSE
-  )
-  expect_true("enrichment_files" %in% names(m))
-})
-
-test_that("hoisting keeps the enrichment KEYS so has_enrichment() still works", {
-  skip_if_no_parquet()
-  # .build_config() derives enrichment_kinds from names(uns$enrichment_native).
-  # The writer empties the payloads but must keep the keys, or a dataset with
-  # enrichment would silently report having none.
+  # Files written before 2026-09-25 carry serialised R objects in
+  # uns$enrichment_native. No reader decodes them (unserialize() on file
+  # content can run code), so the export drops them instead of copying them.
   d <- withr::local_tempdir()
   uns <- list(
     schema_version = "exploreDE/1.0",
@@ -260,10 +243,9 @@ test_that("hoisting keeps the enrichment KEYS so has_enrichment() still works", 
     simplifyDataFrame = FALSE,
     simplifyMatrix = FALSE
   )
-  expect_identical(names(written$enrichment_native$mycontrast), c("ora", "gsea"))
-  expect_identical(written$enrichment_native$mycontrast$ora, "") # key kept, payload gone
-  expect_true(file.exists(file.path(d, "enrichment", "mycontrast__ora.b64")))
-  expect_identical(readLines(file.path(d, "enrichment", "mycontrast__ora.b64"), warn = FALSE), "AAAA")
+  expect_false("enrichment_native" %in% names(written))
+  expect_identical(written$schema_version, "exploreDE/1.0")
+  expect_false(dir.exists(file.path(d, "enrichment")))
 })
 
 # ---- 7. source identity / staleness -----------------------------------------
