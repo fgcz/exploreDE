@@ -68,28 +68,10 @@ multiDETableReactive <- reactive({
     # Match genes
     matchIdx <- match(baseTable$feature_id, seqAnno$match_key)
 
-    # Log2 fold change
-    lfcCol <- grep(
-      "^(log2?[._ ]?(fold)?[._ ]?(change|ratio|fc)|logfc|log2Ratio)$",
-      colnames(seqAnno),
-      value = TRUE,
-      ignore.case = TRUE
-    )
-    if (length(lfcCol) > 0) {
-      baseTable[[paste0(contrastName, "_log2FC")]] <- seqAnno[[lfcCol[1]]][matchIdx]
-    }
-
-    # P-value
-    if ("pvalue" %in% colnames(seqAnno)) {
-      baseTable[[paste0(contrastName, "_pvalue")]] <- seqAnno$pvalue[matchIdx]
-    }
-
-    # Adjusted p-value
-    if ("padj" %in% colnames(seqAnno)) {
-      baseTable[[paste0(contrastName, "_padj")]] <- seqAnno$padj[matchIdx]
-    } else if ("fdr" %in% colnames(seqAnno)) {
-      baseTable[[paste0(contrastName, "_padj")]] <- seqAnno$fdr[matchIdx]
-    }
+    # Every record's seqAnno carries log2Ratio, pValue and fdr.
+    baseTable[[paste0(contrastName, "_log2FC")]] <- seqAnno$log2Ratio[matchIdx]
+    baseTable[[paste0(contrastName, "_pvalue")]] <- seqAnno$pValue[matchIdx]
+    baseTable[[paste0(contrastName, "_padj")]] <- seqAnno$fdr[matchIdx]
 
     # Base mean
     if ("baseMean" %in% colnames(seqAnno)) {
