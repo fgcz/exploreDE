@@ -221,6 +221,12 @@ observeEvent(input$multiRefreshProjects, {
   }
 
   projectDir <- multiProjectInfo$projectDir
+  # Listing a project's folders needs the same access as loading from it.
+  # Proteomics links record their project without an LDAP check.
+  if (!multi_access_ok(list(root = dirname(projectDir), project = basename(projectDir)))) {
+    showNotification("You do not have access to this project's datasets.", type = "warning")
+    return(NULL)
+  }
 
   if (!dir.exists(projectDir)) {
     showNotification(paste("Could not find project directory:", projectDir), type = "warning")

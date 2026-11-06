@@ -1,6 +1,8 @@
 # exploreDE 3.10.0
 
 - Security: an `.h5ad` can no longer run code when its pathway tabs open. The reader decoded `uns$enrichment_native` with `unserialize()`, which runs code embedded in the file; that block is now ignored, and `export_h5ad_to_parquet()` no longer copies it. Files written before 2026-09-25 that carry their ORA/GSEA results only in that block show no enrichment; rebuild them with `build_explore_h5ad()`.
+- Security: a `?data=` link whose path contains "zip" no longer loads a fixed 2023 proteomics dataset over `ssh` before the access check; that leftover debugging branch is removed.
+- Security: Multi DE "Browse Projects" lists a project's analysis folders only for users with access to it. A link the user was denied no longer leaves its project browsable after loading the demo or an upload.
 - The version follows Bioconductor's numbering, where an even middle number marks a release.
 - anndataR is installed from Bioconductor: the DESCRIPTION no longer has a `Remotes:` field pointing to GitHub. exploreDE needs anndataR >= 1.3, which Bioconductor ships from release 3.24; until then, install anndataR from GitHub (`scverse/anndataR`) yourself.
 - The demo dataset (`inst/examples/genomics/deResult.rds`) is 4.4 MB instead of 34 MB. It shows the same samples, features, DE table and ORA/GSEA results; removed are parts the app never reads: the DESeq2 object, the gene sets of GO terms that are in no result table, and duplicate annotation columns. `inst/scripts/trim_demo_deResult.R` records the trimming.
