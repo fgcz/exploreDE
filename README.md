@@ -1,9 +1,12 @@
-# exploreDE
+# exploreDE <img src="man/figures/logo.png" align="right" height="139" alt="exploreDE hex sticker" />
+
+exploreDE is a Shiny app for exploring differential expression results from RNA-seq, proteomics and CRISPR screens, and for making publication-quality figures from them.
 
 ## Install and run
 
 ```r
 install.packages("BiocManager")
+BiocManager::install("scverse/anndataR") # needs >= 1.3 (Bioconductor 3.24)
 BiocManager::install("fgcz/exploreDE")   # pulls in the Bioconductor dependencies
 
 library(exploreDE)
@@ -70,4 +73,4 @@ earlier `.rds` session files were retired in 3.9.0.
 
 ## Citing exploreDE
 
-See `CITATION.cff`.
+See [CITATION.cff](CITATION.cff).
