@@ -63,6 +63,7 @@
 <li>Every exported function and class has a help-page example that runs on the shipped example datasets, and says what it returns. The DESCRIPTION gives the package’s URL, bug tracker, Bioconductor categories, and the maintainer’s ORCID.</li>
 <li>exploreDE has a hex sticker (<code>man/figures/logo.png</code>, drawn by <code>inst/scripts/make_hex_logo.R</code>): a volcano plot whose point density draws a cat face. The README opens with what exploreDE is and says to install anndataR from GitHub first.</li>
 <li>The hex sticker now has dotted cat eyes, ears and whiskers, a background-coloured mouth, and subdued grey “re” lettering. The README links the sticker to the full-size PNG.</li>
+<li>The sticker colours every point, the cat’s eyes, ears and whiskers included, by the volcano’s cutoffs: blue or orange beyond a log2 fold change of ±1 and above the FDR 0.05 line, grey elsewhere. The ear outlines are slightly jittered.</li>
 <li>Documentation website at <a href="https://fgcz.github.io/exploreDE/" class="uri">https://fgcz.github.io/exploreDE/</a> (pkgdown): the README, the help pages, the bring-your-own-data vignette and this changelog, rebuilt on every push to <code>main</code>.</li>
 <li>Help pages show code and links as such: backticks and <code>[function()]</code> references in the documentation were printed literally before.</li>
 <li>
