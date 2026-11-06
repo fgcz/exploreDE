@@ -326,26 +326,10 @@
   padj_max[[method]] %||% max(unlist(padj_max))
 }
 
-.assemble_parts <- function(
-  counts,
-  coldata,
-  omics = "rnaseq",
-  feature_level = NULL,
-  rowdata = NULL,
-  de = list(),
-  de_columns = NULL,
-  pathways = list(),
-  enrichment_padj_max = 0.1,
-  factors = NULL,
-  gene_symbol = NULL,
-  feature_id = NULL,
-  rowdata_columns = NULL,
-  organism = NA_character_,
-  ref_build = NA_character_
-) {
-  omics_type <- .omics_type_of(omics)
-
-  # -- counts: normalise to a named list keyed by canonical layer names -------
+# -- counts: normalise to a named list keyed by canonical layer names -------
+# Also returns the feature ids (from the primary matrix, made unique) and the
+# sample ids every other part is aligned to.
+.assemble_counts <- function(counts, coldata) {
   if (is.matrix(counts) || inherits(counts, "Matrix")) {
     counts <- list(counts = counts)
   }
@@ -362,8 +346,21 @@
     warning("duplicate feature ids in counts \u2014 made unique")
     base_ids <- make.unique(base_ids)
   }
+  list(counts = counts, base_ids = base_ids, sample_ids = sample_ids)
+}
 
-  # -- feature_id (the join key): symbol/id from args or rowData --------------
+# -- feature_id (the join key): symbol/id from args or rowData --------------
+# Returns the rowData aligned to the counts, the id/symbol columns found in it,
+# the resolved ids/symbols, the feature level and the level-aware feature_id.
+.assemble_feature_ids <- function(
+  base_ids,
+  rowdata,
+  rowdata_columns,
+  omics_type,
+  feature_level,
+  feature_id,
+  gene_symbol
+) {
   rd <- .as_df_keep_names(rowdata)
   if (!is.null(rd)) {
     if (nrow(rd) != length(base_ids)) {
@@ -389,28 +386,59 @@
   # feature_level: detection-with-override, then level-aware feature_id.
   level <- .resolve_feature_level(omics_type, rd, feature_level)
   fid <- .build_fid_for_level(level, base_ids, gid, sym, rd, id_col = explicit_id_col)
-  id2fid <- stats::setNames(fid, base_ids) # user identifiers -> canonical fid
+  list(rd = rd, sym_col = sym_col, id_col = id_col, gid = gid, sym = sym, level = level, fid = fid)
+}
 
-  # -- obs (samples) : factors get "factor_" prefix; others carried plain -----
+# Default experimental factors when the caller names none.
+.default_factors <- function(obs) {
+  is_cat <- vapply(obs, function(x) is.character(x) || is.factor(x), logical(1))
+  # Keep only INFORMATIVE categoricals as experimental factors. Exclude:
+  #  * identifier-like columns (one distinct value per sample: sample names,
+  #    raw-file paths, channels) — labels, not factors; and
+  #  * constant columns (a single distinct value, e.g. proteomics
+  #    isotope.label = "light") — no contrast, and would otherwise surface as
+  #    a spurious grouping/batch factor.
+  # Mirrors the proteomics Name/raw.file exclusion without hardcoding names.
+  # Fall back to all categoricals only if this leaves none (degenerate case).
+  n <- nrow(obs)
+  nuniq <- vapply(obs, function(x) length(unique(as.character(x))), integer(1))
+  informative <- nuniq > 1L & nuniq < n
+  factors <- colnames(obs)[is_cat & informative]
+  if (!length(factors)) {
+    factors <- colnames(obs)[is_cat]
+  }
+  factors
+}
+
+# A factor column as a factor whose levels are in design order.
+# Level ORDER is not cosmetic: it drives boxplot x-axis order, legend
+# order and group colours. A bare factor(as.character(x)) sorts levels
+# alphabetically, which turns a "0h, 6h, 24h" time course into
+# "0h, 24h, 6h" without erroring — the plot just quietly misrepresents
+# the design.
+.factor_in_design_order <- function(x) {
+  v <- as.character(x)
+  if (is.factor(x)) {
+    # An explicit level order is the user's stated design; keep it, but
+    # drop levels no sample uses so empty groups don't appear.
+    factor(v, levels = intersect(levels(x), unique(v)))
+  } else {
+    # Derived from plain character: mixedsort, not sort, so "0h/6h/24h"
+    # and "S1/S2/S10" come out the way a human means them. Matches
+    # ExploreDatasetSE.R:80 and helperFunctions.R:484, so the h5ad and SE
+    # backends agree on level order rather than diverging.
+    factor(v, levels = unique(gtools::mixedsort(v)))
+  }
+}
+
+# -- obs (samples) : factors get "factor_" prefix; others carried plain -----
+.assemble_obs <- function(coldata, sample_ids, factors, organism) {
   obs <- .as_df_keep_names(coldata)
   if (!is.null(rownames(obs)) && all(sample_ids %in% rownames(obs))) {
     obs <- obs[sample_ids, , drop = FALSE]
   }
   if (is.null(factors)) {
-    is_cat <- vapply(obs, function(x) is.character(x) || is.factor(x), logical(1))
-    # Keep only INFORMATIVE categoricals as experimental factors. Exclude:
-    #  * identifier-like columns (one distinct value per sample: sample names,
-    #    raw-file paths, channels) — labels, not factors; and
-    #  * constant columns (a single distinct value, e.g. proteomics
-    #    isotope.label = "light") — no contrast, and would otherwise surface as
-    #    a spurious grouping/batch factor.
-    # Mirrors the proteomics Name/raw.file exclusion without hardcoding names.
-    # Fall back to all categoricals only if this leaves none (degenerate case).
-    n <- nrow(obs)
-    nuniq <- vapply(obs, function(x) length(unique(as.character(x))), integer(1))
-    informative <- nuniq > 1L & nuniq < n
-    factors <- colnames(obs)[is_cat & informative]
-    if (!length(factors)) factors <- colnames(obs)[is_cat]
+    factors <- .default_factors(obs)
   }
   new_names <- colnames(obs)
   for (i in seq_along(new_names)) {
@@ -419,23 +447,7 @@
       # "Condition [Factor]" -> factor_condition (not factor_condition_factor_).
       clean <- sub("[ _]*\\[factor\\]$", "", colnames(obs)[i], ignore.case = TRUE)
       new_names[i] <- paste0("factor_", gsub("[^A-Za-z0-9]+", "_", tolower(clean)))
-      # Level ORDER is not cosmetic: it drives boxplot x-axis order, legend
-      # order and group colours. A bare factor(as.character(x)) sorts levels
-      # alphabetically, which turns a "0h, 6h, 24h" time course into
-      # "0h, 24h, 6h" without erroring — the plot just quietly misrepresents
-      # the design.
-      v <- as.character(obs[[i]])
-      obs[[i]] <- if (is.factor(obs[[i]])) {
-        # An explicit level order is the user's stated design; keep it, but
-        # drop levels no sample uses so empty groups don't appear.
-        factor(v, levels = intersect(levels(obs[[i]]), unique(v)))
-      } else {
-        # Derived from plain character: mixedsort, not sort, so "0h/6h/24h"
-        # and "S1/S2/S10" come out the way a human means them. Matches
-        # ExploreDatasetSE.R:80 and helperFunctions.R:484, so the h5ad and SE
-        # backends agree on level order rather than diverging.
-        factor(v, levels = unique(gtools::mixedsort(v)))
-      }
+      obs[[i]] <- .factor_in_design_order(obs[[i]])
     }
   }
   colnames(obs) <- new_names
@@ -444,34 +456,39 @@
   if (!is.na(organism)) {
     obs$organism <- organism
   }
-  factor_prefixed <- colnames(obs)[grepl("^factor_", colnames(obs))]
+  obs
+}
 
-  # -- var (features) : ids/symbols + pathway ANNOTATION columns from rowData --
+# -- var (features) : ids/symbols + pathway ANNOTATION columns from rowData --
+.assemble_var <- function(fid, gid, sym, rd, sym_col, id_col) {
   var <- data.frame(row.names = fid, label_gene_id = gid, label_gene_symbol = sym, stringsAsFactors = FALSE)
-  desc_col <- NULL
-  if (!is.null(rd)) {
-    desc_col <- .rd_col(rd, "description")
-    if (!is.null(desc_col)) {
-      var$description <- sub(" \\[.*", "", as.character(rd[[desc_col]]))
-    }
-    # Pathway annotation -> canonical label_go_* (reader renames to "GO BP" etc.)
-    for (which in c("bp", "mf", "cc")) {
-      col <- .rd_col(rd, paste0("go_", which))
-      if (!is.null(col)) var[[paste0("label_go_", which)]] <- rd[[col]]
-    }
-    # Carry any remaining rowData columns through as label_* (annotation).
-    used <- unique(c(sym_col, id_col, desc_col))
-    for (col in setdiff(colnames(rd), used)) {
-      dest <- if (grepl("^GO ", col) || grepl("^label_", col)) {
-        col
-      } else {
-        paste0("label_", gsub("[^A-Za-z0-9]+", "_", tolower(col)))
-      }
-      if (!dest %in% colnames(var)) var[[dest]] <- rd[[col]]
-    }
+  if (is.null(rd)) {
+    return(var)
   }
+  desc_col <- .rd_col(rd, "description")
+  if (!is.null(desc_col)) {
+    var$description <- sub(" \\[.*", "", as.character(rd[[desc_col]]))
+  }
+  # Pathway annotation -> canonical label_go_* (reader renames to "GO BP" etc.)
+  for (which in c("bp", "mf", "cc")) {
+    col <- .rd_col(rd, paste0("go_", which))
+    if (!is.null(col)) var[[paste0("label_go_", which)]] <- rd[[col]]
+  }
+  # Carry any remaining rowData columns through as label_* (annotation).
+  used <- unique(c(sym_col, id_col, desc_col))
+  for (col in setdiff(colnames(rd), used)) {
+    dest <- if (grepl("^GO ", col) || grepl("^label_", col)) {
+      col
+    } else {
+      paste0("label_", gsub("[^A-Za-z0-9]+", "_", tolower(col)))
+    }
+    if (!dest %in% colnames(var)) var[[dest]] <- rd[[col]]
+  }
+  var
+}
 
-  # -- layers : samples x features, canonical names, logical -> integer -------
+# -- layers : samples x features, canonical names, logical -> integer -------
+.assemble_layers <- function(counts, base_ids, sample_ids, fid) {
   flip <- function(m) {
     m <- as.matrix(m)
     ids <- rownames(m) %||% base_ids
@@ -489,14 +506,12 @@
   if ("normalised" %in% names(layers) && !"log2" %in% names(layers)) {
     layers$log2 <- log2(layers$normalised + 10)
   }
-  X <- layers[["counts"]] %||% layers[[1]]
+  layers
+}
 
-  # -- DE : per contrast, canonicalise columns, index to full fid space -------
-  # Beyond the three canonical stat columns, a contrast may carry an OPTIONAL
-  # extra `score` (a second thresholdable/displayable significance axis, e.g.
-  # SAINTexpress's SaintScore) — see the declared-mapping block below. It is
-  # display-only this milestone (like nrPeptides), so it rides in varm but is
-  # never wired into the FDR threshold path.
+# TRUE when de_columns holds one mapping per contrast (named by contrast)
+# rather than one mapping shared by all; checks the mapping keys either way.
+.de_columns_per_contrast <- function(de_columns, de) {
   per_contrast_map <- !is.null(de_columns) &&
     length(intersect(names(de_columns), names(de))) > 0
   if (per_contrast_map) {
@@ -506,66 +521,87 @@
   } else {
     .check_mapping_keys(de_columns, .DE_MAPPING_KEYS, "de_columns")
   }
+  per_contrast_map
+}
+
+# One contrast's DE table with canonical stat columns over the full
+# feature_id space (NA for features the table does not list). Returns the
+# table and the source column of the optional extra score, if any.
+#
+# The optional extra score (e.g. SaintScore) is found by the dictionary
+# only; remember which column it came from, as that is its display label.
+#
+# effect_log2fc (magnitude) and score_fdr (the primary significance axis,
+# §6 of the design doc) are the two columns the app actually depends on.
+# score_pvalue is legitimately optional (SAINTexpress has none) and
+# degrades gracefully via has_pvalue() -- never warn on that alone. If
+# NEITHER the mapping NOR the pattern dictionary resolved one of the two
+# required columns, this contrast would otherwise go all-NA with no
+# signal anywhere that anything was wrong.
+#
+# used_in_test: whether each feature entered the test (e.g. SUSHI's
+# usedInTest), when the DE table says so; found by the dictionary only.
+# Features the table doesn't list were not tested. Without it, the reader
+# counts a feature as tested when its p-value (or FDR) isn't NA.
+.assemble_de_table <- function(cn, de_table, mapping, fid, id2fid) {
+  orig_cols <- colnames(de_table)
+  d <- .canon_de_columns(de_table, mapping)
+  srcs <- attr(d, "de_sources")
+  missing_stats <- setdiff(c("effect_log2fc", "score_fdr"), colnames(d))
+  if (length(missing_stats)) {
+    warning(sprintf(
+      "DE '%s': could not resolve %s from columns (%s) \u2014 values will be NA. Pass de_columns= for this file, or add a pattern to inst/dictionaries/column_patterns.json if this naming will recur.",
+      cn,
+      paste(missing_stats, collapse = " and "),
+      paste(orig_cols, collapse = ", ")
+    ))
+  }
+  can <- data.frame(
+    effect_log2fc = rep(NA_real_, length(fid)),
+    score_pvalue = rep(NA_real_, length(fid)),
+    score_fdr = rep(NA_real_, length(fid)),
+    row.names = fid
+  )
+  tgt <- id2fid[rownames(d)] # DE feature ids -> canonical fid
+  ok <- !is.na(tgt)
+  if (any(!ok)) {
+    warning(sprintf("DE '%s': %d feature(s) not in counts/rowData \u2014 dropped", cn, sum(!ok)))
+  }
+  pos <- match(tgt[ok], fid)
+  stat_cols <- c("effect_log2fc", "score_pvalue", "score_fdr", if ("score" %in% colnames(d)) "score")
+  for (col in stat_cols) {
+    if (!col %in% colnames(can)) {
+      can[[col]] <- rep(NA_real_, length(fid))
+    }
+    if (col %in% colnames(d)) can[[col]][pos] <- eds_as_numeric(d[[col]])[ok]
+  }
+  if ("used_in_test" %in% colnames(d)) {
+    can$used_in_test <- rep(FALSE, length(fid))
+    can$used_in_test[pos] <- eds_as_flag(d$used_in_test)[ok]
+  }
+  list(table = can, score_src = if ("score" %in% names(srcs)) srcs[["score"]])
+}
+
+# -- DE : per contrast, canonicalise columns, index to full fid space -------
+# Beyond the three canonical stat columns, a contrast may carry an OPTIONAL
+# extra `score` (a second thresholdable/displayable significance axis, e.g.
+# SAINTexpress's SaintScore) — see .assemble_de_mapping(). It is
+# display-only this milestone (like nrPeptides), so it rides in varm but is
+# never wired into the FDR threshold path.
+.assemble_de <- function(de, de_columns, per_contrast_map, fid, id2fid, factor_prefixed) {
   varm <- list()
   uns_de <- list()
   de_slot <- list()
   score_src <- list()
   for (cn in names(de)) {
     mapping <- if (per_contrast_map) de_columns[[cn]] else de_columns
-    orig_cols <- colnames(de[[cn]])
-    d <- .canon_de_columns(de[[cn]], mapping)
-    # The optional extra score (e.g. SaintScore) is found by the dictionary
-    # only; remember which column it came from, as that is its display label.
-    srcs <- attr(d, "de_sources")
-    if ("score" %in% names(srcs)) {
-      score_src[[cn]] <- srcs[["score"]]
-    }
-    # effect_log2fc (magnitude) and score_fdr (the primary significance axis,
-    # §6 of the design doc) are the two columns the app actually depends on.
-    # score_pvalue is legitimately optional (SAINTexpress has none) and
-    # degrades gracefully via has_pvalue() -- never warn on that alone. If
-    # NEITHER the mapping NOR the pattern dictionary resolved one of the two
-    # required columns, this contrast would otherwise go all-NA with no
-    # signal anywhere that anything was wrong.
-    missing_stats <- setdiff(c("effect_log2fc", "score_fdr"), colnames(d))
-    if (length(missing_stats)) {
-      warning(sprintf(
-        "DE '%s': could not resolve %s from columns (%s) \u2014 values will be NA. Pass de_columns= for this file, or add a pattern to inst/dictionaries/column_patterns.json if this naming will recur.",
-        cn,
-        paste(missing_stats, collapse = " and "),
-        paste(orig_cols, collapse = ", ")
-      ))
+    one <- .assemble_de_table(cn, de[[cn]], mapping, fid, id2fid)
+    if (!is.null(one$score_src)) {
+      score_src[[cn]] <- one$score_src
     }
     slot <- gsub("[^a-z0-9]+", "_", tolower(cn))
     de_slot[[cn]] <- slot
-    can <- data.frame(
-      effect_log2fc = rep(NA_real_, length(fid)),
-      score_pvalue = rep(NA_real_, length(fid)),
-      score_fdr = rep(NA_real_, length(fid)),
-      row.names = fid
-    )
-    tgt <- id2fid[rownames(d)] # DE feature ids -> canonical fid
-    ok <- !is.na(tgt)
-    if (any(!ok)) {
-      warning(sprintf("DE '%s': %d feature(s) not in counts/rowData \u2014 dropped", cn, sum(!ok)))
-    }
-    pos <- match(tgt[ok], fid)
-    stat_cols <- c("effect_log2fc", "score_pvalue", "score_fdr", if ("score" %in% colnames(d)) "score")
-    for (col in stat_cols) {
-      if (!col %in% colnames(can)) {
-        can[[col]] <- rep(NA_real_, length(fid))
-      }
-      if (col %in% colnames(d)) can[[col]][pos] <- suppressWarnings(as.numeric(d[[col]]))[ok]
-    }
-    # Whether each feature entered the test (e.g. SUSHI's usedInTest), when the
-    # DE table says so; found by the dictionary only. Features the table
-    # doesn't list were not tested. Without it, the reader counts a feature as
-    # tested when its p-value (or FDR) isn't NA.
-    if ("used_in_test" %in% colnames(d)) {
-      can$used_in_test <- rep(FALSE, length(fid))
-      can$used_in_test[pos] <- eds_as_flag(d$used_in_test)[ok]
-    }
-    varm[[paste0("de_", slot)]] <- can
+    varm[[paste0("de_", slot)]] <- one$table
     grp <- strsplit(cn, "_vs_|--over--")[[1]]
     uns_de[[slot]] <- list(
       assay_used = "counts",
@@ -576,15 +612,18 @@
       model = "DESeq2"
     )
   }
+  list(varm = varm, uns_de = uns_de, de_slot = de_slot, score_src = score_src)
+}
 
-  # -- declared DE mapping (uns$exploreDE$mapping$de) --------------------------
-  # The dictionary itself: which source column fed each overridden target
-  # (effect_log2fc/score_pvalue/score_fdr), plus what the canonical stat arrays
-  # alone can't express (the extra score's source column + display label).
-  # A shared de_columns map => one
-  # `de$default`; per-contrast maps => `de$contrasts`. A detected extra score
-  # is always recorded per contrast: without its label the reader would not
-  # surface it at all (no DE-table column, no volcano score axis).
+# -- declared DE mapping (uns$exploreDE$mapping$de) --------------------------
+# The dictionary itself: which source column fed each overridden target
+# (effect_log2fc/score_pvalue/score_fdr), plus what the canonical stat arrays
+# alone can't express (the extra score's source column + display label).
+# A shared de_columns map => one
+# `de$default`; per-contrast maps => `de$contrasts`. A detected extra score
+# is always recorded per contrast: without its label the reader would not
+# surface it at all (no DE-table column, no volcano score axis).
+.assemble_de_mapping <- function(de, de_columns, per_contrast_map, de_slot, score_src) {
   map_de <- list()
   if (!is.null(de_columns)) {
     if (per_contrast_map) {
@@ -607,11 +646,14 @@
     slot <- de_slot[[cn]]
     map_de$contrasts[[slot]] <- c(map_de$contrasts[[slot]], list(score_col = src, score_label = src))
   }
+  map_de
+}
 
-  # -- declared feature-identity mapping (uns$exploreDE$mapping$feature) ------
-  # Only recorded when rowdata_columns explicitly named a column AND it was
-  # actually used (i.e. it existed in rd) — auto-detected columns stay
-  # implicit, same "written only when declared" lean-file principle as `de`.
+# -- declared feature-identity mapping (uns$exploreDE$mapping$feature) ------
+# Only recorded when rowdata_columns explicitly named a column AND it was
+# actually used (i.e. it existed in rd) — auto-detected columns stay
+# implicit, same "written only when declared" lean-file principle as `de`.
+.assemble_feature_mapping <- function(rowdata_columns, id_col, sym_col) {
   map_feature <- list()
   if (!is.null(rowdata_columns)) {
     if (!is.null(rowdata_columns$id_col) && identical(id_col, rowdata_columns$id_col)) {
@@ -621,21 +663,24 @@
       map_feature$symbol_col <- sym_col
     }
   }
+  map_feature
+}
 
-  # -- Pathway STATISTICS (B) : contrast-bound; keys must be a subset of DE.
-  # Each named entry under a contrast is stored AS-IS, no leaf-walking:
-  #   * a data.frame, OR a nested list containing only data.frames (e.g. a
-  #     hand-built BP/MF/CC x up/down/both tree with no clusterProfiler object
-  #     anywhere) -> flattened straight to the tidy uns$enrichment table.
-  #   * anything else (a single clusterProfiler object, OR a nested list that
-  #     contains at least one — e.g. the SUSHI BP/MF/CC x up/down/both shape)
-  #     -> the tidy table (filtered at enrichment_padj_max) PLUS a small
-  #     uns$enrichment_support block: object type, and for GSEA the gene sets
-  #     of the stored terms only, the ranked gene list and `exponent`. That is
-  #     everything the reader needs to rebuild the objects for the network /
-  #     ridge / running-score plots. The objects themselves are not stored:
-  #     >90% of them is the full gene-set collection, which nothing displays
-  #     (plans/exploredelight/enrichment_detach_plan.md).
+# -- Pathway STATISTICS (B) : contrast-bound; keys must be a subset of DE.
+# Each named entry under a contrast is stored AS-IS, no leaf-walking:
+#   * a data.frame, OR a nested list containing only data.frames (e.g. a
+#     hand-built BP/MF/CC x up/down/both tree with no clusterProfiler object
+#     anywhere) -> flattened straight to the tidy uns$enrichment table.
+#   * anything else (a single clusterProfiler object, OR a nested list that
+#     contains at least one — e.g. the SUSHI BP/MF/CC x up/down/both shape)
+#     -> the tidy table (filtered at enrichment_padj_max) PLUS a small
+#     uns$enrichment_support block: object type, and for GSEA the gene sets
+#     of the stored terms only, the ranked gene list and `exponent`. That is
+#     everything the reader needs to rebuild the objects for the network /
+#     ridge / running-score plots. The objects themselves are not stored:
+#     >90% of them is the full gene-set collection, which nothing displays
+#     (plans/exploredelight/enrichment_detach_plan.md).
+.assemble_pathways <- function(pathways, de, de_slot, enrichment_padj_max) {
   enr_support <- list()
   enr_tidy <- list()
   bad_keys <- setdiff(names(pathways), names(de))
@@ -673,7 +718,21 @@
       }
     }
   }
+  list(tidy = enr_tidy, support = enr_support)
+}
 
+# -- uns : schema, design, DE metadata, enrichment and declared mappings ------
+.assemble_uns <- function(
+  omics_type,
+  level,
+  factor_prefixed,
+  uns_de,
+  enr,
+  enrichment_padj_max,
+  ref_build,
+  map_de,
+  map_feature
+) {
   uns_list <- list(
     schema_version = "exploreDE/1.0",
     omics_type = omics_type,
@@ -681,15 +740,15 @@
     hierarchy = .hierarchy_for_level(level),
     design = list(factors = factor_prefixed, grouping = factor_prefixed[1] %||% NA_character_),
     de = uns_de,
-    enrichment = enr_tidy,
-    enrichment_support = enr_support,
+    enrichment = enr$tidy,
+    enrichment_support = enr$support,
     # The tidy mirror is FILTERED. Record the threshold, or a
     # consumer cannot tell "cut by this filter" from "not
     # significant" from "enrichment was never run" — three very
     # different things that all look like an absent row.
     enrichment_filter = list(
       # one number, or a list keyed by method (ora / gsea)
-      padj_max = if (length(enr_tidy)) enrichment_padj_max else NULL,
+      padj_max = if (length(enr$tidy)) enrichment_padj_max else NULL,
       column = "p.adjust"
     ),
     reference_genome = as.character(ref_build),
@@ -711,8 +770,57 @@
   if (length(mapping)) {
     uns_list$exploreDE <- list(mapping = mapping)
   }
+  uns_list
+}
 
-  list(X = X, layers = layers, obs = obs, var = var, varm = varm, uns = uns_list)
+# The generic assembler: the pieces of an exploreDE/1.0 AnnData, one helper
+# per part. The order of the steps is the order of their warnings and errors.
+.assemble_parts <- function(
+  counts,
+  coldata,
+  omics = "rnaseq",
+  feature_level = NULL,
+  rowdata = NULL,
+  de = list(),
+  de_columns = NULL,
+  pathways = list(),
+  enrichment_padj_max = 0.1,
+  factors = NULL,
+  gene_symbol = NULL,
+  feature_id = NULL,
+  rowdata_columns = NULL,
+  organism = NA_character_,
+  ref_build = NA_character_
+) {
+  omics_type <- .omics_type_of(omics)
+  cnt <- .assemble_counts(counts, coldata)
+  base_ids <- cnt$base_ids
+  f <- .assemble_feature_ids(base_ids, rowdata, rowdata_columns, omics_type, feature_level, feature_id, gene_symbol)
+  id2fid <- stats::setNames(f$fid, base_ids) # user identifiers -> canonical fid
+  obs <- .assemble_obs(coldata, cnt$sample_ids, factors, organism)
+  factor_prefixed <- colnames(obs)[grepl("^factor_", colnames(obs))]
+  var <- .assemble_var(f$fid, f$gid, f$sym, f$rd, f$sym_col, f$id_col)
+  layers <- .assemble_layers(cnt$counts, base_ids, cnt$sample_ids, f$fid)
+
+  per_contrast_map <- .de_columns_per_contrast(de_columns, de)
+  de_parts <- .assemble_de(de, de_columns, per_contrast_map, f$fid, id2fid, factor_prefixed)
+  map_de <- .assemble_de_mapping(de, de_columns, per_contrast_map, de_parts$de_slot, de_parts$score_src)
+  map_feature <- .assemble_feature_mapping(rowdata_columns, f$id_col, f$sym_col)
+  enr <- .assemble_pathways(pathways, de, de_parts$de_slot, enrichment_padj_max)
+
+  uns <- .assemble_uns(
+    omics_type,
+    f$level,
+    factor_prefixed,
+    de_parts$uns_de,
+    enr,
+    enrichment_padj_max,
+    ref_build,
+    map_de,
+    map_feature
+  )
+  X <- layers[["counts"]] %||% layers[[1]]
+  list(X = X, layers = layers, obs = obs, var = var, varm = de_parts$varm, uns = uns)
 }
 
 # ---- rich-object extraction (PREFERRED starting point, never required) ------
@@ -790,6 +898,29 @@
 #'   (default: all character/factor-typed columns).
 #' @param gene_symbol,organism,ref_build Optional labels.
 #' @return The output path, invisibly.
+#' @examples
+#' library(SummarizedExperiment)
+#' # A prolfqua proteomics result: one contrast, nested in rowData
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' de <- as.data.frame(rowData(se)$constrast_B_vs_A)
+#' path <- build_explore_h5ad(
+#'   x = list(raw = assay(se, "rawData"), transformed = assay(se, "transformedData")),
+#'   out = tempfile(fileext = ".h5ad"),
+#'   omics = "proteomics",
+#'   coldata = colData(se),
+#'   rowdata = de,
+#'   factors = "G_",
+#'   de = list(B_vs_A = de)
+#' )
+#' file.exists(path)
+#'
+#' # Counts only
+#' counts_only <- build_explore_h5ad(
+#'   assay(se, "rawData"),
+#'   out = tempfile(fileext = ".h5ad"),
+#'   omics = "proteomics",
+#'   coldata = colData(se)
+#' )
 #' @export
 build_explore_h5ad <- function(
   x,

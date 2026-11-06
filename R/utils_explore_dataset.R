@@ -74,6 +74,22 @@ eds_load_column_patterns <- function() {
   list(de = ordered(raw$de %||% list()), rowdata = ordered(raw$rowdata %||% list()))
 }
 
+# as.numeric() for columns that may hold text: entries that are not numbers
+# become NA. Only R's "NAs introduced by coercion" warning, which that is
+# expected to raise, is muffled; any other warning still shows. The message is
+# compared in the session's language, as R translates it.
+eds_as_numeric <- function(x) {
+  coercion <- gettext("NAs introduced by coercion", domain = "R")
+  withCallingHandlers(
+    as.numeric(x),
+    warning = function(w) {
+      if (identical(conditionMessage(w), coercion)) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
+
 # A "was this feature tested?" flag (used_in_test / SUSHI's usedInTest) as a
 # plain logical with no NA. Accepts logical, 0/1 numbers (anndataR and other
 # writers can store booleans as integers), and "TRUE"/"true"/"1" text. Unknown
@@ -88,7 +104,7 @@ eds_as_flag <- function(x) {
     x != 0
   } else {
     x <- trimws(as.character(x))
-    num <- suppressWarnings(as.numeric(x))
+    num <- eds_as_numeric(x)
     ifelse(!is.na(num), num != 0, as.logical(toupper(x)))
   }
   out[is.na(out)] <- FALSE

@@ -3,16 +3,30 @@
 \name{ExploreDataset}
 \alias{ExploreDataset}
 \title{Abstract base class for exploreDE's storage-agnostic dataset wrapper}
+\value{
+An R6 class generator. \verb{$new()} always errors; the concrete
+subclasses return an object inheriting from \code{ExploreDataset}.
+}
 \description{
-`ExploreDataset` defines the accessor contract that every concrete
+\code{ExploreDataset} defines the accessor contract that every concrete
 subclass must implement. It is not instantiable on its own — calling
-`ExploreDataset$new()` raises an error. Use [new_explore_dataset()] to
+\code{ExploreDataset$new()} raises an error. Use \code{\link[=new_explore_dataset]{new_explore_dataset()}} to
 build a concrete instance, or instantiate a subclass directly.
 
 Methods implemented on the base class read only from
-`private$.config` and are inherited unchanged by every subclass.
+\code{private$.config} and are inherited unchanged by every subclass.
 Methods that touch the storage backend are virtual
-(`stop("not implemented")`) and must be overridden.
+(\code{stop("not implemented")}) and must be overridden.
+}
+\examples{
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+eds <- new_explore_dataset(se)
+inherits(eds, "ExploreDataset")
+eds$contrasts()
+head(eds$de(eds$primary_contrast()))
+
+# The base class itself cannot be instantiated
+try(ExploreDataset$new())
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -65,7 +79,7 @@ Methods that touch the storage backend are virtual
     \item \href{#method-ExploreDataset-proteomics_choices}{\code{ExploreDataset$proteomics_choices()}}
     \item \href{#method-ExploreDataset-all_pathways}{\code{ExploreDataset$all_pathways()}}
     \item \href{#method-ExploreDataset-source}{\code{ExploreDataset$source()}}
-    \item \href{#method-ExploreDataset-print}{\code{ExploreDataset$print()}}
+    \item \href{#method-ExploreDataset-format}{\code{ExploreDataset$format()}}
     \item \href{#method-ExploreDataset-clone}{\code{ExploreDataset$clone()}}
   }
 }
@@ -73,7 +87,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-initialize"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-initialize}{}}}
 \subsection{\code{ExploreDataset$new()}}{
-  Always errors: the base class is abstract. Use [new_explore_dataset()] or a concrete subclass.
+  Always errors: the base class is abstract. Use \code{\link[=new_explore_dataset]{new_explore_dataset()}} or a concrete subclass.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$new(...)}
@@ -92,7 +106,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-omics_class"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-omics_class}{}}}
 \subsection{\code{ExploreDataset$omics_class()}}{
-  Omics class from the config: `"genomics"` or `"proteomics"`.
+  Omics class from the config: \code{"genomics"} or \code{"proteomics"}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$omics_class()}
@@ -104,7 +118,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-data_type"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-data_type}{}}}
 \subsection{\code{ExploreDataset$data_type()}}{
-  Dataset type from the config, e.g. `"RNASeq"`, `"CountQC"`, `"CrisprCountQC"` or `"proteomics"`.
+  Dataset type from the config, e.g. \code{"RNASeq"}, \code{"CountQC"}, \code{"CrisprCountQC"} or \code{"proteomics"}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$data_type()}
@@ -116,7 +130,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-has_de"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-has_de}{}}}
 \subsection{\code{ExploreDataset$has_de()}}{
-  `TRUE` when the dataset has at least one contrast.
+  \code{TRUE} when the dataset has at least one contrast.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$has_de()}
@@ -128,7 +142,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-has_enrichment"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-has_enrichment}{}}}
 \subsection{\code{ExploreDataset$has_enrichment()}}{
-  `TRUE` when the config lists at least one enrichment kind.
+  \code{TRUE} when the config lists at least one enrichment kind.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$has_enrichment()}
@@ -140,7 +154,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-organism"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-organism}{}}}
 \subsection{\code{ExploreDataset$organism()}}{
-  Organism from the config, or `NA` when unknown.
+  Organism from the config, or \code{NA} when unknown.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$organism()}
@@ -152,7 +166,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-ref_build"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-ref_build}{}}}
 \subsection{\code{ExploreDataset$ref_build()}}{
-  Reference genome build from the config, or `NA` when unknown.
+  Reference genome build from the config, or \code{NA} when unknown.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$ref_build()}
@@ -164,8 +178,8 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-feature_id_kind"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-feature_id_kind}{}}}
 \subsection{\code{ExploreDataset$feature_id_kind()}}{
-  What a feature ID denotes, from the config, e.g. `"gene"`, `"isoform"`, `"protein"`,
-  `"peptide"`, `"phospho"` or `"guide"`.
+  What a feature ID denotes, from the config, e.g. \code{"gene"}, \code{"isoform"}, \code{"protein"},
+\code{"peptide"}, \code{"phospho"} or \code{"guide"}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$feature_id_kind()}
@@ -189,7 +203,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-backend_kind"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-backend_kind}{}}}
 \subsection{\code{ExploreDataset$backend_kind()}}{
-  Short tag naming the storage backend (`"se"`, `"h5ad"` or `"parquet"`). Implemented by subclasses.
+  Short tag naming the storage backend (\code{"se"}, \code{"h5ad"} or \code{"parquet"}). Implemented by subclasses.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$backend_kind()}
@@ -214,7 +228,7 @@ Methods that touch the storage backend are virtual
 \if{latex}{\out{\hypertarget{method-ExploreDataset-samples}{}}}
 \subsection{\code{ExploreDataset$samples()}}{
   Sample metadata as a data.frame, one row per sample, rownames are sample IDs.
-  Implemented by subclasses.
+Implemented by subclasses.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$samples()}
@@ -226,7 +240,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-sample_ids"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-sample_ids}{}}}
 \subsection{\code{ExploreDataset$sample_ids()}}{
-  Sample IDs: the rownames of `samples()`.
+  Sample IDs: the rownames of \code{samples()}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$sample_ids()}
@@ -238,7 +252,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-n_samples"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-n_samples}{}}}
 \subsection{\code{ExploreDataset$n_samples()}}{
-  Number of samples: the number of rows of `samples()`.
+  Number of samples: the number of rows of \code{samples()}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$n_samples()}
@@ -271,7 +285,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{factor}}{Factor name, one of `factor_names()`.}
+      \item{\code{factor}}{Factor name, one of \code{factor_names()}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -293,7 +307,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-secondary_grouping"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-secondary_grouping}{}}}
 \subsection{\code{ExploreDataset$secondary_grouping()}}{
-  Name of the secondary grouping factor, or `NA` when there is none.
+  Name of the secondary grouping factor, or \code{NA} when there is none.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$secondary_grouping()}
@@ -305,7 +319,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-sample_factor"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-sample_factor}{}}}
 \subsection{\code{ExploreDataset$sample_factor()}}{
-  One column of `samples()`: the values of a factor, one per sample.
+  One column of \code{samples()}: the values of a factor, one per sample.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$sample_factor(factor)}
@@ -314,7 +328,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{factor}}{Column name in `samples()`, usually one of `factor_names()`.}
+      \item{\code{factor}}{Column name in \code{samples()}, usually one of \code{factor_names()}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -325,7 +339,7 @@ Methods that touch the storage backend are virtual
 \if{latex}{\out{\hypertarget{method-ExploreDataset-features}{}}}
 \subsection{\code{ExploreDataset$features()}}{
   Feature annotation as a data.frame, one row per feature, rownames are feature IDs, with a
-  `display_name` column. Implemented by subclasses.
+\code{display_name} column. Implemented by subclasses.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$features()}
@@ -337,7 +351,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-feature_ids"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-feature_ids}{}}}
 \subsection{\code{ExploreDataset$feature_ids()}}{
-  Feature IDs: the rownames of `features()`.
+  Feature IDs: the rownames of \code{features()}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$feature_ids()}
@@ -349,7 +363,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-n_features"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-n_features}{}}}
 \subsection{\code{ExploreDataset$n_features()}}{
-  Number of features: the number of rows of `features()`.
+  Number of features: the number of rows of \code{features()}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$n_features()}
@@ -370,7 +384,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{ids}}{Feature IDs to look up; `NULL` (default) returns all features.}
+      \item{\code{ids}}{Feature IDs to look up; \code{NULL} (default) returns all features.}
     }
     \if{html}{\out{</div>}}
   }
@@ -392,7 +406,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-has_assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-has_assay}{}}}
 \subsection{\code{ExploreDataset$has_assay()}}{
-  `TRUE` when `name` is one of `assay_names()`.
+  \code{TRUE} when \code{name} is one of \code{assay_names()}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$has_assay(name)}
@@ -420,9 +434,9 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{name}}{Canonical assay name, one of `assay_names()`.}
-      \item{\code{features}}{Feature IDs (rows) to keep; `NULL` keeps all.}
-      \item{\code{samples}}{Sample IDs (columns) to keep; `NULL` keeps all.}
+      \item{\code{name}}{Canonical assay name, one of \code{assay_names()}.}
+      \item{\code{features}}{Feature IDs (rows) to keep; \code{NULL} keeps all.}
+      \item{\code{samples}}{Sample IDs (columns) to keep; \code{NULL} keeps all.}
     }
     \if{html}{\out{</div>}}
   }
@@ -432,7 +446,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-assay_label"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-assay_label}{}}}
 \subsection{\code{ExploreDataset$assay_label()}}{
-  Human-readable label for an assay, from the config; `name` itself when no label is registered.
+  Human-readable label for an assay, from the config; \code{name} itself when no label is registered.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$assay_label(name)}
@@ -475,7 +489,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-raw_assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-raw_assay}{}}}
 \subsection{\code{ExploreDataset$raw_assay()}}{
-  The raw assay: shortcut for `assay(raw_assay_name(), ...)`.
+  The raw assay: shortcut for \code{assay(raw_assay_name(), ...)}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$raw_assay(...)}
@@ -484,7 +498,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{...}}{Passed to `assay()`: `features`, `samples`.}
+      \item{\code{...}}{Passed to \code{assay()}: \code{features}, \code{samples}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -494,7 +508,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-primary_assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-primary_assay}{}}}
 \subsection{\code{ExploreDataset$primary_assay()}}{
-  The primary assay: shortcut for `assay(primary_assay_name(), ...)`.
+  The primary assay: shortcut for \code{assay(primary_assay_name(), ...)}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$primary_assay(...)}
@@ -503,7 +517,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{...}}{Passed to `assay()`: `features`, `samples`.}
+      \item{\code{...}}{Passed to \code{assay()}: \code{features}, \code{samples}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -525,7 +539,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-primary_contrast"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-primary_contrast}{}}}
 \subsection{\code{ExploreDataset$primary_contrast()}}{
-  Name of the primary contrast, from the config; `NA` when there are no contrasts.
+  Name of the primary contrast, from the config; \code{NA} when there are no contrasts.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$primary_contrast()}
@@ -546,7 +560,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -569,7 +583,7 @@ Methods that touch the storage backend are virtual
 \if{latex}{\out{\hypertarget{method-ExploreDataset-contrast_meta}{}}}
 \subsection{\code{ExploreDataset$contrast_meta()}}{
   Metadata list of one contrast from the config: test and reference group, factor, method,
-  thresholds. Errors on an unknown contrast.
+thresholds. Errors on an unknown contrast.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$contrast_meta(contrast)}
@@ -578,7 +592,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -597,7 +611,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -607,8 +621,8 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-de_display_extras"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-de_display_extras}{}}}
 \subsection{\code{ExploreDataset$de_display_extras()}}{
-  Names of extra DE columns shown for display only (e.g. `SaintScore`), from the config;
-  empty by default.
+  Names of extra DE columns shown for display only (e.g. \code{SaintScore}), from the config;
+empty by default.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$de_display_extras()}
@@ -620,8 +634,8 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-has_pvalue"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-has_pvalue}{}}}
 \subsection{\code{ExploreDataset$has_pvalue()}}{
-  `TRUE` when the DE table of at least one contrast has a non-missing raw `pValue`;
-  `FALSE` for FDR-only producers such as SAINTexpress.
+  \code{TRUE} when the DE table of at least one contrast has a non-missing raw \code{pValue};
+\code{FALSE} for FDR-only producers such as SAINTexpress.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$has_pvalue()}
@@ -633,7 +647,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-enrichment_kinds"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment_kinds}{}}}
 \subsection{\code{ExploreDataset$enrichment_kinds()}}{
-  Enrichment kinds available, from the config: any of `"ora"` and `"gsea"`.
+  Enrichment kinds available, from the config: any of \code{"ora"} and \code{"gsea"}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$enrichment_kinds()}
@@ -646,7 +660,7 @@ Methods that touch the storage backend are virtual
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment}{}}}
 \subsection{\code{ExploreDataset$enrichment()}}{
   Enrichment results of one contrast and kind, as a flat named list of clusterProfiler results.
-  Implemented by subclasses.
+Implemented by subclasses.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$enrichment(contrast, kind)}
@@ -655,8 +669,8 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
-      \item{\code{kind}}{`"ora"` or `"gsea"`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
+      \item{\code{kind}}{\code{"ora"} or \code{"gsea"}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -666,8 +680,8 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-enrichment_input"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment_input}{}}}
 \subsection{\code{ExploreDataset$enrichment_input()}}{
-  Inputs for enrichment of one contrast: `list(seq_anno, ranked_l2fc, selections)`.
-  Implemented by subclasses.
+  Inputs for enrichment of one contrast: \code{list(seq_anno, ranked_l2fc, selections)}.
+Implemented by subclasses.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$enrichment_input(contrast)}
@@ -676,7 +690,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -687,7 +701,7 @@ Methods that touch the storage backend are virtual
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment_table}{}}}
 \subsection{\code{ExploreDataset$enrichment_table()}}{
   Enrichment results of one contrast and kind as one tidy data.frame, derived from
-  `enrichment()`; an empty data.frame when there are none.
+\code{enrichment()}; an empty data.frame when there are none.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$enrichment_table(contrast, kind)}
@@ -696,8 +710,8 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
-      \item{\code{kind}}{`"ora"` or `"gsea"`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
+      \item{\code{kind}}{\code{"ora"} or \code{"gsea"}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -707,8 +721,8 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-enrichment_filter"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-enrichment_filter}{}}}
 \subsection{\code{ExploreDataset$enrichment_filter()}}{
-  The `p.adjust` cut-off applied to the stored enrichment tables, from the config;
-  `NA` when none was applied.
+  The \code{p.adjust} cut-off applied to the stored enrichment tables, from the config;
+\code{NA} when none was applied.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$enrichment_filter()}
@@ -720,7 +734,7 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-sgrna_to_gene"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-sgrna_to_gene}{}}}
 \subsection{\code{ExploreDataset$sgrna_to_gene()}}{
-  Named character vector mapping sgRNA IDs to gene names (CRISPR datasets); `NULL` otherwise.
+  Named character vector mapping sgRNA IDs to gene names (CRISPR datasets); \code{NULL} otherwise.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$sgrna_to_gene()}
@@ -732,8 +746,8 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-proteomics_choices"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-proteomics_choices}{}}}
 \subsection{\code{ExploreDataset$proteomics_choices()}}{
-  Choices and lookup for the proteomics feature picker, `list(choices, lookup)`; `NULL` when the
-  dataset has none.
+  Choices and lookup for the proteomics feature picker, \code{list(choices, lookup)}; \code{NULL} when the
+dataset has none.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$proteomics_choices(kind = c("gene", "protein"))}
@@ -742,7 +756,7 @@ Methods that touch the storage backend are virtual
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{kind}}{`"gene"` (default) or `"protein"`.}
+      \item{\code{kind}}{\code{"gene"} (default) or \code{"protein"}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -752,8 +766,8 @@ Methods that touch the storage backend are virtual
 \if{html}{\out{<a id="method-ExploreDataset-all_pathways"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-all_pathways}{}}}
 \subsection{\code{ExploreDataset$all_pathways()}}{
-  GO terms named in the `GO BP`, `GO MF` and `GO CC` columns of `features()`, as
-  `"GO:ID term name"` strings; empty when those columns are absent.
+  GO terms named in the \verb{GO BP}, \verb{GO MF} and \verb{GO CC} columns of \code{features()}, as
+\code{"GO:ID term name"} strings; empty when those columns are absent.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$all_pathways()}
@@ -774,14 +788,14 @@ Methods that touch the storage backend are virtual
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ExploreDataset-print"></a>}}
-\if{latex}{\out{\hypertarget{method-ExploreDataset-print}{}}}
-\subsection{\code{ExploreDataset$print()}}{
-  Print a summary of the dataset (type, dimensions, factors, contrasts, assays, enrichment)
-  and return the object invisibly.
+\if{html}{\out{<a id="method-ExploreDataset-format"></a>}}
+\if{latex}{\out{\hypertarget{method-ExploreDataset-format}{}}}
+\subsection{\code{ExploreDataset$format()}}{
+  Summary of the dataset (type, dimensions, factors, contrasts, assays, enrichment), one
+line per element. \code{print()} on the object shows these lines.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExploreDataset$print(...)}
+    \preformatted{ExploreDataset$format(...)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{

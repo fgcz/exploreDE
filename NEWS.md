@@ -1,3 +1,15 @@
+# exploreDE 3.10.0
+
+- The version follows Bioconductor's numbering, where an even middle number marks a release.
+- anndataR is installed from Bioconductor: the DESCRIPTION no longer has a `Remotes:` field pointing to GitHub. exploreDE needs anndataR >= 1.3, which Bioconductor ships from release 3.24; until then, install anndataR from GitHub (`scverse/anndataR`) yourself.
+- The demo dataset (`inst/examples/genomics/deResult.rds`) is 4.4 MB instead of 34 MB. It shows the same samples, features, DE table and ORA/GSEA results; removed are parts the app never reads: the DESeq2 object, the gene sets of GO terms that are in no result table, and duplicate annotation columns. `inst/scripts/trim_demo_deResult.R` records the trimming.
+- Every exported function and class has a help-page example that runs on the shipped example datasets, and says what it returns. The DESCRIPTION gives the package's URL, bug tracker, Bioconductor categories, and the maintainer's ORCID.
+- exploreDE has a hex sticker (`man/figures/logo.png`, drawn by `inst/scripts/make_hex_logo.R`): a volcano plot whose point density draws a cat face. The README opens with what exploreDE is and says to install anndataR from GitHub first.
+- The hex sticker now has dotted cat eyes, ears and whiskers, a background-coloured mouth, and subdued grey "re" lettering. The README links the sticker to the full-size PNG.
+- Documentation website at <https://fgcz.github.io/exploreDE/> (pkgdown): the README, the help pages, the bring-your-own-data vignette and this changelog, rebuilt on every push to `main`.
+- Help pages show code and links as such: backticks and `[function()]` references in the documentation were printed literally before.
+- `ExploreDataset` objects print the same summary as before, now from a `format()` method: `format(eds)` returns its lines, and the `eds$print()` method is gone (`print(eds)` works as before).
+
 # exploreDE 3.9.0
 
 ## Breaking changes

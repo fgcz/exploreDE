@@ -3,20 +3,32 @@
 \name{ExploreDatasetSE}
 \alias{ExploreDatasetSE}
 \title{Abstract intermediate class for SE-backed datasets}
+\value{
+An R6 class generator; the concrete subclasses' \verb{$new()} returns an
+object inheriting from \code{ExploreDatasetSE}.
+}
 \description{
-`ExploreDatasetSE` holds the `SummarizedExperiment` backend
+\code{ExploreDatasetSE} holds the \code{SummarizedExperiment} backend
 reference and implements the accessor contract uniformly for every
-SE shape. Concrete subclasses (`ExploreDatasetSE_RNASeq`,
-`_CountQC`, `_CrisprCountQC`, `_Proteomics`) override two private
+SE shape. Concrete subclasses (\code{ExploreDatasetSE_RNASeq},
+\verb{_CountQC}, \verb{_CrisprCountQC}, \verb{_Proteomics}) override two private
 methods only:
-
-- `.build_config(se)` — returns the per-instance config list at
-  `$initialize()` time
-- `.prep()` — populates `private$.features_df`, `private$.de_dfs`,
-  `private$.fid_lookup` from the SE
+\itemize{
+\item \code{.build_config(se)} — returns the per-instance config list at
+\verb{$initialize()} time
+\item \code{.prep()} — populates \code{private$.features_df}, \code{private$.de_dfs},
+\code{private$.fid_lookup} from the SE
+}
 
 This class is not instantiable on its own — instantiate a concrete
 subclass instead.
+}
+\examples{
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+eds <- new_explore_dataset(se)
+inherits(eds, "ExploreDatasetSE")
+eds$assay_names()
+dim(eds$raw_assay())
 }
 \section{Super class}{
 \code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{ExploreDatasetSE}
@@ -56,6 +68,7 @@ subclass instead.
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_display"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_display'><code>ExploreDataset$feature_display()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_id_kind"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_id_kind'><code>ExploreDataset$feature_id_kind()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_ids"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_ids'><code>ExploreDataset$feature_ids()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="format"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-format'><code>ExploreDataset$format()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_assay'><code>ExploreDataset$has_assay()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_de"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_de'><code>ExploreDataset$has_de()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_enrichment"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_enrichment'><code>ExploreDataset$has_enrichment()</code></a></span></li>
@@ -68,7 +81,6 @@ subclass instead.
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_assay_name'><code>ExploreDataset$primary_assay_name()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_contrast"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_contrast'><code>ExploreDataset$primary_contrast()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_grouping"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_grouping'><code>ExploreDataset$primary_grouping()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="print"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-print'><code>ExploreDataset$print()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="proteomics_choices"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-proteomics_choices'><code>ExploreDataset$proteomics_choices()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay'><code>ExploreDataset$raw_assay()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay_name'><code>ExploreDataset$raw_assay_name()</code></a></span></li>
@@ -84,8 +96,8 @@ subclass instead.
 \if{html}{\out{<a id="method-ExploreDatasetSE-initialize"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-initialize}{}}}
 \subsection{\code{ExploreDatasetSE$new()}}{
-  Wrap a `SummarizedExperiment`: store it, build the config from it unless one is given, and
-  prepare the feature and DE tables.
+  Wrap a \code{SummarizedExperiment}: store it, build the config from it unless one is given, and
+prepare the feature and DE tables.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$new(se, config = NULL)}
@@ -94,8 +106,8 @@ subclass instead.
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{se}}{A `SummarizedExperiment`.}
-      \item{\code{config}}{Optional pre-built config list; built from `se` by the subclass when `NULL`.}
+      \item{\code{se}}{A \code{SummarizedExperiment}.}
+      \item{\code{config}}{Optional pre-built config list; built from \code{se} by the subclass when \code{NULL}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -105,7 +117,7 @@ subclass instead.
 \if{html}{\out{<a id="method-ExploreDatasetSE-backend"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-backend}{}}}
 \subsection{\code{ExploreDatasetSE$backend()}}{
-  The wrapped `SummarizedExperiment`.
+  The wrapped \code{SummarizedExperiment}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$backend()}
@@ -117,7 +129,7 @@ subclass instead.
 \if{html}{\out{<a id="method-ExploreDatasetSE-backend_kind"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-backend_kind}{}}}
 \subsection{\code{ExploreDatasetSE$backend_kind()}}{
-  Returns `"se"`.
+  Returns \code{"se"}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$backend_kind()}
@@ -129,8 +141,8 @@ subclass instead.
 \if{html}{\out{<a id="method-ExploreDatasetSE-samples"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-samples}{}}}
 \subsection{\code{ExploreDatasetSE$samples()}}{
-  Sample metadata from `colData()`, with the SUSHI ` [Factor]` suffix stripped from column names,
-  rownames set to sample IDs, and a `Name` column added.
+  Sample metadata from \code{colData()}, with the SUSHI \verb{ [Factor]} suffix stripped from column names,
+rownames set to sample IDs, and a \code{Name} column added.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$samples()}
@@ -142,7 +154,7 @@ subclass instead.
 \if{html}{\out{<a id="method-ExploreDatasetSE-features"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-features}{}}}
 \subsection{\code{ExploreDatasetSE$features()}}{
-  Feature annotation table, prepared from `rowData()` by the subclass.
+  Feature annotation table, prepared from \code{rowData()} by the subclass.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$features()}
@@ -154,8 +166,8 @@ subclass instead.
 \if{html}{\out{<a id="method-ExploreDatasetSE-de"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-de}{}}}
 \subsection{\code{ExploreDatasetSE$de()}}{
-  DE table of one contrast, prepared from `rowData()` by the subclass; an empty data.frame when
-  none was prepared. Errors on an unknown contrast.
+  DE table of one contrast, prepared from \code{rowData()} by the subclass; an empty data.frame when
+none was prepared. Errors on an unknown contrast.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$de(contrast)}
@@ -164,7 +176,7 @@ subclass instead.
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{contrast}}{Contrast name, one of `contrasts()`.}
+      \item{\code{contrast}}{Contrast name, one of \code{contrasts()}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -175,7 +187,7 @@ subclass instead.
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-assay_names}{}}}
 \subsection{\code{ExploreDatasetSE$assay_names()}}{
   Canonical assay names from the config's assay map whose SE assay exists; computed assays are
-  always included.
+always included.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$assay_names()}
@@ -187,8 +199,8 @@ subclass instead.
 \if{html}{\out{<a id="method-ExploreDatasetSE-assay"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-assay}{}}}
 \subsection{\code{ExploreDatasetSE$assay()}}{
-  One assay as a features x samples matrix with rows renamed to feature IDs; `normalised_log2`,
-  `vst`, `fpkm` and `tpm` are computed when the config maps them to no SE assay.
+  One assay as a features x samples matrix with rows renamed to feature IDs; \code{normalised_log2},
+\code{vst}, \code{fpkm} and \code{tpm} are computed when the config maps them to no SE assay.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$assay(name, features = NULL, samples = NULL)}
@@ -197,9 +209,9 @@ subclass instead.
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{name}}{Canonical assay name, one of `assay_names()`.}
-      \item{\code{features}}{Feature IDs (rows) to keep; `NULL` keeps all.}
-      \item{\code{samples}}{Sample IDs (columns) to keep; `NULL` keeps all.}
+      \item{\code{name}}{Canonical assay name, one of \code{assay_names()}.}
+      \item{\code{features}}{Feature IDs (rows) to keep; \code{NULL} keeps all.}
+      \item{\code{samples}}{Sample IDs (columns) to keep; \code{NULL} keeps all.}
     }
     \if{html}{\out{</div>}}
   }
@@ -209,8 +221,8 @@ subclass instead.
 \if{html}{\out{<a id="method-ExploreDatasetSE-enrichment"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-enrichment}{}}}
 \subsection{\code{ExploreDatasetSE$enrichment()}}{
-  Enrichment results of one kind, read from `metadata(se)` and flattened to a named list; an empty
-  list when absent. `contrast` is not used.
+  Enrichment results of one kind, read from \code{metadata(se)} and flattened to a named list; an empty
+list when absent. \code{contrast} is not used.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$enrichment(contrast, kind)}
@@ -220,7 +232,7 @@ subclass instead.
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{contrast}}{Contrast name; not used by this backend.}
-      \item{\code{kind}}{`"ora"` or `"gsea"`.}
+      \item{\code{kind}}{\code{"ora"} or \code{"gsea"}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -230,8 +242,8 @@ subclass instead.
 \if{html}{\out{<a id="method-ExploreDatasetSE-enrichment_input"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetSE-enrichment_input}{}}}
 \subsection{\code{ExploreDatasetSE$enrichment_input()}}{
-  Enrichment inputs read from `metadata(se)$enrichInput`, with `NULL` fields and no selections when
-  absent. `contrast` is not used.
+  Enrichment inputs read from \code{metadata(se)$enrichInput}, with \code{NULL} fields and no selections when
+absent. \code{contrast} is not used.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDatasetSE$enrichment_input(contrast)}

@@ -9,6 +9,15 @@
 #' Inherits the accessor contract from [ExploreDataset] via
 #' [ExploreDatasetSE]; overrides only `.build_config()` and `.prep()`.
 #'
+#' @return An R6 class generator; `$new()` returns an
+#'   `ExploreDatasetSE_RNASeq` object.
+#' @examples
+#' se <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))
+#' eds <- ExploreDatasetSE_RNASeq$new(se)
+#' eds
+#' eds$contrasts()
+#' head(eds$de(eds$primary_contrast()))
+#' eds$enrichment_kinds()
 #' @export
 ExploreDatasetSE_RNASeq <- R6::R6Class(
   classname = "ExploreDatasetSE_RNASeq",

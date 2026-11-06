@@ -3,13 +3,33 @@
 \name{ExploreDatasetSE_CrisprCountQC}
 \alias{ExploreDatasetSE_CrisprCountQC}
 \title{Concrete subclass for CRISPR Mageck CountQC outputs}
+\value{
+An R6 class generator; \verb{$new()} returns an
+\code{ExploreDatasetSE_CrisprCountQC} object.
+}
 \description{
-Identical to [ExploreDatasetSE_CountQC] plus a sgRNA → gene mapping
+Identical to \link{ExploreDatasetSE_CountQC} plus a sgRNA → gene mapping
 parsed from the SE feature IDs, which are assumed to follow the
-`GENE_<n>_<SEQUENCE>` convention.
+\verb{GENE_<n>_<SEQUENCE>} convention.
 }
 \details{
-Inherits `.prep()` from [ExploreDatasetSE_CountQC] unchanged.
+Inherits \code{.prep()} from \link{ExploreDatasetSE_CountQC} unchanged.
+}
+\examples{
+library(SummarizedExperiment)
+# Guide counts: 4 guides for each of 10 genes, named GENE_<n>_<SEQUENCE>
+set.seed(1)
+guides <- sprintf("GENE\%d_\%d_ACGTACGTACGT", rep(1:10, each = 4), rep(1:4, 10))
+counts <- matrix(rpois(40 * 4, 50), nrow = 40, dimnames = list(guides, paste0("S", 1:4)))
+samples <- S4Vectors::DataFrame(
+  `Condition [Factor]` = rep(c("ctrl", "treated"), each = 2),
+  row.names = colnames(counts),
+  check.names = FALSE
+)
+se <- SummarizedExperiment(assays = list(counts = counts), colData = samples)
+eds <- ExploreDatasetSE_CrisprCountQC$new(se)
+eds
+head(eds$sgrna_to_gene())
 }
 \section{Super classes}{
 \code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{\link[exploreDE:ExploreDatasetSE]{ExploreDatasetSE}} -> \code{\link[exploreDE:ExploreDatasetSE_CountQC]{ExploreDatasetSE_CountQC}} -> \code{ExploreDatasetSE_CrisprCountQC}
@@ -39,6 +59,7 @@ Inherits `.prep()` from [ExploreDatasetSE_CountQC] unchanged.
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_display"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_display'><code>ExploreDataset$feature_display()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_id_kind"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_id_kind'><code>ExploreDataset$feature_id_kind()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_ids"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_ids'><code>ExploreDataset$feature_ids()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="format"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-format'><code>ExploreDataset$format()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_assay'><code>ExploreDataset$has_assay()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_de"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_de'><code>ExploreDataset$has_de()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_enrichment"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_enrichment'><code>ExploreDataset$has_enrichment()</code></a></span></li>
@@ -51,7 +72,6 @@ Inherits `.prep()` from [ExploreDatasetSE_CountQC] unchanged.
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_assay_name'><code>ExploreDataset$primary_assay_name()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_contrast"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_contrast'><code>ExploreDataset$primary_contrast()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_grouping"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_grouping'><code>ExploreDataset$primary_grouping()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="print"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-print'><code>ExploreDataset$print()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="proteomics_choices"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-proteomics_choices'><code>ExploreDataset$proteomics_choices()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay'><code>ExploreDataset$raw_assay()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay_name'><code>ExploreDataset$raw_assay_name()</code></a></span></li>

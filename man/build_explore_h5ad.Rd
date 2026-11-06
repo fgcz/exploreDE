@@ -2,7 +2,7 @@
 % Please edit documentation in R/build_explore_h5ad.R
 \name{build_explore_h5ad}
 \alias{build_explore_h5ad}
-\title{Build a canonical exploreDE `.h5ad` from user-supplied data}
+\title{Build a canonical exploreDE \code{.h5ad} from user-supplied data}
 \usage{
 build_explore_h5ad(
   x,
@@ -23,56 +23,56 @@ build_explore_h5ad(
 )
 }
 \arguments{
-\item{x}{A `DESeqDataSet`, a counts matrix, or a named list of count
+\item{x}{A \code{DESeqDataSet}, a counts matrix, or a named list of count
 matrices.}
 
-\item{out}{Output `.h5ad` path.}
+\item{out}{Output \code{.h5ad} path.}
 
-\item{omics}{Required: `"rnaseq"`, `"proteomics"`, or `"crispr"`.}
+\item{omics}{Required: \code{"rnaseq"}, \code{"proteomics"}, or \code{"crispr"}.}
 
 \item{feature_level}{Optional override of the feature granularity within the
-omics — rnaseq `"gene"`/`"isoform"`, proteomics
-`"protein"`/`"peptide"`/`"phospho"`. Omit to auto-detect from `rowdata`
-(`site` -> phospho, `peptide_Id` -> peptide, `transcript_id` -> isoform).}
+omics — rnaseq \code{"gene"}/\code{"isoform"}, proteomics
+\code{"protein"}/\code{"peptide"}/\code{"phospho"}. Omit to auto-detect from \code{rowdata}
+(\code{site} -> phospho, \code{peptide_Id} -> peptide, \code{transcript_id} -> isoform).}
 
-\item{coldata}{Sample metadata `data.frame`. Required unless `x` is a rich
+\item{coldata}{Sample metadata \code{data.frame}. Required unless \code{x} is a rich
 object that carries it.}
 
 \item{rowdata}{Optional per-feature annotation (feature names/symbols/ids and
-per-feature pathway annotation columns, e.g. `GO BP`).}
+per-feature pathway annotation columns, e.g. \verb{GO BP}).}
 
 \item{de}{Optional named list of DE tables keyed by contrast
-(`DESeqResults` / `data.frame`). Columns are recognised by the column
-dictionary (`inst/dictionaries/column_patterns.json`), overridable with
-`de_columns`. An optional extra score column (e.g. SAINTexpress's
-`SaintScore`) is picked up by the dictionary alone and shown for display
+(\code{DESeqResults} / \code{data.frame}). Columns are recognised by the column
+dictionary (\code{inst/dictionaries/column_patterns.json}), overridable with
+\code{de_columns}. An optional extra score column (e.g. SAINTexpress's
+\code{SaintScore}) is picked up by the dictionary alone and shown for display
 under its own column name.}
 
 \item{de_columns}{Optional DE column overrides:
-`list(effect_log2fc = "<col>", score_pvalue = "<col>", score_fdr = "<col>")`,
+\code{list(effect_log2fc = "<col>", score_pvalue = "<col>", score_fdr = "<col>")},
 applied to all contrasts, or a named list of such lists keyed by contrast.
 Named columns are used as given; any not named are still found by the
 dictionary. A producer with no raw p-value (e.g. SAINTexpress) simply has
 none; the app degrades to FDR-only. Unknown keys are ignored with a
-warning. Overrides are persisted at `uns$exploreDE$mapping$de`, so the
+warning. Overrides are persisted at \code{uns$exploreDE$mapping$de}, so the
 file stays self-describing.}
 
 \item{rowdata_columns}{Optional feature column overrides:
-`list(id_col = "<col>", symbol_col = "<col>")` — which `rowdata` column
+\code{list(id_col = "<col>", symbol_col = "<col>")} — which \code{rowdata} column
 supplies the feature id and the display symbol. Anything not named is
 still found by the dictionary. Unknown keys are ignored with a warning.
-Overrides are persisted at `uns$exploreDE$mapping$feature`.}
+Overrides are persisted at \code{uns$exploreDE$mapping$feature}.}
 
 \item{pathways}{Optional pathway statistics: a named list keyed by contrast
-(keys a subset of `de`); each entry a named list of clusterProfiler objects
-and/or `data.frame`s.}
+(keys a subset of \code{de}); each entry a named list of clusterProfiler objects
+and/or \code{data.frame}s.}
 
 \item{enrichment_padj_max}{p.adjust cut-off applied to clusterProfiler
-results before they are stored (`p.adjust <= enrichment_padj_max`). Either
+results before they are stored (\code{p.adjust <= enrichment_padj_max}). Either
 one number for every method, or a named list keyed by the method names used
-in `pathways` (e.g. `list(ora = 0.05, gsea = 0.05)`) so that ORA and GSEA can
+in \code{pathways} (e.g. \code{list(ora = 0.05, gsea = 0.05)}) so that ORA and GSEA can
 follow their own FDR thresholds; a method not named in the list uses the
-largest value given. The value(s) are recorded in `uns$enrichment_filter`
+largest value given. The value(s) are recorded in \code{uns$enrichment_filter}
 and the app uses a per-method value as its significance threshold.}
 
 \item{factors}{Optional colData columns that are experimental factors
@@ -84,10 +84,34 @@ and the app uses a per-method value as its significance threshold.}
 The output path, invisibly.
 }
 \description{
-The source-agnostic "bring your own data" constructor. `x` is either a rich
-upstream object (a `DESeqDataSet` — the preferred starting point) or the
+The source-agnostic "bring your own data" constructor. \code{x} is either a rich
+upstream object (a \code{DESeqDataSet} — the preferred starting point) or the
 counts themselves (a matrix, or a named list of matrices such as
-`list(counts=, normalised=, vst=, tpm=)`). Any parts the object doesn't
+\code{list(counts=, normalised=, vst=, tpm=)}). Any parts the object doesn't
 carry — DE tables, pathway statistics, extra count matrices — are supplied
-as arguments and merged. Only counts + `coldata` + `omics` are required.
+as arguments and merged. Only counts + \code{coldata} + \code{omics} are required.
+}
+\examples{
+library(SummarizedExperiment)
+# A prolfqua proteomics result: one contrast, nested in rowData
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+de <- as.data.frame(rowData(se)$constrast_B_vs_A)
+path <- build_explore_h5ad(
+  x = list(raw = assay(se, "rawData"), transformed = assay(se, "transformedData")),
+  out = tempfile(fileext = ".h5ad"),
+  omics = "proteomics",
+  coldata = colData(se),
+  rowdata = de,
+  factors = "G_",
+  de = list(B_vs_A = de)
+)
+file.exists(path)
+
+# Counts only
+counts_only <- build_explore_h5ad(
+  assay(se, "rawData"),
+  out = tempfile(fileext = ".h5ad"),
+  omics = "proteomics",
+  coldata = colData(se)
+)
 }

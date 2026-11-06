@@ -17,3 +17,6 @@
 ^\.githooks$
 ^CITATION\.cff$
 ^SKILLS\.md$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

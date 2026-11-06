@@ -10,6 +10,17 @@
 #' Methods that touch the storage backend are virtual
 #' (`stop("not implemented")`) and must be overridden.
 #'
+#' @return An R6 class generator. `$new()` always errors; the concrete
+#'   subclasses return an object inheriting from `ExploreDataset`.
+#' @examples
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' eds <- new_explore_dataset(se)
+#' inherits(eds, "ExploreDataset")
+#' eds$contrasts()
+#' head(eds$de(eds$primary_contrast()))
+#'
+#' # The base class itself cannot be instantiated
+#' try(ExploreDataset$new())
 #' @export
 ExploreDataset <- R6::R6Class(
   classname = "ExploreDataset",
@@ -292,52 +303,49 @@ ExploreDataset <- R6::R6Class(
     source = function() private$.config$source,
 
     # ---- lifecycle ---------------------------------------------------------
-    #' @description Print a summary of the dataset (type, dimensions, factors, contrasts, assays, enrichment)
-    #'   and return the object invisibly.
+    #' @description Summary of the dataset (type, dimensions, factors, contrasts, assays, enrichment), one
+    #'   line per element. `print()` on the object shows these lines.
     #' @param ... Ignored.
-    print = function(...) {
-      cat("<", class(self)[1], "  (", self$backend_kind(), ")>\n", sep = "")
-      cat("  data_type:        ", self$data_type(), "\n", sep = "")
-      cat("  feature_id_kind:  ", self$feature_id_kind(), "\n", sep = "")
-      cat("  organism:         ", self$organism(), "\n", sep = "")
-      cat("  ref_build:        ", self$ref_build(), "\n", sep = "")
-      cat("  samples x features: ", self$n_samples(), " x ", self$n_features(), "\n", sep = "")
-      cat("  factors (", length(self$factor_names()), "):\n", sep = "")
-      for (f in self$factor_names()) {
-        lv <- self$factor_levels(f)
-        cat(
-          "    ",
-          f,
-          if (identical(f, self$primary_grouping())) "  (primary)" else "",
-          ": ",
-          paste(utils::head(lv, 6), collapse = ", "),
-          if (length(lv) > 6) paste0(", ... (+", length(lv) - 6, ")") else "",
-          "\n",
-          sep = ""
-        )
-      }
-      cat(
-        "  contrasts (",
-        length(self$contrasts()),
-        "): ",
-        paste(utils::head(self$contrasts(), 3), collapse = ", "),
-        if (length(self$contrasts()) > 3) ", ..." else "",
-        "\n",
-        sep = ""
-      )
-      cat("  primary_contrast: ", self$primary_contrast() %||% "(none)", "\n", sep = "")
-      cat("  assays:           ", paste(self$assay_names(), collapse = ", "), "\n", sep = "")
-      cat(
-        "  enrichment:       ",
-        if (self$has_enrichment()) {
-          paste(self$enrichment_kinds(), collapse = ", ")
-        } else {
-          "(none)"
+    format = function(...) {
+      factor_lines <- vapply(
+        self$factor_names(),
+        function(f) {
+          lv <- self$factor_levels(f)
+          paste0(
+            "    ",
+            f,
+            if (identical(f, self$primary_grouping())) "  (primary)" else "",
+            ": ",
+            paste(utils::head(lv, 6), collapse = ", "),
+            if (length(lv) > 6) paste0(", ... (+", length(lv) - 6, ")") else ""
+          )
         },
-        "\n",
-        sep = ""
+        character(1),
+        USE.NAMES = FALSE
       )
-      invisible(self)
+      c(
+        paste0("<", class(self)[1], "  (", self$backend_kind(), ")>"),
+        paste0("  data_type:        ", self$data_type()),
+        paste0("  feature_id_kind:  ", self$feature_id_kind()),
+        paste0("  organism:         ", self$organism()),
+        paste0("  ref_build:        ", self$ref_build()),
+        paste0("  samples x features: ", self$n_samples(), " x ", self$n_features()),
+        paste0("  factors (", length(self$factor_names()), "):"),
+        factor_lines,
+        paste0(
+          "  contrasts (",
+          length(self$contrasts()),
+          "): ",
+          paste(utils::head(self$contrasts(), 3), collapse = ", "),
+          if (length(self$contrasts()) > 3) ", ..." else ""
+        ),
+        paste0("  primary_contrast: ", self$primary_contrast() %||% "(none)"),
+        paste0("  assays:           ", paste(self$assay_names(), collapse = ", ")),
+        paste0(
+          "  enrichment:       ",
+          if (self$has_enrichment()) paste(self$enrichment_kinds(), collapse = ", ") else "(none)"
+        )
+      )
     }
   ),
 

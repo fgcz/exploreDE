@@ -2,33 +2,41 @@
 % Please edit documentation in R/validate_explore_dataset.R
 \name{validate_explore_dataset}
 \alias{validate_explore_dataset}
-\title{Runtime validator for a live `ExploreDataset` instance}
+\title{Runtime validator for a live \code{ExploreDataset} instance}
 \usage{
 validate_explore_dataset(eds, strict = TRUE)
 }
 \arguments{
-\item{eds}{An `ExploreDataset` instance.}
+\item{eds}{An \code{ExploreDataset} instance.}
 
-\item{strict}{If `TRUE` (default), `stop()` on the first failure.
-If `FALSE`, returns `list(ok, errors)`.}
+\item{strict}{If \code{TRUE} (default), \code{stop()} on the first failure.
+If \code{FALSE}, returns \code{list(ok, errors)}.}
 }
 \value{
-Invisibly, `TRUE` on success (strict mode); or
-  `list(ok = logical(1), errors = character)` (non-strict mode).
+Invisibly, \code{TRUE} on success (strict mode); or
+\code{list(ok = logical(1), errors = character)} (non-strict mode).
 }
 \description{
 Checks subclass-agnostic invariants by walking the accessor API:
 }
 \details{
-1. The runtime class is a concrete `ExploreDataset` subclass — not
-   the abstract base or intermediate.
-2. Cross-references resolve: `factor_names()` are columns of
-   `samples()`; every `contrasts()` entry has a working `de()`;
-   `primary_grouping()` is a member of `factor_names()`;
-   `primary_contrast()` is in `contrasts()` (or `NA`).
-3. Sample / feature alignment: assay rownames / colnames agree
-   with `sample_ids()` / `feature_ids()`.
+\enumerate{
+\item The runtime class is a concrete \code{ExploreDataset} subclass — not
+the abstract base or intermediate.
+\item Cross-references resolve: \code{factor_names()} are columns of
+\code{samples()}; every \code{contrasts()} entry has a working \code{de()};
+\code{primary_grouping()} is a member of \code{factor_names()};
+\code{primary_contrast()} is in \code{contrasts()} (or \code{NA}).
+\item Sample / feature alignment: assay rownames / colnames agree
+with \code{sample_ids()} / \code{feature_ids()}.
+}
 
-Cost is proportional to the number of contrasts (one `de(c)`
+Cost is proportional to the number of contrasts (one \code{de(c)}
 round-trip each) plus a small constant of other accessor calls.
+}
+\examples{
+se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+eds <- new_explore_dataset(se)
+validate_explore_dataset(eds)
+validate_explore_dataset(eds, strict = FALSE)
 }

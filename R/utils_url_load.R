@@ -31,7 +31,7 @@ url_load_sources <- function() {
 #' to stop `.../apb-export-other/` matching `.../apb-export/`.
 #'
 #' @param url Character(1).
-#' @param sources URL prefixes, by default [url_load_sources()].
+#' @param sources URL prefixes, by default `url_load_sources()`.
 #' @return `TRUE`, or `FALSE` with attribute `reason`.
 #' @noRd
 url_load_allowed <- function(url, sources = url_load_sources()) {
@@ -62,7 +62,7 @@ url_load_allowed <- function(url, sources = url_load_sources()) {
 #' No redirects are followed, the download stops at `max_bytes`, and anything
 #' but HTTP 200 is an error.
 #'
-#' @param url An URL for which [url_load_allowed()] is `TRUE`.
+#' @param url An URL for which `url_load_allowed()` is `TRUE`.
 #' @param dest Destination path.
 #' @param max_bytes Size limit (1 GB, as for uploads).
 #' @param timeout Seconds.

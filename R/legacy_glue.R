@@ -46,11 +46,11 @@ legacy_gStoreList_from_eds <- function(eds, se = NULL, dataDir = NULL, param = N
 
 .legacy_gStoreList_genomics <- function(eds, se, dataDir, param) {
   # ---- seqAnno + feature_id (legacy scuttle::uniquifyFeatureNames) --------
-  rd <- suppressWarnings(data.frame(
+  rd <- data.frame(
     SummarizedExperiment::rowData(se),
     row.names = rownames(se),
     check.names = FALSE
-  ))
+  )
   if ("description" %in% colnames(rd)) {
     rd$description <- gsub(" \\[..*", "", rd$description)
   } else {

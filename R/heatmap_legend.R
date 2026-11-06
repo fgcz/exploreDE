@@ -11,7 +11,7 @@
 #' Legend offset sliders for a ComplexHeatmap tab
 #'
 #' Two sliders, `<prefix>LegendDX` and `<prefix>LegendDY` (mm), both 0 by
-#' default. Pass their values to [draw_heatmap()].
+#' default. Pass their values to `draw_heatmap()`.
 #' @param prefix Input-id prefix for the tab (e.g. `"heatmap"`).
 #' @return A shiny tag list.
 #' @keywords internal

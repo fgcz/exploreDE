@@ -2,17 +2,29 @@
 % Please edit documentation in R/ExploreDatasetSE_RNASeq.R
 \name{ExploreDatasetSE_RNASeq}
 \alias{ExploreDatasetSE_RNASeq}
-\title{Concrete subclass for SUSHI RNA-seq `SummarizedExperiment` outputs}
+\title{Concrete subclass for SUSHI RNA-seq \code{SummarizedExperiment} outputs}
+\value{
+An R6 class generator; \verb{$new()} returns an
+\code{ExploreDatasetSE_RNASeq} object.
+}
 \description{
 Reads from a SUSHI ezApp DESeq2 / edgeR / limma result. Top-level
-`rowData(se)` carries feature annotations plus inline DE columns for
-the single contrast described by `param$comparison`. Optional
-pre-computed `enrichResult` / `gseaResult` objects live in
-`metadata(se)`.
+\code{rowData(se)} carries feature annotations plus inline DE columns for
+the single contrast described by \code{param$comparison}. Optional
+pre-computed \code{enrichResult} / \code{gseaResult} objects live in
+\code{metadata(se)}.
 }
 \details{
-Inherits the accessor contract from [ExploreDataset] via
-[ExploreDatasetSE]; overrides only `.build_config()` and `.prep()`.
+Inherits the accessor contract from \link{ExploreDataset} via
+\link{ExploreDatasetSE}; overrides only \code{.build_config()} and \code{.prep()}.
+}
+\examples{
+se <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))
+eds <- ExploreDatasetSE_RNASeq$new(se)
+eds
+eds$contrasts()
+head(eds$de(eds$primary_contrast()))
+eds$enrichment_kinds()
 }
 \section{Super classes}{
 \code{\link[exploreDE:ExploreDataset]{ExploreDataset}} -> \code{\link[exploreDE:ExploreDatasetSE]{ExploreDatasetSE}} -> \code{ExploreDatasetSE_RNASeq}
@@ -42,6 +54,7 @@ Inherits the accessor contract from [ExploreDataset] via
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_display"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_display'><code>ExploreDataset$feature_display()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_id_kind"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_id_kind'><code>ExploreDataset$feature_id_kind()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="feature_ids"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-feature_ids'><code>ExploreDataset$feature_ids()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="format"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-format'><code>ExploreDataset$format()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_assay'><code>ExploreDataset$has_assay()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_de"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_de'><code>ExploreDataset$has_de()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="has_enrichment"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-has_enrichment'><code>ExploreDataset$has_enrichment()</code></a></span></li>
@@ -54,7 +67,6 @@ Inherits the accessor contract from [ExploreDataset] via
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_assay_name'><code>ExploreDataset$primary_assay_name()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_contrast"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_contrast'><code>ExploreDataset$primary_contrast()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="primary_grouping"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-primary_grouping'><code>ExploreDataset$primary_grouping()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="print"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-print'><code>ExploreDataset$print()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="proteomics_choices"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-proteomics_choices'><code>ExploreDataset$proteomics_choices()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay'><code>ExploreDataset$raw_assay()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="raw_assay_name"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-raw_assay_name'><code>ExploreDataset$raw_assay_name()</code></a></span></li>

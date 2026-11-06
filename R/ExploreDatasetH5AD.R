@@ -106,6 +106,25 @@
 #' data ("bring your own data") and the eventual single backend once
 #' producers emit canonical `.h5ad` directly.
 #'
+#' @return An R6 class generator; `$new()` returns an `ExploreDatasetH5AD`
+#'   object.
+#' @examples
+#' library(SummarizedExperiment)
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' de <- as.data.frame(rowData(se)$constrast_B_vs_A)
+#' path <- tempfile(fileext = ".h5ad")
+#' build_explore_h5ad(
+#'   x = list(raw = assay(se, "rawData"), transformed = assay(se, "transformedData")),
+#'   out = path,
+#'   omics = "proteomics",
+#'   coldata = colData(se),
+#'   rowdata = de,
+#'   factors = "G_",
+#'   de = list(B_vs_A = de)
+#' )
+#' eds <- ExploreDatasetH5AD$new(path)
+#' eds
+#' head(eds$de("B_vs_A"))
 #' @export
 ExploreDatasetH5AD <- R6::R6Class(
   classname = "ExploreDatasetH5AD",

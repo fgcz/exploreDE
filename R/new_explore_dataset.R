@@ -47,7 +47,7 @@ detect_se_shape <- function(se) {
 #'
 #' Factory function: loads the input (or accepts a live
 #' `SummarizedExperiment`), classifies its shape via
-#' [detect_se_shape()], and returns the appropriate concrete subclass.
+#' `detect_se_shape()`, and returns the appropriate concrete subclass.
 #'
 #' Accepted inputs:
 #' - A live `SummarizedExperiment` object.
@@ -60,6 +60,22 @@ detect_se_shape <- function(se) {
 #' @param input See above.
 #' @param config Optional pre-built config list; advanced use only.
 #' @return An object inheriting from [ExploreDataset].
+#' @examples
+#' # From a live SummarizedExperiment
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' eds <- new_explore_dataset(se)
+#' class(eds)[1]
+#'
+#' # From an .h5ad file written by build_explore_h5ad()
+#' path <- build_explore_h5ad(
+#'   SummarizedExperiment::assay(se, "rawData"),
+#'   out = tempfile(fileext = ".h5ad"),
+#'   omics = "proteomics",
+#'   coldata = SummarizedExperiment::colData(se)
+#' )
+#' eds_h5ad <- new_explore_dataset(path)
+#' class(eds_h5ad)[1]
+#' eds_h5ad$has_de()
 #' @export
 new_explore_dataset <- function(input, config = NULL) {
   # AnnData input (a live anndataR object or a `.h5ad` path). A prolfquapp DEA

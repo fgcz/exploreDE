@@ -19,11 +19,18 @@
 #'   If `FALSE`, returns `list(ok, errors)`.
 #' @return Invisibly, `TRUE` on success (strict mode); or
 #'   `list(ok = logical(1), errors = character)` (non-strict mode).
+#' @examples
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' eds <- new_explore_dataset(se)
+#' validate_explore_dataset(eds)
+#' validate_explore_dataset(eds, strict = FALSE)
 #' @export
 validate_explore_dataset <- function(eds, strict = TRUE) {
-  errors <- character()
-
-  add <- function(msg) errors[[length(errors) + 1L]] <<- msg
+  # The checks below record failures from inside tryCatch() handlers, so the
+  # list lives in an environment they can all write to.
+  found <- new.env(parent = emptyenv())
+  found$errors <- character()
+  add <- function(msg) found$errors <- c(found$errors, msg)
 
   # 1. Concrete subclass
   if (!inherits(eds, "ExploreDataset")) {
@@ -103,6 +110,7 @@ validate_explore_dataset <- function(eds, strict = TRUE) {
     }
   }
 
+  errors <- found$errors
   ok <- length(errors) == 0L
   if (strict && !ok) {
     stop(

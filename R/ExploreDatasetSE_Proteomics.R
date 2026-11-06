@@ -23,10 +23,10 @@
     return(d)
   }
   if ("log2_EFCs" %in% colnames(d) && !"log2Ratio" %in% colnames(d)) {
-    d$log2Ratio <- suppressWarnings(as.numeric(d$log2_EFCs))
+    d$log2Ratio <- eds_as_numeric(d$log2_EFCs)
   }
   if ("BFDR" %in% colnames(d) && !"fdr" %in% colnames(d)) {
-    d$fdr <- suppressWarnings(as.numeric(d$BFDR))
+    d$fdr <- eds_as_numeric(d$BFDR)
   }
   if (!"pValue" %in% colnames(d)) {
     d$pValue <- NA_real_
@@ -62,6 +62,14 @@
 #' Inherits the accessor contract from [ExploreDataset] via
 #' [ExploreDatasetSE]; overrides `.build_config()` and `.prep()`.
 #'
+#' @return An R6 class generator; `$new()` returns an
+#'   `ExploreDatasetSE_Proteomics` object.
+#' @examples
+#' se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+#' eds <- ExploreDatasetSE_Proteomics$new(se)
+#' eds
+#' head(eds$feature_ids())
+#' head(eds$de(eds$primary_contrast()))
 #' @export
 ExploreDatasetSE_Proteomics <- R6::R6Class(
   classname = "ExploreDatasetSE_Proteomics",

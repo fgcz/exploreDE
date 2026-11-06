@@ -68,16 +68,14 @@ export_plot_standard <- function(plot_object, filename, format = "pdf", dpi = 30
     grDevices::pdf(file = filename, width = width, height = height)
   }
 
-  # Print/Draw the plot
+  # Draw the plot. show() draws S4 plots (ComplexHeatmap, UpSet) and calls
+  # print() for S3 ones (ggplot, patchwork, GGally::ggpairs).
   tryCatch(
     {
-      if (inherits(plot_object, "ggplot") || inherits(plot_object, "grob")) {
-        print(plot_object)
-      } else if (is.function(plot_object)) {
+      if (is.function(plot_object)) {
         plot_object()
       } else {
-        # Fallback for other objects (e.g. ComplexHeatmap) that implement draw() or print()
-        print(plot_object)
+        methods::show(plot_object)
       }
     },
     finally = {
@@ -89,7 +87,7 @@ export_plot_standard <- function(plot_object, filename, format = "pdf", dpi = 30
 
 #' Generate Consistent Filename
 #'
-#' Creates a standardized filename in the format: [design]_[base]_[suffix].[ext]
+#' Creates a standardized filename in the format: `[design]_[base]_[suffix].[ext]`
 #'
 #' @param base_name Core name of the file (e.g., "volcano", "heatmap")
 #' @param suffix Optional suffix (e.g., "counts", "stats")
