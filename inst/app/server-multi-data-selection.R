@@ -421,7 +421,7 @@ observeEvent(input$multiLoadSelected, {
 observeEvent(input$multiImportFile, {
   req(input$multiImportFile)
   userTable <- openxlsx::read.xlsx(input$multiImportFile[1, "datapath"], colNames = F)
-  if (userTable[1, 1] == "Link") {
+  if (isTRUE(userTable[1, 1] == "Link")) {
     userTable <- userTable[-1, ]
   }
   lapply(1:nrow(userTable), function(i) {
@@ -459,12 +459,12 @@ output$multiDlExampleFile <- downloadHandler(
 
 observeEvent(input$multiImportButton, {
   withProgress(message = "Loading manually imported data...", value = 0, {
-    inputTable <- data.frame("Link" = character(length = 10L), "Name" = character(length = 10L))
+    inputTable <- data.frame("Link" = character(length = 12L), "Name" = character(length = 12L))
     for (i in 1:12) {
       inputTable[i, 1] <- input[[paste0("multiContrastLink", i)]]
       inputTable[i, 2] <- input[[paste0("multiContrastName", i)]]
     }
-    inputTable <- inputTable[-which(inputTable$Link == ""), ]
+    inputTable <- inputTable[nzchar(inputTable$Link), , drop = FALSE]
 
     if (nrow(inputTable) == 0) {
       return(NULL)
