@@ -34,19 +34,6 @@
   d
 }
 
-# A p-value-safe ordering index for a DE/seqAnno frame: by raw p-value when it
-# carries usable values, else by fdr, else the identity order. Guards against
-# order(NULL) (missing column) and all-NA p-value producers (SAINTexpress).
-.de_order_idx <- function(d) {
-  col <- if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) {
-    "pValue"
-  } else if ("fdr" %in% colnames(d)) {
-    "fdr"
-  } else {
-    NULL
-  }
-  if (is.null(col)) seq_len(nrow(d)) else order(d[[col]], na.last = TRUE)
-}
 
 #' Concrete subclass for FGCZ proteomics `SummarizedExperiment` outputs
 #'
@@ -289,9 +276,10 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       rownames(ref_df) <- ref_df$feature_id
       private$.features_df <- ref_df
 
-      # de_dfs: standardised columns + feature_id (built, not raw rownames),
-      # sorted by pValue where possible. Canonical AnnData names are added
-      # as aliases via eds_standardise_de_columns().
+      # de_dfs: standardised columns + feature_id (built, not raw rownames).
+      # Canonical AnnData names are added as aliases via
+      # eds_standardise_de_columns(); eds_finalise_de() adds usedInTest and
+      # sorts.
       de_dfs <- setNames(
         lapply(seq_along(contrasts), function(i) {
           d <- std_dfs[[i]]
@@ -300,26 +288,7 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
           if ("protein_Id" %in% colnames(d) && identical(d$feature_id, as.character(d$protein_Id))) {
             d$protein_Id <- NULL
           }
-          d <- eds_standardise_de_columns(d)
-          # usedInTest: which features entered the test. Proxy: a usable raw
-          # p-value; fall back to fdr for p-value-less producers (SAINTexpress)
-          # so DE views are not silently emptied. Only added when absent, so
-          # frames that already carry it (standard prolfqua) are untouched.
-          if (!"usedInTest" %in% colnames(d)) {
-            has_p <- "pValue" %in% colnames(d) && any(!is.na(d$pValue))
-            d$usedInTest <- if (has_p) {
-              !is.na(d$pValue)
-            } else if ("fdr" %in% colnames(d)) {
-              !is.na(d$fdr)
-            } else {
-              TRUE
-            }
-          }
-          if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) {
-            d <- d[order(d$pValue, na.last = TRUE), , drop = FALSE]
-          } else if ("fdr" %in% colnames(d)) {
-            d <- d[order(d$fdr, na.last = TRUE), , drop = FALSE]
-          }
+          d <- eds_finalise_de(eds_standardise_de_columns(d))
           rownames(d) <- d$feature_id
           d
         }),

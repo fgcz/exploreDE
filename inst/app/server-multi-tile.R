@@ -25,19 +25,11 @@ multiMatReactive <- eventReactive(multiDeReactive$results, {
   req(multiDeReactive$results)
   results <- multiDeReactive$results
 
+  # Every Multi-DE record carries seqAnno with feature_id, log2Ratio, pValue
+  # and fdr (legacy_multi_contrast_from_eds(), multi_load_de_result()).
   dfList <- list()
   for (n in seq_along(names(results))) {
-    # Check if seqAnno exists directly (standard format) or need to extract from seqAnnoList (proteomics format)
-    if (!is.null(results[[n]]$seqAnno)) {
-      # Standard format (genomics or properly formatted proteomics)
-      seqAnno <- results[[n]]$seqAnno
-    } else if (!is.null(results[[n]]$seqAnnoList)) {
-      # Proteomics format with seqAnnoList - extract the first/only contrast
-      seqAnno <- results[[n]]$seqAnnoList[[1]]
-    } else {
-      next # Skip if no data
-    }
-
+    seqAnno <- results[[n]]$seqAnno
     df1 <- data.frame(
       "Gene" = seqAnno$feature_id,
       "LFC" = seqAnno$log2Ratio,
@@ -67,97 +59,11 @@ multiMatReactive <- eventReactive(multiDeReactive$results, {
   }
 
   # Get a vector of all possible pathways for the selection drop down
-  req(multiDeReactive$results)
-  results <- multiDeReactive$results
-
-  dfList <- list()
-  for (n in seq_along(names(results))) {
-    # Get the appropriate data table (degResultsTable for genomics, seqAnno/seqAnnoList for proteomics)
-    degTable <- NULL
-    if (!is.null(results[[n]]$degResultsTable)) {
-      degTable <- results[[n]]$degResultsTable
-    } else if (!is.null(results[[n]]$seqAnno)) {
-      degTable <- results[[n]]$seqAnno
-    } else if (!is.null(results[[n]]$seqAnnoList)) {
-      degTable <- results[[n]]$seqAnnoList[[1]]
-    }
-
-    if (is.null(degTable)) {
-      next # Skip if no data
-    }
-
-    # Check if required columns exist
-    if (!"log2Ratio" %in% colnames(degTable)) {
-      # Try to find alias
-      if ("logFC" %in% colnames(degTable)) {
-        degTable$log2Ratio <- degTable$logFC
-      }
-    }
-
-    # Ensure feature_id exists
-    if (is.null(degTable$feature_id)) {
-      if ("Gene" %in% colnames(degTable)) {
-        degTable$feature_id <- degTable$Gene
-      } else {
-        degTable$feature_id <- rownames(degTable)
-      }
-    }
-
-    # Ensure vectors are not NULL to prevent data.frame from dropping columns
-    if (is.null(degTable$feature_id)) {
-      degTable$feature_id <- character(0)
-    }
-    if (is.null(degTable$log2Ratio)) {
-      degTable$log2Ratio <- numeric(0)
-    }
-    if (is.null(degTable$pValue)) {
-      degTable$pValue <- numeric(0)
-    }
-    if (is.null(degTable$fdr)) {
-      degTable$fdr <- numeric(0)
-    }
-
-    df1 <- data.frame(
-      "Gene" = degTable$feature_id,
-      "LFC" = degTable$log2Ratio,
-      "pValue" = degTable$pValue,
-      "FDR" = degTable$fdr
-    )
-    colnames(df1)[2] <- names(results)[n]
-    colnames(df1)[3] <- paste(names(results)[n], "pValue", sep = "_")
-    colnames(df1)[4] <- paste(names(results)[n], "fdr", sep = "_")
-    dfList[[names(results)[n]]] <- df1
-  }
-  # Make a big df of all the results together
-  if (length(dfList) == 0) {
-    return(NULL)
-  } else if (length(dfList) == 1) {
-    df2 <- dfList[[1]]
-  } else {
-    df2 <- merge(dfList[[1]], dfList[[2]], all = TRUE)
-    if (length(dfList) >= 3) {
-      for (i in 3:length(dfList)) {
-        df2 <- merge(df2, dfList[[i]], all = TRUE)
-      }
-    }
-  }
-  for (i in grep("Gene|pValue|fdr", colnames(df2), invert = T)) {
-    df2[, i][is.na(df2[, i])] <- 0
-  }
-
-  # Get a vector of all possible pathways for the selection drop down
   # PROTEOMICS FIX: Check if GO columns exist
   allPathways <- character(0)
 
   # Get the first available data table to extract GO terms
-  firstTable <- NULL
-  if (!is.null(results[[1]]$degResultsTable)) {
-    firstTable <- results[[1]]$degResultsTable
-  } else if (!is.null(results[[1]]$seqAnno)) {
-    firstTable <- results[[1]]$seqAnno
-  } else if (!is.null(results[[1]]$seqAnnoList)) {
-    firstTable <- results[[1]]$seqAnnoList[[1]]
-  }
+  firstTable <- results[[1]]$seqAnno
 
   go_cols <- if (!is.null(firstTable)) go_annotation_columns(firstTable) else character(0)
   if (length(go_cols)) {
@@ -310,14 +216,7 @@ observeEvent(input$tileKeggGo, {
   }
 
   # A table carrying the ID columns needed to map ENTREZ -> feature_id
-  firstTable <- NULL
-  if (!is.null(multiDeReactive$results[[1]]$degResultsTable)) {
-    firstTable <- multiDeReactive$results[[1]]$degResultsTable
-  } else if (!is.null(multiDeReactive$results[[1]]$seqAnno)) {
-    firstTable <- multiDeReactive$results[[1]]$seqAnno
-  } else if (!is.null(multiDeReactive$results[[1]]$seqAnnoList)) {
-    firstTable <- multiDeReactive$results[[1]]$seqAnnoList[[1]]
-  }
+  firstTable <- multiDeReactive$results[[1]]$seqAnno
   req(firstTable)
 
   result <- withProgress(message = "Fetching KEGG pathway genes...", {
@@ -853,14 +752,7 @@ observeEvent(
     if (isTRUE(nzchar(input$tileGenesPathway %||% ""))) {
       # PROTEOMICS FIX: Check if GO columns exist before grep
       # Get the first available data table
-      firstTable <- NULL
-      if (!is.null(multiDeReactive$results[[1]]$degResultsTable)) {
-        firstTable <- multiDeReactive$results[[1]]$degResultsTable
-      } else if (!is.null(multiDeReactive$results[[1]]$seqAnno)) {
-        firstTable <- multiDeReactive$results[[1]]$seqAnno
-      } else if (!is.null(multiDeReactive$results[[1]]$seqAnnoList)) {
-        firstTable <- multiDeReactive$results[[1]]$seqAnnoList[[1]]
-      }
+      firstTable <- multiDeReactive$results[[1]]$seqAnno
 
       if (!is.null(firstTable) && length(go_annotation_columns(firstTable))) {
         customList[["GO"]][["highlightersC"]] <- firstTable$feature_id[features_in_go_term(

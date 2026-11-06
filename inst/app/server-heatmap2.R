@@ -728,13 +728,8 @@ observeEvent(
       # They can only be shown if they don't vary within each aggregated group
       for (f in input$heatmapColumnSelect[-1]) {
         if (f %in% colnames(datasetHeatmapOriginal)) {
-          # Check if this factor varies within each condition group
-          varies_within_groups <- any(sapply(condition_levels, function(cond) {
-            vals <- unique(datasetHeatmapOriginal[[f]][datasetHeatmapOriginal[[grouping_factor]] == cond])
-            length(vals) > 1
-          }))
-
-          if (varies_within_groups) {
+          ann <- aggregated_annotation(datasetHeatmapOriginal, grouping_factor, f, names(condition_levels))
+          if (ann$varies) {
             # Show warning and stop - cannot annotate with this factor
             showNotification(
               paste0(
@@ -753,11 +748,7 @@ observeEvent(
             next
           } else {
             # Factor is constant within groups - safe to annotate
-            datasetHeatmap[[f]] <- sapply(condition_levels, function(cond) {
-              first_val <- datasetHeatmapOriginal[[f]][datasetHeatmapOriginal[[grouping_factor]] == cond][1]
-              as.character(first_val)
-            })
-            datasetHeatmap[[f]] <- factor(datasetHeatmap[[f]])
+            datasetHeatmap[[f]] <- factor(unname(ann$values))
           }
         }
       }

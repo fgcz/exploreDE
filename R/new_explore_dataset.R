@@ -58,7 +58,6 @@ detect_se_shape <- function(se) {
 #' - An `http(s)://` URL pointing at an `.rds` file.
 #'
 #' @param input See above.
-#' @param config Optional pre-built config list; advanced use only.
 #' @return An object inheriting from [ExploreDataset].
 #' @examples
 #' # From a live SummarizedExperiment
@@ -77,7 +76,7 @@ detect_se_shape <- function(se) {
 #' class(eds_h5ad)[1]
 #' eds_h5ad$has_de()
 #' @export
-new_explore_dataset <- function(input, config = NULL) {
+new_explore_dataset <- function(input) {
   # AnnData input (a live anndataR object or a `.h5ad` path). A prolfquapp DEA
   # AnnData is rebuilt into its proteomics SE (see prolfquapp_h5ad.R); any other
   # AnnData is canonical and routes to the H5AD backend — the "bring your own
@@ -88,9 +87,9 @@ new_explore_dataset <- function(input, config = NULL) {
   ) {
     adata <- if (inherits(input, "AbstractAnnData")) input else .h5ad_read(input)
     if (is_prolfquapp_anndata(adata)) {
-      return(new_explore_dataset(se_from_prolfquapp_anndata(adata), config = config))
+      return(new_explore_dataset(se_from_prolfquapp_anndata(adata)))
     }
-    return(ExploreDatasetH5AD$new(adata, config = config))
+    return(ExploreDatasetH5AD$new(adata))
   }
 
   # A parquet directory written by export_h5ad_to_parquet() (or by the Rust
@@ -104,7 +103,7 @@ new_explore_dataset <- function(input, config = NULL) {
       file.exists(file.path(input, "manifest.json")) &&
       file.exists(file.path(input, "obs.parquet"))
   ) {
-    return(ExploreDatasetParquet$new(input, config = config))
+    return(ExploreDatasetParquet$new(input))
   }
 
   se <- if (inherits(input, "SummarizedExperiment")) {
@@ -125,5 +124,5 @@ new_explore_dataset <- function(input, config = NULL) {
     proteomics = ExploreDatasetSE_Proteomics,
     stop("Unknown SE shape")
   )
-  cls$new(se, config = config)
+  cls$new(se)
 }

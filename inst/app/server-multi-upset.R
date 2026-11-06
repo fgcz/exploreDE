@@ -338,15 +338,9 @@ observeEvent(
         if (input$dataToUpset == "Genes") {
           ec <- extract_comb(m1, as.character(combView))
           if (length(ec) >= 1) {
-            output$UpsetIntersectGenesUI <- renderUI({
-              HTML(paste0(ec, collapse = "<br>"))
-            })
+            output$UpsetIntersectGenesUI <- renderUI(feature_list_ui(ec))
             # Read by the copy_link observer registered once at the top.
             upsetGeneListToCopy(paste0(ec, collapse = "\n"))
-            jsCall <- paste0('enrich({list: "', paste(ec, collapse = "\\n"), '", popup: true});')
-            output$linkToEnrichr <- renderUI({
-              HTML(paste0("<a href='javascript:void(0)' onclick='", jsCall, "'>Analyse at Enrichr website</a>"))
-            })
           } else {
             paste("No genes in this selection.\n")
           }
@@ -494,16 +488,9 @@ observeEvent(
           if (input$dataToUpset == "Genes") {
             ec <- extract_comb(m1, as.character(combView))
             if (length(ec) >= 1) {
-              output$UpsetIntersectGenesUI <- renderUI({
-                HTML(paste0(ec, collapse = "<br>"))
-              })
+              output$UpsetIntersectGenesUI <- renderUI(feature_list_ui(ec))
               # Update reactive val for clipboard
               upsetGeneListToCopy(paste0(ec, collapse = "\n"))
-
-              jsCall <- paste0('enrich({list: "', paste(ec, collapse = "\\n"), '", popup: true});')
-              output$linkToEnrichr <- renderUI({
-                HTML(paste0("<a href='javascript:void(0)' onclick='", jsCall, "'>Analyse at Enrichr website</a>"))
-              })
             } else {
               paste("No genes in this selection.\n")
             }

@@ -60,6 +60,19 @@
   invisible(TRUE)
 }
 
+# Feature (var) columns per role, the spec's label_* name first; files from
+# other writers may carry the plain names. .h5ad_role_col() returns the first
+# one present, or NULL.
+.h5ad_role_cols <- list(
+  symbol = c("label_gene_symbol", "gene_name", "gene_symbol"),
+  gene_id = c("label_gene_id", "gene_id"),
+  protein_id = c("label_protein_id", "protein_id", "protein_Id")
+)
+.h5ad_role_col <- function(cols, role) {
+  hit <- intersect(.h5ad_role_cols[[role]], cols)
+  if (length(hit)) hit[[1]] else NULL
+}
+
 # Find a per-feature gene-length column for FPKM/TPM, tolerant of source (SUSHI
 # featWidth, featureCounts Length, a GTF-derived gene_length, …). Preference-
 # ordered; matches with or without a canonical "label_" prefix. NULL if none.
@@ -79,12 +92,9 @@
   NULL
 }
 
-# Read a .h5ad into memory across anndataR versions (the in-memory arg name
-# has varied: as= is current; older builds used to=; default also works).
+# Read a .h5ad into memory (anndataR >= 1.2.3, see DESCRIPTION).
 .h5ad_read <- function(path) {
-  tryCatch(anndataR::read_h5ad(path, as = "InMemoryAnnData"), error = function(e) {
-    tryCatch(anndataR::read_h5ad(path, to = "InMemoryAnnData"), error = function(e2) anndataR::read_h5ad(path))
-  })
+  anndataR::read_h5ad(path, as = "InMemoryAnnData")
 }
 
 # Pull the concrete pieces out of an anndataR object as plain R structures, so
@@ -150,11 +160,10 @@ ExploreDatasetH5AD <- R6::R6Class(
   inherit = ExploreDataset,
 
   public = list(
-    #' @description Read a canonical `.h5ad` or take a live AnnData, build the config from it unless one is given,
-    #'   and prepare the feature and DE tables.
+    #' @description Read a canonical `.h5ad` or take a live AnnData, build the config from it, and prepare the
+    #'   feature and DE tables.
     #' @param input An `anndataR` AnnData object, or a path to an existing `.h5ad` file.
-    #' @param config Optional pre-built config list; built from the AnnData when `NULL`.
-    initialize = function(input, config = NULL) {
+    initialize = function(input) {
       adata <- if (inherits(input, "AbstractAnnData")) {
         input
       } else if (is.character(input) && length(input) == 1L && file.exists(input)) {
@@ -168,7 +177,7 @@ ExploreDatasetH5AD <- R6::R6Class(
       private$.layers <- p$layers
       private$.varm <- p$varm
       private$.uns <- p$uns
-      private$.config <- config %||% private$.build_config()
+      private$.config <- private$.build_config()
       private$.prep()
       invisible(self)
     },
@@ -570,7 +579,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         } else {
           raw_layer_name
         },
-        display_name_field = "label_gene_symbol",
+        display_name_field = .h5ad_role_col(colnames(private$.var), "symbol") %||% NA_character_,
         description_field = "description",
         primary_contrast = if (length(cm)) names(cm)[[1]] else NA_character_,
         contrast_meta = cm,
@@ -616,20 +625,20 @@ ExploreDatasetH5AD <- R6::R6Class(
       # yields NULL protein choices, matching the SE backend).
       if (identical(cfg$omics_class, "proteomics")) {
         fid <- as.character(var$feature_id)
-        gcol <- intersect(c("label_gene_symbol", "gene_name", "gene_symbol"), colnames(var))
+        gcol <- .h5ad_role_col(colnames(var), "symbol")
         gene_lookup <- gene_choices <- NULL
-        if (length(gcol)) {
-          gene <- as.character(var[[gcol[[1]]]])
+        if (!is.null(gcol)) {
+          gene <- as.character(var[[gcol]])
           valid <- !is.na(gene) & nzchar(gene) & gene != fid
           if (any(valid)) {
             gene_lookup <- split(fid[valid], gene[valid])
             gene_choices <- unique(gene[valid])
           }
         }
-        pcol <- intersect(c("label_protein_id", "protein_id", "protein_Id"), colnames(var))
+        pcol <- .h5ad_role_col(colnames(var), "protein_id")
         protein_lookup <- protein_choices <- NULL
-        if (length(pcol)) {
-          pid <- as.character(var[[pcol[[1]]]])
+        if (!is.null(pcol)) {
+          pid <- as.character(var[[pcol]])
           valid <- !is.na(pid) & nzchar(pid) & pid != fid
           if (any(valid)) {
             protein_lookup <- split(fid[valid], pid[valid])
@@ -642,14 +651,14 @@ ExploreDatasetH5AD <- R6::R6Class(
         )
       } else if (identical(cfg$feature_id_kind, "isoform")) {
         # Isoform RNA-seq: gene symbol -> transcripts, as for the SE backends.
-        gcol <- intersect(c("label_gene_symbol", "gene_name", "gene_symbol"), colnames(var))
-        if (length(gcol)) {
-          private$.config$proteomics <- eds_isoform_gene_choices(var$feature_id, var[[gcol[[1]]]])
+        gcol <- .h5ad_role_col(colnames(var), "symbol")
+        if (!is.null(gcol)) {
+          private$.config$proteomics <- eds_isoform_gene_choices(var$feature_id, var[[gcol]])
         }
       }
 
-      # de_dfs: canonical varm + legacy aliases (log2Ratio/pValue/fdr) so
-      # modules still reading legacy names keep working. Sorted by p-value.
+      # de_dfs: canonical varm + the feature columns the app modules expect;
+      # eds_finalise_de() adds the legacy aliases and usedInTest, and sorts.
       de_dfs <- list()
       for (key in names(cfg$contrast_meta)) {
         slot <- private$.contrast_slot[[key]]
@@ -658,15 +667,6 @@ ExploreDatasetH5AD <- R6::R6Class(
           next
         }
         d$feature_id <- rownames(d)
-        if ("effect_log2fc" %in% colnames(d)) {
-          d$log2Ratio <- d$effect_log2fc
-        }
-        if ("score_pvalue" %in% colnames(d)) {
-          d$pValue <- d$score_pvalue
-        }
-        if ("score_fdr" %in% colnames(d)) {
-          d$fdr <- d$score_fdr
-        }
         # Optional extra score -> its declared display label (e.g. SaintScore),
         # so the DE table can surface it (display-only, like nrPeptides).
         if ("score" %in% colnames(d)) {
@@ -677,26 +677,9 @@ ExploreDatasetH5AD <- R6::R6Class(
         d$gene_name <- fv[d$feature_id, "display_name"]
         # Columns several app modules (DE table, volcano, DE QC) expect from a
         # SUSHI seqAnno; supply equivalents so those tabs work for uploaded data.
-        # usedInTest: which features entered the test. The file's own
-        # used_in_test flag when it has one (spec §5); else a usable p-value;
-        # when the producer carries no raw p-value (e.g. SAINTexpress, FDR only)
-        # fall back to the fdr column so the DE views are not silently emptied.
-        if ("used_in_test" %in% colnames(d)) {
-          d$usedInTest <- eds_as_flag(d$used_in_test)
-        } else if ("usedInTest" %in% colnames(d)) {
-          d$usedInTest <- eds_as_flag(d$usedInTest)
-        } else {
-          has_p <- "pValue" %in% colnames(d) && any(!is.na(d$pValue))
-          d$usedInTest <- if (has_p) {
-            !is.na(d$pValue)
-          } else if ("fdr" %in% colnames(d)) {
-            !is.na(d$fdr)
-          } else {
-            TRUE
-          }
-        }
-        for (src in c("label_gene_id", "gene_id")) {
-          if (src %in% colnames(fv) && !"gene_id" %in% colnames(d)) d$gene_id <- fv[d$feature_id, src]
+        gid_col <- .h5ad_role_col(colnames(fv), "gene_id")
+        if (!is.null(gid_col) && !"gene_id" %in% colnames(d)) {
+          d$gene_id <- fv[d$feature_id, gid_col]
         }
         if ("description" %in% colnames(fv) && !"description" %in% colnames(d)) {
           d$description <- fv[d$feature_id, "description"]
@@ -704,13 +687,17 @@ ExploreDatasetH5AD <- R6::R6Class(
           # As for a SUSHI rowData without one: the volcano and DE table select it by name.
           d$description <- d$gene_name
         }
-        for (col in c("gc", "featWidth")) {
-          if (col %in% colnames(fv) && !col %in% colnames(d)) d[[col]] <- fv[d$feature_id, col]
+        # Feature length and GC content for the DE QC bias plots, which read
+        # featWidth / gc from de(). build_explore_h5ad() stores them as
+        # label_featwidth / label_gc.
+        if (!is.null(cfg$featwidth_col) && !"featWidth" %in% colnames(d)) {
+          d$featWidth <- as.numeric(fv[d$feature_id, cfg$featwidth_col])
         }
-        if ("score_pvalue" %in% colnames(d)) {
-          d <- d[order(d$score_pvalue, na.last = TRUE), , drop = FALSE]
+        gc_col <- intersect(c("label_gc", "gc"), colnames(fv))
+        if (length(gc_col) && !"gc" %in% colnames(d)) {
+          d$gc <- as.numeric(fv[d$feature_id, gc_col[[1]]])
         }
-        de_dfs[[key]] <- d
+        de_dfs[[key]] <- eds_finalise_de(d)
       }
       private$.de_dfs <- de_dfs
 

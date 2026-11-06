@@ -4,12 +4,10 @@
 \alias{new_explore_dataset}
 \title{Construct an \code{ExploreDataset} instance from a path, URL, or SE}
 \usage{
-new_explore_dataset(input, config = NULL)
+new_explore_dataset(input)
 }
 \arguments{
 \item{input}{See above.}
-
-\item{config}{Optional pre-built config list; advanced use only.}
 }
 \value{
 An object inheriting from \link{ExploreDataset}.

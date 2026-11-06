@@ -98,18 +98,17 @@ head(eds$de("B_vs_A"))
 \if{html}{\out{<a id="method-ExploreDatasetH5AD-initialize"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetH5AD-initialize}{}}}
 \subsection{\code{ExploreDatasetH5AD$new()}}{
-  Read a canonical \code{.h5ad} or take a live AnnData, build the config from it unless one is given,
-and prepare the feature and DE tables.
+  Read a canonical \code{.h5ad} or take a live AnnData, build the config from it, and prepare the
+feature and DE tables.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExploreDatasetH5AD$new(input, config = NULL)}
+    \preformatted{ExploreDatasetH5AD$new(input)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{input}}{An \code{anndataR} AnnData object, or a path to an existing \code{.h5ad} file.}
-      \item{\code{config}}{Optional pre-built config list; built from the AnnData when \code{NULL}.}
     }
     \if{html}{\out{</div>}}
   }

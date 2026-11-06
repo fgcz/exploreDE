@@ -18,14 +18,14 @@ multi_access_ok <- function(resolved) {
 output$multiDataSelectionBoxUI <- renderUI({
   # Check if we have proteomics data loaded
   .eds <- inputDataReactive()$.eds
-  # Proteomics fans a single SE out into per-contrast objects; an uploaded
-  # .h5ad is a single self-contained dataset whose contrasts are auto-loaded
-  # below (section 5). In both cases the SUSHI project-browser / URL-import
-  # box is meaningless, so hide it and let the contrasts populate directly.
+  # Proteomics data, and an uploaded .h5ad / Parquet directory, are
+  # self-contained datasets whose contrasts are auto-loaded below (section 4).
+  # The SUSHI project-browser / URL-import box is meaningless for them, so
+  # hide it and let the contrasts populate directly.
   if (!is.null(.eds) && .eds$omics_class() == "proteomics") {
     return(NULL)
   }
-  if (!is.null(.eds) && .eds$backend_kind() == "h5ad") {
+  if (!is.null(.eds) && .eds$backend_kind() != "se") {
     # Multi-contrast DE needs at least two contrasts to compare. An upload
     # with fewer can't populate the multi-analysis tabs, so say so plainly
     # instead of showing an empty (and useless) data-selection box.
@@ -74,7 +74,7 @@ output$multiDataSelectionBoxUI <- renderUI({
           column(
             width = 12,
             helpText(
-              "Click Refresh to find available datasets from projects you have access to. Select up to 10 datasets to load."
+              "Click Refresh to find available datasets from projects you have access to. Select up to 12 datasets to load."
             ),
             actionButton(
               inputId = "multiRefreshProjects",
@@ -318,7 +318,7 @@ output$multiAvailableDatasetsCheckboxUI <- renderUI({
     width = NULL,
     solidHeader = TRUE,
     status = "info",
-    helpText(paste0("Found ", nrow(available), " datasets. Select up to 10 to load.")),
+    helpText(paste0("Found ", nrow(available), " datasets. Select up to 12 to load.")),
     checkboxGroupInput(
       inputId = "multiDatasetsCheckbox",
       label = NULL,
@@ -421,7 +421,7 @@ observeEvent(input$multiLoadSelected, {
 observeEvent(input$multiImportFile, {
   req(input$multiImportFile)
   userTable <- openxlsx::read.xlsx(input$multiImportFile[1, "datapath"], colNames = F)
-  if (userTable[1, 1] == "Link") {
+  if (isTRUE(userTable[1, 1] == "Link")) {
     userTable <- userTable[-1, ]
   }
   lapply(1:nrow(userTable), function(i) {
@@ -459,12 +459,12 @@ output$multiDlExampleFile <- downloadHandler(
 
 observeEvent(input$multiImportButton, {
   withProgress(message = "Loading manually imported data...", value = 0, {
-    inputTable <- data.frame("Link" = character(length = 10L), "Name" = character(length = 10L))
+    inputTable <- data.frame("Link" = character(length = 12L), "Name" = character(length = 12L))
     for (i in 1:12) {
       inputTable[i, 1] <- input[[paste0("multiContrastLink", i)]]
       inputTable[i, 2] <- input[[paste0("multiContrastName", i)]]
     }
-    inputTable <- inputTable[-which(inputTable$Link == ""), ]
+    inputTable <- inputTable[nzchar(inputTable$Link), , drop = FALSE]
 
     if (nrow(inputTable) == 0) {
       return(NULL)
@@ -715,158 +715,24 @@ observeEvent(multiHasPvalue(), {
   }
 })
 
-# 4. Proteomics Auto-Load (Triggered once)
+# 4. Auto-load the loaded dataset's contrasts (once)
+# A proteomics dataset, and an uploaded genomics .h5ad / Parquet directory,
+# carry all their contrasts, so fan the dataset out into one Multi-DE record
+# per contrast; the Selected Datasets list offers exactly those. A SUSHI
+# genomics result (an SE from a ?data= link) holds one contrast; others are
+# added through Browse Projects / Manual Import. Genomics needs >= 2 contrasts
+# to compare. One-shot: never clobber the user's edits of the list.
 observeEvent(inputDataReactive(), {
   eds <- inputDataReactive()$.eds
   req(eds)
+  req(length(multiDeReactive$results) == 0)
+  proteomics <- eds$omics_class() == "proteomics"
+  req(
+    proteomics ||
+      (eds$omics_class() == "genomics" && eds$backend_kind() != "se" && length(eds$contrasts()) >= 2)
+  )
 
-  if (eds$omics_class() == "proteomics" && eds$backend_kind() == "se") {
-    # Multi-* downstream modules still consume the legacy gStoreList shape
-    # (seqAnnoList, countList, factors, factorLevels, gene_lookup, etc.).
-    # Rebuild it on-demand via the package-level shim. Slated for proper
-    # eds-native migration in the multi-* subsystem rewrite.
-    data <- legacy_gStoreList_from_eds(eds, se = eds$backend())
-
-    # Auto-populate multiDeReactive
-    # The 'convert_proteomics_se' function returns 'seqAnnoList' which has per-contrast data.
-    # We need to structure this as if they were separate datasets.
-
-    # Actually, multiDEG expects a list of objects where each object has 'se', 'seqAnno', etc.
-    # For proteomics, we have one SE but multiple contrasts in rowData.
-    # We should create a 'dataset' object for each contrast.
-
-    contrasts <- data$contrasts
-
-    for (con in contrasts) {
-      # SeqAnno for this contrast
-      sa <- data$seqAnnoList[[con]]
-
-      # Determine grouping info
-      # Proteomics contrasts are usually "ConditionA vs ConditionB" or "ConditionA-ConditionB"
-      # We need to extract this to set sampleGroup and refGroup
-      # And we need a groupingName.
-
-      # Try to find groupingName from metadata or default to first factor
-      groupingName <- NULL
-      if (!is.null(metadata(data$se)$param$groupingName)) {
-        groupingName <- metadata(data$se)$param$groupingName
-      } else if (length(data$factors) > 0) {
-        groupingName <- data$factors[1]
-      } else {
-        # Fallback: Try to find a likely grouping column
-        potential_groups <- colnames(data$dataset)[grep(
-          "condition|group|treatment|genotype|batch",
-          colnames(data$dataset),
-          ignore.case = TRUE
-        )]
-        if (length(potential_groups) > 0) {
-          groupingName <- potential_groups[1]
-        } else {
-          # Last resort: use Name (one sample per group)
-          groupingName <- "Name"
-        }
-      }
-
-      # Try to parse contrast for sample/ref groups
-      # Common patterns: "A_vs_B", "A vs B", "A--over--B"
-      sampleGroup <- NULL
-      refGroup <- NULL
-
-      if (grepl("_vs_", con)) {
-        parts <- strsplit(con, "_vs_")[[1]]
-        sampleGroup <- parts[1]
-        refGroup <- parts[2]
-      } else if (grepl(" vs ", con)) {
-        parts <- strsplit(con, " vs ")[[1]]
-        sampleGroup <- parts[1]
-        refGroup <- parts[2]
-      } else if (grepl("--over--", con)) {
-        parts <- strsplit(con, "--over--")[[1]]
-        sampleGroup <- parts[1]
-        refGroup <- parts[2]
-      } else {
-        # Fallback: assume the contrast name is the sample group and we don't know ref?
-        # Or just leave them NULL and let boxplot handle it (it might skip brackets)
-        sampleGroup <- con
-      }
-
-      # Let's create a lightweight object
-      pseudoObj <- list(
-        dataType = "proteomics",
-        se = data$se, # Shared SE
-        seqAnno = sa,
-        param = list(
-          runGO = FALSE,
-          featureLevel = "gene", # Default to gene/protein level
-          groupingName = groupingName,
-          sampleGroup = sampleGroup,
-          refGroup = refGroup,
-          grouping = if (!is.null(groupingName)) {
-            setNames(as.character(data$dataset[[groupingName]]), rownames(data$dataset))
-          } else {
-            NULL
-          }
-        ),
-        dataset = data$dataset,
-        countList = data$countList, # Pass pre-computed countList
-        design = con,
-        genes = data$genes,
-        factors = data$factors,
-        factorLevels = data$factorLevels,
-        gene_lookup = data$gene_lookup,
-        protein_lookup = data$protein_lookup,
-        gene_choices = data$gene_choices,
-        protein_choices = data$protein_choices,
-        groupingName = groupingName
-      )
-
-      pseudoObj$source <- list(kind = "contrast", contrast = con) # for saved sessions
-      multiDeReactive$results[[con]] <- pseudoObj
-    }
-
-    # Reveal the multi-analysis tabs, preserving the current tab selection.
-    # The sidebar reads hasMultiData() under isolate(), so without this bump
-    # it stays on "Data Selection" only (mirrors the h5ad auto-load below).
-    if (length(multiDeReactive$results) > 0) {
-      currentTab <- isolate(input$tabs)
-      multiDeReactive$menuUpdateTrigger <- multiDeReactive$menuUpdateTrigger + 1
-      shinyjs::delay(100, {
-        if (!is.null(currentTab)) updateTabItems(session, "tabs", selected = currentTab)
-      })
-    }
-
-    # Also populate the Manual Import text boxes so user can see them?
-    # Or just leave them in the "Selected Datasets" list.
-    # The user requirement was: "Auto-populate the manual import inputs... allowing you to remove unwanted contrasts."
-    # So we should update the text inputs.
-
-    # Update inputs
-    lapply(seq_along(contrasts), function(i) {
-      if (i <= 10) {
-        updateTextInput(session, paste0("multiContrastName", i), value = contrasts[i])
-        updateTextInput(session, paste0("multiContrastLink", i), value = "Internal (Proteomics)")
-      }
-    })
-  }
-})
-
-# 5. Uploaded .h5ad Auto-Load (genomics, multi-contrast)
-# An uploaded canonical .h5ad is a single ExploreDataset carrying all of its
-# contrasts, so — unlike the SUSHI genomics path — there is no per-contrast SE
-# to browse for. Fan the dataset out into one Multi-DE object per contrast (the
-# genomics analogue of the proteomics auto-load above), so the Data Selection
-# tab offers exactly the contrasts stored in the uploaded file.
-observeEvent(inputDataReactive(), {
-  eds <- inputDataReactive()$.eds
-  req(eds)
-  req(eds$backend_kind() == "h5ad")
-  req(eds$omics_class() == "genomics")
-  req(length(eds$contrasts()) >= 2) # multi-DE needs >=2 contrasts
-  req(length(multiDeReactive$results) == 0) # one-shot; don't clobber user edits
-
-  contrasts <- eds$contrasts()
-
-  for (con in contrasts) {
+  for (con in eds$contrasts()) {
     obj <- tryCatch(
       legacy_multi_contrast_from_eds(eds, con),
       error = function(e) {
@@ -882,6 +748,8 @@ observeEvent(inputDataReactive(), {
 
   if (length(multiDeReactive$results) > 0) {
     # Reveal the multi-analysis tabs, preserving the current tab selection.
+    # The sidebar reads hasMultiData() under isolate(), so without this bump
+    # it stays on "Data Selection" only.
     currentTab <- isolate(input$tabs)
     multiDeReactive$menuUpdateTrigger <- multiDeReactive$menuUpdateTrigger + 1
     shinyjs::delay(100, {

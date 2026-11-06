@@ -24,3 +24,16 @@ test_that("SAINT proteomics: legacy shim builds without error (order(NULL) guard
   expect_true(all(is.na(sa$pValue))) # SAINT has no raw p-value
   expect_true(any(!is.na(sa$fdr))) # but a real (BFDR) fdr
 })
+
+test_that("genomics: a limma-named P.Value column orders seqAnno and genes", {
+  se <- fx_rnaseq_gene()$se
+  set.seed(2)
+  se <- se[sample(nrow(se)), ]
+  rd <- SummarizedExperiment::rowData(se)
+  colnames(rd)[colnames(rd) == "pValue"] <- "P.Value"
+  SummarizedExperiment::rowData(se) <- rd
+  eds <- new_explore_dataset(se)
+  gs <- legacy_gStoreList_from_eds(eds, se = se)
+  expect_false(is.unsorted(gs$seqAnno$P.Value, na.rm = TRUE))
+  expect_identical(gs$genes, gs$seqAnno$feature_id)
+})

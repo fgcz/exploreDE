@@ -199,7 +199,6 @@ tabItem(
         br(),
         uiOutput(outputId = "UpsetTableGenesUI"),
         actionButton("copy_link", "Copy to clipboard"),
-        uiOutput("linkToEnrichr"),
         uiOutput(outputId = "UpsetIntersectGenesUI")
       )
     )

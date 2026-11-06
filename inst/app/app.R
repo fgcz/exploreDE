@@ -50,7 +50,6 @@ invisible(lapply(packagesToLoad, function(pkg) {
 cat("... packages loaded!")
 # Ensure shiny::validate is not masked by jsonlite::validate
 validate <- shiny::validate
-reactiveConsole(TRUE)
 # Allow larger uploads for user-supplied .h5ad datasets (BYO data, M2).
 options(shiny.maxRequestSize = 1000 * 1024^2)
 if (file.exists("/srv/shiny-server/fgcz_apps/telemetry_module.R")) {

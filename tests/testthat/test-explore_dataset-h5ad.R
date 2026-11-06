@@ -340,6 +340,53 @@ test_that("pathway stats for a non-existent contrast warn", {
   )
 })
 
+test_that("a .h5ad whose symbols are in a plain gene_name column shows them as feature labels", {
+  skip_if_no_anndataR()
+  p <- make_toy_prot("protein")
+  rd <- p$rowdata
+  rd$protein_Id <- sprintf("P%03d", seq_len(nrow(rd)))
+  rd$gene_name <- sprintf("SYM%03d", seq_len(nrow(rd)))
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    list(intensities = p$intensities),
+    out = out,
+    omics = "proteomics",
+    coldata = p$coldata,
+    rowdata = rd
+  )
+  # Another writer's file: the symbol column is gene_name, not label_gene_symbol.
+  ad <- anndataR::read_h5ad(out, as = "InMemoryAnnData")
+  var <- ad$var
+  colnames(var)[colnames(var) == "label_gene_symbol"] <- "gene_name"
+  ad$var <- var
+  anndataR::write_h5ad(ad, out, mode = "w")
+
+  f <- new_explore_dataset(out)$features()
+  expect_false(identical(f$feature_id, f$gene_name))
+  expect_identical(f$display_name, f$gene_name)
+})
+
+test_that("feature length and GC content from build_explore_h5ad() reach de() for the DE QC plots", {
+  skip_if_no_anndataR()
+  p <- make_toy_pieces()
+  n <- nrow(p$rowdata)
+  p$rowdata$featWidth <- seq(500, by = 10, length.out = n)
+  p$rowdata$gc <- seq(0.3, 0.6, length.out = n)
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    p$counts,
+    out = out,
+    omics = "rnaseq",
+    coldata = p$coldata,
+    rowdata = p$rowdata,
+    de = list(treated_vs_control = p$de_df),
+    de_columns = list(effect_log2fc = "LFC", score_pvalue = "P", score_fdr = "Q")
+  )
+  d <- new_explore_dataset(out)$de("treated_vs_control")
+  expect_equal(d$featWidth, p$rowdata[d$feature_id, "featWidth"])
+  expect_equal(d$gc, p$rowdata[d$feature_id, "gc"])
+})
+
 # ---- 5b. Multi-DE per-contrast fan-out (legacy_multi_contrast_from_eds) ------
 
 test_that("legacy_multi_contrast_from_eds fans a multi-contrast h5ad out per contrast", {
@@ -730,6 +777,28 @@ test_that("SAINT-shaped producer: FDR-only, no raw p-value", {
   # usedInTest must fall back to fdr — NOT be emptied to all-FALSE.
   expect_true(any(d$usedInTest))
   expect_equal(d$usedInTest, !is.na(d$fdr))
+})
+
+test_that("SAINT-shaped producer: the DE table is ordered by FDR", {
+  skip_if_no_anndataR()
+  s <- make_saint_like()
+  s$de <- lapply(s$de, function(d) {
+    d$BFDR <- rev(d$BFDR)
+    d
+  })
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    list(intensities = s$intensities),
+    out = out,
+    omics = "proteomics",
+    feature_level = "protein",
+    coldata = s$coldata,
+    rowdata = s$rowdata,
+    de = s$de,
+    de_columns = list(effect_log2fc = "log2_EFCs", score_fdr = "BFDR")
+  )
+  d <- new_explore_dataset(out)$de("baitA_vs_eGFP")
+  expect_false(is.unsorted(d$fdr))
 })
 
 test_that("SAINT-shaped producer: SaintScore surfaces as a display-only extra", {

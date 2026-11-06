@@ -114,3 +114,25 @@ test_that("apply_batch_correction warns and returns counts when limma errors", {
   out <- suppressWarnings(apply_batch_correction(counts, ds, "batch", "cond"))
   expect_equal(dim(out), dim(counts))
 })
+
+test_that("batch_correction_design skips when the design column has missing values", {
+  ds <- data.frame(cond = c("A", "B", NA, "A", "B", "A"), batch = c("b1", "b1", "b1", "b2", "b2", "b2"))
+  out <- batch_correction_design(ds, designColumn = "cond", batchColumn = "batch")
+  expect_true(out$skip)
+  expect_null(out$design)
+  expect_match(out$msg, "'cond' has missing values")
+})
+
+test_that("batch_correction_design skips when the batch column has missing values", {
+  ds <- data.frame(cond = c("A", "B", "A", "B"), batch = c("b1", NA, "b2", "b2"))
+  out <- batch_correction_design(ds, designColumn = "None", batchColumn = "batch")
+  expect_true(out$skip)
+  expect_match(out$msg, "'batch' has missing values")
+})
+
+test_that("apply_batch_correction returns the counts unchanged when the design has missing values", {
+  counts <- matrix(stats::rnorm(24), nrow = 4, dimnames = list(paste0("g", 1:4), paste0("s", 1:6)))
+  ds <- data.frame(cond = c("A", "B", NA, "A", "B", "A"), batch = c("b1", "b1", "b1", "b2", "b2", "b2"))
+  expect_warning(out <- apply_batch_correction(counts, ds, "batch", "cond"), "missing values")
+  expect_identical(out, counts)
+})

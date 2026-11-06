@@ -28,14 +28,13 @@ ExploreDatasetSE <- R6::R6Class(
   inherit = ExploreDataset,
 
   public = list(
-    #' @description Wrap a `SummarizedExperiment`: store it, build the config from it unless one is given, and
-    #'   prepare the feature and DE tables.
+    #' @description Wrap a `SummarizedExperiment`: store it, build the config from it, and prepare the feature
+    #'   and DE tables.
     #' @param se A `SummarizedExperiment`.
-    #' @param config Optional pre-built config list; built from `se` by the subclass when `NULL`.
-    initialize = function(se, config = NULL) {
+    initialize = function(se) {
       stopifnot(inherits(se, "SummarizedExperiment"))
       private$.se <- se
-      private$.config <- config %||% private$.build_config(se)
+      private$.config <- private$.build_config(se)
       private$.prep()
       invisible(self)
     },

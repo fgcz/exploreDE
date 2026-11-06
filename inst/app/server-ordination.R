@@ -256,7 +256,7 @@ observe({
   # Render cascade steps based on data type, log2 checkbox, and count method
   # Only available to staff (LDAP employee role)
   output$pcaCascadeUI <- renderUI({
-    if (!exists("ldap_role") || ldap_role != "employee") {
+    if (!identical(ldapRole(), "employee")) {
       return(helpText("Advanced preprocessing settings are available to FGCZ staff only."))
     }
     log2_checked <- !is.null(input$pcaLog2) && input$pcaLog2

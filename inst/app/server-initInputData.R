@@ -213,6 +213,11 @@ record_project <- function(projectFromUrl, dataDir = NULL) {
 # LDAP. Looked up once per session and shared by the ?data= check and every
 # multi-DE dataset (ldap_allows_project() in R/utils_multi_de.R).
 ldap_lookup <- function(user) {
+  # No user (SHINYPROXY_USERNAME unset): no roles and no projects, without
+  # asking LDAP for "(cn=)".
+  if (!nzchar(user)) {
+    return(list(roles = character(), projects = character()))
+  }
   query <- paste0(
     "ldapsearch -x -H ldaps://fgcz-bfabric-ldap:636 -b 'dc=bfabric,dc=org' ",
     shQuote(paste0("(cn=", user, ")")),
@@ -224,6 +229,10 @@ ldap_lookup <- function(user) {
   )
 }
 .ldap_cache <- NULL
+# The LDAP role decided by the last ?data= load ("employee", "user", "demo",
+# ...); NA until then. The Ordination tab shows its staff-only panel for
+# "employee".
+ldapRole <- reactiveVal(NA_character_)
 session_ldap <- function() {
   if (is.null(.ldap_cache)) {
     .ldap_cache <<- ldap_lookup(username)
@@ -290,6 +299,7 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
       allowedProjects
     )
   }
+  ldapRole(ldap_role)
 
   if (!isTRUE(allowed)) {
     showModal(modalDialog(
@@ -453,7 +463,7 @@ load_h5ad_upload <- function(path) {
 }
 
 # ---- Boot: resolve + load a ?data= URL eagerly (unchanged UX for SUSHI) ------
-queryList <- parseQueryString(session$clientData$url_search)
+queryList <- parseQueryString(isolate(session$clientData$url_search))
 dataUrl <- if (is.list(queryList)) queryList$data else NULL
 message(format(Sys.time(), "%Y-%m-%d--%H-%M-%S"), " app:exploreDE; ", "username:", username, "; ", "dataUrl:", dataUrl)
 

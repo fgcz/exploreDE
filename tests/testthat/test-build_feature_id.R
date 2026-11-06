@@ -59,3 +59,19 @@ test_that("build_feature_id handles single-row data frame", {
   df <- data.frame(protein_Id = "P1", stringsAsFactors = FALSE)
   expect_equal(build_feature_id(df), "P1")
 })
+
+test_that("build_feature_id fills a missing protein_Id from the row name", {
+  df <- data.frame(protein_Id = c("P1", NA, "P3"), stringsAsFactors = FALSE)
+  rownames(df) <- c("r1", "r2", "r3")
+  expect_equal(build_feature_id(df), c("P1", "r2", "P3"))
+})
+
+test_that("build_feature_id fills several missing or empty protein_Id values, keeping the others", {
+  df <- data.frame(protein_Id = c("P1", NA, "", "P4"), stringsAsFactors = FALSE)
+  rownames(df) <- c("r1", "r2", "r3", "r4")
+  expect_equal(build_feature_id(df), c("P1", "r2", "r3", "P4"))
+})
+
+test_that("build_feature_id stops when there is no protein_Id column", {
+  expect_error(build_feature_id(data.frame(accession_xyz = "P1")), "protein_Id")
+})

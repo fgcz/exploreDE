@@ -80,18 +80,17 @@ differs.
 \if{html}{\out{<a id="method-ExploreDatasetParquet-initialize"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDatasetParquet-initialize}{}}}
 \subsection{\code{ExploreDatasetParquet$new()}}{
-  Read the parquet directory (manifest, obs, var, layers, varm, uns), build the config unless one
-is given, prepare the feature and DE tables, and warn when the source \code{.h5ad} has changed since export.
+  Read the parquet directory (manifest, obs, var, layers, varm, uns), build the config, prepare
+the feature and DE tables, and warn when the source \code{.h5ad} has changed since export.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExploreDatasetParquet$new(input, config = NULL)}
+    \preformatted{ExploreDatasetParquet$new(input)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{input}}{Path to the parquet directory.}
-      \item{\code{config}}{Optional pre-built config list; derived from \code{uns.json} when omitted.}
     }
     \if{html}{\out{</div>}}
   }

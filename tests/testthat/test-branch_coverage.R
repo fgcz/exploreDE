@@ -180,15 +180,9 @@ test_that("prepare_biplot_data manual mode with NULL custom_genes returns empty 
 test_that("step_batch_correction warns and skips when batch column contains NAs", {
   counts <- matrix(runif(20), nrow = 5, dimnames = list(NULL, paste0("s", 1:4)))
   ds <- data.frame(row.names = paste0("s", 1:4), batch = c("x", NA, "y", "y"), cond = c("A", "A", "B", "B"))
-  # Uses showNotification unguarded; outside a session it errors.
-  # Wrap in tryCatch so we can assert the function attempted the NA branch.
-  result <- tryCatch(
-    step_batch_correction(counts, ds, "batch", "cond"),
-    error = function(e) list(counts = counts, err = conditionMessage(e))
-  )
-  # Either it ran (session present somehow) or it errored on showNotification.
-  # Both outcomes are acceptable — we're exercising the branch.
-  expect_true(is.list(result))
+  # Outside a Shiny session the skip message is a warning.
+  expect_warning(result <- step_batch_correction(counts, ds, "batch", "cond"), "missing values")
+  expect_identical(result$counts, counts)
 })
 
 

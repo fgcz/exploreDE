@@ -24,7 +24,8 @@ exploreDE's `ExploreDatasetH5AD`.
 - A standard AnnData file (`.h5ad`, HDF5), in the on-disk encoding written by
   Python `anndata` ≥ 0.8 or R `anndataR`. Both have been checked against the
   reader (Python `anndata` 0.10.5 and 0.12, R `anndataR` 1.2.3 and 1.3.1).
-  The deployed app (ShinyProxy `fgcz_base_image`) reads with `anndataR` 1.2.3.
+  The deployed app (ShinyProxy `fgcz_base_image`) reads with `anndataR` 1.2.3,
+  the lowest version exploreDE accepts (its DESCRIPTION requires ≥ 1.2.3).
 - Text MAY be stored in any standard encoding: `string-array`, `categorical`,
   or `nullable-string-array` (what Python `anndata` ≥ 0.12 writes for pandas
   string columns). Reading `nullable-string-array` needs `anndataR` ≥ 1.2.2.

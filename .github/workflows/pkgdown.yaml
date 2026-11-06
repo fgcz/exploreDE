@@ -14,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      # Bioconductor 3.24 (devel until 2026-11-25) ships anndataR >= 1.3, which
-      # exploreDE needs; 3.23 has 1.2.3. Drop this once 3.24 is the release.
+      # Check against Bioconductor 3.24 (devel until 2026-11-25), the coming
+      # release. Drop this once 3.24 is the release.
       R_BIOC_VERSION: "3.24"
 
     steps:

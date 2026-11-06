@@ -48,6 +48,26 @@ test_that("RNA-seq gene-level: DE accessor", {
   expect_false(is.null(cm$reference_group))
 })
 
+test_that("RNA-seq gene-level: usedInTest is derived when the result has none", {
+  se <- fx_rnaseq_gene()$se
+  SummarizedExperiment::rowData(se)$usedInTest <- NULL
+  eds <- new_explore_dataset(se)
+  de <- eds$de(eds$primary_contrast())
+  expect_identical(de$usedInTest, !is.na(de$pValue))
+})
+
+test_that("RNA-seq gene-level: features are sorted by a p-value column named like limma's or with a space", {
+  se <- fx_rnaseq_gene()$se
+  set.seed(1)
+  se <- se[sample(nrow(se)), ]
+  rd <- SummarizedExperiment::rowData(se)
+  colnames(rd)[colnames(rd) == "pValue"] <- "P Value"
+  SummarizedExperiment::rowData(se) <- rd
+  eds <- new_explore_dataset(se)
+  p <- eds$features()[["P Value"]]
+  expect_false(is.unsorted(p, na.rm = TRUE))
+})
+
 test_that("RNA-seq gene-level: assay accessor", {
   fx <- fx_rnaseq_gene()
   eds <- new_explore_dataset(fx$se)

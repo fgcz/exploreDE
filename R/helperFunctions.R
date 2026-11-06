@@ -77,12 +77,30 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
   skipped <- function(msg) list(design = NULL, skip = TRUE, msg = msg)
   warned <- function(msg) list(design = NULL, skip = FALSE, msg = msg)
 
+  # model.matrix() drops rows with NA, so a design or batch with missing values
+  # no longer lines up with the samples: skip instead.
+  has_batch <- !is.null(batchColumn) &&
+    nzchar(batchColumn) &&
+    batchColumn != "None" &&
+    batchColumn %in% colnames(dataset)
+  if (has_batch && anyNA(dataset[[batchColumn]])) {
+    return(skipped(sprintf(
+      "Batch column '%s' has missing values \u2014 batch correction skipped.",
+      batchColumn
+    )))
+  }
   if (is.null(designColumn) || !nzchar(designColumn) || designColumn == "None") {
     return(null_design)
   }
   if (!designColumn %in% colnames(dataset)) {
     return(skipped(sprintf(
       "Design column '%s' missing from sample metadata \u2014 batch correction skipped.",
+      designColumn
+    )))
+  }
+  if (anyNA(dataset[[designColumn]])) {
+    return(skipped(sprintf(
+      "Design column '%s' has missing values \u2014 batch correction skipped.",
       designColumn
     )))
   }
@@ -95,28 +113,18 @@ batch_correction_design <- function(dataset, designColumn, batchColumn) {
     )))
   }
 
-  design <- tryCatch(stats::model.matrix(~grp), error = function(e) e)
-  if (inherits(design, "error")) {
-    return(skipped(sprintf(
-      "Could not build design matrix from '%s': %s \u2014 batch correction skipped.",
-      designColumn,
-      conditionMessage(design)
-    )))
-  }
+  design <- stats::model.matrix(~grp)
 
-  if (!is.null(batchColumn) && nzchar(batchColumn) && batchColumn != "None" && batchColumn %in% colnames(dataset)) {
+  if (has_batch) {
     batch <- factor(dataset[[batchColumn]])
     if (nlevels(batch) >= 2) {
-      batch_mm <- tryCatch(stats::model.matrix(~batch), error = function(e) NULL)
-      if (!is.null(batch_mm)) {
-        combined <- cbind(batch_mm, design[, -1, drop = FALSE])
-        if (qr(combined)$rank < ncol(combined)) {
-          return(warned(sprintf(
-            "Batch ('%s') and design ('%s') are confounded \u2014 batch correction applied without a design matrix.",
-            batchColumn,
-            designColumn
-          )))
-        }
+      combined <- cbind(stats::model.matrix(~batch), design[, -1, drop = FALSE])
+      if (qr(combined)$rank < ncol(combined)) {
+        return(warned(sprintf(
+          "Batch ('%s') and design ('%s') are confounded \u2014 batch correction applied without a design matrix.",
+          batchColumn,
+          designColumn
+        )))
       }
     }
   }
@@ -235,7 +243,19 @@ standardise_columns <- function(df) {
 #' @return Character vector of unique feature IDs
 #' @noRd
 build_feature_id <- function(df) {
-  pid <- df$protein_Id
+  if (!"protein_Id" %in% colnames(df)) {
+    stop(
+      "build_feature_id(): no protein_Id column; columns are: ",
+      paste(colnames(df), collapse = ", "),
+      call. = FALSE
+    )
+  }
+  # A protein_Id can have gaps (SAINT): use the cleaned row name there, as the
+  # all-rows fallback below does, so no feature gets an NA id.
+  clean_rownames <- gsub("~[^~]+~", "_", rownames(df))
+  pid <- as.character(df$protein_Id)
+  missing_pid <- is.na(pid) | !nzchar(pid)
+  pid[missing_pid] <- clean_rownames[missing_pid]
 
   # If protein_Id is already unique, use it directly
   if (!anyDuplicated(pid)) {
@@ -250,7 +270,7 @@ build_feature_id <- function(df) {
   }
 
   # Fallback: cleaned raw rownames
-  gsub("~[^~]+~", "_", rownames(df))
+  clean_rownames
 }
 
 #' collapse_guides_to_genes
@@ -1201,12 +1221,13 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
 #' @param counts Matrix with samples as rows, features as columns
 #' @param center Logical
 #' @param scale Logical
-#' @return List with scores, loadings, variance, method, component_names, removed_samples
+#' @return List with scores, loadings, variance, method, component_names, removed_features
 #' @noRd
 calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
-  # Remove samples with missing values
-  completeCases <- stats::complete.cases(counts)
-  counts_clean <- counts[completeCases, ]
+  # Remove features (columns) with missing values; proteomics has NAs in every
+  # sample, so dropping samples would leave none.
+  complete_features <- colSums(is.na(counts)) == 0
+  counts_clean <- counts[, complete_features, drop = FALSE]
 
   if (nrow(counts_clean) < 3 || ncol(counts_clean) < 3) {
     return(NULL)
@@ -1235,7 +1256,7 @@ calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
     variance = variance,
     method = "PCA",
     component_names = paste0("PC", seq_along(variance)),
-    removed_samples = sum(!completeCases)
+    removed_features = sum(!complete_features)
   )
 }
 
@@ -1247,9 +1268,9 @@ calculate_pca <- function(counts, center = TRUE, scale = FALSE) {
 #' @return List with scores, loadings (NULL), variance / stress, method, component_names
 #' @noRd
 calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
-  # Remove samples with missing values
-  completeCases <- stats::complete.cases(counts)
-  counts_clean <- counts[completeCases, ]
+  # Remove features (columns) with missing values, as calculate_pca() does.
+  complete_features <- colSums(is.na(counts)) == 0
+  counts_clean <- counts[, complete_features, drop = FALSE]
 
   if (nrow(counts_clean) < 3 || ncol(counts_clean) < 3) {
     return(NULL)
@@ -1297,7 +1318,7 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
       stress = nmds_result$stress,
       method = "NMDS",
       component_names = component_names,
-      removed_samples = sum(!completeCases)
+      removed_features = sum(!complete_features)
     )
   } else {
     # Classical PCoA
@@ -1330,7 +1351,7 @@ calculate_pcoa <- function(counts, method = "euclidean", nmds = FALSE) {
       stress = NULL,
       method = "PCoA",
       component_names = component_names,
-      removed_samples = sum(!completeCases)
+      removed_features = sum(!complete_features)
     )
   }
 }
@@ -1506,22 +1527,12 @@ step_log2 <- function(counts, dataset, counts_type) {
 #' Calls showNotification() on failure / NA batch; never throws.
 #' @noRd
 step_batch_correction <- function(counts, dataset, batch_column, design_column = "None") {
-  if (!is.null(batch_column) && nzchar(batch_column) && batch_column != "None") {
-    if (any(is.na(dataset[[batch_column]]))) {
-      shiny::showNotification(
-        "Batch correction skipped: batch column contains NA values",
-        type = "warning",
-        duration = 8
-      )
-    } else {
-      counts <- apply_batch_correction(
-        counts = counts,
-        dataset = dataset,
-        batchCol = batch_column,
-        designCol = design_column
-      )
-    }
-  }
+  counts <- apply_batch_correction(
+    counts = counts,
+    dataset = dataset,
+    batchCol = batch_column,
+    designCol = design_column
+  )
   list(counts = counts, dataset = dataset)
 }
 

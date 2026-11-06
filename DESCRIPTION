@@ -62,7 +62,7 @@ Imports:
   limma,
   officer,
   R6,
-  anndataR,
+  anndataR (>= 1.2.3),
   rhdf5,
   jsonlite,
   curl,
