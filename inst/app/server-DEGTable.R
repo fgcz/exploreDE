@@ -9,6 +9,14 @@ if (!isTRUE(eds$has_pvalue())) {
 
 # Bucket render removed — now in server-featureBucket.R
 
+# The selected contrast's DE table: `de` for the table and the selection
+# download, `calc` for the significance calculator, `design` for file names.
+# The per-contrast observers below set it; the selection, reset and calculator
+# outputs at the end of this file are registered once and read it. (Registering
+# them inside the per-contrast observers stacked one more copy per contrast
+# change, and a copy for an old contrast could answer last.)
+degCurrent <- reactiveVal(NULL)
+
 if (eds$data_type() == "RNASeq" && eds$has_de()) {
   observeEvent(
     selectedContrast(),
@@ -168,89 +176,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
           )
       }
       output$degTable <- DT::renderDataTable(dt1, server = TRUE, selection = list(target = "row"))
-      proxy <- dataTableProxy("degTable")
-      observeEvent(input$resetDEGTableSelectRows, {
-        proxy %>% selectRows(NULL)
-      })
-
-      observeEvent(input$degTable_rows_selected, {
-        seqAnnoSelected <- de_df[input$degTable_rows_selected, ]
-        output$dlTableSelected_deg <- downloadHandler(
-          filename = function() {
-            generate_filename(
-              base_name = paste0(input$filename_deg, "_Selected"),
-              design_name = design,
-              extension = "xlsx"
-            )
-          },
-          content = function(file) {
-            export_excel_standard(
-              df = seqAnnoSelected,
-              filename = file,
-              sheet_name = "Selected Results",
-              table_name = "SelectedResults"
-            )
-          }
-        )
-      })
-      observeEvent(
-        {
-          input$featureCalcPType
-          input$featureCalcPValue
-          input$featureCalcLFC
-        },
-        {
-          if (input$featureCalcPType == "Raw") {
-            featureCalcPType <- "pValue"
-          } else {
-            featureCalcPType <- "fdr"
-          }
-
-          seqAnnoCalc <- de_df[de_df$usedInTest == TRUE, ]
-          seqAnnoCalc <- seqAnnoCalc[
-            which(
-              seqAnnoCalc[[featureCalcPType]] <= as.numeric(input$featureCalcPValue) &
-                abs(seqAnnoCalc[["log2Ratio"]]) >= as.numeric(input$featureCalcLFC)
-            ),
-          ]
-
-          seqAnnoCalcTable <- data.frame(
-            "Up" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] >= as.numeric(input$featureCalcLFC)), ]),
-            "Down" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] <= -as.numeric(input$featureCalcLFC)), ])
-          )
-
-          output$featureCalcTable <- function() {
-            seqAnnoCalcTable %>%
-              kable(
-                format = "html"
-              ) %>%
-              kable_styling(
-                bootstrap_options = "striped",
-                full_width = FALSE,
-                position = "left"
-              )
-          }
-
-          # Download the results
-          # Download the results
-          output$dlTableFiltered_deg <- downloadHandler(
-            filename = function() {
-              generate_filename(
-                base_name = input$filename_deg_filtered,
-                extension = "xlsx"
-              )
-            },
-            content = function(file) {
-              export_excel_standard(
-                df = seqAnnoCalc,
-                filename = file,
-                sheet_name = "DE Features",
-                table_name = "DEFeatures"
-              )
-            }
-          )
-        }
-      )
+      degCurrent(list(de = de_df, calc = de_df[de_df$usedInTest == TRUE, ], design = design))
     },
     ignoreNULL = FALSE
   )
@@ -423,86 +349,72 @@ if (eds$omics_class() == "proteomics") {
           )
       }
       output$degTable <- DT::renderDataTable(dt1, server = TRUE, selection = list(target = "row"))
-      proxy <- dataTableProxy("degTable")
-      observeEvent(input$resetDEGTableSelectRows, {
-        proxy %>% selectRows(NULL)
-      })
+      degCurrent(list(de = seqAnnoDEG, calc = seqAnnoDEG, design = design))
+    }
+  )
+}
 
-      observeEvent(input$degTable_rows_selected, {
-        seqAnnoDEGSelected <- seqAnnoDEG[input$degTable_rows_selected, ]
-        output$dlTableSelected_deg <- downloadHandler(
-          filename = function() {
-            generate_filename(
-              base_name = paste0(input$filename_deg, "_Selected"),
-              design_name = design,
-              extension = "xlsx"
-            )
-          },
-          content = function(file) {
-            export_excel_standard(
-              df = seqAnnoDEGSelected,
-              filename = file,
-              sheet_name = "Selected Results",
-              table_name = "SelectedResults"
-            )
-          }
-        )
-      })
+# ---- Registered once; they read the selected contrast's table from degCurrent()
+if ((eds$data_type() == "RNASeq" && eds$has_de()) || eds$omics_class() == "proteomics") {
+  degProxy <- dataTableProxy("degTable")
+  observeEvent(input$resetDEGTableSelectRows, {
+    degProxy %>% selectRows(NULL)
+  })
 
-      observeEvent(
-        {
-          input$featureCalcPType
-          input$featureCalcPValue
-          input$featureCalcLFC
-        },
-        {
-          if (input$featureCalcPType == "Raw") {
-            featureCalcPType <- "pValue"
-          } else {
-            featureCalcPType <- "fdr"
-          }
-          seqAnnoCalc <- seqAnnoDEG # %>% dplyr::select(all_of(c(featureCalcPType, "log2Ratio")))
-          seqAnnoCalc <- seqAnnoCalc[
-            which(
-              seqAnnoCalc[[featureCalcPType]] <= as.numeric(input$featureCalcPValue) &
-                abs(seqAnnoCalc[["log2Ratio"]]) >= as.numeric(input$featureCalcLFC)
-            ),
-          ]
+  output$dlTableSelected_deg <- downloadHandler(
+    filename = function() {
+      generate_filename(
+        base_name = paste0(input$filename_deg, "_Selected"),
+        design_name = degCurrent()$design,
+        extension = "xlsx"
+      )
+    },
+    content = function(file) {
+      req(input$degTable_rows_selected)
+      export_excel_standard(
+        df = degCurrent()$de[input$degTable_rows_selected, ],
+        filename = file,
+        sheet_name = "Selected Results",
+        table_name = "SelectedResults"
+      )
+    }
+  )
 
-          seqAnnoCalcTable <- data.frame(
-            "Up" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] >= as.numeric(input$featureCalcLFC)), ]),
-            "Down" = nrow(seqAnnoCalc[which(seqAnnoCalc[["log2Ratio"]] <= -as.numeric(input$featureCalcLFC)), ])
-          )
-          output$featureCalcTable <- function() {
-            seqAnnoCalcTable %>%
-              kable(
-                format = "html"
-              ) %>%
-              kable_styling(
-                bootstrap_options = "striped",
-                full_width = FALSE,
-                position = "left"
-              )
-          }
-          # Download the results
-          # Download the results
-          output$dlTableFiltered_deg <- downloadHandler(
-            filename = function() {
-              generate_filename(
-                base_name = input$filename_deg_filtered,
-                extension = "xlsx"
-              )
-            },
-            content = function(file) {
-              export_excel_standard(
-                df = seqAnnoCalc,
-                filename = file,
-                sheet_name = "DE Features",
-                table_name = "DEFeatures"
-              )
-            }
-          )
-        }
+  # Significance calculator: features passing the p-value and log2FC cut-offs.
+  featureCalcSelected <- reactive({
+    cur <- degCurrent()
+    req(cur, input$featureCalcPType, input$featureCalcPValue, input$featureCalcLFC)
+    pcol <- if (input$featureCalcPType == "Raw") "pValue" else "fdr"
+    calc <- cur$calc
+    calc[
+      which(
+        calc[[pcol]] <= as.numeric(input$featureCalcPValue) &
+          abs(calc[["log2Ratio"]]) >= as.numeric(input$featureCalcLFC)
+      ),
+    ]
+  })
+
+  output$featureCalcTable <- function() {
+    calc <- featureCalcSelected()
+    lfc <- as.numeric(input$featureCalcLFC)
+    data.frame(
+      "Up" = nrow(calc[which(calc[["log2Ratio"]] >= lfc), ]),
+      "Down" = nrow(calc[which(calc[["log2Ratio"]] <= -lfc), ])
+    ) %>%
+      kable(format = "html") %>%
+      kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
+  }
+
+  output$dlTableFiltered_deg <- downloadHandler(
+    filename = function() {
+      generate_filename(base_name = input$filename_deg_filtered, extension = "xlsx")
+    },
+    content = function(file) {
+      export_excel_standard(
+        df = featureCalcSelected(),
+        filename = file,
+        sheet_name = "DE Features",
+        table_name = "DEFeatures"
       )
     }
   )
