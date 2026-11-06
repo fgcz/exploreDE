@@ -1,4 +1,4 @@
-# exploreDE <img src="man/figures/logo.png" align="right" height="139" alt="exploreDE hex sticker" />
+# exploreDE <a href="man/figures/logo.png"><img src="man/figures/logo.png" align="right" height="139" alt="exploreDE cat-face volcano hex sticker" /></a>
 
 exploreDE is a Shiny app for exploring differential expression results from RNA-seq, proteomics and CRISPR screens, and for making publication-quality figures from them.
 
