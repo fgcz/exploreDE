@@ -1,3 +1,9 @@
+# exploreDE 3.10.0
+
+- The version follows Bioconductor's numbering, where an even middle number marks a release.
+- The demo dataset (`inst/examples/genomics/deResult.rds`) is 4.4 MB instead of 34 MB. It shows the same samples, features, DE table and ORA/GSEA results; removed are parts the app never reads: the DESeq2 object, the gene sets of GO terms that are in no result table, and duplicate annotation columns. `inst/scripts/trim_demo_deResult.R` records the trimming.
+- Every exported function and class has a help-page example that runs on the shipped example datasets, and says what it returns. The DESCRIPTION gives the package's URL, bug tracker, Bioconductor categories, and the maintainer's ORCID.
+
 # exploreDE 3.9.0
 
 ## Breaking changes
@@ -76,7 +82,6 @@
 - README, the bring-your-own-data vignette, and the AI skill now cover
   writing files outside R, opening files from a link, and saving sessions.
 - The help pages of the `ExploreDataset*` classes describe every public method and its arguments.
-- Every exported function and class has a help-page example that runs on the shipped example datasets, and says what it returns. The DESCRIPTION gives the package's URL, bug tracker and Bioconductor categories.
 
 ## Removed
 
