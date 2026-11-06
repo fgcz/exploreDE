@@ -52,7 +52,8 @@ observe({
     selected = "None"
   )
 
-  # Batch + design dropdowns — see server-boxplot.R for the decision table.
+  # Batch + design dropdowns: the rule of batch_design_defaults()
+  # (R/utils_explore_dataset.R), applied to the legacy multi-DE record.
   .twoFactor <- !is.null(d$param$grouping2Name) &&
     nzchar(d$param$grouping2Name) &&
     !is.null(d$factors) &&
@@ -275,7 +276,11 @@ multiBoxplotCountsReactive <- eventReactive(
     countsBoxplot <- d$countList[[input$multiBoxplotCounts]]
 
     # Transformations
-    is_logged <- input$multiBoxplotCounts %in% c("Normalised + Log2", "VST") || d$dataType == "proteomics"
+    # prolfquapp assays on log2 scale: transformedData, imputedData (rawData,
+    # ibaq and nr_children are not).
+    is_logged <- input$multiBoxplotCounts %in%
+      c("Normalised + Log2", "VST") ||
+      (d$dataType == "proteomics" && input$multiBoxplotCounts %in% c("transformedData", "imputedData"))
     if (input$multiBoxplotCountsLog) {
       if (d$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         if (input$multiBoxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {

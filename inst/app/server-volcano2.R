@@ -328,6 +328,7 @@ volcanoResultsList <- eventReactive(
     if (eds$omics_class() == "proteomics") {
       req(!is.null(selectedContrast()))
       req(selectedContrast() %in% eds$contrasts())
+      design <- eds$contrast_label(selectedContrast())
       seqAnnoFilt <- eds$de(selectedContrast())
       if (!is.null(input$nrPeptideVolcano)) {
         if (any(seqAnnoFilt$nrPeptides >= input$nrPeptideVolcano)) {

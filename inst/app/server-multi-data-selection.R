@@ -151,9 +151,8 @@ houseCols <- c(
   "#999933" # Olive (Tol)
 )
 houseCols <- paste0(houseCols, "FF")
-n <- 60
-qual_col_pals <- brewer.pal.info[brewer.pal.info$category == "qual", ]
-col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+# col_vector (all qualitative ColorBrewer colours) is defined in
+# server-summary.R, which app.R sources into the same environment first.
 colourPaletteList2 <- list(
   "House colours" = houseCols,
   "Paired" = brewer.pal(12, "Paired"),

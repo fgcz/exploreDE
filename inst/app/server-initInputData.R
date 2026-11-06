@@ -65,6 +65,22 @@ selectedContrast <- reactive({
   if (!is.null(sel) && nzchar(sel) && sel %in% cs) sel else eds$primary_contrast()
 })
 
+# The label of the selected contrast for titles and download file names, used
+# by every tab. Defined once here: the data modules share one environment, so
+# a copy in a module would replace this one for all of them.
+designReactive <- reactive({
+  req(inputDataReactive())
+  eds <- inputDataReactive()$.eds
+  if (eds$has_de()) {
+    contrast <- selectedContrast()
+    eds$contrast_label(contrast)
+  } else if (eds$omics_class() == "proteomics") {
+    "No contrast selected"
+  } else {
+    eds$data_type() # QC fallback — no DE, use the data type name
+  }
+})
+
 base::lapply(names(contrast_selector_ids), function(tab) {
   id <- contrast_selector_ids[[tab]]
   output[[paste0("contrastSelectorUI_", tab)]] <- renderUI({

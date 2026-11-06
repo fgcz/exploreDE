@@ -1,25 +1,6 @@
 eds <- inputDataReactive()$.eds
 req(eds)
 
-# Create reactive for design to use across all outputs and download handlers
-designReactive <- reactive({
-  if (eds$data_type() == "RNASeq") {
-    if (eds$has_de()) {
-      return(eds$contrast_label(selectedContrast()))
-    }
-    return("") # counts-only upload: no contrast to label
-  } else if (eds$omics_class() == "proteomics") {
-    if (isTruthy(selectedContrast())) {
-      return(selectedContrast())
-    } else {
-      return("No contrast selected")
-    }
-  } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
-    return(eds$data_type())
-  }
-  return("Unknown")
-})
-
 # Update a bunch of input options ----
 output$boxplotStatic <- renderPlot({
   req(figuresDataReactive$boxplot)
@@ -87,54 +68,20 @@ updateSelectInput(
   selected = "None"
 )
 
-# Batch + design dropdowns. For two-factor DE (param$grouping2Name set),
-# auto-select batch = grouping2Name and lock design to the DE design column
-# so the tab loads in the analysis's own batch-corrected view. Otherwise
-# batch defaults to None and any factor can be chosen as design (free
-# exploration for CountQC/CrisprCountQC, groupingName pre-selected for DE).
+# Batch + design dropdowns: batch_design_defaults() in R/utils_explore_dataset.R.
 observe({
-  .dt <- eds$data_type()
-  .factors <- eds$factor_names()
-  .grouping <- eds$primary_grouping()
-  .secondary <- eds$secondary_grouping()
-  .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
-  # Proteomics grouping: SUSHI data carries the prolfqua "G_" column; an uploaded
-  # h5ad won't, so fall back to the dataset's primary grouping factor.
-  .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
-  .deDesignCol <- if (.dt == "RNASeq") {
-    .grouping
-  } else if (eds$omics_class() == "proteomics") {
-    .protGroup
-  } else {
-    NA_character_
-  }
-
-  batchChoices <- c("None", .factors)
-  batchDefault <- if (.twoFactor) .secondary else "None"
+  bd <- batch_design_defaults(eds)
   updateSelectInput(
     session = session,
     inputId = "boxplotBatch",
-    choices = batchChoices,
-    selected = batchDefault
+    choices = bd$batch_choices,
+    selected = bd$batch_default
   )
-
-  designChoices <- if ((.dt == "RNASeq" || eds$omics_class() == "proteomics") && .twoFactor) {
-    c("None", .deDesignCol)
-  } else {
-    c("None", .factors)
-  }
-  designDefault <- if (.dt == "RNASeq") {
-    .grouping
-  } else if (eds$omics_class() == "proteomics") {
-    .protGroup
-  } else {
-    "None"
-  }
   updateSelectInput(
     session = session,
     inputId = "boxplotDesign",
-    choices = designChoices,
-    selected = designDefault
+    choices = bd$design_choices,
+    selected = bd$design_default
   )
 })
 
@@ -311,7 +258,7 @@ boxplotCountsReactive <- eventReactive(
 
     # Apply the following in this specific order as required: Log2, batch correct, Z-scale
     # If the user wants to log2, then do that
-    is_logged <- input$boxplotCounts %in% c("normalised_log2", "vst") || eds$omics_class() == "proteomics"
+    is_logged <- assay_is_log2(eds, input$boxplotCounts)
     if (input$boxplotCountsLog) {
       if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         if (input$boxplotCounts %in% c("tpm", "fpkm", "normalised", "counts")) {

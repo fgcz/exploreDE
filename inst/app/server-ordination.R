@@ -1,25 +1,6 @@
 eds <- inputDataReactive()$.eds
 req(eds)
 
-# Create reactive for design to use across all outputs and download handlers
-designReactive <- reactive({
-  if (eds$data_type() == "RNASeq") {
-    if (eds$has_de()) {
-      return(eds$contrast_label(selectedContrast()))
-    }
-    return("") # counts-only upload: no contrast to label
-  } else if (eds$omics_class() == "proteomics") {
-    if (isTruthy(selectedContrast())) {
-      return(selectedContrast())
-    } else {
-      return("No contrast selected")
-    }
-  } else if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
-    return(eds$data_type())
-  }
-  return("Unknown")
-})
-
 # Main reactive expression for ordination calculations
 ordinationResults <- reactive({
   req(eds)
@@ -60,7 +41,7 @@ ordinationResults <- reactive({
   # Track whether counts are in log space (needed for batch correction)
   batch_col <- if (input$pcaBatch != "None") input$pcaBatch else NULL
   design_col <- input$pcaBatchDesign # read here so ordinationResults() tracks it as a dep even if the cascade step short-circuits
-  is_logged <- input$pcaCounts %in% c("normalised_log2", "vst") || eds$omics_class() == "proteomics"
+  is_logged <- assay_is_log2(eds, input$pcaCounts)
 
   step_map <- list(
     "Group subsetting" = function(cd) step_group_subset(cd$counts, cd$dataset, input$pcaFactor1, valid_groups),
@@ -260,41 +241,16 @@ observe({
     default_count <- if ("vst" %in% assay_keys) "vst" else assay_keys[1]
     updateSelectInput(session = session, inputId = "pcaCounts", choices = count_choices, selected = default_count)
   }
-  # Batch + design dropdowns — see server-boxplot.R for the decision table.
+  # Batch + design dropdowns: batch_design_defaults() in R/utils_explore_dataset.R.
   # NB: the design input is `pcaBatchDesign` because `pcaDesign` is already a
   # textOutput on this tab (the DE design-formula string).
-  .dt <- eds$data_type()
-  .factors <- eds$factor_names()
-  .grouping <- eds$primary_grouping()
-  .secondary <- eds$secondary_grouping()
-  .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
-  .deDesignCol <- switch(.dt, "RNASeq" = .grouping, NA_character_)
-  # Proteomics grouping: SUSHI "G_" if present, else the primary grouping (h5ad).
-  .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
-  if (eds$omics_class() == "proteomics") {
-    .deDesignCol <- .protGroup
-  }
-
-  batchChoices <- c("None", .factors)
-  batchDefault <- if (.twoFactor) .secondary else "None"
-  updateSelectInput(
-    session = session,
-    inputId = "pcaBatch",
-    choices = batchChoices,
-    selected = batchDefault
-  )
-
-  designChoices <- if (.dt %in% c("RNASeq", "proteomics") && .twoFactor) {
-    c("None", .deDesignCol)
-  } else {
-    c("None", .factors)
-  }
-  designDefault <- switch(.dt, "RNASeq" = .grouping, "proteomics" = .protGroup, "None")
+  bd <- batch_design_defaults(eds)
+  updateSelectInput(session = session, inputId = "pcaBatch", choices = bd$batch_choices, selected = bd$batch_default)
   updateSelectInput(
     session = session,
     inputId = "pcaBatchDesign",
-    choices = designChoices,
-    selected = designDefault
+    choices = bd$design_choices,
+    selected = bd$design_default
   )
 
   # Render cascade steps based on data type, log2 checkbox, and count method

@@ -2,20 +2,6 @@
 # Phase 2 migration — complete. All reads go through inputDataReactive()$.eds.
 # ---------------------------------------------------------------------------
 
-# Create reactive for design to use across all outputs and download handlers
-designReactive <- reactive({
-  req(inputDataReactive())
-  eds <- inputDataReactive()$.eds
-  if (eds$has_de()) {
-    contrast <- selectedContrast()
-    eds$contrast_label(contrast)
-  } else if (eds$omics_class() == "proteomics") {
-    "No contrast selected"
-  } else {
-    eds$data_type() # QC fallback — no DE, use the data type name
-  }
-})
-
 output$correlationStatic <- renderPlot({
   NULL
 })
@@ -98,53 +84,23 @@ local({
     selected = default_count
   )
 })
-# Batch + design dropdowns — see server-boxplot.R for the decision table.
+# Batch + design dropdowns: batch_design_defaults() in R/utils_explore_dataset.R.
 observeEvent(inputDataReactive(), {
   eds <- inputDataReactive()$.eds
-  .dt <- eds$data_type()
-  .oc <- eds$omics_class()
-  .factors <- eds$factor_names()
-  .grouping <- eds$primary_grouping()
-  .secondary <- eds$secondary_grouping()
-  .twoFactor <- !is.na(.secondary) && nzchar(.secondary) && .secondary %in% .factors
-  # Proteomics grouping: SUSHI "G_" if present, else the primary grouping (h5ad).
-  .protGroup <- if ("G_" %in% .factors) "G_" else .grouping
-  .deDesignCol <- if (.dt == "RNASeq") {
-    .grouping
-  } else if (.oc == "proteomics") {
-    .protGroup
-  } else {
-    NA_character_
-  }
-
-  batchChoices <- c("None", .factors)
-  batchDefault <- if (.twoFactor) .secondary else "None"
+  bd <- batch_design_defaults(eds)
   updateSelectInput(
     session = session,
     inputId = "correlationBatch",
     label = "Apply a batch-correction to the counts?",
-    choices = batchChoices,
-    selected = batchDefault
+    choices = bd$batch_choices,
+    selected = bd$batch_default
   )
-
-  designChoices <- if ((.dt == "RNASeq" || .oc == "proteomics") && .twoFactor) {
-    c("None", .deDesignCol)
-  } else {
-    c("None", .factors)
-  }
-  designDefault <- if (.dt == "RNASeq") {
-    .grouping
-  } else if (.oc == "proteomics") {
-    .protGroup
-  } else {
-    "None"
-  }
   updateSelectInput(
     session = session,
     inputId = "correlationDesign",
     label = "Design factor to preserve during batch correction",
-    choices = designChoices,
-    selected = designDefault
+    choices = bd$design_choices,
+    selected = bd$design_default
   )
 })
 updateSliderInput(
@@ -283,7 +239,7 @@ observeEvent(
     }
 
     # Log2 and batch correction on full matrix BEFORE extracting genes
-    is_logged <- input$correlationCounts %in% c("normalised_log2", "vst") || eds$omics_class() == "proteomics"
+    is_logged <- assay_is_log2(eds, input$correlationCounts)
     if (input$correlationCountsLog & !is_logged) {
       countsCorrelation <- log2(countsCorrelation + 1)
       is_logged <- TRUE

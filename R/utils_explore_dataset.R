@@ -522,3 +522,81 @@ eds_load_se <- function(input) {
     onts
   )
 }
+
+# ---- enrichment results in the ORA / GSEA tabs --------------------------------
+# A cell of the app's ora[[type]][[dir]] / gsea structures is EITHER a
+# clusterProfiler S4 object or a plain tidy data.frame (a dataset whose pathway
+# data was never a clusterProfiler object). These read either uniformly; only
+# the S4-only plots (cnetplot/barplot/dotplot) branch on .is_native().
+.is_native <- function(x) inherits(x, c("enrichResult", "gseaResult"))
+.res_df <- function(x) if (.is_native(x)) x@result else x
+
+# FDR threshold for "ora" / "gsea": the SUSHI parameter (fdrThreshORA /
+# fdrThreshGSEA) for an SE; for an h5ad, the per-method value that
+# build_explore_h5ad() recorded in uns$enrichment_filter; otherwise 0.05.
+.enr_fdr_thresh <- function(eds, kind) {
+  p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else NULL
+  v <- switch(kind, ora = p$fdrThreshORA, gsea = p$fdrThreshGSEA)
+  if (is.null(v)) {
+    f <- eds$enrichment_filter()
+    if (is.list(f)) v <- f[[kind]]
+  }
+  if (is.null(v) || is.na(v)) 0.05 else as.numeric(v)
+}
+
+# Keep only the terms with p.adjust <= thr. ezRun stores every tested term (the
+# full table goes to its Excel export); the app, like the HTML report, only
+# ever shows the significant ones.
+.enr_keep_sig <- function(x, thr) {
+  df <- .res_df(x)
+  if (!is.data.frame(df) || !nrow(df) || !"p.adjust" %in% colnames(df)) {
+    return(x)
+  }
+  keep <- !is.na(df$p.adjust) & df$p.adjust <= thr
+  if (.is_native(x)) {
+    x@result <- df[keep, , drop = FALSE]
+    x
+  } else {
+    df[keep, , drop = FALSE]
+  }
+}
+
+# ---- batch-correction dropdowns ------------------------------------------------
+# Choices and defaults of the batch and design dropdowns of the Boxplot,
+# Correlation, Heatmap and Ordination tabs. With two factors and DE results
+# (RNA-seq or proteomics), batch defaults to the second factor and the design is
+# locked to the DE grouping, so the tab opens in the analysis's own
+# batch-corrected view. Otherwise batch defaults to None and any factor can be
+# the design. Proteomics is recognised by omics_class(), so peptide and phospho
+# datasets (data_type "peptidomics" / "phosphoproteomics") follow the same rule.
+batch_design_defaults <- function(eds) {
+  factors <- eds$factor_names()
+  grouping <- eds$primary_grouping()
+  secondary <- eds$secondary_grouping()
+  two_factor <- !is.na(secondary) && nzchar(secondary) && secondary %in% factors
+  # SUSHI proteomics carries prolfqua's "G_" grouping column; an uploaded h5ad
+  # uses its primary grouping factor.
+  de_design <- if (eds$omics_class() == "proteomics") {
+    if ("G_" %in% factors) "G_" else grouping
+  } else if (eds$data_type() == "RNASeq") {
+    grouping
+  } else {
+    NA_character_
+  }
+  list(
+    batch_choices = c("None", factors),
+    batch_default = if (two_factor) secondary else "None",
+    design_choices = if (!is.na(de_design) && two_factor) c("None", de_design) else c("None", factors),
+    design_default = if (is.na(de_design)) "None" else de_design
+  )
+}
+
+# Whether an assay (canonical key, as in eds$assay_names()) is on log2 scale,
+# which batch correction requires. Genomics: normalised_log2 and vst.
+# Proteomics: the transformed intensities, not the raw ones.
+assay_is_log2 <- function(eds, key) {
+  if (eds$omics_class() == "proteomics") {
+    return(identical(key, "intensities"))
+  }
+  isTRUE(key %in% c("normalised_log2", "vst"))
+}
