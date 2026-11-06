@@ -224,6 +224,10 @@ ldap_lookup <- function(user) {
   )
 }
 .ldap_cache <- NULL
+# The LDAP role decided by the last ?data= load ("employee", "user", "demo",
+# ...); NA until then. The Ordination tab shows its staff-only panel for
+# "employee".
+ldapRole <- reactiveVal(NA_character_)
 session_ldap <- function() {
   if (is.null(.ldap_cache)) {
     .ldap_cache <<- ldap_lookup(username)
@@ -290,6 +294,7 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
       allowedProjects
     )
   }
+  ldapRole(ldap_role)
 
   if (!isTRUE(allowed)) {
     showModal(modalDialog(
