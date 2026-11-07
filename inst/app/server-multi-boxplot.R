@@ -326,12 +326,13 @@ multiBoxplotCountsReactive <- eventReactive(
     )
     countsBoxplot[["Name"]] <- factor(countsBoxplot[["Name"]], levels = countsBoxplot[["Name"]])
 
-    countsBoxplotMelt <- reshape2::melt(
-      data = countsBoxplot,
-      id.vars = c("Name", d$factors),
-      value.name = "Counts",
-      variable.name = "Feature"
-    )
+    countsBoxplotMelt <- as.data.frame(tidyr::pivot_longer(
+      countsBoxplot,
+      cols = !dplyr::all_of(c("Name", d$factors)),
+      names_to = "Feature",
+      values_to = "Counts",
+      cols_vary = "slowest"
+    ))
     countsBoxplotMelt$Feature <- as.factor(x = countsBoxplotMelt$Feature)
 
     # Strictly force feature order
@@ -569,7 +570,7 @@ observeEvent(
           # Fallback if input not ready
           "grey50"
         } else {
-          paste0(gplots::col2hex(col), "FF")
+          paste0(col2hex(col), "FF")
         }
       }),
       groupLevels

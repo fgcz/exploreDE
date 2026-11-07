@@ -387,7 +387,7 @@ output$dlTable_GSEA <- downloadHandler(
     }
 
     if (length(sheets_list) > 0) {
-      write_xlsx(sheets_list, file)
+      openxlsx::write.xlsx(sheets_list, file)
     } else {
       # Fallback if no sheets were added
       write.csv(data.frame(Message = "No GSEA results available"), file)

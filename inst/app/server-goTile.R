@@ -5,7 +5,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
   # GO behaves like KEGG: The GO selector shows only when the features carry
   # GO annotation columns (any of GO BP / MF / CC).
   output$goTileGoSupported <- reactive({
-    !is_empty(allPathways)
+    length(allPathways) > 0
   })
   outputOptions(output, "goTileGoSupported", suspendWhenHidden = FALSE)
 
@@ -28,7 +28,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
     # Detect species -> KEGG organism code (only hsa/mmu/rno supported)
     goTileKeggReactive$keggCode <- tryCatch(
       {
-        spp <- kegg_species_label(eds$ref_build())
+        spp <- if (kegg_installed()) kegg_species_label(eds$ref_build())
         switch(spp %||% "", "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
       },
       error = function(e) NULL
@@ -42,7 +42,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
   observeEvent(input$tabs, {
     if (input$tabs == "goTileTab") {
       # Only warn if there is neither GO nor KEGG available for this dataset.
-      if (is_empty(allPathways) && is.null(goTileKeggReactive$keggCode)) {
+      if (length(allPathways) == 0 && is.null(goTileKeggReactive$keggCode)) {
         showModal(modalDialog(
           title = "No GO Annotations",
           "Your genes have no GO annotations, so this tab is not functional for this dataset."
@@ -51,7 +51,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
     }
   })
 
-  if (!is_empty(allPathways)) {
+  if (length(allPathways) > 0) {
     updateSelectizeInput(
       session = session,
       inputId = "goTileInput",
@@ -293,7 +293,7 @@ output$goTileOutput <- renderPlot(
       grid.grabExpr(draw_heatmap(hm, legend_dx = input$goTileLegendDX, legend_dy = input$goTileLegendDY))
     })
 
-    grid.arrange(grobs = grobList, ncol = length(grobList))
+    cowplot::plot_grid(plotlist = grobList, ncol = length(grobList))
   },
   width = function() {
     as.numeric(input$figWidthGoTile)
@@ -320,7 +320,7 @@ output$dlGoTilePlot <- downloadHandler(
         grobList <- lapply(figuresDataReactive$goTilePlot, function(hm) {
           grid.grabExpr(draw_heatmap(hm, legend_dx = input$goTileLegendDX, legend_dy = input$goTileLegendDY))
         })
-        grid.arrange(grobs = grobList, ncol = length(grobList))
+        print(cowplot::plot_grid(plotlist = grobList, ncol = length(grobList)))
       },
       filename = file,
       format = tolower(input$downloadFormatGoTile),

@@ -53,7 +53,13 @@ tabItem(
             selectInput(
               inputId = "ordinationMethod",
               label = "Ordination method",
-              choices = c("PCA" = "pca", "PCoA/MDS" = "pcoa", "NMDS" = "nmds", "GLM-PCA" = "glmpca"),
+              # glmpca is in Suggests: offer GLM-PCA only when it is installed
+              choices = c(
+                "PCA" = "pca",
+                "PCoA/MDS" = "pcoa",
+                "NMDS" = "nmds",
+                if (requireNamespace("glmpca", quietly = TRUE)) c("GLM-PCA" = "glmpca")
+              ),
               selected = "pca",
               width = "75%"
             ),

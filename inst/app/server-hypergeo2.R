@@ -61,7 +61,7 @@ oraContrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
 
 observeEvent(input$tabs, {
   if (input$tabs == "oraTab") {
-    if (is_empty(.ora_raw())) {
+    if (length(.ora_raw()) == 0) {
       showModal(modalDialog(title = "No ORA Results", "No pathway analysis was performed so this tab is empty."))
     }
   }
@@ -87,7 +87,7 @@ oraDesign <- ""
 sel <- list()
 .oraId2sym <- function(ids) ids
 
-if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
+if (eds$data_type() == "RNASeq" && length(.ora_raw()) > 0) {
   observeEvent(
     selectedContrast(),
     {
@@ -174,7 +174,7 @@ if (eds$data_type() == "RNASeq" && !is_empty(.ora_raw())) {
               sheets_list[[sheet_name]] <- .res_df(enrich_obj)
             }
           }
-          write_xlsx(sheets_list, file)
+          openxlsx::write.xlsx(sheets_list, file)
         }
       )
 

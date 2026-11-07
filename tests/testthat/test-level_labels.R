@@ -40,6 +40,7 @@ test_that("decode_label_entities handles named, decimal and hex entities", {
 })
 
 test_that("parse_level_label keeps whitelisted tags and escapes the rest", {
+  skip_if_not_installed("gridtext")
   p <- parse_level_label("<I>Il4a</I><sup>fl/fl</sup> N.b.")
   expect_true(p$ok)
   expect_equal(p$rich, "<i>Il4a</i><sup>fl\\/fl</sup> N\\.b\\.")
@@ -136,6 +137,7 @@ test_that("prepare_plot_for_pdf is a no-op for plain plots and non-ggplots", {
 })
 
 test_that("whitespace between two tags survives (zero-width anchors, PDF-safe swap)", {
+  skip_if_not_installed("gridtext")
   p <- parse_level_label("<i>Vil1</i><sup>+/+</sup> <i>Il4ra</i>")
   expect_match(p$rich, "</sup>\u200b \u200b<i>", fixed = TRUE)
   expect_false(grepl("\u200b", symbolise_rich_labels(p$rich)))

@@ -182,7 +182,7 @@ observe({
     refBuild <- multiDeReactive$results[[1]]$param$ezRef@refBuild
   }
   code <- NULL
-  if (!is.null(refBuild)) {
+  if (!is.null(refBuild) && kegg_installed()) {
     if (grepl("Homo_sapiens|GRCh|hg", refBuild, ignore.case = TRUE)) {
       code <- "hsa"
     } else if (grepl("Mus_musculus|GRCm|mm", refBuild, ignore.case = TRUE)) {
@@ -372,7 +372,7 @@ observeEvent(
           defaultCol <- rep(catalystCols, times = 5)[i]
           return(paste0(defaultCol, "FF"))
         }
-        col <- tryCatch(gplots::col2hex(col), error = function(e) "#000000")
+        col <- tryCatch(col2hex(col), error = function(e) "#000000")
         paste0(col, "FF")
       }),
       names(multiDeReactive$results)
@@ -835,7 +835,7 @@ observeEvent(
               if (is.null(col)) {
                 return("#000000FF")
               }
-              col <- tryCatch(gplots::col2hex(col), error = function(e) "#000000")
+              col <- tryCatch(col2hex(col), error = function(e) "#000000")
               paste0(col, "FF")
             }),
             names(multiDeReactive$results)

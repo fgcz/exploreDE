@@ -307,12 +307,13 @@ boxplotCountsReactive <- eventReactive(
     countsBoxplot[["Name"]] <- factor(countsBoxplot[["Name"]], levels = countsBoxplot[["Name"]])
 
     # melt the table
-    countsBoxplotMelt <- reshape2:::melt.data.frame(
-      data = countsBoxplot,
-      id.vars = c("Name", eds$factor_names()),
-      value.name = "Counts",
-      variable.name = "Feature"
-    )
+    countsBoxplotMelt <- as.data.frame(tidyr::pivot_longer(
+      countsBoxplot,
+      cols = !dplyr::all_of(c("Name", eds$factor_names())),
+      names_to = "Feature",
+      values_to = "Counts",
+      cols_vary = "slowest"
+    ))
     countsBoxplotMelt$Feature <- as.factor(x = countsBoxplotMelt$Feature)
 
     # Force the order of the genes as factor so the order the genes are

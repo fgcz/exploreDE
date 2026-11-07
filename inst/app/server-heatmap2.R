@@ -20,7 +20,7 @@ observe({
   # Detect species for KEGG heatmap
   keggHeatmapReactive$keggCode <- tryCatch(
     {
-      spp <- kegg_species_label(eds$ref_build())
+      spp <- if (kegg_installed()) kegg_species_label(eds$ref_build())
       switch(spp %||% "", "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
     },
     error = function(e) NULL

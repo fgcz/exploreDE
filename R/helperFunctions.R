@@ -22,6 +22,16 @@ kegg_species_label <- function(ref_build) {
   switch(genus_species, Homo_sapiens = "Human", Mus_musculus = "Mouse", Rattus_norvegicus = "Rat", NULL)
 }
 
+#' kegg_installed
+#' The KEGG views need pathview and KEGGREST, both in Suggests. Every KEGG
+#' entry point (menu items, the KEGG inputs of the tile and heatmap tabs) is
+#' shown only when this is `TRUE`.
+#' @return `TRUE` when both packages are installed.
+#' @noRd
+kegg_installed <- function() {
+  requireNamespace("pathview", quietly = TRUE) && requireNamespace("KEGGREST", quietly = TRUE)
+}
+
 #' go_annotation_columns
 #' The GO annotation columns a feature table carries, out of `GO BP`, `GO MF`,
 #' and `GO CC`. Any subset is valid: Non-reference organisms often have only
@@ -366,21 +376,31 @@ is_url <- function(dataDir) {
 #' @return data.frame with one row per group combination
 #' @noRd
 dataSummary <- function(data, varname, groupnames) {
-  summary_func <- function(x, col) {
-    c(
-      mean = mean(x[[col]], na.rm = TRUE),
-      sd = stats::sd(x[[col]], na.rm = TRUE),
-      se = stats::sd(x[[col]], na.rm = TRUE) / sqrt(sum(!is.na(x[[col]])))
-    )
-  }
-  data_sum <- plyr::ddply(
-    data,
-    groupnames,
-    .fun = summary_func,
-    varname
-  )
-  data_sum <- plyr::rename(data_sum, c("mean" = varname))
-  return(data_sum)
+  data_sum <- data %>%
+    dplyr::group_by(dplyr::across(dplyr::all_of(groupnames))) %>%
+    dplyr::summarise(
+      mean = mean(.data[[varname]], na.rm = TRUE),
+      sd = stats::sd(.data[[varname]], na.rm = TRUE),
+      se = stats::sd(.data[[varname]], na.rm = TRUE) / sqrt(sum(!is.na(.data[[varname]]))),
+      .groups = "drop"
+    ) %>%
+    as.data.frame()
+  names(data_sum)[names(data_sum) == "mean"] <- varname
+  data_sum
+}
+
+
+# =============================================================================
+# Colour helpers
+# =============================================================================
+
+#' col2hex
+#' Convert R colour names or hex strings to `#RRGGBB`, dropping any alpha.
+#' @param x Character vector of colours
+#' @return Character vector of `#RRGGBB` strings
+#' @noRd
+col2hex <- function(x) {
+  grDevices::rgb(t(grDevices::col2rgb(x)), maxColorValue = 255)
 }
 
 
@@ -548,7 +568,7 @@ make_rep_heatmap <- function(data, title_suffix = "") {
           if (is.null(col_input)) {
             return("#808080FF")
           }
-          tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
+          tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
         },
         character(1)
       )
@@ -567,7 +587,7 @@ make_rep_heatmap <- function(data, title_suffix = "") {
         if (is.null(col_input)) {
           return("#808080FF")
         }
-        tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
+        tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
       },
       character(1)
     )
@@ -688,7 +708,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
         if (is.null(col_input)) {
           return("#808080FF")
         }
-        tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
+        tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
       },
       character(1)
     )
@@ -706,7 +726,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
           if (is.null(col_input)) {
             return("#808080FF")
           }
-          tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
+          tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
         },
         character(1)
       )
@@ -1389,6 +1409,11 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
     return(NULL)
   }
   counts <- counts[non_zero_rows, ]
+
+  if (!requireNamespace("glmpca", quietly = TRUE)) {
+    warning("GLM-PCA needs the glmpca package, which is not installed")
+    return(NULL)
+  }
 
   # GLM-PCA needs raw/normalized counts (not log-transformed)
   glmpca_result <- tryCatch(

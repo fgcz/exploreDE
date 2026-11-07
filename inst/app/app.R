@@ -7,39 +7,35 @@ cat("loading packages...\n\n")
 packagesToLoad <- c(
   "shiny",
   "shinydashboard",
-  "tidyverse",
+  "dplyr",
+  "tidyr",
+  "tibble",
+  "ggplot2",
   "ggpubr",
   "plotly",
+  "SummarizedExperiment",
   "DESeq2",
   "RColorBrewer",
+  "grid",
   "ComplexHeatmap",
   "clusterProfiler",
   "DT",
   "colourpicker",
-  "writexl",
   "circlize",
   "kableExtra",
   "ggrepel",
-  "gplots",
   "sortable",
   "waiter",
   "ggprism",
   "ggbeeswarm",
   "rstatix",
-  "gridExtra",
-  "shinylogs",
   "parallel",
-  "plyr",
-  "reshape2",
   "shinycssloaders",
   "shinyjs",
   "GGally",
-  "patchwork",
   "Matrix",
   "matrixStats",
-  "SingleCellExperiment",
   "fresh",
-  "pathview",
   "openxlsx",
   "dendextend",
   "officer"
@@ -651,12 +647,13 @@ server <- function(input, output, session) {
     # 3. Pathway tabs (Shown ONLY if RNASeq with DE results)
     if (dataType == "RNASeq" && eds$has_de()) {
       # Check if species is supported for KEGG (human, mouse, rat)
-      keggSpeciesSupported <- tryCatch(
-        {
-          !is.null(kegg_species_label(eds$ref_build()))
-        },
-        error = function(e) FALSE
-      )
+      keggSpeciesSupported <- kegg_installed() &&
+        tryCatch(
+          {
+            !is.null(kegg_species_label(eds$ref_build()))
+          },
+          error = function(e) FALSE
+        )
 
       pathwayItems <- list(
         tags$li(class = "header", "Pathway Analyses"),
