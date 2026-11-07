@@ -28,7 +28,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
     # Detect species -> KEGG organism code (only hsa/mmu/rno supported)
     goTileKeggReactive$keggCode <- tryCatch(
       {
-        spp <- kegg_species_label(eds$ref_build())
+        spp <- if (kegg_installed()) kegg_species_label(eds$ref_build())
         switch(spp %||% "", "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
       },
       error = function(e) NULL

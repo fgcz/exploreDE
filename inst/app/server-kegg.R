@@ -7,7 +7,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
     eds$contrast_label(selectedContrast())
   })
 
-  spp <- kegg_species_label(eds$ref_build())
+  spp <- if (kegg_installed()) kegg_species_label(eds$ref_build())
 
   observeEvent(
     {
@@ -92,7 +92,7 @@ output$keggOutput <- renderImage(
         # Change to temp directory where we have write permissions
         setwd(temp_dir)
 
-        pathview(
+        pathview::pathview(
           gene.data = keggPlotReactive$gD,
           gene.idtype = "ENSEMBL",
           pathway.id = keggPlotReactive$keggInput,
@@ -145,7 +145,7 @@ output$dlPlot_kegg <- downloadHandler(
 
         # Run pathview to generate the file
         # Note: pathview writes the file to the current working directory
-        pv.out <- pathview(
+        pv.out <- pathview::pathview(
           gene.data = keggPlotReactive$gD,
           gene.idtype = "ENSEMBL",
           pathway.id = keggPlotReactive$keggInput,

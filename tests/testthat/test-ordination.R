@@ -78,6 +78,7 @@ test_that("calculate_pcoa NMDS mode returns stress instead of variance", {
 # calculate_glmpca
 # ============================================================================
 test_that("calculate_glmpca runs on a small raw count matrix", {
+  skip_if_not_installed("glmpca")
   # glmpca expects genes x samples, raw counts
   set.seed(2)
   m <- matrix(rpois(20 * 10, lambda = 20), nrow = 20, ncol = 10, dimnames = list(paste0("g", 1:20), paste0("s", 1:10)))
@@ -86,6 +87,13 @@ test_that("calculate_glmpca runs on a small raw count matrix", {
   expect_equal(res$method, "GLM-PCA")
   expect_equal(res$component_names, c("dim1", "dim2"))
   expect_true("Name" %in% colnames(res$scores))
+})
+
+test_that("calculate_glmpca returns NULL with a warning when glmpca is not installed", {
+  skip_if(requireNamespace("glmpca", quietly = TRUE), "glmpca is installed")
+  m <- matrix(rpois(20 * 10, lambda = 20), nrow = 20, ncol = 10, dimnames = list(paste0("g", 1:20), paste0("s", 1:10)))
+  expect_warning(res <- calculate_glmpca(m, L = 2, family = "nb"), "glmpca package")
+  expect_null(res)
 })
 
 test_that("calculate_glmpca returns NULL for invalid family parameter", {

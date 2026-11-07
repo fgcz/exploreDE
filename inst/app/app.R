@@ -36,7 +36,6 @@ packagesToLoad <- c(
   "Matrix",
   "matrixStats",
   "fresh",
-  "pathview",
   "openxlsx",
   "dendextend",
   "officer"
@@ -648,12 +647,13 @@ server <- function(input, output, session) {
     # 3. Pathway tabs (Shown ONLY if RNASeq with DE results)
     if (dataType == "RNASeq" && eds$has_de()) {
       # Check if species is supported for KEGG (human, mouse, rat)
-      keggSpeciesSupported <- tryCatch(
-        {
-          !is.null(kegg_species_label(eds$ref_build()))
-        },
-        error = function(e) FALSE
-      )
+      keggSpeciesSupported <- kegg_installed() &&
+        tryCatch(
+          {
+            !is.null(kegg_species_label(eds$ref_build()))
+          },
+          error = function(e) FALSE
+        )
 
       pathwayItems <- list(
         tags$li(class = "header", "Pathway Analyses"),

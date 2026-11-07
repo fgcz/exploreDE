@@ -22,6 +22,16 @@ kegg_species_label <- function(ref_build) {
   switch(genus_species, Homo_sapiens = "Human", Mus_musculus = "Mouse", Rattus_norvegicus = "Rat", NULL)
 }
 
+#' kegg_installed
+#' The KEGG views need pathview and KEGGREST, both in Suggests. Every KEGG
+#' entry point (menu items, the KEGG inputs of the tile and heatmap tabs) is
+#' shown only when this is `TRUE`.
+#' @return `TRUE` when both packages are installed.
+#' @noRd
+kegg_installed <- function() {
+  requireNamespace("pathview", quietly = TRUE) && requireNamespace("KEGGREST", quietly = TRUE)
+}
+
 #' go_annotation_columns
 #' The GO annotation columns a feature table carries, out of `GO BP`, `GO MF`,
 #' and `GO CC`. Any subset is valid: Non-reference organisms often have only
@@ -1399,6 +1409,11 @@ calculate_glmpca <- function(counts, L = 10, family = "nb", X = NULL) {
     return(NULL)
   }
   counts <- counts[non_zero_rows, ]
+
+  if (!requireNamespace("glmpca", quietly = TRUE)) {
+    warning("GLM-PCA needs the glmpca package, which is not installed")
+    return(NULL)
+  }
 
   # GLM-PCA needs raw/normalized counts (not log-transformed)
   glmpca_result <- tryCatch(

@@ -22,6 +22,7 @@ test_that("banana_tier maps p-values to 0-4 on the shared cutpoints", {
 })
 
 test_that("banana_on is just the toggle state (asset always embedded)", {
+  skip_if_not_installed("ggtext")
   expect_true(banana_on(TRUE))
   expect_false(banana_on(FALSE))
   expect_false(banana_on(NA))
@@ -39,6 +40,7 @@ test_that("banana_md builds n <img> tags, empty when n < 1", {
 })
 
 test_that("banana_layer returns NULL when nothing is significant or cols missing", {
+  skip_if_not_installed("ggtext")
   d_ns <- data.frame(Feature = c("A", "B"), fdr = c(0.5, 0.9))
   expect_null(banana_layer(d_ns, x = 1.5, y = 10, fdr_col = "fdr"))
   expect_null(banana_layer(data.frame(x = 1), x = 1, y = 1, fdr_col = "fdr"))

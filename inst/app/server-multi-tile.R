@@ -182,7 +182,7 @@ observe({
     refBuild <- multiDeReactive$results[[1]]$param$ezRef@refBuild
   }
   code <- NULL
-  if (!is.null(refBuild)) {
+  if (!is.null(refBuild) && kegg_installed()) {
     if (grepl("Homo_sapiens|GRCh|hg", refBuild, ignore.case = TRUE)) {
       code <- "hsa"
     } else if (grepl("Mus_musculus|GRCm|mm", refBuild, ignore.case = TRUE)) {
