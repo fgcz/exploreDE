@@ -372,7 +372,7 @@ observeEvent(
           defaultCol <- rep(catalystCols, times = 5)[i]
           return(paste0(defaultCol, "FF"))
         }
-        col <- tryCatch(gplots::col2hex(col), error = function(e) "#000000")
+        col <- tryCatch(col2hex(col), error = function(e) "#000000")
         paste0(col, "FF")
       }),
       names(multiDeReactive$results)
@@ -835,7 +835,7 @@ observeEvent(
               if (is.null(col)) {
                 return("#000000FF")
               }
-              col <- tryCatch(gplots::col2hex(col), error = function(e) "#000000")
+              col <- tryCatch(col2hex(col), error = function(e) "#000000")
               paste0(col, "FF")
             }),
             names(multiDeReactive$results)

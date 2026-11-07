@@ -174,7 +174,7 @@ if (eds$data_type() == "RNASeq" && length(.ora_raw()) > 0) {
               sheets_list[[sheet_name]] <- .res_df(enrich_obj)
             }
           }
-          write_xlsx(sheets_list, file)
+          openxlsx::write.xlsx(sheets_list, file)
         }
       )
 

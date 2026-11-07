@@ -197,7 +197,7 @@ output$dlColourTemplate <- downloadHandler(
       character(1),
       USE.NAMES = FALSE
     )
-    writexl::write_xlsx(x = colourTemplate, path = file)
+    openxlsx::write.xlsx(colourTemplate, file)
   }
 )
 

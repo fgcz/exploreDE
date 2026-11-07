@@ -293,7 +293,7 @@ output$goTileOutput <- renderPlot(
       grid.grabExpr(draw_heatmap(hm, legend_dx = input$goTileLegendDX, legend_dy = input$goTileLegendDY))
     })
 
-    grid.arrange(grobs = grobList, ncol = length(grobList))
+    cowplot::plot_grid(plotlist = grobList, ncol = length(grobList))
   },
   width = function() {
     as.numeric(input$figWidthGoTile)
@@ -320,7 +320,7 @@ output$dlGoTilePlot <- downloadHandler(
         grobList <- lapply(figuresDataReactive$goTilePlot, function(hm) {
           grid.grabExpr(draw_heatmap(hm, legend_dx = input$goTileLegendDX, legend_dy = input$goTileLegendDY))
         })
-        grid.arrange(grobs = grobList, ncol = length(grobList))
+        print(cowplot::plot_grid(plotlist = grobList, ncol = length(grobList)))
       },
       filename = file,
       format = tolower(input$downloadFormatGoTile),

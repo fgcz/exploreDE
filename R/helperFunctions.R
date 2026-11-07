@@ -381,6 +381,20 @@ dataSummary <- function(data, varname, groupnames) {
 
 
 # =============================================================================
+# Colour helpers
+# =============================================================================
+
+#' col2hex
+#' Convert R colour names or hex strings to `#RRGGBB`, dropping any alpha.
+#' @param x Character vector of colours
+#' @return Character vector of `#RRGGBB` strings
+#' @noRd
+col2hex <- function(x) {
+  grDevices::rgb(t(grDevices::col2rgb(x)), maxColorValue = 255)
+}
+
+
+# =============================================================================
 # Heatmap helpers (used by server-heatmap2.R)
 # =============================================================================
 
@@ -544,7 +558,7 @@ make_rep_heatmap <- function(data, title_suffix = "") {
           if (is.null(col_input)) {
             return("#808080FF")
           }
-          tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
+          tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
         },
         character(1)
       )
@@ -563,7 +577,7 @@ make_rep_heatmap <- function(data, title_suffix = "") {
         if (is.null(col_input)) {
           return("#808080FF")
         }
-        tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
+        tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
       },
       character(1)
     )
@@ -684,7 +698,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
         if (is.null(col_input)) {
           return("#808080FF")
         }
-        tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
+        tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
       },
       character(1)
     )
@@ -702,7 +716,7 @@ make_rep_dendrogram <- function(data, title_suffix = "") {
           if (is.null(col_input)) {
             return("#808080FF")
           }
-          tryCatch(paste0(gplots::col2hex(col_input), "FF"), error = function(e) "#808080FF")
+          tryCatch(paste0(col2hex(col_input), "FF"), error = function(e) "#808080FF")
         },
         character(1)
       )
