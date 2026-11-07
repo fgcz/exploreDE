@@ -56,8 +56,6 @@ labels such as `organism`, `ref_build`, and `factors`.
 ``` r
 library(exploreDE)
 library(SummarizedExperiment)
-#> Warning: replacing previous import 'S4Arrays::makeNindexFromArrayViewport' by
-#> 'DelayedArray::makeNindexFromArrayViewport' when loading 'SummarizedExperiment'
 out_dir <- tempdir()
 ```
 
@@ -121,8 +119,6 @@ build_explore_h5ad(
   pathways  = list(diff_vs_undiff = list(ora  = metadata(se)$enrichResult,
                                           gsea = metadata(se)$enrichResultGSEA))
 )
-#> Loading required namespace: DOSE
-#> 
 ```
 
 `de` and `pathways` are named by contrast; add one entry per contrast.
@@ -374,67 +370,90 @@ sessionInfo()
 #> [11] exploreDE_3.10.0           
 #> 
 #> loaded via a namespace (and not attached):
-#>   [1] RColorBrewer_1.1-3          jsonlite_2.0.0             
-#>   [3] tidydr_0.0.7                magrittr_2.0.5             
-#>   [5] ggtangle_0.1.5              farver_2.1.2               
-#>   [7] rmarkdown_2.32              fs_2.1.0                   
-#>   [9] ragg_1.5.2                  vctrs_0.7.3                
-#>  [11] memoise_2.0.1               ggtree_4.3.0               
-#>  [13] htmltools_0.5.9             S4Arrays_1.13.2            
-#>  [15] BiocBaseUtils_1.15.1        Rhdf5lib_2.1.0             
-#>  [17] SparseArray_1.13.4          rhdf5_2.57.20              
-#>  [19] gridGraphics_0.5-1          sass_0.4.10                
-#>  [21] bslib_0.12.0                htmlwidgets_1.6.4          
-#>  [23] desc_1.4.3                  plyr_1.8.9                 
-#>  [25] httr2_1.3.0                 cachem_1.1.0               
-#>  [27] igraph_2.3.4                lifecycle_1.0.5            
-#>  [29] pkgconfig_2.0.3             gson_0.2.2                 
-#>  [31] Matrix_1.7-6                R6_2.6.1                   
-#>  [33] fastmap_1.2.0               anndataR_1.3.4             
-#>  [35] digest_0.6.39               aplot_0.3.2                
-#>  [37] enrichplot_1.99.8           ggnewscale_0.5.2           
-#>  [39] patchwork_1.3.2             AnnotationDbi_1.75.2       
-#>  [41] aisdk_1.4.12                ps_1.9.3                   
-#>  [43] textshaping_1.0.5           RSQLite_3.53.3             
-#>  [45] beachmat_2.29.3             polyclip_1.10-7            
-#>  [47] httr_1.4.9                  abind_1.4-8                
-#>  [49] compiler_4.6.2              bit64_4.8.6                
-#>  [51] fontquiver_0.2.1            withr_3.0.3                
-#>  [53] S7_0.2.2                    BiocParallel_1.47.0        
-#>  [55] DBI_1.3.0                   ggforce_0.5.0              
-#>  [57] MASS_7.3-66                 rappdirs_0.3.4             
-#>  [59] DelayedArray_0.39.8         gtools_3.9.5               
-#>  [61] tools_4.6.2                 otel_0.2.0                 
-#>  [63] ape_5.8-1                   scatterpie_0.2.6           
-#>  [65] glue_1.8.1                  callr_3.8.0                
-#>  [67] nlme_3.1-171                GOSemSim_2.39.4            
-#>  [69] rhdf5filters_1.25.5         grid_4.6.2                 
-#>  [71] cluster_2.1.8.3             reshape2_1.4.5             
-#>  [73] gtable_0.3.6                tidyr_1.3.2                
-#>  [75] XVector_0.53.0              ggrepel_0.9.8              
-#>  [77] pillar_1.11.1               stringr_1.6.0              
-#>  [79] yulab.utils_0.2.5           splines_4.6.2              
-#>  [81] tweenr_2.0.3                dplyr_1.2.1                
-#>  [83] treeio_1.37.1               lattice_0.23-1             
-#>  [85] bit_4.6.0                   tidyselect_1.2.1           
-#>  [87] fontLiberation_0.1.0        GO.db_3.23.1               
-#>  [89] SingleCellExperiment_1.35.2 Biostrings_2.81.9          
-#>  [91] scuttle_1.23.2              knitr_1.52                 
-#>  [93] fontBitstreamVera_0.1.1     xfun_0.62                  
-#>  [95] stringi_1.8.9               lazyeval_0.2.3             
-#>  [97] ggfun_0.2.2                 yaml_2.3.12                
-#>  [99] evaluate_1.0.5              codetools_0.2-20           
-#> [101] qvalue_2.45.0               gdtools_0.5.3              
-#> [103] tibble_3.3.1                ggplotify_0.1.4            
-#> [105] cli_3.6.6                   reticulate_1.47.0          
-#> [107] systemfonts_1.3.2           processx_3.9.0             
-#> [109] jquerylib_0.1.4             Rcpp_1.1.2                 
-#> [111] png_0.1-9                   parallel_4.6.2             
-#> [113] pkgdown_2.2.1               ggplot2_4.0.3              
-#> [115] blob_1.3.0                  clusterProfiler_4.21.4     
-#> [117] DOSE_4.7.3                  tidytree_0.4.8             
-#> [119] ggiraph_0.9.6               enrichit_0.2.7             
-#> [121] scales_1.4.0                purrr_1.2.2                
-#> [123] crayon_1.5.3                rlang_1.3.0                
-#> [125] KEGGREST_1.53.6
+#>   [1] splines_4.6.2               later_1.4.8                
+#>   [3] ggplotify_0.1.4             tibble_3.3.1               
+#>   [5] polyclip_1.10-7             enrichit_0.2.7             
+#>   [7] httr2_1.3.0                 lifecycle_1.0.5            
+#>   [9] rstatix_1.1.0               rprojroot_2.1.1            
+#>  [11] processx_3.9.0              lattice_0.23-1             
+#>  [13] MASS_7.3-66                 backports_1.5.1            
+#>  [15] magrittr_2.0.5              plotly_4.12.1              
+#>  [17] sass_0.4.10                 rmarkdown_2.32             
+#>  [19] jquerylib_0.1.4             yaml_2.3.12                
+#>  [21] httpuv_1.6.17               otel_0.2.0                 
+#>  [23] ggtangle_0.1.5              zip_3.0.2                  
+#>  [25] askpass_1.2.1               reticulate_1.47.0          
+#>  [27] ggvenn_0.1.19               cowplot_1.2.0              
+#>  [29] DBI_1.3.0                   RColorBrewer_1.1-3         
+#>  [31] abind_1.4-8                 purrr_1.2.2                
+#>  [33] yulab.utils_0.2.5           tweenr_2.0.3               
+#>  [35] rappdirs_0.3.4              aisdk_1.4.12               
+#>  [37] gdtools_0.5.3               enrichplot_1.99.8          
+#>  [39] ggrepel_0.9.8               tidytree_0.4.8             
+#>  [41] pkgdown_2.2.1               svglite_2.2.2              
+#>  [43] codetools_0.2-20            DelayedArray_0.39.8        
+#>  [45] scuttle_1.23.2              DOSE_4.7.3                 
+#>  [47] DT_0.34.0                   xml2_1.6.0                 
+#>  [49] ggforce_0.5.0               tidyselect_1.2.1           
+#>  [51] aplot_0.3.2                 farver_2.1.2               
+#>  [53] jsonlite_2.0.0              waiter_0.2.5.1             
+#>  [55] Formula_1.2-6               systemfonts_1.3.2          
+#>  [57] tools_4.6.2                 ggnewscale_0.5.2           
+#>  [59] treeio_1.37.1               ragg_1.5.2                 
+#>  [61] Rcpp_1.1.2                  glue_1.8.1                 
+#>  [63] SparseArray_1.13.4          BiocBaseUtils_1.15.1       
+#>  [65] xfun_0.62                   qvalue_2.45.0              
+#>  [67] dplyr_1.2.1                 shinydashboard_0.7.3       
+#>  [69] withr_3.0.3                 fastmap_1.2.0              
+#>  [71] GGally_2.4.0                rhdf5filters_1.25.5        
+#>  [73] shinyjs_2.1.1               openssl_2.5.0              
+#>  [75] callr_3.8.0                 digest_0.6.39              
+#>  [77] R6_2.6.1                    mime_0.13                  
+#>  [79] gridGraphics_0.5-1          textshaping_1.0.5          
+#>  [81] colorspace_2.1-4            GO.db_3.24.0               
+#>  [83] gtools_3.9.5                RSQLite_3.53.3             
+#>  [85] tidyr_1.3.2                 fontLiberation_0.1.0       
+#>  [87] data.table_1.18.6.1         S4Arrays_1.13.2            
+#>  [89] httr_1.4.9                  htmlwidgets_1.6.4          
+#>  [91] scatterpie_0.2.6            ggstats_0.14.0             
+#>  [93] pkgconfig_2.0.3             gtable_0.3.6               
+#>  [95] blob_1.3.0                  S7_0.2.2                   
+#>  [97] SingleCellExperiment_1.35.2 XVector_0.53.0             
+#>  [99] clusterProfiler_4.21.4      htmltools_0.5.9            
+#> [101] fontBitstreamVera_0.1.1     carData_3.0-6              
+#> [103] scales_1.4.0                kableExtra_1.4.1           
+#> [105] fresh_0.2.2                 png_0.1-9                  
+#> [107] ggfun_0.2.2                 knitr_1.52                 
+#> [109] rstudioapi_0.19.0           reshape2_1.4.5             
+#> [111] uuid_1.2-2                  nlme_3.1-171               
+#> [113] anndataR_1.3.4              cachem_1.1.0               
+#> [115] rhdf5_2.57.20               stringr_1.6.0              
+#> [117] parallel_4.6.2              miniUI_0.1.2               
+#> [119] vipor_0.4.7                 shinycssloaders_1.1.0      
+#> [121] AnnotationDbi_1.75.2        desc_1.4.3                 
+#> [123] pillar_1.11.1               grid_4.6.2                 
+#> [125] vctrs_0.7.3                 promises_1.5.0             
+#> [127] ggpubr_1.0.0                car_3.1-5                  
+#> [129] tidydr_0.0.7                beachmat_2.29.3            
+#> [131] xtable_1.8-8                cluster_2.1.8.3            
+#> [133] beeswarm_0.4.0              evaluate_1.0.5             
+#> [135] cli_3.6.6                   compiler_4.6.2             
+#> [137] rlang_1.3.0                 crayon_1.5.3               
+#> [139] sortable_0.6.0              ggsignif_0.6.4             
+#> [141] ps_1.9.3                    plyr_1.8.9                 
+#> [143] fs_2.1.0                    ggbeeswarm_0.7.3           
+#> [145] ggiraph_0.9.6               stringi_1.8.9              
+#> [147] BiocParallel_1.47.0         viridisLite_0.4.3          
+#> [149] assertthat_0.2.1            Biostrings_2.81.9          
+#> [151] lazyeval_0.2.3              colourpicker_1.3.0         
+#> [153] GOSemSim_2.39.4             fontquiver_0.2.1           
+#> [155] Matrix_1.7-6                patchwork_1.3.2            
+#> [157] bit64_4.8.6                 ggplot2_4.0.3              
+#> [159] learnr_0.11.6               Rhdf5lib_2.1.0             
+#> [161] KEGGREST_1.53.6             shiny_1.14.0               
+#> [163] igraph_2.3.4                broom_1.0.13               
+#> [165] memoise_2.0.1               bslib_0.12.0               
+#> [167] ggtree_4.3.0                bit_4.6.0                  
+#> [169] officer_0.7.7               gson_0.2.2                 
+#> [171] ape_5.8-1
 ```

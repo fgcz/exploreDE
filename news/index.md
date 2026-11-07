@@ -138,6 +138,17 @@
   (pathview) or when reaching the Venn diagram (ggvenn). The two
   `shinyalert` pop-ups are now Shiny’s own modal and notification, so
   shinyalert is no longer needed.
+- Installing exploreDE no longer pulls in tidyverse, patchwork,
+  shinylogs, SingleCellExperiment, plyr, reshape2, gplots, gridExtra or
+  writexl. The app attached the first four but never called them; the
+  other five did small jobs that dplyr, tidyr, cowplot, openxlsx and
+  base R already do.
+- pathview, KEGGREST, glmpca, ggtext, gridtext, png and BiocManager are
+  optional (Suggests). Without pathview, the KEGG tabs and the KEGG
+  inputs of the Heatmap and tile tabs are hidden; without glmpca,
+  Ordination does not offer GLM-PCA; without ggtext and gridtext, custom
+  level labels show as plain text. The README gives the install line; a
+  deployment that should keep these features must install them.
 - Heatmap and Ordination treat peptide and phospho datasets like protein
   datasets when choosing the batch-correction defaults: with two
   factors, the design is locked to the group factor, as Boxplot and

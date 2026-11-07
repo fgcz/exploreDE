@@ -12,6 +12,8 @@ the bring-your-own-data vignette, changelog).
 ``` r
 install.packages("BiocManager")
 BiocManager::install("fgcz/exploreDE") # pulls in the Bioconductor dependencies (anndataR >= 1.2.3: Bioconductor >= 3.23)
+# optional: KEGG views, GLM-PCA, formatted level labels (hidden or plain without them)
+BiocManager::install(c("pathview", "glmpca", "ggtext", "gridtext"))
 
 library(exploreDE)
 exploreDE()                   # landing page: upload a file or load the demo
