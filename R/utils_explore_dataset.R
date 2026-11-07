@@ -444,9 +444,9 @@ eds_load_se <- function(input) {
   if (!length(tabs)) {
     return(NULL)
   }
-  # rbind.fill, not rbind: ORA and GSEA result frames carry different columns
+  # bind_rows, not rbind: ORA and GSEA result frames carry different columns
   # (GeneRatio/Count vs NES/enrichmentScore) and both must survive.
-  out <- plyr::rbind.fill(tabs)
+  out <- dplyr::bind_rows(tabs)
   if (!is.null(padj_max) && "p.adjust" %in% colnames(out)) {
     out <- out[!is.na(out$p.adjust) & out$p.adjust <= padj_max, , drop = FALSE]
   }
@@ -530,7 +530,7 @@ eds_load_se <- function(input) {
   stats::setNames(
     lapply(onts, function(ont) {
       r <- tidy[tidy$ontology == ont, setdiff(colnames(tidy), c("method", "ontology")), drop = FALSE]
-      r <- r[, vapply(r, function(col) !all(is.na(col)), logical(1)), drop = FALSE] # rbind.fill padding
+      r <- r[, vapply(r, function(col) !all(is.na(col)), logical(1)), drop = FALSE] # bind_rows padding
       rownames(r) <- r$ID
       if (!gsea) {
         return(methods::new(

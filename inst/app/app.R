@@ -33,7 +33,6 @@ packagesToLoad <- c(
   "rstatix",
   "gridExtra",
   "parallel",
-  "plyr",
   "reshape2",
   "shinycssloaders",
   "shinyjs",

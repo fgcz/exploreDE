@@ -42,3 +42,15 @@ test_that("every unqualified call in inst/app reaches a package app.R attaches b
   exported <- unique(unlist(lapply(c(app_packages(), default_packages), exports_of)))
   expect_setequal(setdiff(app_unqualified_calls(), exported), character(0))
 })
+
+test_that("no package app.R attaches masks a dplyr function the app calls", {
+  search_order <- rev(app_packages())
+  dplyr_own <- Filter(
+    function(n) identical(environmentName(environment(getExportedValue("dplyr", n))), "dplyr"),
+    intersect(app_unqualified_calls(), exports_of("dplyr"))
+  )
+  for (n in dplyr_own) {
+    first <- search_order[vapply(search_order, function(p) n %in% exports_of(p), logical(1))][1]
+    expect_identical(getExportedValue(first, n), getExportedValue("dplyr", n), label = paste0(first, "::", n))
+  }
+})

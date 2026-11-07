@@ -241,7 +241,7 @@ ExploreDataset <- R6::R6Class(
       if (!length(tabs)) {
         return(data.frame())
       }
-      plyr::rbind.fill(tabs)
+      dplyr::bind_rows(tabs)
     },
 
     # The p.adjust cut applied to the stored tidy mirror, or NA when the tables

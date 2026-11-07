@@ -44,7 +44,6 @@ Imports:
   rstatix,
   gridExtra,
   parallel,
-  plyr,
   reshape2,
   shinyjs,
   shinycssloaders,
