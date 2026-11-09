@@ -1,5 +1,6 @@
 # exploreDE 3.10.0
 
+- Heatmaps: a "Sample ratios" setting defines log2 ratios between any two sets of samples (the difference of their mean log2 values on the chosen count method, always taken on the log2 scale, with no statistics; a ratio keeps the count method and batch setting it was added with), and a "Ratios" heatmap shows the features with the most variable or the largest ratios across the ratios chosen, next to each contrast's log2 fold change. Ratios are not kept in saved sessions.
 - Security: an `.h5ad` can no longer run code when its pathway tabs open. The reader decoded `uns$enrichment_native` with `unserialize()`, which runs code embedded in the file; that block is now ignored, and `export_h5ad_to_parquet()` no longer copies it. Files written before 2026-09-25 that carry their ORA/GSEA results only in that block show no enrichment; rebuild them with `build_explore_h5ad()`.
 - Security: a `?data=` link whose path contains "zip" no longer loads a fixed 2023 proteomics dataset over `ssh` before the access check; that leftover debugging branch is removed.
 - Security: Multi DE "Browse Projects" lists a project's analysis folders only for users with access to it. A link the user was denied no longer leaves its project browsable after loading the demo or an upload.
