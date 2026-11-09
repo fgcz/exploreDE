@@ -212,8 +212,10 @@ observeEvent(
 
 # Rebuild multiDeReactive$results from a saved session's dataset list. Link
 # datasets are re-read from gStore; contrast datasets are taken from the ones
-# the loaded dataset already put in Multi DE. Returns a note for the status
-# message ("" when the session has no Multi DE datasets).
+# the loaded dataset already put in Multi DE; upload datasets from the files
+# added again before the restore (the files themselves are never saved).
+# Returns a note for the status message ("" when the session has no Multi DE
+# datasets).
 restore_multi_datasets <- function(datasets) {
   if (!length(datasets)) {
     return("")
@@ -223,6 +225,7 @@ restore_multi_datasets <- function(datasets) {
   res <- withProgress(message = "Restoring Multi DE datasets", value = 0, {
     out <- list()
     missing <- character()
+    missing_uploads <- character()
     for (d in datasets) {
       incProgress(1 / length(datasets), detail = d[["name"]])
       obj <- NULL
@@ -233,12 +236,31 @@ restore_multi_datasets <- function(datasets) {
           if (!is.null(obj)) obj$source <- list(kind = "link", link = resolved$link)
         }
       } else if (identical(d[["source"]], "contrast")) {
-        hit <- Filter(function(x) identical(x[["source"]][["contrast"]], d[["contrast"]]), current)
+        hit <- Filter(
+          function(x) {
+            identical(x[["source"]][["kind"]], "contrast") && identical(x[["source"]][["contrast"]], d[["contrast"]])
+          },
+          current
+        )
         if (length(hit)) obj <- hit[[1]]
+      } else if (identical(d[["source"]], "upload")) {
+        hit <- Filter(
+          function(x) {
+            identical(x[["source"]][["kind"]], "upload") &&
+              identical(x[["source"]][["file"]], d[["file"]]) &&
+              identical(x[["source"]][["contrast"]], d[["contrast"]])
+          },
+          current
+        )
+        if (length(hit)) obj <- hit[[1]] else missing_uploads <- c(missing_uploads, d[["file"]])
       }
-      if (is.null(obj)) missing <- c(missing, d[["name"]]) else out[[d[["name"]]]] <- obj
+      if (!is.null(obj)) {
+        out[[d[["name"]]]] <- obj
+      } else if (!identical(d[["source"]], "upload")) {
+        missing <- c(missing, d[["name"]])
+      }
     }
-    list(out = out, missing = missing)
+    list(out = out, missing = missing, missing_uploads = unique(missing_uploads))
   })
   if (length(res$out)) {
     multiDeReactive$results <- res$out
@@ -247,6 +269,14 @@ restore_multi_datasets <- function(datasets) {
   note <- sprintf(" Multi DE: %d of %d datasets restored.", length(res$out), length(datasets))
   if (length(res$missing)) {
     note <- paste0(note, " Not found or not accessible: ", paste(res$missing, collapse = ", "), ".")
+  }
+  if (length(res$missing_uploads)) {
+    note <- paste0(
+      note,
+      " Uploaded files are not saved: add ",
+      paste(res$missing_uploads, collapse = ", "),
+      " again in Multi DE's Data Selection, then load the session once more."
+    )
   }
   note
 }

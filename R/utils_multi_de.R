@@ -99,3 +99,60 @@ multi_load_de_result <- function(path) {
   eds <- new_explore_dataset(se)
   legacy_multi_contrast_from_eds(eds, eds$primary_contrast())
 }
+
+#' Label of a dataset added from an uploaded file
+#'
+#' The file name without its extension, reduced to letters, digits, `_` and
+#' `-` (the label becomes part of Multi DE input ids) and made unique against
+#' the labels already in use.
+#'
+#' @param filename The uploaded file's name.
+#' @param existing Labels already in use.
+#' @return Character(1).
+#' @noRd
+multi_upload_label <- function(filename, existing = character()) {
+  label <- tools::file_path_sans_ext(basename(filename))
+  label <- gsub("[^A-Za-z0-9_-]+", "_", label)
+  label <- gsub("^_+|_+$", "", label)
+  if (!nzchar(label)) {
+    label <- "upload"
+  }
+  make.unique(c(existing, label), sep = "_")[length(existing) + 1L]
+}
+
+#' Multi DE records of every contrast of a dataset
+#'
+#' One record per contrast, built with `legacy_multi_contrast_from_eds()`.
+#' With a `label` the records are named `<label>_<contrast>`, so contrasts of
+#' several datasets can sit side by side; without one they carry the bare
+#' contrast names. The source recorded for saved sessions is the upload
+#' (`kind = "upload"`, with the file's label) when `uploaded` is `TRUE`, else
+#' the loaded dataset's own contrast (`kind = "contrast"`). A contrast whose
+#' record cannot be built is left out and named, with the error message, in
+#' the `failed` attribute.
+#'
+#' @param eds An `ExploreDataset`.
+#' @param label The dataset's label, or `NULL`.
+#' @param uploaded Whether the dataset came from a file added for Multi DE.
+#' @return A named list of Multi DE records (empty when the dataset has no
+#'   contrasts), with attribute `failed`: a character vector of error messages
+#'   named by contrast, empty when every record was built.
+#' @noRd
+multi_records_from_dataset <- function(eds, label = NULL, uploaded = !is.null(label)) {
+  out <- list()
+  failed <- character()
+  for (con in eds$contrasts()) {
+    obj <- tryCatch(legacy_multi_contrast_from_eds(eds, con), error = function(e) e)
+    if (inherits(obj, "error")) {
+      failed[[con]] <- conditionMessage(obj)
+      next
+    }
+    obj$source <- if (uploaded) {
+      list(kind = "upload", file = label, contrast = con)
+    } else {
+      list(kind = "contrast", contrast = con)
+    }
+    out[[if (is.null(label)) con else paste0(label, "_", con)]] <- obj
+  }
+  structure(out, failed = failed)
+}

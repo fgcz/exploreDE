@@ -40,10 +40,13 @@ exploreDE("my_data.h5ad")   # open straight into your file
 exploreDE()                 # or start on the landing page
 ```
 
-On the landing page, use **Choose an exploreDE .h5ad file** to upload
-your file (up to 1 GB), or load the demo dataset. The file is read into
-memory for your session only. The menu then shows only the tabs your data
-supports: DE tabs need a DE table, and pathway tabs need pathway results.
+On the landing page, use **Choose exploreDE .h5ad file(s)** to upload
+your file (up to 1 GB per upload), or load the demo dataset. The file is
+read into memory for your session only. The menu then shows only the tabs
+your data supports: DE tabs need a DE table, and pathway tabs need pathway
+results. To compare contrasts across files, upload several at once: the
+first opens in the tabs, and the contrasts of all of them are loaded into
+the Multi DE tabs, where **Data Selection** can add more files later.
 
 ## What goes into a file
 

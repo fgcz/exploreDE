@@ -113,6 +113,7 @@ display names (after any renaming):
 |---|---|---|
 | `link` | `link`: A result directory relative to a gStore root (`p<project>/<analysis>/<contrast>`) | Re-reading it through `multi_resolve_dataset()` and the same project check as the Data Selection tab |
 | `contrast` | `contrast`: A contrast of the loaded dataset (proteomics and uploaded `.h5ad` datasets fill Multi DE with their own contrasts) | Taking the matching contrast the loaded dataset provides |
+| `upload` | `file`: The label of an `.h5ad` added for Multi DE (its file name without the extension, reduced to letters, digits, `_` and `-`, with `_1`, `_2`, ... when a file of that label is already there); `contrast`: A contrast of that file | Taking the matching contrast of a file with that label added again before the session is loaded. The files themselves are never saved, and a file is known by its label alone: files of the same name added in another order swap. |
 
 Datasets that can't be found or aren't accessible to the user are skipped,
 and the restore message names them. Entries with any other `source` are
@@ -152,3 +153,4 @@ up, and save again.
 | 2026-09 | `.rds`, bundle version 1 | Save / Load Session (beta), single dataset. |
 | 2026-10-29 | `exploreDE-session/2` | JSON format; Multi DE datasets and settings. |
 | 2026-10-30 | `exploreDE-session/2` | `.rds` removed (exploreDE 3.9.0); Save / Load Session out of beta. |
+| 2026-11-09 | `exploreDE-session/2` | Multi DE datasets from uploaded files (`source: upload`). |

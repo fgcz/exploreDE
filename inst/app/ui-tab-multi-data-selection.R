@@ -18,6 +18,9 @@ tabItem(
           "If you load multiple DE results from the same FeatureCounts dataset (RNA-seq) or multiple proteomics datasets, you can create integrated boxplots to compare expression levels directly. "
         ),
         tags$p(
+          "You can also upload exploreDE .h5ad files of your own: the contrasts of each join the datasets here, named <file>_<contrast>. "
+        ),
+        tags$p(
           "Select contrasts below to begin your integrated analysis."
         )
       ),

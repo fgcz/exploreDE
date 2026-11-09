@@ -145,13 +145,16 @@ save_state_multi_inputs <- function(x) {
 #' Describe the loaded Multi DE datasets for a saved session
 #'
 #' One entry per dataset, in display order: Its display name and where it came
-#' from, either a gStore link (`source = "link"`, root-relative) or a contrast
-#' of the loaded dataset (`source = "contrast"`). Datasets without a recorded
+#' from, a gStore link (`source = "link"`, root-relative), a contrast of the
+#' loaded dataset (`source = "contrast"`) or a contrast of an uploaded file
+#' (`source = "upload"`, with the file's label). Datasets without a recorded
 #' source are left out.
 #'
 #' @param results `multiDeReactive$results`: A named list of Multi DE objects,
-#'   each carrying `$source` (`list(kind, link)` or `list(kind, contrast)`).
-#' @return A list of `list(name, source, link)` / `list(name, source, contrast)`.
+#'   each carrying `$source` (`list(kind, link)`, `list(kind, contrast)` or
+#'   `list(kind, file, contrast)`).
+#' @return A list of `list(name, source, link)` / `list(name, source, contrast)`
+#'   / `list(name, source, file, contrast)`.
 #' @noRd
 save_state_multi_datasets <- function(results) {
   out <- list()
@@ -162,6 +165,8 @@ save_state_multi_datasets <- function(results) {
       out[[length(out) + 1L]] <- list(name = nm, source = "link", link = src[["link"]])
     } else if (identical(kind, "contrast") && is.character(src[["contrast"]])) {
       out[[length(out) + 1L]] <- list(name = nm, source = "contrast", contrast = src[["contrast"]])
+    } else if (identical(kind, "upload") && is.character(src[["file"]]) && is.character(src[["contrast"]])) {
+      out[[length(out) + 1L]] <- list(name = nm, source = "upload", file = src[["file"]], contrast = src[["contrast"]])
     }
   }
   out
@@ -274,12 +279,19 @@ save_state_from_json <- function(path, max_bytes = 5 * 1024^2) {
   if (!is.null(multi)) {
     ds <- lapply(multi[["datasets"]] %||% list(), function(d) {
       kind <- one(d[["source"]])
-      ref <- if (identical(kind, "link")) one(d[["link"]]) else one(d[["contrast"]])
-      if (!kind %in% c("link", "contrast") || is.na(ref) || is.na(one(d[["name"]]))) {
+      name <- one(d[["name"]])
+      if (is.na(name) || !kind %in% c("link", "contrast", "upload")) {
         return(NULL)
       }
-      out <- list(name = one(d[["name"]]), source = kind)
-      out[[if (kind == "link") "link" else "contrast"]] <- ref
+      refs <- switch(kind, link = "link", contrast = "contrast", upload = c("file", "contrast"))
+      out <- list(name = name, source = kind)
+      for (r in refs) {
+        v <- one(d[[r]])
+        if (is.na(v)) {
+          return(NULL)
+        }
+        out[[r]] <- v
+      }
       out
     })
     mi <- multi[["inputs"]]

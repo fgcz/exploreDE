@@ -8,7 +8,8 @@ exploreDE(file = NULL, ...)
 }
 \arguments{
 \item{file}{Optional path to an exploreDE \code{.h5ad}, a SummarizedExperiment
-\code{.rds}/\code{.qs2}, or a SUSHI result directory.}
+\code{.rds}/\code{.qs2}, or a SUSHI result directory; or several paths, the first of
+which opens in the tabs, the others going to Multi DE.}
 
 \item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}} (e.g. \code{port}, \code{launch.browser}).}
 }
@@ -18,12 +19,15 @@ when the app stops (usually \code{NULL}), as \code{\link[shiny:runApp]{shiny::ru
 }
 \description{
 Opens the app locally. With no \code{file}, it starts on the landing page, where
-you can upload an \code{.h5ad} built with \code{\link[=build_explore_h5ad]{build_explore_h5ad()}} or load the demo
-dataset. With \code{file}, it opens straight into that dataset.
+you can upload one or more \code{.h5ad} files built with \code{\link[=build_explore_h5ad]{build_explore_h5ad()}}
+or load the demo dataset. With \code{file}, it opens straight into that dataset;
+with several files, the first opens in the tabs and the contrasts of the
+others join it in the Multi DE tabs.
 }
 \examples{
 if (interactive()) {
   exploreDE()
   exploreDE("my_data.h5ad")
+  exploreDE(c("design1.h5ad", "design2.h5ad"))
 }
 }

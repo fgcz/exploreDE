@@ -228,7 +228,8 @@ state_bundle <- function(contrasts = "diff_vs_undiff") {
     multi = list(
       datasets = list(
         list(name = "KO over WT", source = "link", link = "p1000/DESeq2_x/KO--over--WT"),
-        list(name = "B_vs_A", source = "contrast", contrast = "B_vs_A")
+        list(name = "B_vs_A", source = "contrast", contrast = "B_vs_A"),
+        list(name = "study2_KO_vs_WT", source = "upload", file = "study2", contrast = "KO_vs_WT")
       ),
       inputs = list(multiBoxplotNCol = 2L, multiGroupColourKO_over_WT = "#1B9E77")
     )
@@ -271,12 +272,16 @@ test_that("action-button values are not written", {
 
 test_that("the Multi DE block round-trips: datasets in order, and their widgets", {
   r <- save_state_from_json(write_json_session(state_bundle()))
-  expect_equal(vapply(r$multi$datasets, `[[`, "", "name"), c("KO over WT", "B_vs_A"))
+  expect_equal(vapply(r$multi$datasets, `[[`, "", "name"), c("KO over WT", "B_vs_A", "study2_KO_vs_WT"))
   expect_identical(
     r$multi$datasets[[1]],
     list(name = "KO over WT", source = "link", link = "p1000/DESeq2_x/KO--over--WT")
   )
   expect_identical(r$multi$datasets[[2]], list(name = "B_vs_A", source = "contrast", contrast = "B_vs_A"))
+  expect_identical(
+    r$multi$datasets[[3]],
+    list(name = "study2_KO_vs_WT", source = "upload", file = "study2", contrast = "KO_vs_WT")
+  )
   expect_identical(r$multi$inputs$multiGroupColourKO_over_WT, "#1B9E77")
 })
 
@@ -284,10 +289,14 @@ test_that("Multi DE entries with an unknown source or no reference are dropped",
   b <- state_bundle()
   b$multi$datasets <- c(
     b$multi$datasets,
-    list(list(name = "x", source = "file", link = "/etc/passwd"), list(name = "y", source = "link"))
+    list(
+      list(name = "x", source = "file", link = "/etc/passwd"),
+      list(name = "y", source = "link"),
+      list(name = "z", source = "upload", file = "study3")
+    )
   )
   r <- save_state_from_json(write_json_session(b))
-  expect_equal(length(r$multi$datasets), 2L)
+  expect_equal(length(r$multi$datasets), 3L)
 })
 
 test_that("the reader refuses what isn't a session", {
@@ -354,9 +363,11 @@ test_that("save_state_multi_datasets lists sources in display order", {
   res <- list(
     `My KO` = list(source = list(kind = "link", link = "p1/D/KO")),
     B_vs_A = list(source = list(kind = "contrast", contrast = "B_vs_A")),
-    nosource = list(seqAnno = data.frame())
+    nosource = list(seqAnno = data.frame()),
+    study2_KO_vs_WT = list(source = list(kind = "upload", file = "study2", contrast = "KO_vs_WT"))
   )
   out <- save_state_multi_datasets(res)
-  expect_equal(vapply(out, `[[`, "", "name"), c("My KO", "B_vs_A"))
+  expect_equal(vapply(out, `[[`, "", "name"), c("My KO", "B_vs_A", "study2_KO_vs_WT"))
   expect_equal(out[[1]]$link, "p1/D/KO")
+  expect_identical(out[[3]], list(name = "study2_KO_vs_WT", source = "upload", file = "study2", contrast = "KO_vs_WT"))
 })

@@ -14,49 +14,41 @@ multi_access_ok <- function(resolved) {
   ldap_allows_project(session_ldap(), resolved$project)
 }
 
-# Conditional UI - Only show data selection box for genomics (not proteomics)
+# The "Upload files" panel: more .h5ad files, whose contrasts join Multi DE
+# (multi_add_uploads() in server-initInputData.R).
+multi_upload_panel <- function(note = NULL) {
+  tagList(
+    note,
+    helpText(
+      "Add exploreDE .h5ad files built with build_explore_h5ad(): the contrasts of each join the",
+      "datasets below, named <file>_<contrast>. The files must hold the same kind of data as the",
+      "loaded dataset. They are read into memory for this session only; up to 1 GB per upload."
+    ),
+    fileInput(
+      inputId = "multiUploadH5ad",
+      label = NULL,
+      multiple = TRUE,
+      accept = c(".h5ad", "application/octet-stream"),
+      placeholder = "No files selected",
+      width = "85%"
+    )
+  )
+}
+
 output$multiDataSelectionBoxUI <- renderUI({
-  # Check if we have proteomics data loaded
   .eds <- inputDataReactive()$.eds
   # Proteomics data, and an uploaded .h5ad / Parquet directory, are
   # self-contained datasets whose contrasts are auto-loaded below (section 4).
-  # The SUSHI project-browser / URL-import box is meaningless for them, so
-  # hide it and let the contrasts populate directly.
-  if (!is.null(.eds) && .eds$omics_class() == "proteomics") {
-    return(NULL)
-  }
-  if (!is.null(.eds) && .eds$backend_kind() != "se") {
-    # Multi-contrast DE needs at least two contrasts to compare. An upload
-    # with fewer can't populate the multi-analysis tabs, so say so plainly
-    # instead of showing an empty (and useless) data-selection box.
-    nCon <- length(.eds$contrasts())
-    if (nCon < 2) {
-      return(box(
-        title = "Data Selection",
-        width = NULL,
-        solidHeader = TRUE,
-        status = "warning",
-        helpText(
-          if (nCon == 0) {
-            paste0(
-              "The uploaded dataset contains no differential-expression ",
-              "contrasts, so multi-contrast DE analysis is unavailable."
-            )
-          } else {
-            paste0(
-              "The uploaded dataset contains only one contrast",
-              " (\"",
-              .eds$contrasts()[[1]],
-              "\"). Multi-contrast DE ",
-              "analysis compares two or more contrasts, so these tabs ",
-              "are unavailable for this dataset."
-            )
-          }
-        )
-      ))
-    }
-    # >= 2 contrasts: auto-loaded below; the Selected Datasets list shows them.
-    return(NULL)
+  # The SUSHI project-browser / URL-import box is meaningless for them; only
+  # uploaded files can add contrasts.
+  if (!is.null(.eds) && (.eds$omics_class() == "proteomics" || .eds$backend_kind() != "se")) {
+    return(box(
+      title = "Data Selection",
+      width = NULL,
+      solidHeader = TRUE,
+      status = "success",
+      multi_upload_panel(uiOutput("multiUploadNoteUI"))
+    ))
   }
 
   # Show the data selection box for genomics or when no data is loaded yet
@@ -128,8 +120,75 @@ output$multiDataSelectionBoxUI <- renderUI({
             })
           )
         )
+      ),
+      tabPanel(
+        title = "Upload files",
+        icon = icon("upload"),
+        fluidRow(
+          column(
+            width = 12,
+            multi_upload_panel()
+          )
+        )
       )
     )
+  )
+})
+
+# An uploaded dataset with fewer than two contrasts has nothing to compare
+# until a file is added.
+output$multiUploadNoteUI <- renderUI({
+  .eds <- inputDataReactive()$.eds
+  req(.eds)
+  nCon <- length(.eds$contrasts())
+  req(.eds$backend_kind() != "se", nCon < 2, length(multiDeReactive$results) < 2)
+  helpText(tags$b(
+    if (nCon == 0) {
+      "The loaded dataset has no DE contrasts: add files to compare their contrasts."
+    } else {
+      paste0("The loaded dataset has one contrast (\"", .eds$contrasts()[[1]], "\"): add a file to compare it with.")
+    }
+  ))
+})
+
+# Files added through the "Upload files" panel.
+observeEvent(input$multiUploadH5ad, {
+  files <- input$multiUploadH5ad
+  req(files)
+  waiter <- Waiter$new(
+    id = "multiDataSelectionBoxUI",
+    html = spin_fading_circles(),
+    color = "#2d7a3e",
+    fadeout = TRUE
+  )
+  waiter$show()
+  currentTab <- isolate(input$tabs)
+  tryCatch(
+    {
+      added <- multi_add_uploads(files)
+      waiter$hide()
+      if (added$contrasts > 0) {
+        showNotification(
+          sprintf(
+            "Added %d contrast%s from %d file%s.",
+            added$contrasts,
+            if (added$contrasts == 1) "" else "s",
+            added$files,
+            if (added$files == 1) "" else "s"
+          ),
+          type = "message"
+        )
+        shinyjs::delay(100, {
+          if (!is.null(currentTab)) {
+            updateTabItems(session, "tabs", selected = currentTab)
+          }
+        })
+      }
+    },
+    error = function(e) {
+      waiter$hide()
+      showNotification(paste("Error loading the files:", e$message), type = "error")
+    }
   )
 })
 
@@ -732,19 +791,9 @@ observeEvent(inputDataReactive(), {
       (eds$omics_class() == "genomics" && eds$backend_kind() != "se" && length(eds$contrasts()) >= 2)
   )
 
-  for (con in eds$contrasts()) {
-    obj <- tryCatch(
-      legacy_multi_contrast_from_eds(eds, con),
-      error = function(e) {
-        showNotification(paste0("Could not load contrast '", con, "': ", e$message), type = "warning")
-        NULL
-      }
-    )
-    if (!is.null(obj)) {
-      obj$source <- list(kind = "contrast", contrast = con) # for saved sessions
-      multiDeReactive$results[[con]] <- obj
-    }
-  }
+  records <- multi_records_from_dataset(eds)
+  multi_notify_failed(records, "the loaded dataset")
+  multiDeReactive$results <- records
 
   if (length(multiDeReactive$results) > 0) {
     # Reveal the multi-analysis tabs, preserving the current tab selection.
