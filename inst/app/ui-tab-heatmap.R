@@ -470,6 +470,7 @@ tabItem(
                 placeholder = "feature1 feature2 feature3 feature4 ",
                 cols = 1
               ),
+              fb_pattern_ui("heatmap"),
               textAreaInput(
                 inputId = "heatmapCustomTitle",
                 label = "Enter a title for the heatmap",
