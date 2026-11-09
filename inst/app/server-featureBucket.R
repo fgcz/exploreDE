@@ -113,31 +113,66 @@ lapply(fb_tabs, function(tab) {
 
 # --- Per-tab input observers (contributors) ---
 
-# Boxplot, volcano and heatmap tabs: selectize + text box (the volcano brush is
-# handled via the staging area). Each tab remembers what its inputs last
-# contributed, so a feature removed from the selectize (its "x") or deleted
-# from the text box also leaves the bucket, not just the input.
+# Boxplot, volcano and heatmap tabs: selectize + text box + pattern box (the
+# volcano brush is handled via the staging area). Each tab remembers what its
+# inputs last contributed, so a feature removed from the selectize (its "x"),
+# deleted from the text box or no longer matched by the pattern also leaves
+# the bucket, not just the input. The pattern is matched against the names
+# the tab's picker offers (feature IDs, gene symbols or protein IDs; gene
+# names when CRISPR guides are collapsed), so its matches resolve to feature
+# IDs like typed names do.
 lapply(c("boxplot", "volcano", "heatmap"), function(tab) {
   sel_id <- paste0("fb_select_", tab)
   text_id <- paste0("fb_text_", tab)
+  collapse_id <- paste0(tab, "CollapseGuides")
+  # The pattern box sends on blur where shiny supports it; the debounce covers
+  # older shiny, where it sends every keystroke.
+  pattern_val <- debounce(reactive(input[[paste0("fb_pattern_", tab)]]), 600)
+  regex_val <- debounce(reactive(input[[paste0("fb_pattern_regex_", tab)]]), 600)
+  pattern_info <- reactiveVal("")
   contributed <- character(0)
   observeEvent(
     {
       input[[sel_id]]
       input[[text_id]]
+      pattern_val()
+      regex_val()
     },
     ignoreNULL = FALSE,
     ignoreInit = TRUE,
     {
       search_mode <- input[[paste0("fb_search_by_", tab)]] %||% "feature_id"
-      genes <- c(input[[sel_id]] %||% character(0), parse_gene_text(input[[text_id]]))
+      pattern <- trimws(pattern_val() %||% "")
+      matched <- if (nzchar(pattern)) {
+        candidates <- if (eds$data_type() == "CrisprCountQC" && isTRUE(input[[collapse_id]])) {
+          sort(unique(eds$sgrna_to_gene()))
+        } else {
+          search_mode_choices(search_mode, eds$feature_ids())
+        }
+        match_feature_pattern(pattern, candidates, regex = isTRUE(regex_val()))
+      } else {
+        character(0)
+      }
+      pattern_info(fb_pattern_message(pattern, matched))
+      genes <- c(input[[sel_id]] %||% character(0), parse_gene_text(input[[text_id]]), matched)
       genes <- resolve_features(genes, search_mode)
       bucket_remove(setdiff(contributed, genes), source = tab)
       bucket_add(genes, source = tab)
       contributed <<- genes
     }
   )
+  output[[paste0("fb_pattern_info_", tab)]] <- renderText(pattern_info())
 })
+
+# Empty the selectize, text and pattern boxes of every bucket tab, offering
+# `choices` in the selectize (the reset and the search-mode handlers below).
+fb_clear_inputs <- function(choices) {
+  for (t in fb_input_tabs) {
+    updateSelectizeInput(session, paste0("fb_select_", t), choices = choices, selected = NULL, server = TRUE)
+    updateTextAreaInput(session, paste0("fb_text_", t), value = "")
+    updateTextInput(session, paste0("fb_pattern_", t), value = "")
+  }
+}
 
 # DEG table tab (row selection)
 observeEvent(input$degTable_rows_selected, ignoreNULL = FALSE, ignoreInit = TRUE, {
@@ -167,22 +202,9 @@ fb_reset_tabs <- c("boxplot", "volcano", "heatmap", "deg")
 lapply(fb_reset_tabs, function(tab) {
   observeEvent(input[[paste0("fb_reset_", tab)]], ignoreInit = TRUE, {
     bucket_clear(source = paste0("reset_", tab))
-    # Clear ALL selectize and textarea inputs across ALL tabs,
-    # respecting the current search mode so choices stay consistent
-    mode <- fbSearchMode()
-    gene_ch <- eds$proteomics_choices("gene")$choices
-    protein_ch <- eds$proteomics_choices("protein")$choices
-    choices <- if (mode == "gene_name" && !is.null(gene_ch)) {
-      gene_ch
-    } else if (mode == "protein_Id" && !is.null(protein_ch)) {
-      protein_ch
-    } else {
-      eds$feature_ids()
-    }
-    for (t in fb_input_tabs) {
-      updateSelectizeInput(session, paste0("fb_select_", t), choices = choices, selected = NULL, server = TRUE)
-      updateTextAreaInput(session, paste0("fb_text_", t), value = "")
-    }
+    # Clear the inputs of ALL tabs, respecting the current search mode so
+    # choices stay consistent
+    fb_clear_inputs(search_mode_choices(fbSearchMode(), eds$feature_ids()))
     # Clear volcano staged genes
     volcanoStagedGenes$brushGenes <- character(0)
     # Boxplot / barplot / custom heatmap are NOT nulled here: They follow their
@@ -339,23 +361,8 @@ lapply(fb_input_tabs, function(tab) {
     # Bucket-driven plots (boxplot, barplot, custom heatmap) follow their own
     # tab's bucket, so they are not nulled here (see the reset handler above).
     bucket_clear(source = paste0("search_mode_", tab))
-    for (t in fb_input_tabs) {
-      updateTextAreaInput(session, paste0("fb_text_", t), value = "")
-    }
+    # Empty every tab's inputs, with the selectize choices of the new mode
+    fb_clear_inputs(search_mode_choices(mode, eds$feature_ids()))
     volcanoStagedGenes$brushGenes <- character(0)
-
-    # Update selectize choices for the new mode across all tabs
-    gene_ch <- eds$proteomics_choices("gene")$choices
-    protein_ch <- eds$proteomics_choices("protein")$choices
-    choices <- if (mode == "gene_name" && !is.null(gene_ch)) {
-      gene_ch
-    } else if (mode == "protein_Id" && !is.null(protein_ch)) {
-      protein_ch
-    } else {
-      eds$feature_ids()
-    }
-    for (t in fb_input_tabs) {
-      updateSelectizeInput(session, paste0("fb_select_", t), choices = choices, selected = NULL, server = TRUE)
-    }
   })
 })

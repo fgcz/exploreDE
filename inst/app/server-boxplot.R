@@ -47,6 +47,7 @@ observeEvent(
       featureBucket$version <- isolate(featureBucket$version) + 1L
       updateSelectizeInput(session, "fb_select_boxplot", choices = gene_choices, selected = NULL, server = TRUE)
       updateTextAreaInput(session, "fb_text_boxplot", value = "")
+      updateTextInput(session, "fb_pattern_boxplot", value = "")
       # Clear plots
       figuresDataReactive$boxplot <- NULL
       figuresDataReactive$barplot <- NULL
