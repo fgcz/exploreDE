@@ -1217,6 +1217,46 @@ test_that("enrichment_table() is empty, not an error, when nothing was run", {
   expect_equal(nrow(e$enrichment_table("treated_vs_control", "ora")), 0L)
 })
 
+test_that("enrichment kinds count every contrast, not only the first", {
+  skip_if_no_anndataR()
+  dds <- make_toy_dds(n_genes = 80)
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    dds,
+    out = out,
+    omics = "rnaseq",
+    de = list(
+      treated_vs_control = DESeq2::results(dds, contrast = c("condition", "treated", "control")),
+      control_vs_treated = DESeq2::results(dds, contrast = c("condition", "control", "treated"))
+    ),
+    pathways = list(control_vs_treated = list(ora = list(BP = list(upGenes = .mini_cp("enrichResult", 2))))),
+    organism = "Homo sapiens"
+  )
+  e <- new_explore_dataset(out)
+  expect_identical(e$primary_contrast(), "treated_vs_control")
+  expect_identical(e$enrichment_kinds(), "ora")
+  expect_true(e$has_enrichment())
+  expect_length(e$enrichment("treated_vs_control", "ora"), 0L)
+  expect_identical(names(e$enrichment("control_vs_treated", "ora")), "ora/BP/upGenes")
+  expect_true(enrichment_available(e, "ora"))
+  expect_false(enrichment_available(e, "gsea"))
+})
+
+test_that("enrichment_available() also sees results stored as tables only", {
+  skip_if_no_anndataR()
+  # Plain data.frame leaves get no support block, so enrichment_kinds() is
+  # empty; the ORA tab reads them through enrichment_table() all the same.
+  leaf <- data.frame(ID = "GO:1", Description = "term", p.adjust = 0.01, stringsAsFactors = FALSE)
+  e <- new_explore_dataset(.toy_with_pathways(list(ora = list(BP = list(upGenes = leaf)))))
+  expect_identical(e$enrichment_kinds(), character(0))
+  expect_true(enrichment_available(e, "ora"))
+  expect_false(enrichment_available(e, "gsea"))
+
+  demo <- new_explore_dataset(fx_rnaseq_gene()$se)
+  expect_true(enrichment_available(demo, "ora"))
+  expect_true(enrichment_available(demo, "gsea"))
+})
+
 test_that("a counts-only file gets computed normalised + normalised_log2 assays", {
   # Regression: an h5ad with raw counts + DE but no normalised layer crashed the
   # DE QC tab ("Unknown computed assay: normalised").
