@@ -1221,23 +1221,26 @@ test_that("enrichment kinds count every contrast, not only the first", {
   skip_if_no_anndataR()
   dds <- make_toy_dds(n_genes = 80)
   out <- withr::local_tempfile(fileext = ".h5ad")
+  # The ORA goes on the contrast that comes second both as written and
+  # alphabetically (the order the contrasts are read back in), so the primary
+  # contrast has none whichever order the reader uses.
   build_explore_h5ad(
     dds,
     out = out,
     omics = "rnaseq",
     de = list(
-      treated_vs_control = DESeq2::results(dds, contrast = c("condition", "treated", "control")),
-      control_vs_treated = DESeq2::results(dds, contrast = c("condition", "control", "treated"))
+      control_vs_treated = DESeq2::results(dds, contrast = c("condition", "control", "treated")),
+      treated_vs_control = DESeq2::results(dds, contrast = c("condition", "treated", "control"))
     ),
-    pathways = list(control_vs_treated = list(ora = list(BP = list(upGenes = .mini_cp("enrichResult", 2))))),
+    pathways = list(treated_vs_control = list(ora = list(BP = list(upGenes = .mini_cp("enrichResult", 2))))),
     organism = "Homo sapiens"
   )
   e <- new_explore_dataset(out)
-  expect_identical(e$primary_contrast(), "treated_vs_control")
+  expect_identical(e$primary_contrast(), "control_vs_treated")
   expect_identical(e$enrichment_kinds(), "ora")
   expect_true(e$has_enrichment())
-  expect_length(e$enrichment("treated_vs_control", "ora"), 0L)
-  expect_identical(names(e$enrichment("control_vs_treated", "ora")), "ora/BP/upGenes")
+  expect_length(e$enrichment("control_vs_treated", "ora"), 0L)
+  expect_identical(names(e$enrichment("treated_vs_control", "ora")), "ora/BP/upGenes")
   expect_true(enrichment_available(e, "ora"))
   expect_false(enrichment_available(e, "gsea"))
 })
