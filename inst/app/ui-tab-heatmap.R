@@ -205,6 +205,43 @@ tabItem(
           ),
 
           tabPanel(
+            title = "Sample ratios",
+            helpText(
+              "A sample ratio is, per feature, the mean log2 value of the numerator samples minus the mean log2 value of the denominator samples, taken from the count method and batch correction chosen under Feature settings and always on the log2 scale. It carries no statistics. A ratio keeps the settings it was added with. The ratios are plotted on the Ratios heatmap, next to each contrast's log2 fold change."
+            ),
+            textInput(
+              inputId = "heatmapRatioName",
+              label = "Ratio name",
+              value = "",
+              placeholder = "e.g. KO_rep1_vs_WT"
+            ),
+            selectizeInput(
+              inputId = "heatmapRatioNumerator",
+              label = "Numerator sample(s)",
+              choices = NULL,
+              multiple = TRUE,
+              options = list(placeholder = "Select samples", plugins = list("remove_button"))
+            ),
+            selectizeInput(
+              inputId = "heatmapRatioDenominator",
+              label = "Denominator sample(s)",
+              choices = NULL,
+              multiple = TRUE,
+              options = list(placeholder = "Select samples", plugins = list("remove_button"))
+            ),
+            actionButton(inputId = "heatmapRatioAdd", label = "Add ratio", icon = icon("plus")),
+            hr(style = "border-top: 1px solid #000000;"),
+            uiOutput("heatmapRatioListUI"),
+            selectizeInput(
+              inputId = "heatmapRatioRemove",
+              label = "Remove ratio(s)",
+              choices = NULL,
+              multiple = TRUE
+            ),
+            actionButton(inputId = "heatmapRatioRemoveBtn", label = "Remove selected", icon = icon("trash"))
+          ),
+
+          tabPanel(
             title = "Heatmap settings",
             helpText(
               "Select the factors to add as annotations. Click and drag to change their order. Sample order is determined by sorting in the factor orders. The first factor is considered the 'main' one and you can change order/remove groups using the bucket below."
@@ -385,6 +422,9 @@ tabItem(
             br(),
             downloadButton(outputId = "dlTable_heatmapKEGG", label = "Download KEGG Heatmap Counts"),
             helpText("Downloads counts from the KEGG pathway heatmap."),
+            br(),
+            downloadButton(outputId = "dlTable_heatmapRatios", label = "Download Ratio Heatmap Values"),
+            helpText("Downloads the log2 ratios shown on the Ratios heatmap."),
             hr(style = "border-top: 1px solid #000000;"),
             h4("Download Heatmap Plots"),
             helpText("Whichever heatmap you are currently viewing will be the one downloaded."),
@@ -398,6 +438,9 @@ tabItem(
             br(),
             br(),
             downloadButton(outputId = "dlPlot_heatmapKEGG", label = "Download KEGG Heatmap"),
+            br(),
+            br(),
+            downloadButton(outputId = "dlPlot_heatmapRatios", label = "Download Ratio Heatmap"),
             hr(style = "border-top: 1px solid #000000;"),
             h4("Download Settings"),
             splitLayout(
@@ -485,6 +528,50 @@ tabItem(
               width = 9,
               withSpinner(
                 plotOutput(paste0("heatmapCustom"), inline = TRUE),
+                color = "#6E8D9E"
+              )
+            )
+          ),
+          tabPanel(
+            title = "Ratios",
+            column(
+              width = 3,
+              helpText(
+                "Plot the sample ratios defined under Settings > Sample ratios and the contrasts' log2 fold changes, for the features that vary most across them or have the largest ratio. Requires at least two features."
+              ),
+              selectizeInput(
+                inputId = "heatmapRatioPlot",
+                label = "Ratios to plot",
+                choices = NULL,
+                multiple = TRUE
+              ),
+              numericInput(
+                inputId = "heatmapRatioTopN",
+                label = "Number of features",
+                value = 50,
+                min = 2,
+                max = 2000,
+                step = 1
+              ),
+              selectInput(
+                inputId = "heatmapRatioRank",
+                label = "Rank features by",
+                choices = c("Variance across ratios" = "variance", "Largest absolute ratio" = "absolute"),
+                selected = "variance"
+              ),
+              numericInput(
+                inputId = "heatmapRatioLimit",
+                label = "Colour scale limit (+/- log2 ratio)",
+                value = 2,
+                min = 0.1,
+                step = 0.5
+              ),
+              helpText("The colours and palette follow Figure settings; the breaks are symmetric around 0.")
+            ),
+            column(
+              width = 9,
+              withSpinner(
+                plotOutput("heatmapRatios", inline = TRUE),
                 color = "#6E8D9E"
               )
             )

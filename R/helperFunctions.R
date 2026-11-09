@@ -421,6 +421,73 @@ select_genes_by_sd <- function(counts, top_n = 2000) {
   return(top_genes)
 }
 
+#' sample_log2_ratio
+#' The log2 ratio of two sample sets: per feature, the mean of the numerator
+#' samples minus the mean of the denominator samples, on a log2-scale matrix.
+#' Missing values are left out of the means.
+#' @param mat Numeric matrix (features x samples) on the log2 scale
+#' @param numerator,denominator Column names of `mat`
+#' @return Named numeric vector, one value per row of `mat`
+#' @noRd
+sample_log2_ratio <- function(mat, numerator, denominator) {
+  unknown <- setdiff(c(numerator, denominator), colnames(mat))
+  if (length(unknown)) {
+    stop("not samples of the count matrix: ", paste(unknown, collapse = ", "))
+  }
+  num <- rowMeans(mat[, numerator, drop = FALSE], na.rm = TRUE)
+  den <- rowMeans(mat[, denominator, drop = FALSE], na.rm = TRUE)
+  stats::setNames(num - den, rownames(mat))
+}
+
+#' ratio_heatmap_matrix
+#' The features x ratios matrix of the Ratios heatmap: among the features with
+#' a finite value in every ratio, the `top_n` with the largest variance across
+#' the ratios or the largest absolute ratio. A single ratio is always ranked by
+#' absolute value. The matrix has no missing values, so it can be clustered.
+#' @param ratios Named list of named numeric vectors, one per ratio
+#' @param top_n Number of features to keep
+#' @param rank_by `"variance"` or `"absolute"`
+#' @return Numeric matrix (features x ratios); 0 rows when nothing is left
+#' @noRd
+ratio_heatmap_matrix <- function(ratios, top_n, rank_by = c("variance", "absolute")) {
+  rank_by <- match.arg(rank_by)
+  ratios <- Filter(Negate(is.null), ratios)
+  if (!length(ratios)) {
+    return(matrix(numeric(0), nrow = 0, ncol = 0))
+  }
+  features <- Reduce(intersect, lapply(ratios, names))
+  m <- do.call(cbind, lapply(ratios, function(r) unname(r[features])))
+  m <- matrix(as.numeric(m), nrow = length(features), ncol = length(ratios))
+  dimnames(m) <- list(if (length(features)) features else NULL, names(ratios))
+  m <- m[rowSums(!is.finite(m)) == 0, , drop = FALSE]
+  if (!nrow(m)) {
+    return(m)
+  }
+  score <- if (rank_by == "variance" && ncol(m) > 1) {
+    apply(m, 1, stats::var)
+  } else {
+    apply(abs(m), 1, max)
+  }
+  keep <- utils::head(order(score, decreasing = TRUE), top_n)
+  m[keep, , drop = FALSE]
+}
+
+#' contrast_log2_ratio
+#' One contrast's log2 fold change as a named vector, offered on the Ratios
+#' heatmap next to the sample ratios.
+#' @param eds An `ExploreDataset`
+#' @param contrast A contrast name, one of `eds$contrasts()`
+#' @return Named numeric vector (by feature id), or `NULL` when the contrast's
+#'   DE table has no `log2Ratio`
+#' @noRd
+contrast_log2_ratio <- function(eds, contrast) {
+  de <- eds$de(contrast)
+  if (!all(c("feature_id", "log2Ratio") %in% colnames(de))) {
+    return(NULL)
+  }
+  stats::setNames(de$log2Ratio, de$feature_id)
+}
+
 
 # =============================================================================
 # Server-scope binding
