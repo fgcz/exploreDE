@@ -25,24 +25,31 @@ tabItem(
             dataset, so you can load your own data here instead.",
             br(),
             br(),
-            "Upload a single ",
+            "Upload one or more ",
             tags$code(".h5ad"),
-            " file built with exploreDE's
+            " files built with exploreDE's
             ",
             tags$code("build_explore_h5ad()"),
-            " constructor. It bundles your counts (and,
+            " constructor. A file bundles your counts (and,
             optionally, sample metadata, DE results, and pathway/enrichment results) into the
-            format the app reads. The file is parsed into memory for this session only — nothing
-            is written to the server, and it is discarded when you disconnect.",
+            format the app reads. Files are parsed into memory for this session only — nothing
+            is written to the server, and they are discarded when you disconnect. Up to 1 GB per
+            upload.",
             br(),
             br(),
             "Only the tabs your data can support will appear; the rest stay hidden until the
-            required pieces (counts, DE, pathways) are present."
+            required pieces (counts, DE, pathways) are present.",
+            br(),
+            br(),
+            "With several files, the first opens in the tabs and the contrasts of all of them
+            are loaded into Multi DE Analysis, where the Data Selection tab can add more files
+            later."
           ),
           fileInput(
             inputId = "uploadH5ad",
-            label = "Choose an exploreDE .h5ad file",
+            label = "Choose exploreDE .h5ad file(s)",
             accept = c(".h5ad", "application/octet-stream"),
+            multiple = TRUE,
             width = "85%"
           ),
           verbatimTextOutput("upload_h5ad_status")

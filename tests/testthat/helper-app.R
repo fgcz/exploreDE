@@ -7,15 +7,17 @@
 # (make test).
 # -----------------------------------------------------------------------------
 
-# Start the app; it is stopped when the calling test ends.
-app_start <- function(name) {
+# Start the app; it is stopped when the calling test ends. `options` are set
+# in the app's R process (exploreDE.file, as exploreDE(file) sets it).
+app_start <- function(name, options = list()) {
   skip_on_ci()
   skip_if_not_installed("shinytest2")
   app <- shinytest2::AppDriver$new(
     system.file("app", package = "exploreDE"),
     name = name,
     load_timeout = 180e3,
-    timeout = 60e3
+    timeout = 60e3,
+    options = options
   )
   withr::defer(app$stop(), envir = parent.frame())
   app

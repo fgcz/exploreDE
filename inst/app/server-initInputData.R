@@ -435,9 +435,9 @@ load_local_file <- function(path) {
   set_eds(eds, dataDir = if (dir.exists(path)) path else dirname(path))
 }
 
-# A user-uploaded canonical .h5ad. Returns list(ok, msg) so the landing screen
-# can surface a friendly validation message; publishes the eds only on success.
-load_h5ad_upload <- function(path) {
+# A user-uploaded canonical .h5ad, read and validated but not published.
+# Returns list(ok, msg, eds); msg is a friendly validation message.
+read_h5ad_upload <- function(path) {
   eds <- tryCatch(new_explore_dataset(path), error = function(e) e)
   if (inherits(eds, "error")) {
     m <- conditionMessage(eds)
@@ -458,8 +458,105 @@ load_h5ad_upload <- function(path) {
   if (!isTRUE(v$ok)) {
     return(list(ok = FALSE, msg = paste(v$errors, collapse = "\n")))
   }
-  set_eds(eds)
+  list(ok = TRUE, msg = NULL, eds = eds)
+}
+
+# A user-uploaded canonical .h5ad. Returns list(ok, msg) so the landing screen
+# can surface a friendly validation message; publishes the eds only on success.
+load_h5ad_upload <- function(path) {
+  res <- read_h5ad_upload(path)
+  if (!isTRUE(res$ok)) {
+    return(res[c("ok", "msg")])
+  }
+  set_eds(res$eds)
   list(ok = TRUE, msg = NULL)
+}
+
+# Report the contrasts multi_records_from_dataset() could not build.
+multi_notify_failed <- function(records, what) {
+  failed <- attr(records, "failed")
+  for (con in names(failed)) {
+    showNotification(
+      paste0("Could not load contrast '", con, "' of ", what, ": ", failed[[con]]),
+      type = "warning",
+      duration = 10
+    )
+  }
+}
+
+# Files added for Multi DE: the landing page's extra files, the Data Selection
+# tab's upload, or the extra paths of exploreDE(c(...)). The contrasts of each
+# become Multi DE records named "<file>_<contrast>", the file's label being
+# unique among the files still in Multi DE. When Multi DE is empty, the loaded
+# dataset's own contrasts join first, under their own names. `files` is a
+# fileInput value (columns name, datapath). Returns list(contrasts, files):
+# how many were added; every file or contrast that could not be used is
+# reported.
+multi_add_uploads <- function(files) {
+  none <- list(contrasts = 0L, files = 0L)
+  main <- isolate(edsState())$.eds
+  if (is.null(main)) {
+    return(none)
+  }
+  current <- isolate(multiDeReactive$results)
+  labels <- unlist(lapply(current, function(x) x[["source"]][["file"]]), use.names = FALSE)
+  records <- list()
+  n_files <- 0L
+  for (i in seq_len(nrow(files))) {
+    name <- files$name[i]
+    res <- read_h5ad_upload(files$datapath[i])
+    if (!isTRUE(res$ok)) {
+      showNotification(paste0("Could not load ", name, ": ", res$msg), type = "error", duration = 10)
+      next
+    }
+    eds <- res$eds
+    if (!identical(eds$omics_class(), main$omics_class())) {
+      showNotification(
+        paste0(
+          name,
+          " holds ",
+          eds$omics_class(),
+          " data, so it cannot be compared with the loaded ",
+          main$omics_class(),
+          " dataset."
+        ),
+        type = "error",
+        duration = 10
+      )
+      next
+    }
+    if (!eds$has_de()) {
+      showNotification(
+        paste0(name, " has no DE contrasts, so there is nothing to compare."),
+        type = "warning",
+        duration = 10
+      )
+      next
+    }
+    label <- multi_upload_label(name, labels)
+    recs <- multi_records_from_dataset(eds, label)
+    multi_notify_failed(recs, name)
+    if (!length(recs)) {
+      next
+    }
+    labels <- c(labels, label)
+    records <- c(records, recs)
+    n_files <- n_files + 1L
+  }
+  if (!length(records)) {
+    return(none)
+  }
+  if (!length(current) && main$has_de()) {
+    own <- multi_records_from_dataset(main)
+    multi_notify_failed(own, "the loaded dataset")
+    current <- c(current, own)
+  }
+  # A record name is an input id too, so it must be unique among the datasets.
+  results <- c(current, records)
+  names(results) <- make.unique(names(results), sep = "_")
+  multiDeReactive$results <- results
+  multiDeReactive$menuUpdateTrigger <- isolate(multiDeReactive$menuUpdateTrigger) + 1
+  list(contrasts = length(records), files = n_files)
 }
 
 # ---- Boot: resolve + load a ?data= URL eagerly (unchanged UX for SUSHI) ------
@@ -472,8 +569,18 @@ if (!is.null(dataUrl)) {
   dataType <- if (grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) "proteomics" else "gStore"
   load_from_url(dataUrl)
 } else if (!is.null(getOption("exploreDE.file"))) {
-  # Launched locally as exploreDE(file = ...).
-  load_local_file(getOption("exploreDE.file"))
+  # Launched locally as exploreDE(file = ...): the first file opens, the others
+  # go to Multi DE.
+  files <- getOption("exploreDE.file")
+  load_local_file(files[1])
+  if (length(files) > 1 && !is.null(isolate(edsState()))) {
+    tryCatch(
+      multi_add_uploads(data.frame(name = basename(files[-1]), datapath = files[-1], stringsAsFactors = FALSE)),
+      error = function(e) {
+        showNotification(paste("Could not add the other files to Multi DE:", conditionMessage(e)), type = "error")
+      }
+    )
+  }
 }
 # Nothing to load → edsState stays NULL → the landing screen (server-landing.R) shows.
 

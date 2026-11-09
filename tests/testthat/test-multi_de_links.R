@@ -112,3 +112,56 @@ test_that("multi_load_de_result gives the demo result's record, samples included
   expect_true(all(c("Raw", "Normalised + Log2") %in% names(rec$countList)))
   expect_true("Label" %in% colnames(.res_df(rec$ora[[1]][[1]])))
 })
+
+# -----------------------------------------------------------------------------
+# Uploaded files in Multi DE: multi_upload_label(), multi_records_from_dataset()
+# -----------------------------------------------------------------------------
+
+test_that("multi_upload_label is the file name made id-safe and unique", {
+  expect_identical(multi_upload_label("/tmp/upload/GSE1234 condition.1.h5ad"), "GSE1234_condition_1")
+  expect_identical(multi_upload_label("study-2.h5ad"), "study-2")
+  expect_identical(multi_upload_label("study.h5ad", existing = c("study", "other")), "study_1")
+  expect_identical(multi_upload_label("study.h5ad", existing = c("study", "study_1")), "study_2")
+  expect_identical(multi_upload_label("(((.h5ad"), "upload")
+})
+
+test_that("multi_records_from_dataset gives one record per contrast, named and sourced by origin", {
+  eds <- new_explore_dataset(readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE")))
+  con <- eds$contrasts()
+  own <- multi_records_from_dataset(eds)
+  expect_identical(names(own), con)
+  expect_identical(own[[1]]$source, list(kind = "contrast", contrast = con[1]))
+  expect_match(own[[1]]$param$comparison, "--over--", fixed = TRUE)
+
+  up <- multi_records_from_dataset(eds, label = "study2")
+  expect_identical(names(up), paste0("study2_", con))
+  expect_identical(up[[1]]$source, list(kind = "upload", file = "study2", contrast = con[1]))
+
+  labelled <- multi_records_from_dataset(eds, label = "main", uploaded = FALSE)
+  expect_identical(names(labelled), paste0("main_", con))
+  expect_identical(labelled[[1]]$source, list(kind = "contrast", contrast = con[1]))
+  expect_identical(attr(labelled, "failed"), character())
+})
+
+test_that("multi_records_from_dataset leaves out a contrast it cannot build and names it", {
+  se <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))
+  Broken <- R6::R6Class(
+    "Broken",
+    inherit = ExploreDatasetSE_RNASeq,
+    public = list(
+      contrasts = function() c(super$contrasts(), "nope"),
+      contrast_meta = function(contrast) {
+        if (contrast == "nope") {
+          stop("no such contrast")
+        }
+        super$contrast_meta(contrast)
+      }
+    )
+  )
+  broken <- Broken$new(se)
+  con <- setdiff(broken$contrasts(), "nope")
+  recs <- multi_records_from_dataset(broken, label = "x")
+  expect_identical(names(recs), paste0("x_", con))
+  expect_identical(names(attr(recs, "failed")), "nope")
+  expect_match(attr(recs, "failed")[["nope"]], "no such contrast")
+})

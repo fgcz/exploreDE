@@ -491,8 +491,13 @@ server <- function(input, output, session) {
     if (identical(q[["banana"]], "1")) bananaMode(TRUE)
   })
 
-  # Multi DE Reactive (defined early so it's available to server-initInputData.R)
+  # Multi DE Reactives (defined early so they're available to server-initInputData.R)
   multiProjectInfo <- reactiveValues(projectDir = NULL)
+  multiDeReactive <- reactiveValues(
+    results = list(),
+    available = NULL,
+    menuUpdateTrigger = 0 # Add trigger to reactive values so it's accessible everywhere
+  )
 
   source("server-initInputData.R", local = TRUE)
   source("server-landing.R", local = TRUE)
@@ -574,13 +579,6 @@ server <- function(input, output, session) {
       source("server-saveState.R", local = TRUE)
     },
     ignoreNULL = TRUE
-  )
-
-  # Multi DE Reactive
-  multiDeReactive <- reactiveValues(
-    results = list(),
-    available = NULL,
-    menuUpdateTrigger = 0 # Add trigger to reactive values so it's accessible everywhere
   )
 
   # Reactive to track if we have multi-DE results
