@@ -56,6 +56,8 @@ labels such as `organism`, `ref_build`, and `factors`.
 ``` r
 library(exploreDE)
 library(SummarizedExperiment)
+#> Warning: replacing previous import 'S4Arrays::makeNindexFromArrayViewport' by
+#> 'DelayedArray::makeNindexFromArrayViewport' when loading 'SummarizedExperiment'
 out_dir <- tempdir()
 ```
 
@@ -380,7 +382,7 @@ sessionInfo()
 #>  [15] magrittr_2.0.5              plotly_4.12.1              
 #>  [17] sass_0.4.10                 rmarkdown_2.32             
 #>  [19] jquerylib_0.1.4             yaml_2.3.12                
-#>  [21] httpuv_1.6.17               otel_0.2.0                 
+#>  [21] httpuv_1.6.17               otel_0.3.0                 
 #>  [23] ggtangle_0.1.5              zip_3.0.2                  
 #>  [25] askpass_1.2.1               reticulate_1.47.0          
 #>  [27] ggvenn_0.1.19               cowplot_1.2.0              
@@ -454,6 +456,6 @@ sessionInfo()
 #> [163] igraph_2.3.4                broom_1.0.13               
 #> [165] memoise_2.0.1               bslib_0.12.0               
 #> [167] ggtree_4.3.0                bit_4.6.0                  
-#> [169] officer_0.7.7               gson_0.2.2                 
+#> [169] officer_0.7.8               gson_0.2.2                 
 #> [171] ape_5.8-1
 ```
