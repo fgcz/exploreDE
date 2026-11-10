@@ -180,6 +180,8 @@ observe({
         gene_choices <- eds$feature_ids()
       }
       updateSelectizeInput(session, "fb_select_heatmap", choices = gene_choices, selected = "", server = TRUE)
+      updateTextAreaInput(session, "fb_text_heatmap", value = "")
+      updateTextInput(session, "fb_pattern_heatmap", value = "")
       updateSelectizeInput(session, "heatmapExcludeGuides", choices = gene_choices, selected = NULL, server = TRUE)
     },
     ignoreInit = TRUE

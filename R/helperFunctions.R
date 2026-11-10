@@ -578,6 +578,100 @@ parse_gene_text <- function(text) {
   genes[genes != ""]
 }
 
+#' match_feature_pattern
+#' The candidates a "select features by pattern" box matches, ignoring case.
+#' By default the pattern is a name with the wildcards `*` (any characters)
+#' and `?` (one character): `Hsp*` is every name starting with Hsp, a bare
+#' name only that name, and every other character is literal, so protein IDs
+#' like `sp|P02768|ALBU_HUMAN` match as typed. With `regex = TRUE` it is a
+#' regular expression (`^Hsp[0-9]`, `rik$`, `Gm1|Gm2`), unanchored. An empty
+#' or invalid pattern matches nothing; an invalid one is flagged by
+#' `n_matched = NA`.
+#' @param pattern Character scalar, the box's value
+#' @param candidates Character vector of names to match against
+#' @param regex Take the pattern as a regular expression
+#' @param max_matches Keep at most this many matches, in `candidates` order
+#' @return The matches, with attribute `n_matched`: how many matched before the cap
+#' @noRd
+match_feature_pattern <- function(pattern, candidates, regex = FALSE, max_matches = 1000L) {
+  pattern <- trimws(pattern %||% "")
+  if (!nzchar(pattern) || !length(candidates)) {
+    return(structure(character(0), n_matched = 0L))
+  }
+  if (!isTRUE(regex)) {
+    pattern <- gsub("([.|()\\[\\]{}+^$\\\\])", "\\\\\\1", pattern, perl = TRUE)
+    pattern <- gsub("?", ".", gsub("*", ".*", pattern, fixed = TRUE), fixed = TRUE)
+    pattern <- paste0("^", pattern, "$")
+  }
+  hit <- tryCatch(
+    suppressWarnings(grepl(pattern, candidates, ignore.case = TRUE, perl = TRUE)),
+    error = function(e) NULL
+  )
+  if (is.null(hit)) {
+    return(structure(character(0), n_matched = NA_integer_))
+  }
+  matched <- unique(candidates[hit])
+  structure(utils::head(matched, max_matches), n_matched = length(matched))
+}
+
+#' fb_pattern_message
+#' The line shown under a pattern box: nothing for an empty box, otherwise how
+#' many names matched and whether the cap cut them.
+#' @param pattern Character scalar, the box's value
+#' @param matched The value of `match_feature_pattern()` for it
+#' @return Character scalar
+#' @noRd
+fb_pattern_message <- function(pattern, matched) {
+  if (!nzchar(trimws(pattern %||% ""))) {
+    return("")
+  }
+  n <- attr(matched, "n_matched") %||% length(matched)
+  if (is.na(n)) {
+    return("Not a valid pattern.")
+  }
+  if (n > length(matched)) {
+    return(sprintf("%d names match; the first %d were added.", n, length(matched)))
+  }
+  if (n == 1) "1 name matches." else sprintf("%d names match.", n)
+}
+
+#' text_input_on_blur
+#' A text box that sends its value when it loses focus or on Enter, not on
+#' every keystroke, where the installed shiny supports `updateOn`.
+#' @param ... Passed to `shiny::textInput()`
+#' @return A shiny tag
+#' @noRd
+text_input_on_blur <- function(...) {
+  args <- list(...)
+  if ("updateOn" %in% names(formals(shiny::textInput))) {
+    args$updateOn <- "blur"
+  }
+  do.call(shiny::textInput, args)
+}
+
+#' fb_pattern_ui
+#' The "select features by pattern" controls of a feature-bucket tab: the
+#' pattern box, the "Regular expression" tick box and the line reporting the
+#' matches.
+#' @param tab The tab's feature-bucket id: "boxplot", "volcano" or "heatmap"
+#' @return A shiny tag list
+#' @noRd
+fb_pattern_ui <- function(tab) {
+  shiny::tagList(
+    text_input_on_blur(
+      inputId = paste0("fb_pattern_", tab),
+      label = "Or, select features by pattern:",
+      placeholder = "Hsp* or ^Hsp[0-9] (regular expression)"
+    ),
+    shiny::checkboxInput(
+      inputId = paste0("fb_pattern_regex_", tab),
+      label = "Regular expression (otherwise * and ? are wildcards)",
+      value = FALSE
+    ),
+    shiny::textOutput(paste0("fb_pattern_info_", tab))
+  )
+}
+
 #' resolve_features
 #' Resolve gene symbols / protein IDs to feature_ids when not in feature_id mode.
 #' @param input_genes Character vector of user input tokens

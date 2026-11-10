@@ -31,6 +31,85 @@ test_that("parse_gene_text collapses runs of separators", {
 })
 
 
+# --- match_feature_pattern --------------------------------------------------
+pattern_candidates <- c(
+  "Hspa1a",
+  "Hspa1b",
+  "Hsp90aa1",
+  "HSPB1",
+  "Gm12345",
+  "1700001A01Rik",
+  "Actb",
+  "sp|P02768|ALBU_HUMAN",
+  "sp|P00001|X_HUMAN"
+)
+
+test_that("match_feature_pattern takes * and ? as wildcards and everything else literally, ignoring case", {
+  expect_equal(
+    as.character(match_feature_pattern("hsp*", pattern_candidates)),
+    c("Hspa1a", "Hspa1b", "Hsp90aa1", "HSPB1")
+  )
+  expect_equal(as.character(match_feature_pattern("*rik", pattern_candidates)), "1700001A01Rik")
+  expect_equal(as.character(match_feature_pattern("Hspa1?", pattern_candidates)), c("Hspa1a", "Hspa1b"))
+  # A bare name is that name only, not a substring
+  expect_equal(as.character(match_feature_pattern("actb", pattern_candidates)), "Actb")
+  expect_equal(as.character(match_feature_pattern("Hsp", pattern_candidates)), character(0))
+  # Regular expression characters in a name are literal
+  expect_equal(as.character(match_feature_pattern("sp|P02768|ALBU_HUMAN", pattern_candidates)), "sp|P02768|ALBU_HUMAN")
+  expect_equal(
+    as.character(match_feature_pattern("sp|*_HUMAN", pattern_candidates)),
+    c("sp|P02768|ALBU_HUMAN", "sp|P00001|X_HUMAN")
+  )
+  expect_equal(as.character(match_feature_pattern("Hsp(", pattern_candidates)), character(0))
+})
+
+test_that("match_feature_pattern takes a regular expression when asked", {
+  rx <- function(p) as.character(match_feature_pattern(p, pattern_candidates, regex = TRUE))
+  expect_equal(rx("^Hsp[a9]"), c("Hspa1a", "Hspa1b", "Hsp90aa1"))
+  expect_equal(rx("rik$"), "1700001A01Rik")
+  expect_equal(rx("Actb|HSPB1"), c("HSPB1", "Actb"))
+  # unanchored, like grep
+  expect_equal(rx("hsp"), c("Hspa1a", "Hspa1b", "Hsp90aa1", "HSPB1"))
+})
+
+test_that("match_feature_pattern reports the match count and the cap", {
+  m <- match_feature_pattern("hsp*", pattern_candidates, max_matches = 2L)
+  expect_equal(as.character(m), c("Hspa1a", "Hspa1b"))
+  expect_identical(attr(m, "n_matched"), 4L)
+  expect_identical(attr(match_feature_pattern("zzz*", pattern_candidates), "n_matched"), 0L)
+})
+
+test_that("match_feature_pattern matches nothing for an empty, NULL or invalid pattern", {
+  for (p in list("", "   ", NULL)) {
+    m <- match_feature_pattern(p, pattern_candidates)
+    expect_equal(as.character(m), character(0))
+    expect_identical(attr(m, "n_matched"), 0L)
+  }
+  bad <- match_feature_pattern("Hsp(", pattern_candidates, regex = TRUE)
+  expect_equal(as.character(bad), character(0))
+  expect_identical(attr(bad, "n_matched"), NA_integer_)
+  expect_identical(attr(match_feature_pattern("hsp*", character(0)), "n_matched"), 0L)
+})
+
+test_that("fb_pattern_message describes the matches", {
+  msg <- function(p, ...) fb_pattern_message(p, match_feature_pattern(p, pattern_candidates, ...))
+  expect_identical(msg(""), "")
+  expect_identical(msg("actb"), "1 name matches.")
+  expect_identical(msg("hsp*"), "4 names match.")
+  expect_identical(msg("hsp*", max_matches = 2L), "4 names match; the first 2 were added.")
+  expect_identical(msg("Hsp(", regex = TRUE), "Not a valid pattern.")
+  # a plain vector without the attribute counts its elements
+  expect_identical(fb_pattern_message("hsp*", c("Hspa1a", "Hspa1b")), "2 names match.")
+})
+
+test_that("fb_pattern_ui builds the pattern box, the regex tick box and the info line of a tab", {
+  html <- as.character(fb_pattern_ui("boxplot"))
+  expect_match(html, 'id="fb_pattern_boxplot"', fixed = TRUE)
+  expect_match(html, 'id="fb_pattern_regex_boxplot"', fixed = TRUE)
+  expect_match(html, 'id="fb_pattern_info_boxplot"', fixed = TRUE)
+})
+
+
 # --- getPackageVersions -----------------------------------------------------
 test_that("getPackageVersions returns a valid version string for installed packages", {
   vers <- getPackageVersions(c("base", "stats"))

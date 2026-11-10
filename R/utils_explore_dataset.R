@@ -603,6 +603,23 @@ eds_load_se <- function(input) {
   }
 }
 
+# Does any contrast have results of this kind ("ora" / "gsea")? Objects count
+# through the config (enrichment_kinds()); tables alone (a dataset whose
+# pathway results were never clusterProfiler objects) through the tidy
+# accessor. The ORA tab registers on this, since it reads the selected
+# contrast, whichever that is.
+enrichment_available <- function(eds, kind) {
+  if (kind %in% eds$enrichment_kinds()) {
+    return(TRUE)
+  }
+  for (contrast in eds$contrasts()) {
+    if (nrow(eds$enrichment_table(contrast, kind)) > 0) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+
 # ---- batch-correction dropdowns ------------------------------------------------
 # Choices and defaults of the batch and design dropdowns of the Boxplot,
 # Correlation, Heatmap and Ordination tabs. With two factors and DE results

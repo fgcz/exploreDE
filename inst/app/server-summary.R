@@ -110,14 +110,10 @@ observeEvent(input$colourPalette, {
   outputOptions(output, "colourPickerUI", suspendWhenHidden = FALSE)
 })
 
-# Label text boxes send on blur/Enter (not every keystroke) where the installed
-# Shiny supports it, so plots don't redraw mid-typing.
+# Label text boxes send on blur/Enter (not every keystroke), so plots don't
+# redraw mid-typing.
 groupLabelInput <- function(inputId, value, placeholder) {
-  args <- list(inputId = inputId, label = NULL, value = value, placeholder = placeholder, width = "85%")
-  if ("updateOn" %in% names(formals(shiny::textInput))) {
-    args$updateOn <- "blur"
-  }
-  do.call(shiny::textInput, args)
+  text_input_on_blur(inputId = inputId, label = NULL, value = value, placeholder = placeholder, width = "85%")
 }
 
 # Warn about labels that won't survive a PDF download (base pdf() is Latin-1;

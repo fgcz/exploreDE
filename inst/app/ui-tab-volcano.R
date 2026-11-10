@@ -104,6 +104,7 @@ tabItem(
               placeholder = "feature1 feature2 feature3 feature4",
               cols = 1
             ),
+            fb_pattern_ui("volcano"),
             hr(style = "border-top: 1px solid #000000;"),
             h4("Feature Bucket"),
             h5(
