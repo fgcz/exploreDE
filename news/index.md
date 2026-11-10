@@ -2,6 +2,15 @@
 
 ## exploreDE 3.10.0
 
+- Boxplots, Volcano Plots and the Custom heatmap can select features by
+  pattern, next to the feature picker and the paste box: `*` and `?` are
+  wildcards (`Hsp*`, `*rik`; every other character is literal, so
+  `sp|P02768|ALBU_HUMAN` matches as typed), or, with “Regular
+  expression” ticked, the pattern is one (`^Hsp[0-9]`, `Gm1|Gm2`). It is
+  matched ignoring case against the names the tab’s picker offers
+  (feature IDs, gene symbols or protein IDs), applied when the box loses
+  focus, and the matches join the shared feature bucket like a pasted
+  list, at most 1000 matching names; the box says how many matched.
 - The ORA tab shows the results of every contrast that has them. It was
   set up only when the first contrast had ORA results, so when that
   contrast had none (no enriched terms, or no enrichment run for it) the
