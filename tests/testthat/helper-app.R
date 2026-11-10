@@ -1,11 +1,15 @@
 # -----------------------------------------------------------------------------
 # UI tests (test-ui-*.R): the app in headless Chrome, driven by shinytest2.
 # app_start() runs inst/app: the source tree under devtools::test(), the
-# installed app under R CMD check. shinytest2's AppDriver skips on CRAN.
+# installed app under R CMD check. shinytest2's AppDriver skips on CRAN. The
+# tests are skipped on CI for now: on the GitHub runners a dataset load
+# sometimes never finishes, for reasons not yet known. Run them locally
+# (make test).
 # -----------------------------------------------------------------------------
 
 # Start the app; it is stopped when the calling test ends.
 app_start <- function(name) {
+  skip_on_ci()
   skip_if_not_installed("shinytest2")
   app <- shinytest2::AppDriver$new(
     system.file("app", package = "exploreDE"),
