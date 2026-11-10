@@ -59,10 +59,21 @@ oraContrast <- if (length(eds$contrasts()) > 0) eds$primary_contrast() else NULL
   nested
 }
 
+oraAvailable <- eds$data_type() == "RNASeq" && eds$has_de() && enrichment_available(eds, "ora")
+
 observeEvent(input$tabs, {
   if (input$tabs == "oraTab") {
-    if (length(.ora_raw()) == 0) {
-      showModal(modalDialog(title = "No ORA Results", "No pathway analysis was performed so this tab is empty."))
+    # `ora` is the selected contrast's results (kept fresh by the setup
+    # observer below); it stays NULL when the module is not registered.
+    if (length(ora) == 0) {
+      showModal(modalDialog(
+        title = "No ORA Results",
+        if (oraAvailable) {
+          "There are no ORA results for the selected contrast."
+        } else {
+          "No pathway analysis was performed so this tab is empty."
+        }
+      ))
     }
   }
 })
@@ -87,14 +98,21 @@ oraDesign <- ""
 sel <- list()
 .oraId2sym <- function(ids) ids
 
-if (eds$data_type() == "RNASeq" && length(.ora_raw()) > 0) {
+# Registered when any contrast has ORA results: the selected contrast is read
+# below, so gating on the primary contrast's results would leave every other
+# contrast without the tab.
+if (oraAvailable) {
   observeEvent(
     selectedContrast(),
     {
       # Get data through the accessor layer (backend-agnostic).
       oraContrast <<- selectedContrast()
       ora <<- .ora_raw()
-      oraEi <<- eds$enrichment_input(oraContrast)
+      oraEi <<- if (!is.null(oraContrast)) {
+        eds$enrichment_input(oraContrast)
+      } else {
+        list(seq_anno = NULL, ranked_l2fc = NULL, selections = list())
+      }
       oraDesign <<- if (!is.null(oraContrast)) eds$contrast_label(oraContrast) else ""
       # ORA thresholds / featureLevel: SUSHI SE metadata$param, else defaults.
       p <- if (eds$backend_kind() == "se") S4Vectors::metadata(eds$backend())$param else list()
@@ -162,10 +180,8 @@ if (eds$data_type() == "RNASeq" && length(.ora_raw()) > 0) {
         },
         content = function(file) {
           sheets_list <- list()
-          categories <- c("BP", "CC", "MF")
-          gene_sets <- c("upGenes", "downGenes", "bothGenes")
-          for (category in categories) {
-            for (gene_set in gene_sets) {
+          for (category in names(ora)) {
+            for (gene_set in names(ora[[category]])) {
               enrich_obj <- ora[[category]][[gene_set]]
               if (is.null(enrich_obj)) {
                 next
@@ -174,6 +190,10 @@ if (eds$data_type() == "RNASeq" && length(.ora_raw()) > 0) {
               sheets_list[[sheet_name]] <- .res_df(enrich_obj)
             }
           }
+          if (!length(sheets_list)) {
+            sheets_list <- list(ORA = data.frame(note = paste("No ORA results for", oraDesign)))
+          }
+          names(sheets_list) <- xlsx_sheet_names(names(sheets_list))
           openxlsx::write.xlsx(sheets_list, file)
         }
       )
@@ -288,12 +308,16 @@ if (eds$data_type() == "RNASeq" && length(.ora_raw()) > 0) {
 
       er <- ora[[input$oraType]][[input$oraDirection]]
       rdf <- .res_df(er)
-      # if (input$tabs == "oraTab") {
       if (is.null(er) || nrow(rdf) == 0) {
-        showModal(modalDialog(title = "No ORA Results", "There are no results for this selection."))
-      }
-      # }
-      if (!is.null(er) && nrow(rdf) != 0) {
+        # A contrast switch made on another tab must not open a modal there;
+        # the tabs observer above reports an empty tab when it is opened.
+        if (isTRUE(input$tabs == "oraTab")) {
+          showModal(modalDialog(title = "No ORA Results", "There are no results for this selection."))
+        }
+        output$selectedTable_ORA <- DT::renderDataTable({
+          shiny::validate(shiny::need(FALSE, "No ORA results for this contrast, ontology and direction."))
+        })
+      } else {
         rdf$Label <- ""
         for (i in seq_along(rdf$Description)) {
           desc <- rdf$Description[i]

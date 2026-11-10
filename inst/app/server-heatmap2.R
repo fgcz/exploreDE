@@ -16,6 +16,14 @@ keggHeatmapReactive <- reactiveValues(
 eds <- inputDataReactive()$.eds
 req(eds)
 
+# Sample ratios (Settings > Sample ratios):
+# name -> list(name, numerator, denominator, values, assay, batch)
+heatmapRatios <- reactiveValues(ratios = list())
+HEATMAP_RATIO_MAX <- 20L
+# The contrasts, offered on the Ratios heatmap next to the sample ratios as
+# their log2 fold changes (values: contrast names; names: their labels)
+contrastRatioChoices <- stats::setNames(eds$contrasts(), vapply(eds$contrasts(), eds$contrast_label, character(1)))
+
 observe({
   # Detect species for KEGG heatmap
   keggHeatmapReactive$keggCode <- tryCatch(
@@ -150,6 +158,10 @@ observe({
     server = T,
   )
 
+  for (id in c("heatmapRatioNumerator", "heatmapRatioDenominator")) {
+    updateSelectizeInput(session = session, inputId = id, choices = eds$sample_ids(), selected = NULL, server = TRUE)
+  }
+
   # Populate exclude dropdown for CRISPR data
   if (eds$data_type() == "CrisprCountQC") {
     updateSelectizeInput(session, "heatmapExcludeGuides", choices = eds$feature_ids(), selected = NULL, server = TRUE)
@@ -168,6 +180,8 @@ observe({
         gene_choices <- eds$feature_ids()
       }
       updateSelectizeInput(session, "fb_select_heatmap", choices = gene_choices, selected = "", server = TRUE)
+      updateTextAreaInput(session, "fb_text_heatmap", value = "")
+      updateTextInput(session, "fb_pattern_heatmap", value = "")
       updateSelectizeInput(session, "heatmapExcludeGuides", choices = gene_choices, selected = NULL, server = TRUE)
     },
     ignoreInit = TRUE
@@ -476,7 +490,327 @@ output$heatmapTabTitle <- renderUI({
 
 ht_opt$message <- FALSE
 
-# figure making ----
+# Colour scale of the heatmaps on this tab, from the Figure settings colour
+# and palette inputs; `at` overrides the three breaks (the Ratios heatmap
+# passes symmetric ones, the count heatmaps use the Figure settings breaks).
+.heatmap_colours <- function(at = NULL) {
+  if (is.null(at)) {
+    at <- c(input$heatmapAtLow, input$heatmapAtMid, input$heatmapAtHigh)
+  }
+  if (input$heatmapLimitCPalette == "None") {
+    return(colorRamp2(
+      breaks = rev(at),
+      colors = c(input$heatmapColourRed, input$heatmapColourWhite, input$heatmapColourBlue)
+    ))
+  }
+  palette_colours <- brewer.pal(9, input$heatmapLimitCPalette)
+  selected_colours <- palette_colours[c(1, 5, 9)]
+  if (input$heatmapLimitCPaletteRev) {
+    colorRamp2(breaks = at, colors = selected_colours)
+  } else {
+    colorRamp2(at, rev(selected_colours))
+  }
+}
+
+# Sample ratios ----
+# The matrix a ratio is taken from: the count method, guide collapsing and
+# batch correction of the Feature settings tab, always on the log2 scale.
+# Returns the matrix and the batch column applied ("None" when none was, or
+# when the correction could not be applied and returned the matrix as it was).
+heatmap_ratio_source <- function() {
+  counts <- eds$assay(input$heatmapCounts)
+  if (eds$data_type() == "CrisprCountQC") {
+    if (isTRUE(input$heatmapCollapseGuides)) {
+      counts <- collapse_guides_to_genes(counts, eds$sgrna_to_gene(), exclude = input$heatmapExcludeGuides)
+    } else if (length(input$heatmapExcludeGuides) > 0) {
+      counts <- counts[!rownames(counts) %in% input$heatmapExcludeGuides, , drop = FALSE]
+    }
+  }
+  if (!assay_is_log2(eds, input$heatmapCounts)) {
+    counts <- log2(counts + 1)
+  }
+  batch <- "None"
+  batchCol <- input$heatmapBatch %||% "None"
+  if (!batchCol %in% c("", "None")) {
+    corrected <- apply_batch_correction(
+      counts = counts,
+      dataset = eds$samples(),
+      batchCol = batchCol,
+      designCol = input$heatmapDesign %||% "None"
+    )
+    if (!identical(corrected, counts)) {
+      counts <- corrected
+      batch <- batchCol
+    }
+  }
+  list(counts = counts, batch = batch)
+}
+
+# The ratio the add observer wants selected on the Ratios heatmap, picked up
+# by the choices observer below when it next runs.
+ratioSelectionPending <- reactiveVal(NULL)
+
+observeEvent(input$heatmapRatioAdd, {
+  name <- trimws(input$heatmapRatioName %||% "")
+  num <- input$heatmapRatioNumerator
+  den <- input$heatmapRatioDenominator
+  if (!nzchar(name)) {
+    showNotification("Give the ratio a name.", type = "warning")
+    return()
+  }
+  if (name %in% names(heatmapRatios$ratios)) {
+    showNotification(paste0("A ratio named '", name, "' already exists."), type = "warning")
+    return()
+  }
+  if (name %in% c(contrastRatioChoices, names(contrastRatioChoices))) {
+    showNotification(paste0("'", name, "' is a contrast of this dataset; choose another name."), type = "warning")
+    return()
+  }
+  if (!length(num) || !length(den)) {
+    showNotification("Choose at least one numerator and one denominator sample.", type = "warning")
+    return()
+  }
+  if (length(intersect(num, den))) {
+    showNotification("A sample cannot be in both the numerator and the denominator.", type = "warning")
+    return()
+  }
+  if (length(heatmapRatios$ratios) >= HEATMAP_RATIO_MAX) {
+    showNotification(
+      paste("At most", HEATMAP_RATIO_MAX, "ratios can be defined; remove one first."),
+      type = "warning"
+    )
+    return()
+  }
+  req(input$heatmapCounts %in% eds$assay_names())
+  tryCatch(
+    {
+      src <- heatmap_ratio_source()
+      heatmapRatios$ratios[[name]] <- list(
+        name = name,
+        numerator = num,
+        denominator = den,
+        values = sample_log2_ratio(src$counts, num, den),
+        assay = eds$assay_label(input$heatmapCounts),
+        batch = src$batch
+      )
+      ratioSelectionPending(name)
+      updateTextInput(session = session, inputId = "heatmapRatioName", value = "")
+      showNotification(paste0("Ratio '", name, "' added."), type = "message", duration = 4)
+    },
+    error = function(e) {
+      showNotification(paste("Could not add the ratio:", conditionMessage(e)), type = "error", duration = 10)
+    }
+  )
+})
+
+observeEvent(input$heatmapRatioRemoveBtn, {
+  drop <- input$heatmapRatioRemove
+  req(length(drop) > 0)
+  ratios <- heatmapRatios$ratios
+  heatmapRatios$ratios <- ratios[setdiff(names(ratios), drop)]
+})
+
+output$heatmapRatioListUI <- renderUI({
+  ratios <- heatmapRatios$ratios
+  if (!length(ratios)) {
+    return(helpText("No sample ratios defined yet."))
+  }
+  tagList(
+    h5("Defined ratios"),
+    lapply(ratios, function(r) {
+      div(
+        style = "margin-bottom: 6px;",
+        tags$b(r$name),
+        br(),
+        tags$small(paste0(
+          "mean(",
+          paste(r$numerator, collapse = ", "),
+          ") - mean(",
+          paste(r$denominator, collapse = ", "),
+          ") on ",
+          r$assay,
+          ", batch: ",
+          r$batch
+        ))
+      )
+    })
+  )
+})
+
+# The ratios the Ratios heatmap can show: sample ratios first, then the
+# contrasts' log2 fold changes. Keeps the current selection (a NULL selection
+# leaves the widget alone, so a restored selection survives), plus the ratio
+# the add observer just stored. Runs when the sample ratios change.
+ratioChoicesLast <- NULL
+observe({
+  custom <- names(heatmapRatios$ratios) %||% character(0)
+  changed <- !identical(custom, ratioChoicesLast)
+  ratioChoicesLast <<- custom
+  if (isTRUE(isolate(restoring())) && !changed) {
+    return()
+  }
+  choices <- c(stats::setNames(custom, custom), contrastRatioChoices)
+  current <- isolate(input$heatmapRatioPlot) %||% character(0)
+  selected <- unique(c(intersect(current, choices), isolate(ratioSelectionPending())))
+  ratioSelectionPending(NULL)
+  updateSelectizeInput(
+    session = session,
+    inputId = "heatmapRatioPlot",
+    choices = choices,
+    selected = if (length(selected)) selected else NULL
+  )
+  updateSelectizeInput(session = session, inputId = "heatmapRatioRemove", choices = custom, selected = NULL)
+})
+
+# The Ratios heatmap does not depend on the contrast or the sample groups.
+# Its matrix follows the ratio selection only (debounced); the heatmap object
+# follows the matrix and the styling inputs, so a cosmetic change never
+# recomputes the matrix. The matrix also feeds the download.
+heatmapRatioSelection <- debounce(
+  reactive({
+    list(
+      plot = input$heatmapRatioPlot,
+      top_n = input$heatmapRatioTopN,
+      rank_by = input$heatmapRatioRank,
+      ratios = heatmapRatios$ratios
+    )
+  }),
+  1000
+)
+
+heatmapRatioMatrix <- reactive({
+  sel <- heatmapRatioSelection()
+  custom <- sel$ratios
+  ratioNames <- sel$plot %||% character(0)
+  ratioNames <- ratioNames[ratioNames %in% c(names(custom), contrastRatioChoices)]
+  if (!length(ratioNames)) {
+    return(NULL)
+  }
+  ratioList <- lapply(ratioNames, function(nm) {
+    if (nm %in% names(custom)) custom[[nm]]$values else contrast_log2_ratio(eds, nm)
+  })
+  names(ratioList) <- ifelse(
+    ratioNames %in% names(custom),
+    ratioNames,
+    names(contrastRatioChoices)[match(ratioNames, contrastRatioChoices)]
+  )
+  dropped <- names(ratioList)[vapply(ratioList, is.null, logical(1))]
+  if (length(dropped)) {
+    showNotification(
+      paste0(
+        "No log2 fold change in the DE table of ",
+        paste(dropped, collapse = ", "),
+        ", so ",
+        if (length(dropped) == 1) "it is" else "they are",
+        " left out of the Ratios heatmap."
+      ),
+      type = "warning",
+      duration = 8
+    )
+  }
+  top_n <- sel$top_n
+  if (is.null(top_n) || is.na(top_n) || top_n < 2) {
+    top_n <- 50
+  }
+  m <- ratio_heatmap_matrix(ratioList, top_n = top_n, rank_by = sel$rank_by %||% "variance")
+  if (nrow(m) < 2) {
+    return(NULL)
+  }
+  m
+})
+
+heatmapRatioStyle <- debounce(
+  reactive({
+    list(
+      input$fb_label_by_heatmap,
+      input$clusterColsHeatmap,
+      input$clusterRowsHeatmap,
+      input$geneNamesHeatmap,
+      input$showClusterColDend,
+      input$showClusterRowDend,
+      input$cellBorderColourHeatmap2,
+      input$cellBorderSizeHeatmap2,
+      input$textSizeHeatmap,
+      input$heatmapRatioLimit,
+      input$heatmapColourRed,
+      input$heatmapColourWhite,
+      input$heatmapColourBlue,
+      input$heatmapLimitCPalette,
+      input$heatmapLimitCPaletteRev
+    )
+  }),
+  1000
+)
+
+observeEvent(
+  {
+    heatmapRatioMatrix()
+    heatmapRatioStyle()
+  },
+  ignoreNULL = FALSE,
+  ignoreInit = FALSE,
+  {
+    ratioMatrix <- heatmapRatioMatrix()
+    if (is.null(ratioMatrix)) {
+      figuresDataReactive$heatmapRatios <- NULL
+      return()
+    }
+    req(input$heatmapLimitCPalette)
+    limit <- input$heatmapRatioLimit
+    if (is.null(limit) || is.na(limit) || limit <= 0) {
+      limit <- 2
+    }
+    rankLabel <- if (identical(input$heatmapRatioRank, "absolute")) {
+      "largest absolute ratio"
+    } else {
+      "variance across ratios"
+    }
+    figuresDataReactive$heatmapRatios <- ComplexHeatmap::Heatmap(
+      matrix = label_rows(ratioMatrix, input$fb_label_by_heatmap),
+      name = "log2 ratio",
+      cluster_columns = isTRUE(input$clusterColsHeatmap) && ncol(ratioMatrix) > 1,
+      cluster_rows = isTRUE(input$clusterRowsHeatmap),
+      show_column_names = TRUE,
+      show_row_names = isTRUE(input$geneNamesHeatmap),
+      show_column_dend = isTRUE(input$showClusterColDend),
+      show_row_dend = isTRUE(input$showClusterRowDend),
+      rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2 / 10),
+      use_raster = FALSE,
+      row_dend_width = unit(1, "cm"),
+      column_dend_height = unit(1, "cm"),
+      col = .heatmap_colours(at = c(-limit, 0, limit)),
+      row_names_gp = gpar(fontsize = input$textSizeHeatmap),
+      column_names_gp = gpar(fontsize = input$textSizeHeatmap),
+      column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
+      column_title = paste("Top", nrow(ratioMatrix), "features by", rankLabel),
+      heatmap_legend_param = list(
+        labels_gp = gpar(fontsize = input$textSizeHeatmap),
+        title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold")
+      )
+    )
+  }
+)
+
+output[["dlTable_heatmapRatios"]] <- downloadHandler(
+  filename = function() {
+    generate_filename(base_name = "Ratio_heatmap", extension = "xlsx")
+  },
+  content = function(file) {
+    m <- heatmapRatioMatrix()
+    df <- if (is.null(m)) {
+      data.frame(note = "No ratio heatmap is plotted.")
+    } else {
+      as.data.frame(m) %>% rownames_to_column("feature_id")
+    }
+    export_excel_standard(
+      df = df,
+      filename = file,
+      sheet_name = "Ratio Heatmap",
+      table_name = "RatioHeatmap"
+    )
+  }
+)
+
 # figure making ----
 heatmapInputs <- reactive({
   list(
@@ -755,21 +1089,7 @@ observeEvent(
     }
 
     # Prepare colours and generate top annotation ----
-    at <- c(input$heatmapAtLow, input$heatmapAtMid, input$heatmapAtHigh)
-    if (input$heatmapLimitCPalette == "None") {
-      heatmapColours <- colorRamp2(
-        breaks = rev(at),
-        colors = c(input$heatmapColourRed, input$heatmapColourWhite, input$heatmapColourBlue)
-      )
-    } else {
-      palette_colours <- brewer.pal(9, input$heatmapLimitCPalette)
-      selected_colours <- palette_colours[c(1, 5, 9)]
-      if (input$heatmapLimitCPaletteRev) {
-        heatmapColours <- colorRamp2(breaks = at, colors = selected_colours)
-      } else {
-        heatmapColours <- colorRamp2(at, rev(selected_colours))
-      }
-    }
+    heatmapColours <- .heatmap_colours()
     # Top Annotation
     colourListHeatmap <- lapply(input$heatmapColumnSelect, function(f) {
       lapply(levels(datasetHeatmap[[f]]), function(l) {
@@ -1507,7 +1827,7 @@ output$heatmapKeggInfo <- renderUI({
 })
 
 # Output heatmaps
-lapply(c("DEFeatures", "Custom", "GO", "KEGG"), function(sig) {
+lapply(c("DEFeatures", "Custom", "GO", "KEGG", "Ratios"), function(sig) {
   output[[paste0("heatmap", sig)]] <- renderPlot(
     {
       req(figuresDataReactive[[paste0("heatmap", sig)]])
@@ -1531,7 +1851,14 @@ lapply(c("DEFeatures", "Custom", "GO", "KEGG"), function(sig) {
   # sig: "DEFeatures" -> ID: "dlPlot_heatmapDE"
   # sig: "Custom"     -> ID: "dlPlot_heatmapCustom"
   # sig: "GO"         -> ID: "dlPlot_heatmapGO"
-  button_suffix <- switch(sig, "DEFeatures" = "DE", "Custom" = "Custom", "GO" = "GO", "KEGG" = "KEGG")
+  button_suffix <- switch(
+    sig,
+    "DEFeatures" = "DE",
+    "Custom" = "Custom",
+    "GO" = "GO",
+    "KEGG" = "KEGG",
+    "Ratios" = "Ratios"
+  )
 
   output[[paste0("dlPlot_heatmap", button_suffix)]] <- downloadHandler(
     filename = function() {

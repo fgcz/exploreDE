@@ -421,6 +421,73 @@ select_genes_by_sd <- function(counts, top_n = 2000) {
   return(top_genes)
 }
 
+#' sample_log2_ratio
+#' The log2 ratio of two sample sets: per feature, the mean of the numerator
+#' samples minus the mean of the denominator samples, on a log2-scale matrix.
+#' Missing values are left out of the means.
+#' @param mat Numeric matrix (features x samples) on the log2 scale
+#' @param numerator,denominator Column names of `mat`
+#' @return Named numeric vector, one value per row of `mat`
+#' @noRd
+sample_log2_ratio <- function(mat, numerator, denominator) {
+  unknown <- setdiff(c(numerator, denominator), colnames(mat))
+  if (length(unknown)) {
+    stop("not samples of the count matrix: ", paste(unknown, collapse = ", "))
+  }
+  num <- rowMeans(mat[, numerator, drop = FALSE], na.rm = TRUE)
+  den <- rowMeans(mat[, denominator, drop = FALSE], na.rm = TRUE)
+  stats::setNames(num - den, rownames(mat))
+}
+
+#' ratio_heatmap_matrix
+#' The features x ratios matrix of the Ratios heatmap: among the features with
+#' a finite value in every ratio, the `top_n` with the largest variance across
+#' the ratios or the largest absolute ratio. A single ratio is always ranked by
+#' absolute value. The matrix has no missing values, so it can be clustered.
+#' @param ratios Named list of named numeric vectors, one per ratio
+#' @param top_n Number of features to keep
+#' @param rank_by `"variance"` or `"absolute"`
+#' @return Numeric matrix (features x ratios); 0 rows when nothing is left
+#' @noRd
+ratio_heatmap_matrix <- function(ratios, top_n, rank_by = c("variance", "absolute")) {
+  rank_by <- match.arg(rank_by)
+  ratios <- Filter(Negate(is.null), ratios)
+  if (!length(ratios)) {
+    return(matrix(numeric(0), nrow = 0, ncol = 0))
+  }
+  features <- Reduce(intersect, lapply(ratios, names))
+  m <- do.call(cbind, lapply(ratios, function(r) unname(r[features])))
+  m <- matrix(as.numeric(m), nrow = length(features), ncol = length(ratios))
+  dimnames(m) <- list(if (length(features)) features else NULL, names(ratios))
+  m <- m[rowSums(!is.finite(m)) == 0, , drop = FALSE]
+  if (!nrow(m)) {
+    return(m)
+  }
+  score <- if (rank_by == "variance" && ncol(m) > 1) {
+    apply(m, 1, stats::var)
+  } else {
+    apply(abs(m), 1, max)
+  }
+  keep <- utils::head(order(score, decreasing = TRUE), top_n)
+  m[keep, , drop = FALSE]
+}
+
+#' contrast_log2_ratio
+#' One contrast's log2 fold change as a named vector, offered on the Ratios
+#' heatmap next to the sample ratios.
+#' @param eds An `ExploreDataset`
+#' @param contrast A contrast name, one of `eds$contrasts()`
+#' @return Named numeric vector (by feature id), or `NULL` when the contrast's
+#'   DE table has no `log2Ratio`
+#' @noRd
+contrast_log2_ratio <- function(eds, contrast) {
+  de <- eds$de(contrast)
+  if (!all(c("feature_id", "log2Ratio") %in% colnames(de))) {
+    return(NULL)
+  }
+  stats::setNames(de$log2Ratio, de$feature_id)
+}
+
 
 # =============================================================================
 # Server-scope binding
@@ -509,6 +576,100 @@ parse_gene_text <- function(text) {
   }
   genes <- strsplit(text, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
   genes[genes != ""]
+}
+
+#' match_feature_pattern
+#' The candidates a "select features by pattern" box matches, ignoring case.
+#' By default the pattern is a name with the wildcards `*` (any characters)
+#' and `?` (one character): `Hsp*` is every name starting with Hsp, a bare
+#' name only that name, and every other character is literal, so protein IDs
+#' like `sp|P02768|ALBU_HUMAN` match as typed. With `regex = TRUE` it is a
+#' regular expression (`^Hsp[0-9]`, `rik$`, `Gm1|Gm2`), unanchored. An empty
+#' or invalid pattern matches nothing; an invalid one is flagged by
+#' `n_matched = NA`.
+#' @param pattern Character scalar, the box's value
+#' @param candidates Character vector of names to match against
+#' @param regex Take the pattern as a regular expression
+#' @param max_matches Keep at most this many matches, in `candidates` order
+#' @return The matches, with attribute `n_matched`: how many matched before the cap
+#' @noRd
+match_feature_pattern <- function(pattern, candidates, regex = FALSE, max_matches = 1000L) {
+  pattern <- trimws(pattern %||% "")
+  if (!nzchar(pattern) || !length(candidates)) {
+    return(structure(character(0), n_matched = 0L))
+  }
+  if (!isTRUE(regex)) {
+    pattern <- gsub("([.|()\\[\\]{}+^$\\\\])", "\\\\\\1", pattern, perl = TRUE)
+    pattern <- gsub("?", ".", gsub("*", ".*", pattern, fixed = TRUE), fixed = TRUE)
+    pattern <- paste0("^", pattern, "$")
+  }
+  hit <- tryCatch(
+    suppressWarnings(grepl(pattern, candidates, ignore.case = TRUE, perl = TRUE)),
+    error = function(e) NULL
+  )
+  if (is.null(hit)) {
+    return(structure(character(0), n_matched = NA_integer_))
+  }
+  matched <- unique(candidates[hit])
+  structure(utils::head(matched, max_matches), n_matched = length(matched))
+}
+
+#' fb_pattern_message
+#' The line shown under a pattern box: nothing for an empty box, otherwise how
+#' many names matched and whether the cap cut them.
+#' @param pattern Character scalar, the box's value
+#' @param matched The value of `match_feature_pattern()` for it
+#' @return Character scalar
+#' @noRd
+fb_pattern_message <- function(pattern, matched) {
+  if (!nzchar(trimws(pattern %||% ""))) {
+    return("")
+  }
+  n <- attr(matched, "n_matched") %||% length(matched)
+  if (is.na(n)) {
+    return("Not a valid pattern.")
+  }
+  if (n > length(matched)) {
+    return(sprintf("%d names match; the first %d were added.", n, length(matched)))
+  }
+  if (n == 1) "1 name matches." else sprintf("%d names match.", n)
+}
+
+#' text_input_on_blur
+#' A text box that sends its value when it loses focus or on Enter, not on
+#' every keystroke, where the installed shiny supports `updateOn`.
+#' @param ... Passed to `shiny::textInput()`
+#' @return A shiny tag
+#' @noRd
+text_input_on_blur <- function(...) {
+  args <- list(...)
+  if ("updateOn" %in% names(formals(shiny::textInput))) {
+    args$updateOn <- "blur"
+  }
+  do.call(shiny::textInput, args)
+}
+
+#' fb_pattern_ui
+#' The "select features by pattern" controls of a feature-bucket tab: the
+#' pattern box, the "Regular expression" tick box and the line reporting the
+#' matches.
+#' @param tab The tab's feature-bucket id: "boxplot", "volcano" or "heatmap"
+#' @return A shiny tag list
+#' @noRd
+fb_pattern_ui <- function(tab) {
+  shiny::tagList(
+    text_input_on_blur(
+      inputId = paste0("fb_pattern_", tab),
+      label = "Or, select features by pattern:",
+      placeholder = "Hsp* or ^Hsp[0-9] (regular expression)"
+    ),
+    shiny::checkboxInput(
+      inputId = paste0("fb_pattern_regex_", tab),
+      label = "Regular expression (otherwise * and ? are wildcards)",
+      value = FALSE
+    ),
+    shiny::textOutput(paste0("fb_pattern_info_", tab))
+  )
 }
 
 #' resolve_features

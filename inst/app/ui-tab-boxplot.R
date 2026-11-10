@@ -79,6 +79,7 @@ tabItem(
               rows = 2,
               resize = "vertical"
             ),
+            fb_pattern_ui("boxplot"),
             conditionalPanel(
               condition = "output.test == 'CrisprCountQC'",
               checkboxInput(

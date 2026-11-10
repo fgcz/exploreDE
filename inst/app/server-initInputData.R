@@ -591,6 +591,7 @@ figuresDataReactive <- reactiveValues(
   "heatmapDEFeatures" = NULL,
   "heatmapCustom" = NULL,
   "heatmapGO" = NULL,
+  "heatmapRatios" = NULL,
   "pcaStatic" = NULL,
   "pcaPaired" = NULL,
   "boxplotStatic" = NULL,

@@ -44,7 +44,11 @@ observeEvent(input$tabs, {
     if (is.null(g) || length(g) == 0) {
       showModal(modalDialog(
         title = "No GSEA Results",
-        "No pathway analysis was performed for this dataset, so this tab is empty.",
+        if (enrichment_available(eds, "gsea")) {
+          "There are no GSEA results for the selected contrast."
+        } else {
+          "No pathway analysis was performed for this dataset, so this tab is empty."
+        },
         footer = modalButton("OK")
       ))
       return()
@@ -236,11 +240,16 @@ observeEvent(
     rdf <- .res_df(er)
 
     # Check if results exist and show modal if empty
-    if (input$tabs == "gseaTab" && (is.null(er) || nrow(rdf) == 0)) {
-      showModal(modalDialog(
-        title = "No GSEA Results",
-        "There are no results for this selection."
-      ))
+    if (is.null(er) || nrow(rdf) == 0) {
+      if (isTRUE(input$tabs == "gseaTab")) {
+        showModal(modalDialog(
+          title = "No GSEA Results",
+          "There are no results for this selection."
+        ))
+      }
+      output$selectedTable_GSEA <- DT::renderDataTable({
+        shiny::validate(shiny::need(FALSE, "No GSEA results for this contrast and ontology."))
+      })
       return()
     }
 
@@ -387,6 +396,7 @@ output$dlTable_GSEA <- downloadHandler(
     }
 
     if (length(sheets_list) > 0) {
+      names(sheets_list) <- xlsx_sheet_names(names(sheets_list))
       openxlsx::write.xlsx(sheets_list, file)
     } else {
       # Fallback if no sheets were added
