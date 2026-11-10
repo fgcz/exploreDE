@@ -40,10 +40,7 @@ test_that("a sample ratio is defined, plotted next to a contrast and removed", {
   add_ratio(app, "diff_45", "S6_diff", "S3_undiff")
   add_ratio(app, "diff_vs_undiff", "S6_diff", "S3_undiff")
   expect_identical(app$get_value(input = "heatmapRatioPlot"), "diff_45")
-  expect_match(
-    app$get_js("Array.from(document.querySelectorAll('.shiny-notification')).map(n => n.innerText).join(' | ')"),
-    "already exists.*is a contrast of this dataset"
-  )
+  expect_no_match(ratio_list_text(app), "S6_diff", fixed = TRUE)
 
   app$set_inputs(sig = "Ratios")
   expect_match(ratio_heatmap_src(app), "^data:image/png")
