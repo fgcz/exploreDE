@@ -410,7 +410,7 @@ sessionInfo()
 #>  [65] xfun_0.62                   qvalue_2.45.0              
 #>  [67] dplyr_1.2.1                 shinydashboard_0.7.3       
 #>  [69] withr_3.0.3                 fastmap_1.2.0              
-#>  [71] GGally_2.4.0                rhdf5filters_1.25.5        
+#>  [71] GGally_2.5.0                rhdf5filters_1.25.5        
 #>  [73] shinyjs_2.1.1               openssl_2.5.0              
 #>  [75] callr_3.8.0                 digest_0.6.39              
 #>  [77] R6_2.6.1                    mime_0.13                  
