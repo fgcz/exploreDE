@@ -545,15 +545,17 @@ ExploreDatasetH5AD <- R6::R6Class(
       }
 
       # Enrichment kinds come from the support block only (spec §7.4): a method
-      # without one has no rebuildable objects, so it does not count.
+      # without one has no rebuildable objects, so it does not count. Any
+      # contrast counts: a file whose first contrast has no ORA may still carry
+      # ORA for a later one.
       enrich_kinds <- character()
       en <- uns$enrichment_support %||% list()
-      if (length(en)) {
-        first <- en[[1]]
-        if (any(grepl("ora", names(first)))) {
-          enrich_kinds <- c(enrich_kinds, "ora")
-        }
-        if ("gsea" %in% names(first)) enrich_kinds <- c(enrich_kinds, "gsea")
+      methods <- unique(unlist(lapply(en, names), use.names = FALSE))
+      if (any(grepl("ora", methods))) {
+        enrich_kinds <- c(enrich_kinds, "ora")
+      }
+      if ("gsea" %in% methods) {
+        enrich_kinds <- c(enrich_kinds, "gsea")
       }
 
       list(
