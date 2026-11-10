@@ -2,6 +2,17 @@
 
 ## exploreDE 3.10.0
 
+- The ORA tab shows the results of every contrast that has them. It was
+  set up only when the first contrast had ORA results, so when that
+  contrast had none (no enriched terms, or no enrichment run for it) the
+  tab stayed empty for every other contrast too. An `.h5ad` also took
+  its enrichment kinds from its first contrast only, so a file with ORA
+  results in a later contrast alone showed none and loaded no pathway
+  results into Multi DE. Switching to a contrast without results now
+  clears the ORA and GSEA tables instead of leaving the previous
+  contrast’s table in place, the “no results” message opens only on the
+  tab concerned and says when another contrast has results, and the ORA
+  results file covers every ontology stored, not only GO BP/MF/CC.
 - Security: an `.h5ad` can no longer run code when its pathway tabs
   open. The reader decoded `uns$enrichment_native` with
   [`unserialize()`](https://rdrr.io/r/base/serialize.html), which runs
