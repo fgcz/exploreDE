@@ -22,7 +22,10 @@ exploreDE("my_data.h5ad")     # or open straight into your own file
 
 With no file, the app opens on its landing page, where you can upload an
 exploreDE `.h5ad` (see below) or load the demo dataset that ships with
-the package. On a server, `?data=` opens a dataset from the link:
+the package. Upload several files at once to compare them: the first
+opens in the tabs, and the contrasts of all of them are loaded into the
+Multi DE tabs (the Data Selection tab adds more files later). On a
+server, `?data=` opens a dataset from the link:
 
 - `?data=<result directory>`: A SUSHI result on FGCZ’s gStore
   (LDAP-checked).

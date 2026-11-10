@@ -2,6 +2,18 @@
 
 ## exploreDE 3.10.0
 
+- Several `.h5ad` files can be compared in one session. The landing page
+  takes more than one file: the first that loads opens in the tabs, and
+  the contrasts of all of them are loaded into the Multi DE tabs, the
+  loaded dataset’s under their own names and the other files’ as
+  `<file>_<contrast>`. Multi DE’s Data Selection tab has an “Upload
+  files” panel that adds more files later, also to a SUSHI dataset; a
+  file of another omics class, or without contrasts, is refused with a
+  message.
+  [`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md)
+  takes a vector of paths the same way. Saved sessions record these
+  datasets by file label and contrast, and restore them when the same
+  files have been added again (the files themselves are never saved).
 - Heatmaps: a “Sample ratios” setting defines log2 ratios between any
   two sets of samples (the difference of their mean log2 values on the
   chosen count method, always taken on the log2 scale, with no
