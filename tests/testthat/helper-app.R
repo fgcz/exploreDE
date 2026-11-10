@@ -25,8 +25,10 @@ app_load_demo <- function(app) {
   invisible(app)
 }
 
-# The tabName of every entry of the sidebar menu.
+# The tabName of every entry of the sidebar menu. The menu is an output, drawn
+# after the app has started, so wait for it.
 app_menu_tabs <- function(app) {
+  app$wait_for_js("document.querySelectorAll('.sidebar-menu a[data-value]').length > 0")
   unlist(app$get_js(
     "Array.from(document.querySelectorAll('.sidebar-menu a[data-value]')).map(a => a.dataset.value)"
   ))
