@@ -2,6 +2,16 @@
 
 ## exploreDE 3.10.0
 
+- The app run from the installed package
+  ([`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md),
+  or [`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html) on
+  `system.file("app", package = "exploreDE")`) no longer spends most of
+  its time in garbage collection. It put the package’s objects on the
+  search path together with the namespace’s `.__NAMESPACE__.` record,
+  and with the byte-code compiler on, R then ran a full garbage
+  collection on nearly every allocation: loading the demo dataset took
+  about 5 times as long as from the source tree, and several minutes on
+  a slow machine. The namespace’s own records are now left out.
 - Several `.h5ad` files can be compared in one session. The landing page
   takes more than one file: the first that loads opens in the tabs, and
   the contrasts of all of them are loaded into the Multi DE tabs, the
