@@ -85,6 +85,7 @@ Suggests:
   KEGGREST,
   DOSE,
   testthat (>= 3.0.0),
+  shinytest2,
   jsonvalidate,
   systemfonts,
   ragg,
