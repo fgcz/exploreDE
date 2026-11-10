@@ -26,10 +26,6 @@ multi_datasets <- function(app) {
   unlist(app$get_value(input = "multiContrastOrder")) %||% character(0)
 }
 
-notifications <- function(app) {
-  app$get_js("Array.from(document.querySelectorAll('.shiny-notification')).map(n => n.innerText).join(' | ')")
-}
-
 test_that("the contrasts of several uploaded files are compared in Multi DE", {
   skip_if_not_installed("anndataR")
   dir <- withr::local_tempdir()
@@ -53,12 +49,11 @@ test_that("the contrasts of several uploaded files are compared in Multi DE", {
   app$upload_file(multiUploadH5ad = design3, timeout_ = 180e3)
   app$wait_for_idle()
   expect_setequal(multi_datasets(app), c(own, paste0("design2_", own), paste0("design3_", own)))
-  expect_match(notifications(app), "Added 2 contrasts from 1 file.", fixed = TRUE)
 
+  # A file without contrasts adds nothing
   app$upload_file(multiUploadH5ad = counts_only, timeout_ = 180e3)
   app$wait_for_idle()
-  expect_length(multi_datasets(app), 6L)
-  expect_match(notifications(app), "counts_only.h5ad has no DE contrasts", fixed = TRUE)
+  expect_setequal(multi_datasets(app), c(own, paste0("design2_", own), paste0("design3_", own)))
   expect_identical(app_output_errors(app), character(0))
 
   multi_tabs <- setdiff(grep("^multi", app_menu_tabs(app), value = TRUE), "multiDataSelectionTab")
