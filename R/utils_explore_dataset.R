@@ -613,8 +613,7 @@ enrichment_available <- function(eds, kind) {
     return(TRUE)
   }
   for (contrast in eds$contrasts()) {
-    tab <- tryCatch(eds$enrichment_table(contrast, kind), error = function(e) NULL)
-    if (is.data.frame(tab) && nrow(tab) > 0) {
+    if (nrow(eds$enrichment_table(contrast, kind)) > 0) {
       return(TRUE)
     }
   }
