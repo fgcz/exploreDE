@@ -78,7 +78,14 @@ if (!is.null(r_dir)) {
   while ("exploreDE:app" %in% search()) {
     detach("exploreDE:app", character.only = TRUE)
   }
-  attach(asNamespace("exploreDE"), name = "exploreDE:app", warn.conflicts = FALSE)
+  # Without the namespace's own metadata: with .__NAMESPACE__. on the search path, R takes the attached copy for a
+  # namespace, and with the byte-code compiler on the app then spends most of its time in full garbage collections
+  # (a dataset load 5 times slower, minutes on a slow machine).
+  local({
+    ns <- asNamespace("exploreDE")
+    objects <- setdiff(ls(ns, all.names = TRUE), c(".__NAMESPACE__.", ".__S3MethodsTable__.", ".packageName"))
+    attach(mget(objects, envir = ns), name = "exploreDE:app", warn.conflicts = FALSE)
+  })
   shiny::onStop(function() {
     if ("exploreDE:app" %in% search()) detach("exploreDE:app", character.only = TRUE)
   })
