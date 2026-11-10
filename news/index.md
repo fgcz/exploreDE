@@ -2,6 +2,13 @@
 
 ## exploreDE 3.10.0
 
+- Heatmaps: a “Sample ratios” setting defines log2 ratios between any
+  two sets of samples (the difference of their mean log2 values on the
+  chosen count method, always taken on the log2 scale, with no
+  statistics; a ratio keeps the count method and batch setting it was
+  added with), and a “Ratios” heatmap shows the features with the most
+  variable or the largest ratios across the ratios chosen, next to each
+  contrast’s log2 fold change. Ratios are not kept in saved sessions.
 - Boxplots, Volcano Plots and the Custom heatmap can select features by
   pattern, next to the feature picker and the paste box: `*` and `?` are
   wildcards (`Hsp*`, `*rik`; every other character is literal, so
