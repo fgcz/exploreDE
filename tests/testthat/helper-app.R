@@ -39,11 +39,13 @@ app_open_tab <- function(app, tab) {
 }
 
 # The outputs showing an R error, as "<id>: <message>". A validate() or req()
-# message is not an error.
+# message is not an error. An htmlwidget (DT table, plotly) shows its error in
+# an element without id right after the widget, so that one is named by the
+# widget's id.
 app_output_errors <- function(app) {
   unlist(app$get_js(paste0(
     "Array.from(document.querySelectorAll('.shiny-output-error:not(.shiny-output-error-validation)'))",
-    ".map(e => e.id + ': ' + e.innerText)"
+    ".map(e => (e.id || e.previousElementSibling.id) + ': ' + e.innerText)"
   ))) %||%
     character(0)
 }
