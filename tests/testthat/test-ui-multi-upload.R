@@ -2,6 +2,7 @@
 # Several uploaded .h5ad files compared in Multi DE (helper-app.R): the
 # landing page takes more than one file, Multi DE's Data Selection tab adds
 # more and refuses a file without contrasts, and the Multi DE tabs render.
+# exploreDE(c(...)) does the same with any file the app opens, an .rds too.
 # -----------------------------------------------------------------------------
 
 # A two-contrast RNA-seq .h5ad named <name>.h5ad in `dir`.
@@ -62,5 +63,30 @@ test_that("the contrasts of several uploaded files are compared in Multi DE", {
     app_open_tab(app, tab)
     expect_identical(app_output_errors(app), character(0), label = paste("R errors on", tab))
   }
+  expect_true(app$get_js("Shiny.shinyapp.isConnected()"))
+})
+
+# exploreDE(c(...)) sets the option exploreDE.file to its paths; set here
+# directly in the app's process.
+test_that("exploreDE() with several files opens the first and compares the others' contrasts", {
+  skip_if_not_installed("anndataR")
+  design1 <- toy_h5ad(withr::local_tempdir(), "design1", seed = 1)
+  examples <- system.file("examples", package = "exploreDE")
+  files <- c(
+    design1,
+    file.path(examples, "genomics", "deResult.rds"),
+    file.path(examples, "proteomics", "SummarizedExperiment.rds")
+  )
+
+  app <- app_start("multi-files-option", options = list(exploreDE.file = files))
+  app$wait_for_value(output = "settingsTable", timeout = 180e3)
+  app$wait_for_idle()
+  expect_true("multiDataSelectionTab" %in% app_menu_tabs(app))
+
+  # The SummarizedExperiment .rds joins; the proteomics one is refused, since
+  # the opened file holds RNA-seq data.
+  app_open_tab(app, "multiDataSelectionTab")
+  expect_setequal(multi_datasets(app), c("control_vs_treated", "treated_vs_control", "deResult_diff_vs_undiff"))
+  expect_identical(app_output_errors(app), character(0))
   expect_true(app$get_js("Shiny.shinyapp.isConnected()"))
 })
