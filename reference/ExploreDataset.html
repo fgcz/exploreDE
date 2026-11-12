@@ -99,6 +99,7 @@ subclasses return an object inheriting from <code>ExploreDataset</code>.</p>
 <li><p><a href="#method-ExploreDataset-has_assay"><code>ExploreDataset$has_assay()</code></a></p></li>
 <li><p><a href="#method-ExploreDataset-assay"><code>ExploreDataset$assay()</code></a></p></li>
 <li><p><a href="#method-ExploreDataset-assay_label"><code>ExploreDataset$assay_label()</code></a></p></li>
+<li><p><a href="#method-ExploreDataset-assay_is_log2"><code>ExploreDataset$assay_is_log2()</code></a></p></li>
 <li><p><a href="#method-ExploreDataset-raw_assay_name"><code>ExploreDataset$raw_assay_name()</code></a></p></li>
 <li><p><a href="#method-ExploreDataset-primary_assay_name"><code>ExploreDataset$primary_assay_name()</code></a></p></li>
 <li><p><a href="#method-ExploreDataset-raw_assay"><code>ExploreDataset$raw_assay()</code></a></p></li>
@@ -423,10 +424,27 @@ Implemented by subclasses.</p><div class="section">
 
 </div>
 
+<p></p><hr><a id="method-ExploreDataset-assay_is_log2"></a><div class="section">
+<h3 id="exploredataset-assay-is-log-"><code>ExploreDataset$assay_is_log2()</code><a class="anchor" aria-label="anchor" href="#exploredataset-assay-is-log-"></a></h3>
+<p><code>TRUE</code> when an assay is on the log2 scale (log2 counts, VST, transformed intensities),
+from the config. Errors on an assay the dataset does not have.</p><div class="section">
+<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">assay_is_log2</span><span class="op">(</span><span class="va">name</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>name</code></dt>
+<dd><p>Canonical assay name, one of <code>assay_names()</code>.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-ExploreDataset-raw_assay_name"></a><div class="section">
 <h3 id="exploredataset-raw-assay-name-"><code>ExploreDataset$raw_assay_name()</code><a class="anchor" aria-label="anchor" href="#exploredataset-raw-assay-name-"></a></h3>
 <p>Canonical name of the raw assay, from the config.</p><div class="section">
-<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
+<h4 id="usage-28">Usage<a class="anchor" aria-label="anchor" href="#usage-28"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">raw_assay_name</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -435,7 +453,7 @@ Implemented by subclasses.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-primary_assay_name"></a><div class="section">
 <h3 id="exploredataset-primary-assay-name-"><code>ExploreDataset$primary_assay_name()</code><a class="anchor" aria-label="anchor" href="#exploredataset-primary-assay-name-"></a></h3>
 <p>Canonical name of the primary assay, from the config.</p><div class="section">
-<h4 id="usage-28">Usage<a class="anchor" aria-label="anchor" href="#usage-28"></a></h4>
+<h4 id="usage-29">Usage<a class="anchor" aria-label="anchor" href="#usage-29"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">primary_assay_name</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -444,10 +462,10 @@ Implemented by subclasses.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-raw_assay"></a><div class="section">
 <h3 id="exploredataset-raw-assay-"><code>ExploreDataset$raw_assay()</code><a class="anchor" aria-label="anchor" href="#exploredataset-raw-assay-"></a></h3>
 <p>The raw assay: shortcut for <code>assay(raw_assay_name(), ...)</code>.</p><div class="section">
-<h4 id="usage-29">Usage<a class="anchor" aria-label="anchor" href="#usage-29"></a></h4>
+<h4 id="usage-30">Usage<a class="anchor" aria-label="anchor" href="#usage-30"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">raw_assay</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code>assay()</code>: <code>features</code>, <code>samples</code>.</p></dd>
 
@@ -460,10 +478,10 @@ Implemented by subclasses.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-primary_assay"></a><div class="section">
 <h3 id="exploredataset-primary-assay-"><code>ExploreDataset$primary_assay()</code><a class="anchor" aria-label="anchor" href="#exploredataset-primary-assay-"></a></h3>
 <p>The primary assay: shortcut for <code>assay(primary_assay_name(), ...)</code>.</p><div class="section">
-<h4 id="usage-30">Usage<a class="anchor" aria-label="anchor" href="#usage-30"></a></h4>
+<h4 id="usage-31">Usage<a class="anchor" aria-label="anchor" href="#usage-31"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">primary_assay</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code>assay()</code>: <code>features</code>, <code>samples</code>.</p></dd>
 
@@ -476,7 +494,7 @@ Implemented by subclasses.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-contrasts"></a><div class="section">
 <h3 id="exploredataset-contrasts-"><code>ExploreDataset$contrasts()</code><a class="anchor" aria-label="anchor" href="#exploredataset-contrasts-"></a></h3>
 <p>Names of the DE contrasts, from the config; empty when the dataset has no DE results.</p><div class="section">
-<h4 id="usage-31">Usage<a class="anchor" aria-label="anchor" href="#usage-31"></a></h4>
+<h4 id="usage-32">Usage<a class="anchor" aria-label="anchor" href="#usage-32"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">contrasts</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -485,7 +503,7 @@ Implemented by subclasses.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-primary_contrast"></a><div class="section">
 <h3 id="exploredataset-primary-contrast-"><code>ExploreDataset$primary_contrast()</code><a class="anchor" aria-label="anchor" href="#exploredataset-primary-contrast-"></a></h3>
 <p>Name of the primary contrast, from the config; <code>NA</code> when there are no contrasts.</p><div class="section">
-<h4 id="usage-32">Usage<a class="anchor" aria-label="anchor" href="#usage-32"></a></h4>
+<h4 id="usage-33">Usage<a class="anchor" aria-label="anchor" href="#usage-33"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">primary_contrast</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -494,10 +512,10 @@ Implemented by subclasses.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-de"></a><div class="section">
 <h3 id="exploredataset-de-"><code>ExploreDataset$de()</code><a class="anchor" aria-label="anchor" href="#exploredataset-de-"></a></h3>
 <p>DE result table for one contrast, as a data.frame. Implemented by subclasses.</p><div class="section">
-<h4 id="usage-33">Usage<a class="anchor" aria-label="anchor" href="#usage-33"></a></h4>
+<h4 id="usage-34">Usage<a class="anchor" aria-label="anchor" href="#usage-34"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">de</span><span class="op">(</span><span class="va">contrast</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>contrast</code></dt>
 <dd><p>Contrast name, one of <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code>.</p></dd>
 
@@ -510,7 +528,7 @@ Implemented by subclasses.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-de_all"></a><div class="section">
 <h3 id="exploredataset-de-all-"><code>ExploreDataset$de_all()</code><a class="anchor" aria-label="anchor" href="#exploredataset-de-all-"></a></h3>
 <p>DE result tables of all contrasts, as a list named by contrast.</p><div class="section">
-<h4 id="usage-34">Usage<a class="anchor" aria-label="anchor" href="#usage-34"></a></h4>
+<h4 id="usage-35">Usage<a class="anchor" aria-label="anchor" href="#usage-35"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">de_all</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -520,10 +538,10 @@ Implemented by subclasses.</p><div class="section">
 <h3 id="exploredataset-contrast-meta-"><code>ExploreDataset$contrast_meta()</code><a class="anchor" aria-label="anchor" href="#exploredataset-contrast-meta-"></a></h3>
 <p>Metadata list of one contrast from the config: test and reference group, factor, method,
 thresholds. Errors on an unknown contrast.</p><div class="section">
-<h4 id="usage-35">Usage<a class="anchor" aria-label="anchor" href="#usage-35"></a></h4>
+<h4 id="usage-36">Usage<a class="anchor" aria-label="anchor" href="#usage-36"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">contrast_meta</span><span class="op">(</span><span class="va">contrast</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>contrast</code></dt>
 <dd><p>Contrast name, one of <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code>.</p></dd>
 
@@ -536,10 +554,10 @@ thresholds. Errors on an unknown contrast.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-contrast_label"></a><div class="section">
 <h3 id="exploredataset-contrast-label-"><code>ExploreDataset$contrast_label()</code><a class="anchor" aria-label="anchor" href="#exploredataset-contrast-label-"></a></h3>
 <p>Display label of a contrast: currently the contrast name itself. Errors on an unknown contrast.</p><div class="section">
-<h4 id="usage-36">Usage<a class="anchor" aria-label="anchor" href="#usage-36"></a></h4>
+<h4 id="usage-37">Usage<a class="anchor" aria-label="anchor" href="#usage-37"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">contrast_label</span><span class="op">(</span><span class="va">contrast</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>contrast</code></dt>
 <dd><p>Contrast name, one of <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code>.</p></dd>
 
@@ -553,7 +571,7 @@ thresholds. Errors on an unknown contrast.</p><div class="section">
 <h3 id="exploredataset-de-display-extras-"><code>ExploreDataset$de_display_extras()</code><a class="anchor" aria-label="anchor" href="#exploredataset-de-display-extras-"></a></h3>
 <p>Names of extra DE columns shown for display only (e.g. <code>SaintScore</code>), from the config;
 empty by default.</p><div class="section">
-<h4 id="usage-37">Usage<a class="anchor" aria-label="anchor" href="#usage-37"></a></h4>
+<h4 id="usage-38">Usage<a class="anchor" aria-label="anchor" href="#usage-38"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">de_display_extras</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -563,7 +581,7 @@ empty by default.</p><div class="section">
 <h3 id="exploredataset-has-pvalue-"><code>ExploreDataset$has_pvalue()</code><a class="anchor" aria-label="anchor" href="#exploredataset-has-pvalue-"></a></h3>
 <p><code>TRUE</code> when the DE table of at least one contrast has a non-missing raw <code>pValue</code>;
 <code>FALSE</code> for FDR-only producers such as SAINTexpress.</p><div class="section">
-<h4 id="usage-38">Usage<a class="anchor" aria-label="anchor" href="#usage-38"></a></h4>
+<h4 id="usage-39">Usage<a class="anchor" aria-label="anchor" href="#usage-39"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">has_pvalue</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -572,7 +590,7 @@ empty by default.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-enrichment_kinds"></a><div class="section">
 <h3 id="exploredataset-enrichment-kinds-"><code>ExploreDataset$enrichment_kinds()</code><a class="anchor" aria-label="anchor" href="#exploredataset-enrichment-kinds-"></a></h3>
 <p>Enrichment kinds available, from the config: any of <code>"ora"</code> and <code>"gsea"</code>.</p><div class="section">
-<h4 id="usage-39">Usage<a class="anchor" aria-label="anchor" href="#usage-39"></a></h4>
+<h4 id="usage-40">Usage<a class="anchor" aria-label="anchor" href="#usage-40"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">enrichment_kinds</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -582,10 +600,10 @@ empty by default.</p><div class="section">
 <h3 id="exploredataset-enrichment-"><code>ExploreDataset$enrichment()</code><a class="anchor" aria-label="anchor" href="#exploredataset-enrichment-"></a></h3>
 <p>Enrichment results of one contrast and kind, as a flat named list of clusterProfiler results.
 Implemented by subclasses.</p><div class="section">
-<h4 id="usage-40">Usage<a class="anchor" aria-label="anchor" href="#usage-40"></a></h4>
+<h4 id="usage-41">Usage<a class="anchor" aria-label="anchor" href="#usage-41"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">enrichment</span><span class="op">(</span><span class="va">contrast</span>, <span class="va">kind</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>contrast</code></dt>
 <dd><p>Contrast name, one of <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code>.</p></dd>
 
@@ -602,10 +620,10 @@ Implemented by subclasses.</p><div class="section">
 <h3 id="exploredataset-enrichment-input-"><code>ExploreDataset$enrichment_input()</code><a class="anchor" aria-label="anchor" href="#exploredataset-enrichment-input-"></a></h3>
 <p>Inputs for enrichment of one contrast: <code>list(seq_anno, ranked_l2fc, selections)</code>.
 Implemented by subclasses.</p><div class="section">
-<h4 id="usage-41">Usage<a class="anchor" aria-label="anchor" href="#usage-41"></a></h4>
+<h4 id="usage-42">Usage<a class="anchor" aria-label="anchor" href="#usage-42"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">enrichment_input</span><span class="op">(</span><span class="va">contrast</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
+<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>contrast</code></dt>
 <dd><p>Contrast name, one of <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code>.</p></dd>
 
@@ -619,10 +637,10 @@ Implemented by subclasses.</p><div class="section">
 <h3 id="exploredataset-enrichment-table-"><code>ExploreDataset$enrichment_table()</code><a class="anchor" aria-label="anchor" href="#exploredataset-enrichment-table-"></a></h3>
 <p>Enrichment results of one contrast and kind as one tidy data.frame, derived from
 <code>enrichment()</code>; an empty data.frame when there are none.</p><div class="section">
-<h4 id="usage-42">Usage<a class="anchor" aria-label="anchor" href="#usage-42"></a></h4>
+<h4 id="usage-43">Usage<a class="anchor" aria-label="anchor" href="#usage-43"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">enrichment_table</span><span class="op">(</span><span class="va">contrast</span>, <span class="va">kind</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
+<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>contrast</code></dt>
 <dd><p>Contrast name, one of <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code>.</p></dd>
 
@@ -639,7 +657,7 @@ Implemented by subclasses.</p><div class="section">
 <h3 id="exploredataset-enrichment-filter-"><code>ExploreDataset$enrichment_filter()</code><a class="anchor" aria-label="anchor" href="#exploredataset-enrichment-filter-"></a></h3>
 <p>The <code>p.adjust</code> cut-off applied to the stored enrichment tables, from the config;
 <code>NA</code> when none was applied.</p><div class="section">
-<h4 id="usage-43">Usage<a class="anchor" aria-label="anchor" href="#usage-43"></a></h4>
+<h4 id="usage-44">Usage<a class="anchor" aria-label="anchor" href="#usage-44"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">enrichment_filter</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -648,7 +666,7 @@ Implemented by subclasses.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-sgrna_to_gene"></a><div class="section">
 <h3 id="exploredataset-sgrna-to-gene-"><code>ExploreDataset$sgrna_to_gene()</code><a class="anchor" aria-label="anchor" href="#exploredataset-sgrna-to-gene-"></a></h3>
 <p>Named character vector mapping sgRNA IDs to gene names (CRISPR datasets); <code>NULL</code> otherwise.</p><div class="section">
-<h4 id="usage-44">Usage<a class="anchor" aria-label="anchor" href="#usage-44"></a></h4>
+<h4 id="usage-45">Usage<a class="anchor" aria-label="anchor" href="#usage-45"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">sgrna_to_gene</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -658,10 +676,10 @@ Implemented by subclasses.</p><div class="section">
 <h3 id="exploredataset-proteomics-choices-"><code>ExploreDataset$proteomics_choices()</code><a class="anchor" aria-label="anchor" href="#exploredataset-proteomics-choices-"></a></h3>
 <p>Choices and lookup for the proteomics feature picker, <code>list(choices, lookup)</code>; <code>NULL</code> when the
 dataset has none.</p><div class="section">
-<h4 id="usage-45">Usage<a class="anchor" aria-label="anchor" href="#usage-45"></a></h4>
+<h4 id="usage-46">Usage<a class="anchor" aria-label="anchor" href="#usage-46"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">proteomics_choices</span><span class="op">(</span>kind <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gene"</span>, <span class="st">"protein"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
+<h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>kind</code></dt>
 <dd><p><code>"gene"</code> (default) or <code>"protein"</code>.</p></dd>
 
@@ -675,7 +693,7 @@ dataset has none.</p><div class="section">
 <h3 id="exploredataset-all-pathways-"><code>ExploreDataset$all_pathways()</code><a class="anchor" aria-label="anchor" href="#exploredataset-all-pathways-"></a></h3>
 <p>GO terms named in the <code>GO BP</code>, <code>GO MF</code> and <code>GO CC</code> columns of <code>features()</code>, as
 <code>"GO:ID term name"</code> strings; empty when those columns are absent.</p><div class="section">
-<h4 id="usage-46">Usage<a class="anchor" aria-label="anchor" href="#usage-46"></a></h4>
+<h4 id="usage-47">Usage<a class="anchor" aria-label="anchor" href="#usage-47"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">all_pathways</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -684,7 +702,7 @@ dataset has none.</p><div class="section">
 <p></p><hr><a id="method-ExploreDataset-source"></a><div class="section">
 <h3 id="exploredataset-source-"><code>ExploreDataset$source()</code><a class="anchor" aria-label="anchor" href="#exploredataset-source-"></a></h3>
 <p>Provenance list from the config: backend kind, schema version and build time.</p><div class="section">
-<h4 id="usage-47">Usage<a class="anchor" aria-label="anchor" href="#usage-47"></a></h4>
+<h4 id="usage-48">Usage<a class="anchor" aria-label="anchor" href="#usage-48"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="kw">source</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -694,10 +712,10 @@ dataset has none.</p><div class="section">
 <h3 id="exploredataset-format-"><code>ExploreDataset$format()</code><a class="anchor" aria-label="anchor" href="#exploredataset-format-"></a></h3>
 <p>Summary of the dataset (type, dimensions, factors, contrasts, assays, enrichment), one
 line per element. <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> on the object shows these lines.</p><div class="section">
-<h4 id="usage-48">Usage<a class="anchor" aria-label="anchor" href="#usage-48"></a></h4>
+<h4 id="usage-49">Usage<a class="anchor" aria-label="anchor" href="#usage-49"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">format</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
+<h4 id="arguments-17">Arguments<a class="anchor" aria-label="anchor" href="#arguments-17"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Ignored.</p></dd>
 
@@ -710,10 +728,10 @@ line per element. <code><a href="https://rdrr.io/r/base/print.html" class="exter
 <p></p><hr><a id="method-ExploreDataset-clone"></a><div class="section">
 <h3 id="exploredataset-clone-"><code>ExploreDataset$clone()</code><a class="anchor" aria-label="anchor" href="#exploredataset-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-49">Usage<a class="anchor" aria-label="anchor" href="#usage-49"></a></h4>
+<h4 id="usage-50">Usage<a class="anchor" aria-label="anchor" href="#usage-50"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExploreDataset</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-17">Arguments<a class="anchor" aria-label="anchor" href="#arguments-17"></a></h4>
+<h4 id="arguments-18">Arguments<a class="anchor" aria-label="anchor" href="#arguments-18"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

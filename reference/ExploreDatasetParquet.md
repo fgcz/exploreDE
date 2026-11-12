@@ -34,6 +34,7 @@ only the loader differs.
 
 Inherited methods
 
+- [`ExploreDataset$assay_is_log2()`](https://fgcz.github.io/exploreDE/reference/ExploreDataset.html#method-assay_is_log2)
 - [`ExploreDataset$assay_label()`](https://fgcz.github.io/exploreDE/reference/ExploreDataset.html#method-assay_label)
 - [`ExploreDataset$background_expression()`](https://fgcz.github.io/exploreDE/reference/ExploreDataset.html#method-background_expression)
 - [`ExploreDataset$contrast_label()`](https://fgcz.github.io/exploreDE/reference/ExploreDataset.html#method-contrast_label)

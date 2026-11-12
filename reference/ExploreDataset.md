@@ -74,6 +74,8 @@ return an object inheriting from `ExploreDataset`.
 
 - [`ExploreDataset$assay_label()`](#method-ExploreDataset-assay_label)
 
+- [`ExploreDataset$assay_is_log2()`](#method-ExploreDataset-assay_is_log2)
+
 - [`ExploreDataset$raw_assay_name()`](#method-ExploreDataset-raw_assay_name)
 
 - [`ExploreDataset$primary_assay_name()`](#method-ExploreDataset-primary_assay_name)
@@ -451,6 +453,24 @@ no label is registered.
 - `name`:
 
   Canonical assay name.
+
+------------------------------------------------------------------------
+
+### `ExploreDataset$assay_is_log2()`
+
+`TRUE` when an assay is on the log2 scale (log2 counts, VST, transformed
+intensities), from the config. Errors on an assay the dataset does not
+have.
+
+#### Usage
+
+    ExploreDataset$assay_is_log2(name)
+
+#### Arguments
+
+- `name`:
+
+  Canonical assay name, one of `assay_names()`.
 
 ------------------------------------------------------------------------
 

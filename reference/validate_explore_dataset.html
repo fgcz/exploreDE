@@ -75,7 +75,7 @@ the <code>effect_log2fc</code> and <code>score_fdr</code> columns;
 <code>primary_grouping()</code> is a member of <code>factor_names()</code>;
 <code>primary_contrast()</code> is in <code><a href="https://rdrr.io/r/stats/contrasts.html" class="external-link">contrasts()</a></code> (or <code>NA</code>).</p></li>
 <li><p>Assays: <code>raw_assay_name()</code> and <code>primary_assay_name()</code> are in
-<code>assay_names()</code>, and the raw assay's rownames / colnames agree
+<code>assay_names()</code>, every assay has a log2 fact (<code>assay_is_log2()</code>), and the raw assay's rownames / colnames agree
 with <code>feature_ids()</code> / <code>sample_ids()</code>.</p></li>
 </ol><p>Cost is proportional to the number of contrasts (one <code>de(c)</code>
 round-trip each) plus a small constant of other accessor calls.</p>

@@ -34,6 +34,7 @@ overrides only `.build_config()` and `.prep()`.
 Inherited methods
 
 - [`ExploreDataset$all_pathways()`](https://fgcz.github.io/exploreDE/reference/ExploreDataset.html#method-all_pathways)
+- [`ExploreDataset$assay_is_log2()`](https://fgcz.github.io/exploreDE/reference/ExploreDataset.html#method-assay_is_log2)
 - [`ExploreDataset$assay_label()`](https://fgcz.github.io/exploreDE/reference/ExploreDataset.html#method-assay_label)
 - [`ExploreDataset$background_expression()`](https://fgcz.github.io/exploreDE/reference/ExploreDataset.html#method-background_expression)
 - [`ExploreDataset$contrast_label()`](https://fgcz.github.io/exploreDE/reference/ExploreDataset.html#method-contrast_label)

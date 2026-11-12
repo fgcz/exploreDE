@@ -155,6 +155,31 @@
 - Batch correction is skipped, with a message, when the batch or design
   column has missing values. A missing value in the design column
   stopped the tab with “number of rows of matrices must match”.
+- Proteomics data without transformed intensities (an `.h5ad` with raw
+  intensities only, or a `SummarizedExperiment` without
+  `transformedData`) is no longer taken to be on the log2 scale: batch
+  correction asks for “Log2” first instead of running on the raw
+  intensities shown in their place, and sample ratios take their log2.
+  `eds$assay_is_log2()` says which assays are on the log2 scale; each
+  backend records it when it loads.
+- `eds$raw_assay_name()` and `eds$raw_assay()` of proteomics data give
+  the raw intensities (`intensities_raw`) when the data has them; they
+  gave the transformed intensities.
+- Boxplots, Multi DE Boxplots and Heatmaps log raw proteomics
+  intensities when “Log2” is ticked (the Heatmaps’ default); they logged
+  RNA-seq counts only and plotted, or refused to batch-correct, raw
+  intensities on their linear scale.
+- Replicability shows “Log2 Counts?” again, for every count method. It
+  appeared only for count methods named “TPM”, “FPKM”, “Normalised” or
+  “Raw”, names the selector no longer uses; a count method already on
+  the log2 scale (log2 counts, VST, transformed intensities) is not
+  logged a second time when it is ticked.
+- Ordination: “Log2 counts?” (on by default) logs raw proteomics
+  intensities before batch correction. It logged RNA-seq counts only, so
+  raw intensities were batch-corrected and ordinated on their linear
+  scale, and FGCZ staff’s “Preprocessing order” had no Log2 step for
+  them. The “Batch correction requires log-scale data” message no longer
+  appears when no batch correction is chosen.
 - Ordination (PCA, PCoA, NMDS) leaves out features with missing values
   instead of samples. Proteomics data has missing values in every
   sample, so when “Use top n features” covered all features (the default

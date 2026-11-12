@@ -39,8 +39,9 @@ Invisibly, `TRUE` on success (strict mode); or
     [`contrasts()`](https://rdrr.io/r/stats/contrasts.html) (or `NA`).
 
 3.  Assays: `raw_assay_name()` and `primary_assay_name()` are in
-    `assay_names()`, and the raw assay's rownames / colnames agree with
-    `feature_ids()` / `sample_ids()`.
+    `assay_names()`, every assay has a log2 fact (`assay_is_log2()`),
+    and the raw assay's rownames / colnames agree with `feature_ids()` /
+    `sample_ids()`.
 
 Cost is proportional to the number of contrasts (one `de(c)` round-trip
 each) plus a small constant of other accessor calls.
