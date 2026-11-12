@@ -35,6 +35,7 @@
 }
 
 
+# nolint start: cyclocomp_linter. R6 class, scored as one expression.
 #' Concrete subclass for FGCZ proteomics `SummarizedExperiment` outputs
 #'
 #' Reads from a prolfqua-derived SE. Top-level `rowData(se)` is sparse;
@@ -63,6 +64,19 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
   inherit = ExploreDatasetSE,
 
   private = list(
+    # samples(): a plain-character Name, and every factor column as a factor
+    # with mixedsort-ordered levels.
+    .decorate_samples = function(cd, sample_ids) {
+      if (!"Name" %in% colnames(cd)) {
+        cd$Name <- sample_ids
+      }
+      for (fc in intersect(private$.config$factors %||% character(), colnames(cd))) {
+        if (!is.factor(cd[[fc]])) {
+          cd[[fc]] <- factor(cd[[fc]], levels = unique(gtools::mixedsort(cd[[fc]])))
+        }
+      }
+      cd
+    },
     .build_config = function(se) {
       cd <- data.frame(SummarizedExperiment::colData(se), check.names = FALSE, stringsAsFactors = FALSE)
 
@@ -124,9 +138,9 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
         lapply(contrasts, function(cn) {
           grp <- strsplit(cn, "_vs_|--over--")[[1]]
           list(
-            test_group = grp[1] %||% NA_character_,
-            reference_group = if (saint) reference_default else (grp[2] %||% NA_character_),
-            factor_name = factor_names[1] %||% NA_character_,
+            test_group = grp[1],
+            reference_group = if (saint) reference_default else grp[2],
+            factor_name = factor_names[1],
             method = if (saint) "SAINTexpress" else "prolfqua",
             thresholds = list(fdr = 0.05, log2fc = 1),
             # SAINT carries a second, display-only significance axis (SaintScore,
@@ -138,8 +152,9 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       )
 
       ass_nms <- SummarizedExperiment::assayNames(se)
-      primary_key <- intersect(c("transformedData", "transformed", "intensities", "log2"), ass_nms)
-      primary_key <- if (length(primary_key)) primary_key[1] else ass_nms[1]
+      transformed_key <- intersect(c("transformedData", "transformed", "intensities", "log2"), ass_nms)
+      # Without a transformed assay the first one stands in, on its own scale
+      primary_key <- if (length(transformed_key)) transformed_key[1] else ass_nms[1]
       raw_key <- intersect(c("intensities_raw", "raw", "intensities"), ass_nms)
       raw_key <- if (length(raw_key)) raw_key[1] else primary_key
 
@@ -180,8 +195,9 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
         secondary_grouping = NA_character_,
         assay_map = assay_map_l,
         assay_labels = assay_labels_l,
+        assay_log2 = c(intensities = length(transformed_key) > 0, intensities_raw = FALSE)[names(assay_map_l)],
         background_expression = 1,
-        raw_assay_name = "intensities",
+        raw_assay_name = if (has_raw) "intensities_raw" else "intensities",
         primary_assay_name = "intensities",
         display_name_field = NA_character_, # handled in .prep()
         description_field = "description",
@@ -205,7 +221,11 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       contrasts <- self$contrasts()
 
       if (!length(contrasts)) {
-        private$.features_df <- data.frame(feature_id = character(), display_name = character())
+        private$.features_df <- data.frame(
+          feature_id = rownames(se),
+          display_name = rownames(se),
+          row.names = rownames(se)
+        )
         private$.de_dfs <- list()
         private$.fid_lookup <- setNames(rownames(se), rownames(se))
         return(invisible(NULL))
@@ -300,22 +320,8 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
       # proteomics-only feature picker UI. protein_Id will have been dropped
       # already if it was redundant.
       sa1 <- de_dfs[[1]]
-      gene_lookup <- NULL
-      gene_choices <- NULL
-      protein_lookup <- NULL
-      protein_choices <- NULL
-      if ("gene_name" %in% colnames(sa1) && !identical(sa1$feature_id, sa1$gene_name)) {
-        gene_lookup <- split(sa1$feature_id, sa1$gene_name)
-        gene_choices <- unique(sa1$gene_name)
-      }
-      if ("protein_Id" %in% colnames(sa1)) {
-        protein_lookup <- split(sa1$feature_id, sa1$protein_Id)
-        protein_choices <- unique(sa1$protein_Id)
-      }
-      private$.config$proteomics <- list(
-        gene = list(choices = gene_choices, lookup = gene_lookup),
-        protein = list(choices = protein_choices, lookup = protein_lookup)
-      )
+      private$.config$proteomics <- eds_proteomics_choices(sa1$feature_id, sa1[["gene_name"]], sa1[["protein_Id"]])
     }
   )
 )
+# nolint end

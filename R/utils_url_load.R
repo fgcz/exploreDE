@@ -24,6 +24,7 @@ url_load_sources <- function() {
   c("https://apps-dev.bfabric.org/apb-export/api/jobs/", "https://fgcz-ms.uzh.ch/public/pStore/")
 }
 
+# nolint start: cyclocomp_linter. Flat allow-list checks.
 #' May exploreDE load this URL?
 #'
 #' Allowed: An `https://` URL with no user name or password, whose path has no
@@ -57,6 +58,7 @@ url_load_allowed <- function(url, sources = url_load_sources()) {
   }
   TRUE
 }
+# nolint end
 
 #' Download an allowed `.h5ad` URL to a file
 #'

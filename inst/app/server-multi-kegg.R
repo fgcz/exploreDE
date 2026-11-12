@@ -132,10 +132,6 @@ observeEvent(
                     list(src = "", alt = "Plot generation failed")
                   }
                 },
-                error = function(e) {
-                  cat("KEGG plot error:", conditionMessage(e), "\n")
-                  list(src = "", alt = paste("Error:", conditionMessage(e)))
-                },
                 finally = {
                   # Always restore working directory
                   setwd(old_wd)

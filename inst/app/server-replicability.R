@@ -74,10 +74,12 @@ replicabilityData <- reactive({
     counts <- collapse_guides_to_genes(counts, eds$sgrna_to_gene())
   }
 
-  # Apply Log2 if requested
-  if (isTRUE(input$replicabilityCountsLog)) {
-    counts <- log2(counts + 1)
-  }
+  counts <- prepare_expression(
+    counts,
+    eds$samples(),
+    is_log2 = eds$assay_is_log2(input$replicabilityCounts),
+    take_log2 = input$replicabilityCountsLog
+  )$counts
 
   # Helper to calculate corr and hclust
   calc_corr_hclust <- function(cnts) {
@@ -120,14 +122,10 @@ replicabilityData <- reactive({
   )
 })
 
-# Defined in R/helperFunctions.R; bound to this scope so they see this session's input.
-make_rep_heatmap <- bind_to_scope(make_rep_heatmap)
-make_rep_dendrogram <- bind_to_scope(make_rep_dendrogram)
-
 # Render Heatmaps
 output$replicabilityHeatmap <- renderPlot(
   {
-    make_rep_heatmap(replicabilityData()$all, title_suffix = "All Features")
+    make_rep_heatmap(replicabilityData()$all, input, title_suffix = "All Features")
   },
   width = function() input$figWidthReplicability,
   height = function() input$figHeightReplicability
@@ -135,7 +133,7 @@ output$replicabilityHeatmap <- renderPlot(
 
 output$replicabilityHeatmapTop100 <- renderPlot(
   {
-    make_rep_heatmap(replicabilityData()$top100, title_suffix = "Top 100 Abundant Features")
+    make_rep_heatmap(replicabilityData()$top100, input, title_suffix = "Top 100 Abundant Features")
   },
   width = function() input$figWidthReplicability,
   height = function() input$figHeightReplicability
@@ -144,7 +142,7 @@ output$replicabilityHeatmapTop100 <- renderPlot(
 # Render Dendrograms
 output$replicabilityDendrogram <- renderPlot(
   {
-    make_rep_dendrogram(replicabilityData()$all, title_suffix = "All Features")
+    make_rep_dendrogram(replicabilityData()$all, input, title_suffix = "All Features")
   },
   width = function() input$figWidthReplicability,
   height = function() input$figHeightReplicability
@@ -152,7 +150,7 @@ output$replicabilityDendrogram <- renderPlot(
 
 output$replicabilityDendrogramTop100 <- renderPlot(
   {
-    make_rep_dendrogram(replicabilityData()$top100, title_suffix = "Top 100 Abundant Features")
+    make_rep_dendrogram(replicabilityData()$top100, input, title_suffix = "Top 100 Abundant Features")
   },
   width = function() input$figWidthReplicability,
   height = function() input$figHeightReplicability
@@ -180,7 +178,7 @@ output$replicabilityDownloadHeatmap <- downloadHandler(
 
     export_plot_standard(
       plot_object = function() {
-        make_rep_heatmap(data_set, title_suffix = input$replicabilityDownloadSet)
+        make_rep_heatmap(data_set, input, title_suffix = input$replicabilityDownloadSet)
       },
       filename = file,
       format = tolower(input$downloadFormatReplicability),
@@ -212,7 +210,7 @@ output$replicabilityDownloadDendrogram <- downloadHandler(
 
     export_plot_standard(
       plot_object = function() {
-        make_rep_dendrogram(data_set, title_suffix = input$replicabilityDownloadSet)
+        make_rep_dendrogram(data_set, input, title_suffix = input$replicabilityDownloadSet)
       },
       filename = file,
       format = tolower(input$downloadFormatReplicability),

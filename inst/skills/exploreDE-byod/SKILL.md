@@ -39,7 +39,7 @@ build_explore_h5ad(
   feature_level = NULL, coldata = NULL, rowdata = NULL,
   de = list(), de_columns = NULL, rowdata_columns = NULL,
   pathways = list(), enrichment_padj_max = 0.1, factors = NULL,
-  gene_symbol = NULL, organism = NA, ref_build = NA
+  organism = NA, ref_build = NA
 )
 ```
 

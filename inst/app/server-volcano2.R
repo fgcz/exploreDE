@@ -158,9 +158,6 @@ observeEvent(
       contrast <- selectedContrast()
       design <- eds$contrast_label(contrast)
       seqAnno <- eds$de(contrast)
-      output$volcanoDesign <- renderText({
-        design
-      })
       seqAnnoFilt <- seqAnno[which(seqAnno$usedInTest), ]
       updateTextInput(session = session, inputId = "filename_volcano", value = design)
     }
@@ -170,10 +167,6 @@ observeEvent(
       req(selectedContrast() %in% eds$contrasts())
       seqAnnoFilt <- eds$de(selectedContrast())
       seqAnnoFilt <- seqAnnoFilt %>% dplyr::select(feature_id, log2Ratio, pValue, fdr)
-
-      output$volcanoDesign <- renderText({
-        selectedContrast()
-      })
       updateTextInput(session = session, inputId = "filename_volcano", value = selectedContrast())
     }
 
@@ -297,8 +290,6 @@ volcanoResultsList <- eventReactive(
     input$xLimVolcano
     input$pTypeVolcano
     input$pThresholdVolcano
-    input$volcanoShowGenes
-    featureBucket$features
     input$fb_exclude_volcano
     selectedContrast()
     input$nrPeptideVolcano
@@ -320,9 +311,6 @@ volcanoResultsList <- eventReactive(
       contrast <- selectedContrast()
       design <- eds$contrast_label(contrast)
       seqAnno <- eds$de(contrast)
-      output$volcanoDesign <- renderText({
-        design
-      })
       seqAnnoFilt <- seqAnno[which(seqAnno$usedInTest), ]
     }
     if (eds$omics_class() == "proteomics") {
@@ -351,10 +339,6 @@ volcanoResultsList <- eventReactive(
         seqAnnoFilt <- seqAnnoFilt %>%
           dplyr::select(feature_id, description, log2Ratio, pValue, fdr, dplyr::any_of(volcanoScoreSel))
       }
-
-      output$volcanoDesign <- renderText({
-        selectedContrast()
-      })
     }
 
     if (length(input$fb_exclude_volcano) > 0) {
@@ -408,47 +392,12 @@ volcanoResultsList <- eventReactive(
     }
     volcanoTable$Log2_Mean <- rMs[match(volcanoTable$feature_id, names(rMs))]
 
-    # Determine what significance Status each gene is and label accordingly
-    ## Not significant:
-    volcanoTable["Status"] <- "NotSignificant"
-    ## Significant up only:
-    volcanoTable[
-      which(
-        volcanoTable["log10p"] >= log10pToFilter &
-          volcanoTable["log2Ratio"] <= as.numeric(input$lfcVolcano) &
-          volcanoTable["log2Ratio"] > 0
-      ),
-      "Status"
-    ] <- "SignificantUp"
-    ## Significant down only:
-    volcanoTable[
-      which(
-        volcanoTable["log10p"] >= log10pToFilter &
-          volcanoTable["log2Ratio"] < 0 &
-          volcanoTable["log2Ratio"] >= -as.numeric(input$lfcVolcano)
-      ),
-      "Status"
-    ] <- "SignificantDown"
-    ## LFC up only:
-    volcanoTable[
-      which(volcanoTable["log10p"] < log10pToFilter & volcanoTable["log2Ratio"] >= as.numeric(input$lfcVolcano)),
-      "Status"
-    ] <- "FoldChangeUp"
-    ## LFC down only:
-    volcanoTable[
-      which(volcanoTable["log10p"] < log10pToFilter & volcanoTable["log2Ratio"] <= -as.numeric(input$lfcVolcano)),
-      "Status"
-    ] <- "FoldChangeDown"
-    # LFC & p-value up:
-    volcanoTable[
-      which(volcanoTable["log10p"] >= log10pToFilter & volcanoTable["log2Ratio"] >= as.numeric(input$lfcVolcano)),
-      "Status"
-    ] <- "FoldChangeSignificantUp"
-    # LFC & p-value down:
-    volcanoTable[
-      which(volcanoTable["log10p"] >= log10pToFilter & volcanoTable["log2Ratio"] <= -as.numeric(input$lfcVolcano)),
-      "Status"
-    ] <- "FoldChangeSignificantDown"
+    volcanoTable$Status <- classify_volcano_status(
+      volcanoTable$log10p,
+      volcanoTable$log2Ratio,
+      log10pToFilter,
+      as.numeric(input$lfcVolcano)
+    )
 
     if (!is.null(input$highlightImputedVolcano)) {
       if (input$highlightImputedVolcano) {
@@ -468,81 +417,92 @@ volcanoResultsList <- eventReactive(
     xlim <- as.numeric(input$xLimVolcano)
     volcanoTable$log2Ratio <- pmin(pmax(volcanoTable$log2Ratio, -xlim), xlim)
 
-    # Results table
-    output$volcanoOverviewTable <- DT::renderDataTable({
-      if (scoreMode) {
-        # Score axis: the score is the plotted value (no -log10 column); FDR alongside
-        dt <- DT::datatable(
-          data = volcanoTable[, c("feature_id", "description", "log2Ratio", pTypeVolcano, "fdr", "Status")],
-          filter = "top",
-          class = "cell-border stripe",
-          rownames = FALSE,
-          colnames = c("Feature Symbol", "Description", "Log2 Ratio", pTypeVolcano, "fdr", "Significance")
-        ) %>%
-          DT::formatSignif(columns = c(pTypeVolcano, "fdr", "log2Ratio"), digits = 3) %>%
-          DT::formatStyle(
-            columns = pTypeVolcano,
-            color = styleInterval(cuts = log10pToFilter, values = c("black", "green")),
-            fontWeight = "bold"
-          )
-      } else {
-        scoreCols <- intersect(volcanoScoreSel, colnames(volcanoTable))
-        dt <- DT::datatable(
-          data = volcanoTable[, c(
-            "feature_id",
-            "description",
-            "log2Ratio",
-            pTypeVolcano,
-            "log10p",
-            scoreCols,
-            "Status"
-          )],
-          filter = "top",
-          class = "cell-border stripe",
-          rownames = FALSE,
-          colnames = c(
-            "Feature Symbol",
-            "Description",
-            "Log2 Ratio",
-            pTypeVolcano,
-            paste("-log10", pTypeVolcano),
-            scoreCols,
-            "Significance"
-          )
-        ) %>%
-          DT::formatSignif(columns = c("log10p", pTypeVolcano, "log2Ratio", scoreCols), digits = 3) %>%
-          DT::formatStyle(
-            columns = "log10p",
-            color = styleInterval(cuts = log10pToFilter, values = c("black", "green")),
-            fontWeight = "bold"
-          ) %>%
-          DT::formatStyle(
-            columns = "fdr",
-            color = styleInterval(cuts = input$pThresholdVolcano, values = c("green", "black")),
-            fontWeight = "bold"
-          )
-      }
-      dt %>%
-        DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
-        DT::formatStyle(
-          columns = "log2Ratio",
-          color = styleInterval(cuts = 0, values = c("blue", "darkorange")),
-          fontWeight = "bold"
-        ) %>%
-        DT::formatStyle(
-          columns = "Status",
-          color = styleEqual(levels = names(volcanoColours), values = as.character(volcanoColours)),
-          fontWeight = "bold"
-        )
-    })
-
-    return(list(
-      "volcanoTable" = volcanoTable,
-      "volcanoColours" = volcanoColours,
-      "design" = design
-    ))
+    list(
+      volcanoTable = volcanoTable,
+      volcanoColours = volcanoColours,
+      design = design,
+      scoreMode = scoreMode,
+      pTypeVolcano = pTypeVolcano,
+      log10pToFilter = log10pToFilter
+    )
   }
 )
+
+# The contrast shown, and every point with its class
+output$volcanoDesign <- renderText(volcanoResultsList()$design)
+
+output$volcanoOverviewTable <- DT::renderDataTable({
+  res <- volcanoResultsList()
+  volcanoTable <- res$volcanoTable
+  volcanoColours <- res$volcanoColours
+  scoreMode <- res$scoreMode
+  pTypeVolcano <- res$pTypeVolcano
+  log10pToFilter <- res$log10pToFilter
+  if (scoreMode) {
+    # Score axis: the score is the plotted value (no -log10 column); FDR alongside
+    dt <- DT::datatable(
+      data = volcanoTable[, c("feature_id", "description", "log2Ratio", pTypeVolcano, "fdr", "Status")],
+      filter = "top",
+      class = "cell-border stripe",
+      rownames = FALSE,
+      colnames = c("Feature Symbol", "Description", "Log2 Ratio", pTypeVolcano, "fdr", "Significance")
+    ) %>%
+      DT::formatSignif(columns = c(pTypeVolcano, "fdr", "log2Ratio"), digits = 3) %>%
+      DT::formatStyle(
+        columns = pTypeVolcano,
+        color = styleInterval(cuts = log10pToFilter, values = c("black", "green")),
+        fontWeight = "bold"
+      )
+  } else {
+    scoreCols <- intersect(volcanoScoreSel, colnames(volcanoTable))
+    dt <- DT::datatable(
+      data = volcanoTable[, c(
+        "feature_id",
+        "description",
+        "log2Ratio",
+        pTypeVolcano,
+        "log10p",
+        scoreCols,
+        "Status"
+      )],
+      filter = "top",
+      class = "cell-border stripe",
+      rownames = FALSE,
+      colnames = c(
+        "Feature Symbol",
+        "Description",
+        "Log2 Ratio",
+        pTypeVolcano,
+        paste("-log10", pTypeVolcano),
+        scoreCols,
+        "Significance"
+      )
+    ) %>%
+      DT::formatSignif(columns = c("log10p", pTypeVolcano, "log2Ratio", scoreCols), digits = 3) %>%
+      DT::formatStyle(
+        columns = "log10p",
+        color = styleInterval(cuts = log10pToFilter, values = c("black", "green")),
+        fontWeight = "bold"
+      ) %>%
+      DT::formatStyle(
+        columns = "fdr",
+        color = styleInterval(cuts = input$pThresholdVolcano, values = c("green", "black")),
+        fontWeight = "bold"
+      )
+  }
+  dt %>%
+    DT::formatStyle(columns = colnames(.$x$data), `font-size` = "14px") %>%
+    DT::formatStyle(
+      columns = "log2Ratio",
+      color = styleInterval(cuts = 0, values = c("blue", "darkorange")),
+      fontWeight = "bold"
+    ) %>%
+    DT::formatStyle(
+      columns = "Status",
+      color = styleEqual(levels = names(volcanoColours), values = as.character(volcanoColours)),
+      fontWeight = "bold"
+    )
+})
 
 observeEvent(
   {

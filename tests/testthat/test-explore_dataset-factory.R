@@ -65,3 +65,17 @@ test_that("ExploreDatasetSE intermediate rejects shape-blind use", {
   fx <- fx_rnaseq_gene()
   expect_error(ExploreDatasetSE$new(fx$se), "must implement .build_config")
 })
+
+test_that("eds_load_se refuses an .RData path that is not a SUSHI EzResult", {
+  expect_error(eds_load_se(file.path(tempdir(), "analysis.RData")), "not a SUSHI EzResult")
+})
+
+test_that("read_se_any reads <stem>.rds or <stem>.qs2 from a directory, NULL when neither exists", {
+  dir <- withr::local_tempdir()
+  expect_null(read_se_any(dir, "deResult"))
+  saveRDS(list(kind = "rds"), file.path(dir, "deResult.rds"))
+  expect_identical(read_se_any(dir, "deResult")$kind, "rds")
+  skip_if_not_installed("qs2")
+  qs2::qs_save(list(kind = "qs2"), file.path(dir, "rawData.qs2"))
+  expect_identical(read_se_any(dir, "rawData")$kind, "qs2")
+})

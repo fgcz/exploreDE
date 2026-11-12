@@ -185,25 +185,35 @@ banana_png_path <- function() {
   )
 }
 
-#' Significance tier (0-4) for a p-value / FDR. Shared cutpoints with the
-#' asterisk ladder: <=1e-4 -> 4, <=1e-3 -> 3, <=1e-2 -> 2, <=0.05 -> 1, else 0.
+# The significance cutpoints of the asterisk ladder and the banana tiers (and
+# the boxplot brackets): p <= 1e-4 is ****, <= 1e-3 ***, <= 0.01 **, <= 0.05 *.
+significance_cutpoints <- c(1e-04, 1e-03, 1e-02, 5e-02)
+
+#' Significance tier (0-4) per p-value / FDR on `significance_cutpoints`:
+#' 4 at or below 1e-4 down to 0 above 0.05 or for NA. Vectorised.
+#' @return integer vector
+#' @noRd
+significance_tier <- function(p) {
+  tier <- length(significance_cutpoints) - findInterval(p, significance_cutpoints, left.open = TRUE)
+  tier[is.na(tier)] <- 0L
+  as.integer(tier)
+}
+
+#' The asterisks of a significance tier: "****" down to "" (not significant or NA).
+#' @return character vector
+#' @noRd
+significance_stars <- function(p) {
+  strrep("*", significance_tier(p))
+}
+
+#' Significance tier (0-4) of one p-value / FDR for a banana marker; 0 for none.
 #' @return integer scalar
 #' @noRd
 banana_tier <- function(p) {
-  if (length(p) == 0L || is.na(p)) {
+  if (length(p) == 0L) {
     return(0L)
   }
-  if (p <= 1e-04) {
-    4L
-  } else if (p <= 1e-03) {
-    3L
-  } else if (p <= 1e-02) {
-    2L
-  } else if (p <= 5e-02) {
-    1L
-  } else {
-    0L
-  }
+  significance_tier(p)
 }
 
 #' Is banana mode active AND safe to render? Requires the toggle on, the

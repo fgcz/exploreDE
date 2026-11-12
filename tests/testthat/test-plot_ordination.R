@@ -23,7 +23,7 @@ make_mock_pca_input <- function(overrides = list()) {
     textSizePCA = 12,
     pcaLabelMaxOverlap = 10,
     pcaAxesProp = FALSE,
-    boldPCA = "FALSE",
+    boldPCA = FALSE,
     showLinesPCA = TRUE,
     showAxesPCA = TRUE
   )
@@ -98,4 +98,27 @@ test_that("plot_ordination_biplot renders a biplot with gene arrows", {
   expect_s3_class(p, "ggplot")
   # Gene-arrow layers: point + segment + text_repel = 3
   expect_gte(length(p$layers), 3)
+})
+
+test_that("ordination_axis_labels names the explained variance, or the NMDS stress", {
+  expect_identical(
+    ordination_axis_labels(list(variance = c(41.6, 20.2, 9)), "PC1", "PC3"),
+    list(x = "PC1: 42% variance", y = "PC3: 9% variance")
+  )
+  expect_identical(
+    ordination_axis_labels(list(stress = 0.12345), "NMDS1", "NMDS2"),
+    list(x = "NMDS1 (stress: 0.123)", y = "NMDS2")
+  )
+  expect_identical(ordination_axis_labels(list(), "A1", "A2"), list(x = "A1", y = "A2"))
+})
+
+test_that("ordination_theme hides grid lines and axes when asked", {
+  theme_of <- function(...) (ggplot2::ggplot() + ggplot2::theme_bw() + ordination_theme(...))$theme
+  shown <- theme_of(bold = TRUE, show_lines = TRUE, show_axes = TRUE)
+  expect_identical(shown$axis.title$face, "bold")
+  expect_false(inherits(shown$axis.ticks, "element_blank"))
+  hidden <- theme_of(bold = FALSE, show_lines = FALSE, show_axes = FALSE)
+  expect_identical(hidden$axis.title$face, "plain")
+  expect_true(inherits(hidden$panel.grid.major.x, "element_blank"))
+  expect_true(inherits(hidden$axis.ticks, "element_blank"))
 })

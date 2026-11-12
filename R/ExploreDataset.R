@@ -1,3 +1,4 @@
+# nolint start: cyclocomp_linter. R6 class, scored as one expression.
 #' Abstract base class for exploreDE's storage-agnostic dataset wrapper
 #'
 #' `ExploreDataset` defines the accessor contract that every concrete
@@ -127,6 +128,14 @@ ExploreDataset <- R6::R6Class(
       }
       name
     },
+    #' @description `TRUE` when an assay is on the log2 scale (log2 counts, VST, transformed intensities),
+    #'   from the config. Errors on an assay the dataset does not have.
+    #' @param name Canonical assay name, one of `assay_names()`.
+    assay_is_log2 = function(name) {
+      log2 <- private$.config$assay_log2
+      stopifnot(name %in% names(log2))
+      log2[[name]]
+    },
     #' @description Canonical name of the raw assay, from the config.
     raw_assay_name = function() private$.config$raw_assay_name,
     #' @description Canonical name of the primary assay, from the config.
@@ -188,8 +197,8 @@ ExploreDataset <- R6::R6Class(
         return(FALSE)
       }
       for (cc in self$contrasts()) {
-        d <- tryCatch(self$de(cc), error = function(e) NULL)
-        if (!is.null(d) && "pValue" %in% colnames(d) && any(!is.na(d$pValue))) {
+        d <- self$de(cc)
+        if ("pValue" %in% colnames(d) && any(!is.na(d$pValue))) {
           return(TRUE)
         }
       }
@@ -339,7 +348,10 @@ ExploreDataset <- R6::R6Class(
           paste(utils::head(self$contrasts(), 3), collapse = ", "),
           if (length(self$contrasts()) > 3) ", ..." else ""
         ),
-        paste0("  primary_contrast: ", self$primary_contrast() %||% "(none)"),
+        paste0(
+          "  primary_contrast: ",
+          if (is.na(self$primary_contrast() %||% NA)) "(none)" else self$primary_contrast()
+        ),
         paste0("  assays:           ", paste(self$assay_names(), collapse = ", ")),
         paste0(
           "  enrichment:       ",
@@ -353,3 +365,4 @@ ExploreDataset <- R6::R6Class(
     .config = NULL
   )
 )
+# nolint end

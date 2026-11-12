@@ -7,7 +7,7 @@
 # test skips (fails instead when EXPLOREDE_FULL_FIXTURES is set). rnaseq_gene
 # is the shipped demo and always runs.
 #
-# Bioconductor generics are used unqualified inside R/helperFunctions.R
+# Bioconductor generics are used unqualified inside R/ (e.g. feature_ids.R)
 # (metadata, assay, rowData, colData, ...). The installed app
 # attaches these via library() at startup; tests need to mirror that, since
 # NAMESPACE does not currently importFrom them.

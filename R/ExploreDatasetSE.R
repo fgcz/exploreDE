@@ -1,3 +1,4 @@
+# nolint start: cyclocomp_linter. R6 class, scored as one expression.
 #' Abstract intermediate class for SE-backed datasets
 #'
 #' `ExploreDatasetSE` holds the `SummarizedExperiment` backend
@@ -49,7 +50,7 @@ ExploreDatasetSE <- R6::R6Class(
     # column names are LEFT AS-IS to match the legacy convert_proteomics_se()
     # output that server modules currently consume.
     #
-    # A `Name` column is added matching the legacy converters: factor-typed
+    # A `Name` column is added by private$.decorate_samples(): factor-typed
     # for genomics, plain character for proteomics. Rownames are colnames(se)
     # where available, else cd$Name / cd$name fallback.
     #' @description Sample metadata from `colData()`, with the SUSHI ` [Factor]` suffix stripped from column names,
@@ -69,33 +70,7 @@ ExploreDatasetSE <- R6::R6Class(
 
       if (!is.null(sample_ids)) {
         rownames(cd) <- sample_ids
-        oc <- private$.config$omics_class
-        if (identical(oc, "genomics")) {
-          # Legacy genomics: factor()-ize Name with explicit level order.
-          # If colData lacks a Name column, create one from sample_ids.
-          name_vals <- if ("Name" %in% colnames(cd)) {
-            as.character(cd$Name)
-          } else {
-            sample_ids
-          }
-          cd$Name <- factor(name_vals, levels = name_vals)
-        } else if (identical(oc, "proteomics")) {
-          # Legacy proteomics: plain-char Name from Sample/Name/sampleName,
-          # plus factor()-ize every factor column with mixedsort-derived
-          # levels.
-          if (!"Name" %in% colnames(cd)) {
-            cd$Name <- sample_ids
-          }
-          factor_cols <- private$.config$factors %||% character()
-          for (fc in intersect(factor_cols, colnames(cd))) {
-            if (!is.factor(cd[[fc]])) {
-              cd[[fc]] <- factor(
-                cd[[fc]],
-                levels = unique(gtools::mixedsort(cd[[fc]]))
-              )
-            }
-          }
-        }
+        cd <- private$.decorate_samples(cd, sample_ids)
       }
       cd
     },
@@ -200,6 +175,13 @@ ExploreDatasetSE <- R6::R6Class(
   ),
 
   private = list(
+    # The Name column of samples() (genomics: a factor in sample order);
+    # ExploreDatasetSE_Proteomics overrides it.
+    .decorate_samples = function(cd, sample_ids) {
+      name_vals <- if ("Name" %in% colnames(cd)) as.character(cd$Name) else sample_ids
+      cd$Name <- factor(name_vals, levels = name_vals)
+      cd
+    },
     .se = NULL,
     .features_df = NULL,
     .de_dfs = list(),
@@ -214,3 +196,4 @@ ExploreDatasetSE <- R6::R6Class(
     }
   )
 )
+# nolint end

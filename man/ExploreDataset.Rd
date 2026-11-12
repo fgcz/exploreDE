@@ -58,6 +58,7 @@ try(ExploreDataset$new())
     \item \href{#method-ExploreDataset-has_assay}{\code{ExploreDataset$has_assay()}}
     \item \href{#method-ExploreDataset-assay}{\code{ExploreDataset$assay()}}
     \item \href{#method-ExploreDataset-assay_label}{\code{ExploreDataset$assay_label()}}
+    \item \href{#method-ExploreDataset-assay_is_log2}{\code{ExploreDataset$assay_is_log2()}}
     \item \href{#method-ExploreDataset-raw_assay_name}{\code{ExploreDataset$raw_assay_name()}}
     \item \href{#method-ExploreDataset-primary_assay_name}{\code{ExploreDataset$primary_assay_name()}}
     \item \href{#method-ExploreDataset-raw_assay}{\code{ExploreDataset$raw_assay()}}
@@ -456,6 +457,26 @@ Implemented by subclasses.
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{name}}{Canonical assay name.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ExploreDataset-assay_is_log2"></a>}}
+\if{latex}{\out{\hypertarget{method-ExploreDataset-assay_is_log2}{}}}
+\subsection{\code{ExploreDataset$assay_is_log2()}}{
+  \code{TRUE} when an assay is on the log2 scale (log2 counts, VST, transformed intensities),
+from the config. Errors on an assay the dataset does not have.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExploreDataset$assay_is_log2(name)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Canonical assay name, one of \code{assay_names()}.}
     }
     \if{html}{\out{</div>}}
   }

@@ -123,6 +123,8 @@ test_that("multi_upload_label is the file name made id-safe and unique", {
   expect_identical(multi_upload_label("study.h5ad", existing = c("study", "other")), "study_1")
   expect_identical(multi_upload_label("study.h5ad", existing = c("study", "study_1")), "study_2")
   expect_identical(multi_upload_label("(((.h5ad"), "upload")
+  # One label per contrast record: a file already added with two contrasts
+  expect_identical(multi_upload_label("B.h5ad", existing = c("B", "B")), "B_1")
 })
 
 test_that("multi_records_from_dataset gives one record per contrast, named and sourced by origin", {
@@ -164,4 +166,38 @@ test_that("multi_records_from_dataset leaves out a contrast it cannot build and 
   expect_identical(names(recs), paste0("x_", con))
   expect_identical(names(attr(recs, "failed")), "nope")
   expect_match(attr(recs, "failed")[["nope"]], "no such contrast")
+})
+
+test_that("multi_records_from_dataset reads the assays once for all contrasts", {
+  skip_if_not_installed("anndataR")
+  dds <- make_toy_dds(n_genes = 80)
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    dds,
+    out = out,
+    omics = "rnaseq",
+    de = list(
+      control_vs_treated = DESeq2::results(dds, contrast = c("condition", "control", "treated")),
+      treated_vs_control = DESeq2::results(dds, contrast = c("condition", "treated", "control"))
+    )
+  )
+  Counting <- R6::R6Class(
+    "Counting",
+    inherit = ExploreDatasetH5AD,
+    public = list(
+      reads = 0L,
+      assay = function(...) {
+        self$reads <- self$reads + 1L
+        super$assay(...)
+      }
+    )
+  )
+  eds <- Counting$new(out)
+  legacy_multi_contrast_from_eds(eds, "treated_vs_control")
+  one <- eds$reads
+  eds$reads <- 0L
+  recs <- multi_records_from_dataset(eds)
+  expect_length(recs, 2L)
+  expect_identical(eds$reads, one)
+  expect_identical(recs[[1]]$countList, recs[[2]]$countList)
 })

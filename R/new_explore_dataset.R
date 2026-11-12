@@ -1,3 +1,4 @@
+# nolint start: cyclocomp_linter. Flat shape checks.
 #' Detect the shape of a `SummarizedExperiment` for subclass dispatch
 #'
 #' Classifies a SUSHI / FGCZ-proteomics SE into one of four shapes:
@@ -22,8 +23,11 @@ detect_se_shape <- function(se) {
     nzchar(param$comparison) &&
     grepl("--over--", param$comparison, fixed = TRUE)
   has_nested_contrasts <- any(grepl("^constrast_", rd_nms))
+  # prolfqua's assay name: a proteomics result without contrasts has no
+  # constrast_ frames but still this assay
+  has_prolfqua_assay <- "transformedData" %in% SummarizedExperiment::assayNames(se)
 
-  if (has_nested_contrasts && !has_real_comparison) {
+  if ((has_nested_contrasts || has_prolfqua_assay) && !has_real_comparison) {
     return("proteomics")
   }
   if (has_real_comparison) {
@@ -42,7 +46,9 @@ detect_se_shape <- function(se) {
   }
   "count_qc"
 }
+# nolint end
 
+# nolint start: cyclocomp_linter. Dispatch over input kinds.
 #' Construct an `ExploreDataset` instance from a path, URL, or SE
 #'
 #' Factory function: loads the input (or accepts a live
@@ -126,3 +132,4 @@ new_explore_dataset <- function(input) {
   )
   cls$new(se)
 }
+# nolint end

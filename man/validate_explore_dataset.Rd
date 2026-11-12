@@ -30,7 +30,7 @@ the \code{effect_log2fc} and \code{score_fdr} columns;
 \code{primary_grouping()} is a member of \code{factor_names()};
 \code{primary_contrast()} is in \code{contrasts()} (or \code{NA}).
 \item Assays: \code{raw_assay_name()} and \code{primary_assay_name()} are in
-\code{assay_names()}, and the raw assay's rownames / colnames agree
+\code{assay_names()}, every assay has a log2 fact (\code{assay_is_log2()}), and the raw assay's rownames / colnames agree
 with \code{feature_ids()} / \code{sample_ids()}.
 }
 

@@ -115,3 +115,15 @@ test_that("generateMethodsText picks the Kallisto / edgeR wording when configure
   expect_match(sections$de_analysis, "edgeR")
   expect_match(sections$de_analysis, "TMM")
 })
+
+test_that("methods helpers report what they cannot find without catching errors", {
+  dir <- withr::local_tempdir()
+  expect_identical(detectAligner(file.path(dir, "result")), "Unknown")
+  expect_null(getFastpVersion(file.path(dir, "result")))
+  writeLines(c("some line", "fastp v0.23.4, time used"), file.path(dir, "s1_preprocessing.log"))
+  expect_identical(getFastpVersion(file.path(dir, "result")), "0.23.4")
+  expect_identical(
+    getPackageVersions(c("stats", "exploreDE.no.such.pkg")),
+    c(stats = as.character(utils::packageVersion("stats")), exploreDE.no.such.pkg = "version unavailable")
+  )
+})

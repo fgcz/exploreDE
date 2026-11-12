@@ -72,9 +72,9 @@ test_that("match_feature_pattern takes a regular expression when asked", {
   expect_equal(rx("hsp"), c("Hspa1a", "Hspa1b", "Hsp90aa1", "HSPB1"))
 })
 
-test_that("match_feature_pattern reports the match count and the cap", {
-  m <- match_feature_pattern("hsp*", pattern_candidates, max_matches = 2L)
-  expect_equal(as.character(m), c("Hspa1a", "Hspa1b"))
+test_that("match_feature_pattern returns every match and their count", {
+  m <- match_feature_pattern("hsp*", pattern_candidates)
+  expect_equal(as.character(m), c("Hspa1a", "Hspa1b", "Hsp90aa1", "HSPB1"))
   expect_identical(attr(m, "n_matched"), 4L)
   expect_identical(attr(match_feature_pattern("zzz*", pattern_candidates), "n_matched"), 0L)
 })
@@ -91,12 +91,29 @@ test_that("match_feature_pattern matches nothing for an empty, NULL or invalid p
   expect_identical(attr(match_feature_pattern("hsp*", character(0)), "n_matched"), 0L)
 })
 
+test_that("cap_pattern_features caps the features the matched names resolve to", {
+  # Protein mode: each name stands for 5 peptides
+  resolve <- function(x) as.vector(outer(paste0(x, "_pep"), 1:5, paste0))
+  names <- sprintf("P%04d", 1:2000)
+  ids <- cap_pattern_features(names, resolve)
+  expect_length(ids, 1000)
+  expect_identical(attr(ids, "n_features"), 10000L)
+  few <- cap_pattern_features(names[1:3], resolve)
+  expect_length(few, 15)
+  expect_identical(attr(few, "n_features"), 15L)
+  expect_identical(attr(cap_pattern_features(character(0), stop), "n_features"), 0L)
+})
+
 test_that("fb_pattern_message describes the matches", {
   msg <- function(p, ...) fb_pattern_message(p, match_feature_pattern(p, pattern_candidates, ...))
   expect_identical(msg(""), "")
   expect_identical(msg("actb"), "1 name matches.")
   expect_identical(msg("hsp*"), "4 names match.")
-  expect_identical(msg("hsp*", max_matches = 2L), "4 names match; the first 2 were added.")
+  capped <- structure(sprintf("f%d", 1:1000), n_features = 1250L)
+  expect_identical(
+    fb_pattern_message("hsp*", match_feature_pattern("hsp*", pattern_candidates), capped),
+    "4 names match (1250 features); the first 1000 features were added."
+  )
   expect_identical(msg("Hsp(", regex = TRUE), "Not a valid pattern.")
   # a plain vector without the attribute counts its elements
   expect_identical(fb_pattern_message("hsp*", c("Hspa1a", "Hspa1b")), "2 names match.")
@@ -121,4 +138,18 @@ test_that("getPackageVersions returns a valid version string for installed packa
 test_that("getPackageVersions returns 'version unavailable' for unknown packages", {
   vers <- getPackageVersions("this_package_definitely_does_not_exist_42")
   expect_equal(unname(vers), "version unavailable")
+})
+
+test_that("match_feature_pattern cannot be made to backtrack for long", {
+  set.seed(1)
+  n <- 500
+  acc <- replicate(n, paste0(sample(c(LETTERS, 0:9), 6, TRUE), collapse = ""))
+  ids <- paste0("sp|", acc, "|", replicate(n, paste0(sample(LETTERS, 5, TRUE), collapse = "")), "_HUMAN")
+  expect_lt(system.time(match_feature_pattern("(.+)+X$", ids, regex = TRUE))[["elapsed"]], 1)
+  expect_lt(system.time(match_feature_pattern("*?*?*?*?*?*?*?*?*?*?*Q", ids))[["elapsed"]], 1)
+  # Regular expressions still match as before
+  expect_identical(
+    as.character(match_feature_pattern("^sp\\|A|_HUMAN$", c("sp|A1|X_HUMAN", "tr|B|Y_MOUSE"), regex = TRUE)),
+    "sp|A1|X_HUMAN"
+  )
 })

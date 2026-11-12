@@ -145,3 +145,53 @@ test_that("SAINT SE: standard prolfqua proteomics is unaffected (no SAINT taggin
   expect_identical(cm$method, "prolfqua")
   expect_null(cm$score_label)
 })
+
+test_that("a prolfqua SummarizedExperiment without contrasts opens as proteomics with all its features", {
+  se <- readRDS(system.file("examples", "proteomics", "SummarizedExperiment.rds", package = "exploreDE"))
+  SummarizedExperiment::rowData(se)$constrast_B_vs_A <- NULL
+  expect_identical(detect_se_shape(se), "proteomics")
+  eds <- new_explore_dataset(se)
+  expect_identical(eds$omics_class(), "proteomics")
+  expect_length(eds$contrasts(), 0)
+  expect_identical(eds$features()$feature_id, rownames(se))
+  expect_true(validate_explore_dataset(eds, strict = FALSE)$ok)
+})
+
+test_that("the raw assay of proteomics data is the raw intensities when there are any", {
+  se <- readRDS(system.file("examples", "proteomics", "SummarizedExperiment.rds", package = "exploreDE"))
+  # rawData is not offered: the transformed intensities are the only assay
+  expect_identical(new_explore_dataset(se)$raw_assay_name(), "intensities")
+  SummarizedExperiment::assayNames(se)[SummarizedExperiment::assayNames(se) == "rawData"] <- "raw"
+  eds <- new_explore_dataset(se)
+  expect_identical(eds$raw_assay_name(), "intensities_raw")
+  expect_identical(eds$primary_assay_name(), "intensities")
+
+  skip_if_not_installed("anndataR")
+  pr <- make_toy_prot("protein")
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    list(raw = 2^pr$intensities, transformed = pr$intensities),
+    out = out,
+    omics = "proteomics",
+    coldata = pr$coldata,
+    rowdata = pr$rowdata
+  )
+  eds <- new_explore_dataset(out)
+  expect_identical(eds$raw_assay_name(), "intensities_raw")
+  expect_identical(eds$primary_assay_name(), "intensities")
+  expect_identical(eds$raw_assay(), eds$assay("intensities_raw"))
+})
+
+test_that("eds_proteomics_choices maps gene symbols and protein ids to feature ids", {
+  ch <- eds_proteomics_choices(
+    feature_id = c("P1~a", "P1~b", "P2~c", "P3"),
+    gene = c("G1", "G1", NA, "P3"),
+    protein = c("P1", "P1", "P2", "P3")
+  )
+  expect_identical(ch$gene, list(choices = "G1", lookup = list(G1 = c("P1~a", "P1~b"))))
+  expect_identical(ch$protein, list(choices = c("P1", "P2"), lookup = list(P1 = c("P1~a", "P1~b"), P2 = "P2~c")))
+  # Protein-level data: the protein ids are the feature ids
+  none <- list(choices = NULL, lookup = NULL)
+  expect_identical(eds_proteomics_choices(c("P1", "P2"), protein = c("P1", "P2"))$protein, none)
+  expect_identical(eds_proteomics_choices(c("P1", "P2"))$gene, none)
+})

@@ -239,27 +239,14 @@ observeEvent(
     }
 
     # Log2 and batch correction on full matrix BEFORE extracting genes
-    is_logged <- assay_is_log2(eds, input$correlationCounts)
-    if (input$correlationCountsLog & !is_logged) {
-      countsCorrelation <- log2(countsCorrelation + 1)
-      is_logged <- TRUE
-    }
-    if (input$correlationBatch != "None") {
-      if (is_logged) {
-        countsCorrelation <- apply_batch_correction(
-          counts = countsCorrelation,
-          dataset = eds$samples(),
-          batchCol = input$correlationBatch,
-          designCol = input$correlationDesign
-        )
-      } else {
-        showNotification(
-          "Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
-          type = "warning",
-          duration = 8
-        )
-      }
-    }
+    countsCorrelation <- prepare_expression(
+      countsCorrelation,
+      eds$samples(),
+      is_log2 = eds$assay_is_log2(input$correlationCounts),
+      take_log2 = input$correlationCountsLog,
+      batch = input$correlationBatch,
+      design = input$correlationDesign
+    )$counts
 
     # Now extract the two genes of interest
     corr_mode <- input$fb_search_by_correlation %||% "feature_id"
@@ -267,7 +254,7 @@ observeEvent(
     corr_labels <- c(input$correlationGene1, input$correlationGene2)
     if (corr_mode != "feature_id") {
       corr_features <- lapply(corr_labels, function(sel) {
-        resolve_features(sel, corr_mode)
+        fb_resolve(sel, corr_mode)
       })
     }
     # Average across feature_ids when a gene/protein maps to multiple rows

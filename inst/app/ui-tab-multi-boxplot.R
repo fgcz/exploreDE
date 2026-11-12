@@ -421,7 +421,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "success",
-        textOutput("multiBoxplotDesign"),
+        textOutput("multiBoxplotInfo"),
         # uiOutput("multiBoxplotWarn", inline = T),
         tabsetPanel(
           id = "multiBoxbarplots",

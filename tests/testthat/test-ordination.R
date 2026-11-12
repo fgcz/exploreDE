@@ -180,17 +180,6 @@ test_that("step_peptide_filter is a no-op without a DE table, threshold or nrPep
   expect_equal(step_peptide_filter(counts, ds, de_df["feature_id"], 3)$counts, counts)
 })
 
-test_that("step_log2 log-transforms the linear-scale assays only", {
-  counts <- matrix(1:4, nrow = 2)
-  ds <- data.frame(cond = c("A", "B"))
-  for (assay in c("counts", "normalised", "tpm", "fpkm")) {
-    expect_equal(step_log2(counts, ds, assay)$counts, log2(counts + 1), info = assay)
-  }
-  # Already-log assays: no-op
-  expect_equal(step_log2(counts, ds, "normalised_log2")$counts, counts)
-  expect_equal(step_log2(counts, ds, "vst")$counts, counts)
-})
-
 test_that("step_top_n_sd keeps the top N most variable features", {
   set.seed(1)
   m <- matrix(rnorm(50), nrow = 10)
@@ -208,24 +197,4 @@ test_that("step_top_n_sd is a no-op when top_n >= nrow", {
   m <- matrix(1:20, nrow = 5, dimnames = list(letters[1:5], NULL))
   ds <- data.frame(cond = rep("A", 4))
   expect_equal(step_top_n_sd(m, ds, top_n = 100)$counts, m)
-})
-
-test_that("step_batch_correction applies when batch_column points to a valid factor", {
-  set.seed(3)
-  counts <- matrix(
-    c(rnorm(5, 10), rnorm(5, 11), rnorm(5, 20), rnorm(5, 21)),
-    nrow = 5,
-    dimnames = list(paste0("g", 1:5), paste0("s", 1:4))
-  )
-  ds <- data.frame(row.names = paste0("s", 1:4), batch = c("x", "x", "y", "y"), cond = c("A", "B", "A", "B"))
-  out <- step_batch_correction(counts, ds, "batch", "cond")
-  expect_equal(dim(out$counts), dim(counts))
-  expect_equal(dimnames(out$counts), dimnames(counts))
-})
-
-test_that("step_batch_correction is a no-op when batch_column is 'None' or NULL", {
-  counts <- matrix(runif(20), nrow = 5, dimnames = list(NULL, paste0("s", 1:4)))
-  ds <- data.frame(row.names = paste0("s", 1:4), cond = c("A", "A", "B", "B"))
-  expect_identical(step_batch_correction(counts, ds, "None", "cond")$counts, counts)
-  expect_identical(step_batch_correction(counts, ds, NULL, "cond")$counts, counts)
 })

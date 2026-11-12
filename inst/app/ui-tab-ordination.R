@@ -267,7 +267,9 @@ tabItem(
               "The design factor tells removeBatchEffect which biological signal to protect. For two-factor DE this is locked to the primary grouping; for CountQC/Crispr you can pick any factor."
             ),
             checkboxInput(inputId = "pcaLog2", label = "Log2 counts?", value = TRUE),
-            helpText("Log2 only applies to non-logged RNA counts, e.g., TPM, FPKM"),
+            helpText(
+              "Only applies to counts or intensities not already in log space, e.g., TPM, FPKM, raw intensities"
+            ),
             hr(style = "border-top: 0.1px solid #000000;"),
             tags$b("Show sample names?"),
             checkboxInput(inputId = "pcaShowNames", label = "Show sample names", value = FALSE),

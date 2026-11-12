@@ -21,6 +21,12 @@ test_that("banana_tier maps p-values to 0-4 on the shared cutpoints", {
   expect_identical(banana_tier(numeric(0)), 0L)
 })
 
+test_that("significance_stars gives the asterisk ladder on the same cutpoints, none for NA", {
+  p <- c(1e-6, 1e-4, 5e-4, 1e-3, 0.01, 0.05, 0.051, NA)
+  expect_identical(significance_stars(p), c("****", "****", "***", "***", "**", "*", "", ""))
+  expect_identical(significance_tier(p), c(4L, 4L, 3L, 3L, 2L, 1L, 0L, 0L))
+})
+
 test_that("banana_on is just the toggle state (asset always embedded)", {
   skip_if_not_installed("ggtext")
   expect_true(banana_on(TRUE))

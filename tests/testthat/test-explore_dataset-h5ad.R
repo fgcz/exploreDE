@@ -943,7 +943,7 @@ test_that("levels derived from a character column use mixedsort, not sort", {
   skip_if_no_anndataR()
   # No explicit levels to honour, so the order has to be derived. mixedsort
   # reads the embedded numbers the way a human does; sort() would give
-  # "0h, 24h, 6h". Matches ExploreDatasetSE.R and helperFunctions.R, so the
+  # "0h, 24h, 6h". Matches ExploreDatasetSE_Proteomics's samples(), so the
   # h5ad and SE backends agree rather than diverge.
   cd <- data.frame(g = rep(c("0h", "6h", "24h"), each = 2), stringsAsFactors = FALSE)
   m <- matrix(stats::rpois(300, 100), nrow = 50, dimnames = list(sprintf("G%02d", 1:50), sprintf("S%d", 1:6)))
@@ -1424,4 +1424,81 @@ test_that("enrichment_filter records padj_max only for tables that were filtered
   u <- anndataR::read_h5ad(out, as = "InMemoryAnnData")$uns
   expect_null(u$enrichment_filter$padj_max)
   expect_equal(nrow(u$enrichment$treated_vs_control$ora), 2L) # stored as given
+})
+
+test_that("build_explore_h5ad refuses a plain SummarizedExperiment instead of keeping only its first assay", {
+  p <- make_toy_pieces()
+  se <- SummarizedExperiment::SummarizedExperiment(
+    assays = list(rawData = p$counts, transformedData = log2(p$counts + 1)),
+    colData = p$coldata
+  )
+  expect_error(
+    build_explore_h5ad(se, out = tempfile(fileext = ".h5ad"), omics = "proteomics"),
+    "must be a DESeqDataSet, a counts matrix, or a named list of matrices"
+  )
+  expect_false("gene_symbol" %in% names(formals(build_explore_h5ad)))
+})
+
+test_that("an obs column 'organism part' is not taken for the organism", {
+  p <- make_toy_pieces()
+  coldata <- p$coldata
+  coldata[["organism part"]] <- "liver"
+  f <- tempfile(fileext = ".h5ad")
+  build_explore_h5ad(p$counts, out = f, omics = "rnaseq", coldata = coldata, factors = "condition")
+  eds <- new_explore_dataset(f)
+  expect_true(is.na(eds$organism()))
+})
+
+test_that("a file written without ref_build has no reference build, not the text 'NA'", {
+  p <- make_toy_pieces()
+  f <- tempfile(fileext = ".h5ad")
+  build_explore_h5ad(p$counts, out = f, omics = "rnaseq", coldata = p$coldata)
+  expect_true(is.na(new_explore_dataset(f)$ref_build()))
+  g <- tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    p$counts,
+    out = g,
+    omics = "rnaseq",
+    coldata = p$coldata,
+    ref_build = "Homo_sapiens/GENCODE/GRCh38.p13"
+  )
+  expect_identical(new_explore_dataset(g)$ref_build(), "Homo_sapiens/GENCODE/GRCh38.p13")
+})
+
+test_that("format() says (none) for a dataset without contrasts", {
+  p <- make_toy_pieces()
+  f <- tempfile(fileext = ".h5ad")
+  build_explore_h5ad(p$counts, out = f, omics = "rnaseq", coldata = p$coldata)
+  expect_true(any(grepl("primary_contrast: (none)", format(new_explore_dataset(f)), fixed = TRUE)))
+})
+
+test_that("enrichment_input() fails on an unknown contrast, as de() does", {
+  p <- make_toy_pieces()
+  f <- tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    p$counts,
+    out = f,
+    omics = "rnaseq",
+    coldata = p$coldata,
+    de = list(treated_vs_control = p$de_df),
+    de_columns = list(effect_log2fc = "LFC", score_pvalue = "P", score_fdr = "Q")
+  )
+  eds <- new_explore_dataset(f)
+  expect_error(eds$enrichment_input("no_such_contrast"))
+  expect_error(eds$de("no_such_contrast"))
+})
+
+test_that("every enrichment method other than gsea counts as ORA, as the reader treats it", {
+  p <- make_toy_pieces()
+  f <- tempfile(fileext = ".h5ad")
+  build_explore_h5ad(
+    p$counts,
+    out = f,
+    omics = "rnaseq",
+    coldata = p$coldata,
+    de = list(treated_vs_control = p$de_df),
+    de_columns = list(effect_log2fc = "LFC", score_pvalue = "P", score_fdr = "Q"),
+    pathways = list(treated_vs_control = list(enricher = list(BP = .mini_cp("enrichResult", 3))))
+  )
+  expect_identical(new_explore_dataset(f)$enrichment_kinds(), "ora")
 })

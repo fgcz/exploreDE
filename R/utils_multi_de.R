@@ -6,6 +6,7 @@
 # data roots (the project browser's checkbox values).
 # =============================================================================
 
+# nolint start: cyclocomp_linter. Path checks in sequence.
 #' Resolve a multi-DE dataset link to a result directory under a data root
 #'
 #' The check is lexical, so it never follows the link anywhere first: A link
@@ -55,6 +56,7 @@ multi_resolve_dataset <- function(link, roots) {
   }
   NULL
 }
+# nolint end
 
 #' Does an LDAP lookup allow access to a project?
 #'
@@ -89,11 +91,8 @@ ldap_allows_project <- function(lookup, project) {
 #'   when the directory holds no DE result.
 #' @noRd
 multi_load_de_result <- function(path) {
-  if (file.exists(file.path(path, "deResult.rds"))) {
-    se <- readRDS(file.path(path, "deResult.rds"))
-  } else if (file.exists(file.path(path, "deResult.qs2"))) {
-    se <- qs2::qs_read(file.path(path, "deResult.qs2"), nthreads = 4)
-  } else {
+  se <- read_se_any(path, "deResult")
+  if (is.null(se)) {
     return(NULL)
   }
   eds <- new_explore_dataset(se)
@@ -117,6 +116,7 @@ multi_upload_label <- function(filename, existing = character()) {
   if (!nzchar(label)) {
     label <- "upload"
   }
+  existing <- unique(existing) # the records repeat a label once per contrast
   make.unique(c(existing, label), sep = "_")[length(existing) + 1L]
 }
 
@@ -141,8 +141,15 @@ multi_upload_label <- function(filename, existing = character()) {
 multi_records_from_dataset <- function(eds, label = NULL, uploaded = !is.null(label)) {
   out <- list()
   failed <- character()
+  counts <- NULL # the count methods, read once for all contrasts
   for (con in eds$contrasts()) {
-    obj <- tryCatch(legacy_multi_contrast_from_eds(eds, con), error = function(e) e)
+    obj <- tryCatch(
+      {
+        counts <- counts %||% multi_count_list(eds)
+        legacy_multi_contrast_from_eds(eds, con, counts)
+      },
+      error = function(e) e
+    )
     if (inherits(obj, "error")) {
       failed[[con]] <- conditionMessage(obj)
       next

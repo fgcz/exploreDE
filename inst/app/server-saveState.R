@@ -18,11 +18,8 @@
 #   save_state_fp_match(a, b), restore_default_value(...).
 # current_fingerprint() wraps save_state_fingerprint() with this session's eds.
 current_fingerprint <- function() {
-  idr <- tryCatch(inputDataReactive(), error = function(e) NULL)
-  save_state_fingerprint(
-    tryCatch(idr$.eds, error = function(e) NULL),
-    tryCatch(attr(idr, "dataDir"), error = function(e) NULL)
-  )
+  idr <- inputDataReactive()
+  save_state_fingerprint(idr$.eds, attr(idr, "dataDir"))
 }
 
 # ── SAVE ────────────────────────────────────────────────────────────────────
@@ -30,7 +27,7 @@ current_fingerprint <- function() {
 # inst/spec/exploreDE-session-2.md). The earlier .rds format was retired in
 # 3.9.0: Reading an .rds can run code.
 state_filename <- function(ext) {
-  dt <- tryCatch(inputDataReactive()$.eds$data_type(), error = function(e) "data")
+  dt <- inputDataReactive()$.eds$data_type()
   sprintf("exploreDE_state_%s_%s.%s", dt, format(Sys.time(), "%Y%m%d_%H%M%S"), ext)
 }
 
@@ -41,46 +38,37 @@ build_state_bundle <- function() {
   # table renders in identical row order, so the saved row indices re-apply
   # exactly (re-selection is keyed on oraType/oraDirection/gseaType, which are
   # restored too). Store indices; restore re-selects them on tab open.
-  ora_sel <- tryCatch(input$selectedTable_ORA_rows_selected, error = function(e) NULL)
-  gsea_sel <- tryCatch(input$selectedTable_GSEA_rows_selected, error = function(e) NULL)
+  ora_sel <- input$selectedTable_ORA_rows_selected
+  gsea_sel <- input$selectedTable_GSEA_rows_selected
 
   bundle <- list(
     meta = list(
       app = "exploreDE",
       version = 1L,
       saved_at = Sys.time(),
-      dataUrl = tryCatch(isolate(session$clientData$url_search), error = function(e) NA_character_),
+      dataUrl = isolate(session$clientData$url_search),
       fingerprint = current_fingerprint() # exact-dataset identity (see restore)
     ),
     inputs = save_state_filter_inputs(reactiveValuesToList(input, all.names = TRUE)),
     rv = list(
-      featureBucket = tryCatch(featureBucket$features, error = function(e) NULL),
-      goHeatmap = tryCatch(
-        list(
-          genes = goHeatmapReactive$currentGenes,
-          name = goHeatmapReactive$currentGoName,
-          term = goHeatmapReactive$currentGoTerm
-        ),
-        error = function(e) NULL
+      featureBucket = featureBucket$features,
+      goHeatmap = list(
+        genes = goHeatmapReactive$currentGenes,
+        name = goHeatmapReactive$currentGoName,
+        term = goHeatmapReactive$currentGoTerm
       ),
-      keggHeatmap = tryCatch(
-        list(
-          genes = keggHeatmapReactive$currentGenes,
-          name = keggHeatmapReactive$currentPathwayName
-        ),
-        error = function(e) NULL
+      keggHeatmap = list(
+        genes = keggHeatmapReactive$currentGenes,
+        name = keggHeatmapReactive$currentPathwayName
       ),
-      goTileKegg = tryCatch(
-        list(
-          genes = goTileKeggReactive$currentGenes,
-          keggId = goTileKeggReactive$currentKeggId,
-          name = goTileKeggReactive$currentPathwayName
-        ),
-        error = function(e) NULL
+      goTileKegg = list(
+        genes = goTileKeggReactive$currentGenes,
+        keggId = goTileKeggReactive$currentKeggId,
+        name = goTileKeggReactive$currentPathwayName
       ),
       oraSelected = ora_sel,
       gseaSelected = gsea_sel,
-      gseaType = tryCatch(isolate(input$gseaType), error = function(e) NULL)
+      gseaType = isolate(input$gseaType)
     )
   )
   # Multi DE: Which datasets are loaded (as links or contrasts, in order,
@@ -101,13 +89,10 @@ output$download_state_json <- downloadHandler(
   content = function(file) writeLines(save_state_to_json(build_state_bundle()), file, useBytes = TRUE)
 )
 
+# This module is sourced once a dataset is loaded, so there is always one here.
 output$save_state_status <- renderText({
-  n <- tryCatch(length(save_state_filter_inputs(reactiveValuesToList(input, all.names = TRUE))), error = function(e) 0L)
-  if (isTRUE(tryCatch(!is.null(inputDataReactive()), error = function(e) FALSE))) {
-    sprintf("Ready to save — %d settings will be captured.", n)
-  } else {
-    "Waiting for data to load…"
-  }
+  n <- length(save_state_filter_inputs(reactiveValuesToList(input, all.names = TRUE)))
+  sprintf("Ready to save — %d settings will be captured.", n)
 })
 
 # ── RESTORE machinery ───────────────────────────────────────────────────────
@@ -155,7 +140,7 @@ observe({
     if (!is.null(cur) && identical(cur, v)) {
       next
     } # already applied
-    tryCatch(session$sendInputMessage(id, list(value = v)), error = function(e) NULL)
+    session$sendInputMessage(id, list(value = v))
     still[[id]] <- v
   }
   if (length(still) != length(pend)) {
@@ -189,10 +174,7 @@ observeEvent(
       save_state_pending_ora(NULL)
       shinyjs::delay(
         400,
-        tryCatch(
-          DT::selectRows(DT::dataTableProxy("selectedTable_ORA"), idx),
-          error = function(e) NULL
-        )
+        DT::selectRows(DT::dataTableProxy("selectedTable_ORA"), idx)
       )
     }
     if (identical(input$tabs, "gseaTab") && length(save_state_pending_gsea()) > 0) {
@@ -200,10 +182,7 @@ observeEvent(
       save_state_pending_gsea(NULL)
       shinyjs::delay(
         400,
-        tryCatch(
-          DT::selectRows(DT::dataTableProxy("selectedTable_GSEA"), idx),
-          error = function(e) NULL
-        )
+        DT::selectRows(DT::dataTableProxy("selectedTable_GSEA"), idx)
       )
     }
   },
@@ -221,10 +200,16 @@ restore_multi_datasets <- function(datasets) {
     return("")
   }
   current <- isolate(multiDeReactive$results)
+  # The loaded dataset's own contrasts are built from it, not looked up among
+  # the current records: in a fresh session Multi DE does not hold them yet.
+  own <- if (any(vapply(datasets, function(d) identical(d[["source"]], "contrast"), logical(1)))) {
+    multi_records_from_dataset(isolate(edsState())$.eds)
+  }
   # withProgress evaluates in the caller's frame, so results come back as its value.
   res <- withProgress(message = "Restoring Multi DE datasets", value = 0, {
     out <- list()
     missing <- character()
+    unreadable <- character()
     missing_uploads <- character()
     for (d in datasets) {
       incProgress(1 / length(datasets), detail = d[["name"]])
@@ -232,17 +217,17 @@ restore_multi_datasets <- function(datasets) {
       if (identical(d[["source"]], "link")) {
         resolved <- multi_resolve_dataset(d[["link"]], MULTI_DATA_ROOTS)
         if (!is.null(resolved) && multi_access_ok(resolved)) {
-          obj <- tryCatch(multi_load_de_result(resolved$path), error = function(e) NULL)
+          # A file that exists but cannot be read is reported with its error;
+          # the other datasets are still restored.
+          obj <- tryCatch(multi_load_de_result(resolved$path), error = function(e) e)
+          if (inherits(obj, "error")) {
+            unreadable <- c(unreadable, paste0(d[["name"]], " (", conditionMessage(obj), ")"))
+            next
+          }
           if (!is.null(obj)) obj$source <- list(kind = "link", link = resolved$link)
         }
       } else if (identical(d[["source"]], "contrast")) {
-        hit <- Filter(
-          function(x) {
-            identical(x[["source"]][["kind"]], "contrast") && identical(x[["source"]][["contrast"]], d[["contrast"]])
-          },
-          current
-        )
-        if (length(hit)) obj <- hit[[1]]
+        obj <- own[[d[["contrast"]]]]
       } else if (identical(d[["source"]], "upload")) {
         hit <- Filter(
           function(x) {
@@ -260,7 +245,7 @@ restore_multi_datasets <- function(datasets) {
         missing <- c(missing, d[["name"]])
       }
     }
-    list(out = out, missing = missing, missing_uploads = unique(missing_uploads))
+    list(out = out, missing = missing, unreadable = unreadable, missing_uploads = unique(missing_uploads))
   })
   if (length(res$out)) {
     multiDeReactive$results <- res$out
@@ -269,6 +254,9 @@ restore_multi_datasets <- function(datasets) {
   note <- sprintf(" Multi DE: %d of %d datasets restored.", length(res$out), length(datasets))
   if (length(res$missing)) {
     note <- paste0(note, " Not found or not accessible: ", paste(res$missing, collapse = ", "), ".")
+  }
+  if (length(res$unreadable)) {
+    note <- paste0(note, " Could not be read: ", paste(res$unreadable, collapse = "; "), ".")
   }
   if (length(res$missing_uploads)) {
     note <- paste0(
@@ -354,22 +342,20 @@ observeEvent(input$load_state_file, {
 
   # (2) reactiveValues injection — feature bucket + gated gene sets. The GO/KEGG
   #     heatmap renders READ these rv (they don't re-fetch), so plots rebuild.
-  #     exists() guards: goTileKeggReactive only exists for RNASeq datasets, so a
-  #     bundle carrying it must not crash a restore on another data type.
-  if (!is.null(bundle$rv$featureBucket) && exists("featureBucket")) {
+  if (!is.null(bundle$rv$featureBucket)) {
     featureBucket$features <- bundle$rv$featureBucket
     featureBucket$version <- isolate(featureBucket$version) + 1L
   }
-  if (!is.null(bundle$rv$goHeatmap) && exists("goHeatmapReactive")) {
+  if (!is.null(bundle$rv$goHeatmap)) {
     goHeatmapReactive$currentGenes <- bundle$rv$goHeatmap$genes
     goHeatmapReactive$currentGoName <- bundle$rv$goHeatmap$name
     goHeatmapReactive$currentGoTerm <- bundle$rv$goHeatmap$term
   }
-  if (!is.null(bundle$rv$keggHeatmap) && exists("keggHeatmapReactive")) {
+  if (!is.null(bundle$rv$keggHeatmap)) {
     keggHeatmapReactive$currentGenes <- bundle$rv$keggHeatmap$genes
     keggHeatmapReactive$currentPathwayName <- bundle$rv$keggHeatmap$name
   }
-  if (!is.null(bundle$rv$goTileKegg) && exists("goTileKeggReactive")) {
+  if (!is.null(bundle$rv$goTileKegg)) {
     goTileKeggReactive$currentGenes <- bundle$rv$goTileKegg$genes
     goTileKeggReactive$currentKeggId <- bundle$rv$goTileKegg$keggId
     goTileKeggReactive$currentPathwayName <- bundle$rv$goTileKegg$name
@@ -390,13 +376,13 @@ observeEvent(input$load_state_file, {
   if (!is.null(saved_tab) && !grepl("[Mm]ulti", saved_tab)) {
     session$onFlushed(
       function() {
-        tryCatch(updateTabItems(session, "tabs", saved_tab), error = function(e) NULL)
+        updateTabItems(session, "tabs", saved_tab)
       },
       once = TRUE
     )
   }
 
-  saved_at <- tryCatch(format(bundle$meta$saved_at, "%Y-%m-%d %H:%M:%S"), error = function(e) "unknown")
+  saved_at <- format(bundle$meta$saved_at, "%Y-%m-%d %H:%M:%S")
   msg <- sprintf(
     "✓ Restored from '%s' (saved %s). %d settings queued.%s",
     f$name,

@@ -8,3 +8,5 @@ plans/
 banana-twemoji-512.png
 /*.h5ad
 docs/
+tests/testthat/Rplots.pdf
+vignettes/*.html

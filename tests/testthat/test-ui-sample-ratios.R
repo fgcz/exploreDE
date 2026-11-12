@@ -39,6 +39,8 @@ test_that("a sample ratio is defined, plotted next to a contrast and removed", {
   # A name already used, by a ratio or a contrast, is refused
   add_ratio(app, "diff_45", "S6_diff", "S3_undiff")
   add_ratio(app, "diff_vs_undiff", "S6_diff", "S3_undiff")
+  # feature_id names the id column of the table download
+  add_ratio(app, "feature_id", "S6_diff", "S3_undiff")
   expect_identical(app$get_value(input = "heatmapRatioPlot"), "diff_45")
   expect_no_match(ratio_list_text(app), "S6_diff", fixed = TRUE)
 
@@ -55,6 +57,10 @@ test_that("a sample ratio is defined, plotted next to a contrast and removed", {
   expect_identical(colnames(values), c("feature_id", "diff_45", "diff_vs_undiff"))
   expect_identical(nrow(values), 50L)
   expect_false(anyNA(values))
+  # Fewer than 2 features is not a heatmap: the smallest is 2
+  app$set_inputs(heatmapRatioTopN = 1)
+  ratio_heatmap_src(app)
+  expect_identical(nrow(openxlsx::read.xlsx(app$get_download("dlTable_heatmapRatios"))), 2L)
 
   app$click(selector = "a[data-value='Sample ratios']")
   app$set_inputs(heatmapRatioRemove = "diff_45")
@@ -62,4 +68,28 @@ test_that("a sample ratio is defined, plotted next to a contrast and removed", {
   app$wait_for_idle()
   expect_match(ratio_list_text(app), "No sample ratios defined yet.", fixed = TRUE)
   expect_identical(app_output_errors(app), character(0))
+})
+
+test_that("a ratio on raw counts is the difference of mean log2(count + 1)", {
+  app <- app_start("sample-ratio-values")
+  app_load_demo(app)
+  app_open_tab(app, "heatmapTab")
+  app$set_inputs(heatmapCounts = "counts")
+  app$wait_for_idle()
+  app$click(selector = "a[data-value='Sample ratios']")
+  app$wait_for_idle()
+  num <- c("S4_diff", "S5_diff")
+  den <- c("S1_undiff", "S2_undiff")
+  add_ratio(app, "r_counts", num, den)
+  app$set_inputs(heatmapRatioPlot = "r_counts", sig = "Ratios")
+  ratio_heatmap_src(app)
+  app$click(selector = "#shiny-tab-heatmapTab a[data-value='Download']")
+  app$wait_for_idle()
+  values <- openxlsx::read.xlsx(app$get_download("dlTable_heatmapRatios"))
+
+  eds <- new_explore_dataset(readRDS(system.file("examples", "genomics", "deResult.rds", package = "exploreDE")))
+  counts <- log2(eds$assay("counts") + 1)
+  expected <- rowMeans(counts[, num]) - rowMeans(counts[, den])
+  expect_gt(nrow(values), 0)
+  expect_equal(values$r_counts, unname(expected[values$feature_id]), tolerance = 1e-10)
 })

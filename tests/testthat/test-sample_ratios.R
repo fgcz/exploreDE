@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 # sample_log2_ratio(), ratio_heatmap_matrix(), contrast_log2_ratio()
-# (R/helperFunctions.R): the Heatmap tab's "Sample ratios" setting and its
+# (R/heatmap_helpers.R): the Heatmap tab's "Sample ratios" setting and its
 # "Ratios" heatmap.
 # -----------------------------------------------------------------------------
 

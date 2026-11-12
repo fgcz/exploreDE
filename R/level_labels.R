@@ -222,6 +222,7 @@ decode_label_entities <- function(x) {
   )
 }
 
+# nolint start: cyclocomp_linter. One branch per markup form.
 #' Parse one user-typed level label into rich (ggtext) and plain renderings
 #'
 #' Whitelisted tags are kept, everything else is literal text. A label that
@@ -279,6 +280,7 @@ parse_level_label <- function(x) {
   }
   list(rich = rich, plain = plain, ok = ok)
 }
+# nolint end
 
 #' Can this session render rich (ggtext) labels?
 #' @noRd
@@ -286,6 +288,7 @@ rich_labels_available <- function() {
   requireNamespace("ggtext", quietly = TRUE) && requireNamespace("gridtext", quietly = TRUE)
 }
 
+# nolint start: cyclocomp_linter. One branch per label mode.
 #' Display labels for a factor's levels, read from the Colours tab inputs
 #'
 #' @param input Shiny input (or list) holding `GroupLabel<factor><level>`.
@@ -344,6 +347,7 @@ level_labels <- function(input, fname, levels, mode = c("rich", "plain"), wrap =
   attr(out, "rich") <- rich
   out
 }
+# nolint end
 
 #' Is a label vector (from level_labels()) rich markdown?
 #' @noRd

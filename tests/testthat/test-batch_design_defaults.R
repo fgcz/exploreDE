@@ -51,27 +51,3 @@ test_that("count QC data: batch None by default, any factor can be the design", 
   expect_identical(bd$design_choices, c("None", "condition", "batch"))
   expect_identical(bd$design_default, "None")
 })
-
-test_that("assay_is_log2: proteomics raw intensities are linear, like genomics counts", {
-  testthat::skip_if_not_installed("anndataR")
-  pr <- make_toy_prot("protein")
-  out <- withr::local_tempfile(fileext = ".h5ad")
-  build_explore_h5ad(
-    list(raw = 2^pr$intensities, transformed = pr$intensities),
-    out = out,
-    omics = "proteomics",
-    coldata = pr$coldata,
-    rowdata = pr$rowdata
-  )
-  prot <- new_explore_dataset(out)
-  expect_true(assay_is_log2(prot, "intensities"))
-  expect_false(assay_is_log2(prot, "intensities_raw"))
-
-  p <- make_toy_pieces()
-  out2 <- withr::local_tempfile(fileext = ".h5ad")
-  build_explore_h5ad(p$counts, out = out2, omics = "rnaseq", coldata = p$coldata)
-  rna <- new_explore_dataset(out2)
-  expect_true(assay_is_log2(rna, "vst"))
-  expect_true(assay_is_log2(rna, "normalised_log2"))
-  expect_false(assay_is_log2(rna, "counts"))
-})

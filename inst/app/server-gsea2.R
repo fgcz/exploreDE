@@ -247,9 +247,7 @@ observeEvent(
           "There are no results for this selection."
         ))
       }
-      output$selectedTable_GSEA <- DT::renderDataTable({
-        shiny::validate(shiny::need(FALSE, "No GSEA results for this contrast and ontology."))
-      })
+      # The table output says so (gseaToUse$rdf is NULL)
       return()
     }
 
@@ -332,7 +330,8 @@ observeEvent(
 
 # Render the main GSEA table
 output$selectedTable_GSEA <- DT::renderDataTable({
-  req(gseaToUse$rdf, gseaToUse$colsToTable)
+  shiny::validate(shiny::need(!is.null(gseaToUse$rdf), "No GSEA results for this contrast and ontology."))
+  req(gseaToUse$colsToTable)
 
   # Show FDR (p.adjust, which the enrichment was thresholded on) in place of qvalue.
   gseaDfToShow <- gseaToUse$rdf[, gseaToUse$colsToTable]

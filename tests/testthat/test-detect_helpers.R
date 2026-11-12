@@ -94,3 +94,14 @@ test_that("count_result_summary gives the settings table of the shipped SUSHI ex
   )
   expect_identical(ours, expected)
 })
+
+test_that("count_result_summary leaves out settings the result does not record", {
+  se <- readRDS(system.file("examples", "genomics", "deResult.rds", package = "exploreDE"))
+  S4Vectors::metadata(se)$analysis <- NULL
+  S4Vectors::metadata(se)$method <- NULL
+  param <- S4Vectors::metadata(se)$param
+  param$refBuild <- NULL
+  ours <- count_result_summary(param, se)
+  expect_false(any(c("Analysis:", "Method:", "Reference:") %in% rownames(ours)))
+  expect_identical(ours["Comparison:", "settings"], "diff--over--undiff")
+})

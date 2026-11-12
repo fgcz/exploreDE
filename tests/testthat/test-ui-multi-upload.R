@@ -119,3 +119,41 @@ test_that("exploreDE() with several files opens the first and compares the other
   expect_identical(app_output_errors(app), character(0))
   expect_true(app$get_js("Shiny.shinyapp.isConnected()"))
 })
+
+# An .rds is opened with readRDS(), which can run code: uploads take .h5ad only.
+test_that("an uploaded .rds is refused, on the landing page and in Multi DE", {
+  skip_if_not_installed("anndataR")
+  rds <- file.path(withr::local_tempdir(), "deResult.rds")
+  file.copy(system.file("examples", "genomics", "deResult.rds", package = "exploreDE"), rds)
+  app <- app_start("upload-rds")
+  app$upload_file(uploadH5ad = rds, timeout_ = 180e3)
+  app$wait_for_idle()
+  expect_identical(app_menu_tabs(app), "landingTab")
+
+  design1 <- toy_h5ad(withr::local_tempdir(), "design1", seed = 1)
+  app$upload_file(uploadH5ad = design1, timeout_ = 180e3)
+  app$wait_for_value(output = "settingsTable", timeout = 180e3)
+  app$wait_for_idle()
+  app_open_tab(app, "multiDataSelectionTab")
+  before <- multi_datasets(app)
+  app$upload_file(multiUploadH5ad = rds, timeout_ = 180e3)
+  app$wait_for_idle()
+  expect_setequal(multi_datasets(app), before)
+})
+
+test_that("exploreDE() with several files opens the first that loads and compares the rest", {
+  skip_if_not_installed("anndataR")
+  dir <- withr::local_tempdir()
+  bad <- file.path(dir, "bad.h5ad")
+  writeLines("not an h5ad file", bad)
+  design1 <- toy_h5ad(dir, "design1", seed = 1)
+  design2 <- toy_h5ad(dir, "design2", seed = 2)
+
+  app <- app_start("multi-files-first-bad", options = list(exploreDE.file = c(bad, design1, design2)))
+  app$wait_for_value(output = "settingsTable", timeout = 180e3)
+  app$wait_for_idle()
+  expect_match(app$get_js("document.querySelector('.modal-body').innerText"), "bad.h5ad", fixed = TRUE)
+  app_open_tab(app, "multiDataSelectionTab")
+  own <- c("control_vs_treated", "treated_vs_control")
+  expect_setequal(multi_datasets(app), c(own, paste0("design2_", own)))
+})

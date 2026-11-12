@@ -104,7 +104,7 @@ observeEvent(
         if (is.null(col)) {
           return("#000000FF")
         }
-        col <- tryCatch(col2hex(col), error = function(e) "#000000")
+        col <- col2hex(col)
         paste0(col, "FF")
       }),
       names(multiDeReactive$results)
@@ -239,28 +239,30 @@ observeEvent(
 
 output$BubbleTable <- renderDataTable({
   req(multiBubbleReactive$table)
-  # Re-using the rendering logic from before, but adapted
-  renderTable <- 'DT::datatable(
-        data = multiBubbleReactive$table,
-        filter = "top",
-        class = "cell-border stripe",
-        rownames = FALSE,
-        options = list(scrollX = TRUE, autoWidth = TRUE)
-        ) %>%
-        DT::formatSignif(columns = c("pvalue", "p.adjust"), digits = 4) %>%
-        DT::formatStyle(columns = c("pvalue", "p.adjust"), color = styleInterval(cuts = 0.05, values = c("green", "black")), fontWeight = "bold")'
-
-  if (is.null(multiBubbleReactive$dataToBubble) || multiBubbleReactive$dataToBubble == "ORA") {
-    eval(parse(text = renderTable))
-  } else {
-    eval(parse(
-      text = paste0(
-        renderTable,
-        '%>% DT::formatStyle(columns = c("enrichmentScore", "NES"), color = styleInterval(cuts = 0, values = c("blue", "orange")), fontWeight = "bold") %>%
-            DT::formatSignif(columns = c("enrichmentScore", "NES"), digits = 4)'
-      )
-    ))
+  dt <- DT::datatable(
+    data = multiBubbleReactive$table,
+    filter = "top",
+    class = "cell-border stripe",
+    rownames = FALSE,
+    options = list(scrollX = TRUE, autoWidth = TRUE)
+  ) %>%
+    DT::formatSignif(columns = c("pvalue", "p.adjust"), digits = 4) %>%
+    DT::formatStyle(
+      columns = c("pvalue", "p.adjust"),
+      color = styleInterval(cuts = 0.05, values = c("green", "black")),
+      fontWeight = "bold"
+    )
+  # GSEA results also carry the enrichment scores
+  if (!is.null(multiBubbleReactive$dataToBubble) && multiBubbleReactive$dataToBubble != "ORA") {
+    dt <- dt %>%
+      DT::formatStyle(
+        columns = c("enrichmentScore", "NES"),
+        color = styleInterval(cuts = 0, values = c("blue", "orange")),
+        fontWeight = "bold"
+      ) %>%
+      DT::formatSignif(columns = c("enrichmentScore", "NES"), digits = 4)
   }
+  dt
 })
 
 output$dlTable_multiBubble <- downloadHandler(

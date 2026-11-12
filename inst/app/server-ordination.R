@@ -41,7 +41,7 @@ ordinationResults <- reactive({
   # Track whether counts are in log space (needed for batch correction)
   batch_col <- if (input$pcaBatch != "None") input$pcaBatch else NULL
   design_col <- input$pcaBatchDesign # read here so ordinationResults() tracks it as a dep even if the cascade step short-circuits
-  is_logged <- assay_is_log2(eds, input$pcaCounts)
+  is_logged <- eds$assay_is_log2(input$pcaCounts)
 
   # Features before and after the peptide filter, for the message below
   peptide_filter <- NULL
@@ -58,28 +58,24 @@ ordinationResults <- reactive({
     },
     "Log2 transform" = function(cd) {
       if (input$ordinationMethod == "glmpca") {
-        cd # GLM-PCA requires untransformed counts
-      } else if (input$pcaLog2) {
-        result <- step_log2(cd$counts, cd$dataset, input$pcaCounts)
-        is_logged <<- TRUE
-        result
-      } else {
-        cd
+        return(cd) # GLM-PCA requires untransformed counts
       }
+      prep <- prepare_expression(cd$counts, cd$dataset, is_log2 = is_logged, take_log2 = input$pcaLog2)
+      is_logged <<- prep$is_log2
+      list(counts = prep$counts, dataset = cd$dataset)
     },
     "Batch correction" = function(cd) {
       if (input$ordinationMethod == "glmpca") {
-        cd # GLM-PCA handles batch via X covariate, not removeBatchEffect
-      } else if (!is_logged) {
-        showNotification(
-          "Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
-          type = "warning",
-          duration = 8
-        )
-        cd
-      } else {
-        step_batch_correction(cd$counts, cd$dataset, batch_col, design_column = design_col)
+        return(cd) # GLM-PCA handles batch via X covariate, not removeBatchEffect
       }
+      prep <- prepare_expression(
+        cd$counts,
+        cd$dataset,
+        is_log2 = is_logged,
+        batch = input$pcaBatch,
+        design = design_col
+      )
+      list(counts = prep$counts, dataset = cd$dataset)
     },
     "Top N features (SD)" = function(cd) step_top_n_sd(cd$counts, cd$dataset, input$pcaTopN)
   )
@@ -267,7 +263,7 @@ observe({
       return(helpText("Advanced preprocessing settings are available to FGCZ staff only."))
     }
     log2_checked <- !is.null(input$pcaLog2) && input$pcaLog2
-    is_linear <- !is.null(input$pcaCounts) && input$pcaCounts %in% c("tpm", "fpkm", "counts", "normalised")
+    is_linear <- isTRUE(input$pcaCounts %in% eds$assay_names()) && !eds$assay_is_log2(input$pcaCounts)
     show_log2 <- log2_checked && is_linear
 
     steps <- c("Batch correction", "Group subsetting", "Top N features (SD)")
@@ -557,8 +553,8 @@ observeEvent(
         # Proteomics: also accept pasted gene symbols / protein IDs
         genes_from_text <- unique(c(
           genes_from_text,
-          resolve_features(genes_from_text, "gene_name"),
-          resolve_features(genes_from_text, "protein_Id")
+          fb_resolve(genes_from_text, "gene_name"),
+          fb_resolve(genes_from_text, "protein_Id")
         ))
       }
 

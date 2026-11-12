@@ -122,7 +122,7 @@ observeEvent(
 observe({
   req(multiBoxplotDataReactive())
   d <- multiBoxplotDataReactive()
-  output$multiBoxplotDesign <- renderText({
+  output$multiBoxplotInfo <- renderText({
     # Just show info about number of contrasts loaded
     paste("Plots based on", length(multiDeReactive$results), "loaded contrasts.")
   })
@@ -171,7 +171,7 @@ observeEvent(
     genesUnlist <- unique(c(genesList1, genesList2))
     genesUnlist <- genesUnlist[genesUnlist != ""]
     # Proteomics: map gene symbols / protein IDs back to feature_ids
-    genesUnlist <- resolve_features(genesUnlist, input$fb_search_by_multiBoxplot %||% "feature_id")
+    genesUnlist <- fb_resolve(genesUnlist, input$fb_search_by_multiBoxplot %||% "feature_id")
     # Verify against first contrast genes
     genesUnlist <- genesUnlist[genesUnlist %in% d$genes]
 
@@ -275,36 +275,15 @@ multiBoxplotCountsReactive <- eventReactive(
     # Get the count data
     countsBoxplot <- d$countList[[input$multiBoxplotCounts]]
 
-    # Transformations
-    # Proteomics: the transformed intensities are log2, the raw ones are not
-    # (as assay_is_log2()).
-    is_logged <- input$multiBoxplotCounts %in%
-      c("Normalised + Log2", "VST") ||
-      (d$dataType == "proteomics" && identical(input$multiBoxplotCounts, "intensities"))
-    if (input$multiBoxplotCountsLog) {
-      if (d$dataType %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
-        if (input$multiBoxplotCounts %in% c("TPM", "FPKM", "Normalised", "Raw")) {
-          countsBoxplot <- log2(countsBoxplot + 1)
-          is_logged <- TRUE
-        }
-      }
-    }
-    if (input$multiBoxplotBatch != "None") {
-      if (is_logged) {
-        countsBoxplot <- apply_batch_correction(
-          counts = countsBoxplot,
-          dataset = datasetBoxplot,
-          batchCol = input$multiBoxplotBatch,
-          designCol = input$multiBoxplotDesign
-        )
-      } else {
-        showNotification(
-          "Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
-          type = "warning",
-          duration = 8
-        )
-      }
-    }
+    # Log2, batch correction, then Z-scores
+    countsBoxplot <- prepare_expression(
+      countsBoxplot,
+      datasetBoxplot,
+      is_log2 = d$countLog2[[input$multiBoxplotCounts]],
+      take_log2 = input$multiBoxplotCountsLog,
+      batch = input$multiBoxplotBatch,
+      design = input$multiBoxplotDesign
+    )$counts
     if (input$multiBoxplotZScore) {
       countsBoxplot <- t(scale(t(countsBoxplot)))
     }
@@ -439,7 +418,7 @@ multiBoxplotCountsReactive <- eventReactive(
         pvalueDF,
         p.col = "fdr",
         output.col = "stars",
-        cutpoints = c(0, 1e-04, 0.001, 0.01, 0.05, 1),
+        cutpoints = c(0, significance_cutpoints, 1),
         symbols = c("****", "***", "**", "*", "ns")
       )
 

@@ -52,7 +52,7 @@ pwContrastColours <- function() {
       if (is.null(col)) {
         return(paste0(rep(catalystCols, times = 5)[i], "FF"))
       }
-      col <- tryCatch(col2hex(col), error = function(e) "#000000")
+      col <- col2hex(col)
       paste0(col, "FF")
     }),
     names(results)

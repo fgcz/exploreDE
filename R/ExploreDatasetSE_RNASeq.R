@@ -1,3 +1,4 @@
+# nolint start: cyclocomp_linter. R6 class, scored as one expression.
 #' Concrete subclass for SUSHI RNA-seq `SummarizedExperiment` outputs
 #'
 #' Reads from a SUSHI ezApp DESeq2 / edgeR / limma result. Top-level
@@ -26,23 +27,14 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
   private = list(
     .build_config = function(se) {
       param <- S4Vectors::metadata(se)$param %||% list()
-      cd <- data.frame(SummarizedExperiment::colData(se), check.names = FALSE, stringsAsFactors = FALSE)
-
-      factor_cols <- grep("\\[Factor]", colnames(cd), value = TRUE)
-      factor_names <- gsub(" \\[.*", "", factor_cols)
-      factor_names <- gsub(" ", "_", factor_names)
-      factor_levels <- setNames(
-        lapply(factor_cols, function(fc) {
-          v <- cd[[fc]]
-          if (is.factor(v)) levels(v) else sort(unique(as.character(v)))
-        }),
-        factor_names
-      )
+      factors <- eds_genomics_factors(se)
+      factor_names <- factors$names
+      factor_levels <- factors$levels
 
       comp <- param$comparison %||% "test--over--reference"
       parts <- strsplit(comp, "--over--", fixed = TRUE)[[1]]
-      test_grp <- parts[1] %||% "test"
-      ref_grp <- parts[2] %||% "reference"
+      test_grp <- parts[1]
+      ref_grp <- parts[2]
       contrast_name <- paste0(eds_safe(test_grp), "_vs_", eds_safe(ref_grp))
 
       cm <- list()
@@ -69,7 +61,10 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
 
       norm_key <- intersect(c("signal", "xNorm", "normalizedCounts"), SummarizedExperiment::assayNames(se))
       norm_key <- if (length(norm_key)) norm_key[1] else NA_character_
-      has_refbuild <- !is.null(param$refBuild) && nzchar(as.character(param$refBuild))
+      # FPKM and TPM need the reference (for the label) and feature lengths
+      has_lengths <- !is.null(param$refBuild) &&
+        nzchar(as.character(param$refBuild)) &&
+        "featWidth" %in% colnames(SummarizedExperiment::rowData(se))
 
       # Assays exposed by this subclass. NULL value = computed in
       # ExploreDatasetSE$assay() — see that method's switch().
@@ -77,7 +72,7 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
         list(counts = "counts"),
         if (!is.na(norm_key)) list(normalised = norm_key, normalised_log2 = NULL),
         list(vst = NULL),
-        if (has_refbuild) list(fpkm = NULL, tpm = NULL)
+        if (has_lengths) list(fpkm = NULL, tpm = NULL)
       )
       assay_labels_l <- c(
         counts = "Raw",
@@ -106,6 +101,7 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
         },
         assay_map = assay_map_l,
         assay_labels = assay_labels_l,
+        assay_log2 = .genomics_assay_log2(names(assay_map_l)),
         background_expression = param$backgroundExpression %||% 10,
         raw_assay_name = "counts",
         primary_assay_name = if (!is.na(norm_key)) "normalised_log2" else "counts",
@@ -132,37 +128,8 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
       se <- private$.se
       cfg <- private$.config
 
-      rd <- data.frame(SummarizedExperiment::rowData(se), check.names = FALSE, stringsAsFactors = FALSE)
-      rownames(rd) <- rownames(se)
-
-      # Build feature_id via scuttle::uniquifyFeatureNames so the new API
-      # matches the legacy convert_genomics_se() convention AND the
-      # canonical AnnData spec (var_names = uniquified gene symbol).
+      rd <- eds_genomics_features(se, cfg)
       is_isoform <- identical(cfg$feature_id_kind, "isoform")
-      rd$feature_id <- if (is_isoform && "transcript_id" %in% colnames(rd)) {
-        scuttle::uniquifyFeatureNames(ID = rd$transcript_id, names = rd$gene_name)
-      } else if (all(c("gene_id", "gene_name") %in% colnames(rd))) {
-        scuttle::uniquifyFeatureNames(ID = rd$gene_id, names = rd$gene_name)
-      } else {
-        rownames(rd)
-      }
-      # Legacy underscore cleanup.
-      leading_us <- grep("^_", rd$feature_id)
-      if (length(leading_us)) {
-        rd$feature_id[leading_us] <- gsub("_", "", rd$feature_id[leading_us])
-      }
-
-      rd$display_name <- if (cfg$display_name_field %in% colnames(rd)) {
-        rd[[cfg$display_name_field]]
-      } else {
-        rd$feature_id
-      }
-      blank <- is.na(rd$display_name) | !nzchar(rd$display_name)
-      rd$display_name[blank] <- rd$feature_id[blank]
-      if ("description" %in% colnames(rd)) {
-        rd$description <- gsub(" \\[.*", "", as.character(rd$description))
-      }
-      rownames(rd) <- rd$feature_id
 
       # fid_lookup: SE rowname → new feature_id. Built BEFORE sorting so the
       # vector alignment (rd[i]$feature_id ↔ rownames(se)[i]) is preserved.
@@ -198,3 +165,4 @@ ExploreDatasetSE_RNASeq <- R6::R6Class(
     }
   )
 )
+# nolint end

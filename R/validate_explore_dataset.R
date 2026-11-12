@@ -1,3 +1,4 @@
+# nolint start: cyclocomp_linter. One check per contract item.
 #' Runtime validator for a live `ExploreDataset` instance
 #'
 #' Checks subclass-agnostic invariants by walking the accessor API:
@@ -10,7 +11,7 @@
 #'    `primary_grouping()` is a member of `factor_names()`;
 #'    `primary_contrast()` is in `contrasts()` (or `NA`).
 #' 3. Assays: `raw_assay_name()` and `primary_assay_name()` are in
-#'    `assay_names()`, and the raw assay's rownames / colnames agree
+#'    `assay_names()`, every assay has a log2 fact (`assay_is_log2()`), and the raw assay's rownames / colnames agree
 #'    with `feature_ids()` / `sample_ids()`.
 #'
 #' Cost is proportional to the number of contrasts (one `de(c)`
@@ -113,6 +114,15 @@ validate_explore_dataset <- function(eds, strict = TRUE) {
       add(sprintf("%s() '%s' is not in assay_names().", acc, nm))
     }
   }
+  for (a in an) {
+    log2 <- tryCatch(eds$assay_is_log2(a), error = function(e) {
+      add(sprintf("assay_is_log2('%s') failed: %s", a, conditionMessage(e)))
+      FALSE
+    })
+    if (!isTRUE(log2) && !isFALSE(log2)) {
+      add(sprintf("assay_is_log2('%s') is not TRUE or FALSE.", a))
+    }
+  }
   raw_name <- tryCatch(eds$raw_assay_name(), error = function(e) NA_character_)
   if (!is.na(raw_name) && raw_name %in% an) {
     a <- tryCatch(eds$raw_assay(), error = function(e) {
@@ -149,3 +159,4 @@ validate_explore_dataset <- function(eds, strict = TRUE) {
   }
   list(ok = ok, errors = errors)
 }
+# nolint end

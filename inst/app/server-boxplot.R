@@ -132,7 +132,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
     ignoreInit = TRUE,
     ignoreNULL = TRUE
   )
-  output$boxplotDesign <- renderText({
+  output$boxplotContrastLabel <- renderText({
     eds$contrast_label(selectedContrast())
   })
 } else if (eds$data_type() == "RNASeq" || eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
@@ -141,7 +141,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
   seqAnnoReactive <- reactiveValues("sa" = NULL, "saF" = NULL)
 } else if (eds$omics_class() == "proteomics") {
   # Initialize seqAnno with the first available contrast immediately so that
-  # bucket_add() validation works before the user explicitly changes the selector.
+  # fb_add() validation works before the user explicitly changes the selector.
   .first_contrast <- if (length(eds$contrasts())) eds$contrasts()[[1]] else NULL
   .first_sa <- if (!is.null(.first_contrast)) {
     eds$de(.first_contrast) %>%
@@ -156,7 +156,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
       seqAnnoReactive$sa <- eds$de(selectedContrast()) %>%
         dplyr::select("feature_id", "log2Ratio", "pValue", "fdr")
       seqAnnoReactive$saF <- seqAnnoReactive$sa
-      output$boxplotDesign <- renderText({
+      output$boxplotContrastLabel <- renderText({
         selectedContrast()
       })
     },
@@ -238,34 +238,15 @@ boxplotCountsReactive <- eventReactive(
       genesToPlot <- genesToPlot[genesToPlot %in% rownames(countsBoxplot)]
     }
 
-    # Apply the following in this specific order as required: Log2, batch correct, Z-scale
-    # If the user wants to log2, then do that
-    is_logged <- assay_is_log2(eds, input$boxplotCounts)
-    if (input$boxplotCountsLog) {
-      if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
-        if (input$boxplotCounts %in% c("tpm", "fpkm", "normalised", "counts")) {
-          countsBoxplot <- log2(countsBoxplot + 1)
-          is_logged <- TRUE
-        }
-      }
-    }
-    # If the user wants to remove batch effect, then do that
-    if (input$boxplotBatch != "None") {
-      if (is_logged) {
-        countsBoxplot <- apply_batch_correction(
-          counts = countsBoxplot,
-          dataset = datasetBoxplot,
-          batchCol = input$boxplotBatch,
-          designCol = input$boxplotDesign
-        )
-      } else {
-        showNotification(
-          "Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
-          type = "warning",
-          duration = 8
-        )
-      }
-    }
+    # Log2, batch correction, then Z-scores
+    countsBoxplot <- prepare_expression(
+      countsBoxplot,
+      datasetBoxplot,
+      is_log2 = eds$assay_is_log2(input$boxplotCounts),
+      take_log2 = input$boxplotCountsLog,
+      batch = input$boxplotBatch,
+      design = input$boxplotDesign
+    )$counts
     # If the user wants to plot gene-wise Z-scores, then do that
     if (input$boxplotZScore) {
       countsBoxplot <- t(scale(t(countsBoxplot)))
@@ -322,7 +303,7 @@ boxplotCountsReactive <- eventReactive(
         countsBoxplotMelt,
         p.col = "fdr",
         output.col = "stars",
-        cutpoints = c(0, 1e-04, 0.001, 0.01, 0.05, 1),
+        cutpoints = c(0, significance_cutpoints, 1),
         symbols = c("****", "***", "**", "*", "ns")
       )
       countsBoxplotMelt$group1 <- designLevels[1]

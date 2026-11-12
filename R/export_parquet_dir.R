@@ -86,9 +86,32 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
   .pq_write(.pq_prep_df(obs, obs_names, "obs", quiet), file.path(out, "obs.parquet"))
   .pq_write(.pq_prep_df(var, var_names, "var", quiet), file.path(out, "var.parquet"))
 
-  # AnnData stores samples x features. Parquet gets features-as-ROWS because
-  # features is the long axis (25k vs ~25), keeping the column count sane;
-  # ExploreDatasetParquet transposes once on load.
+  layer_names <- .pq_write_layers(adata, obs_names, var_names, out, quiet)
+  varm_names <- .pq_write_varm(adata, var_names, out, quiet)
+  uns <- .pq_write_uns(adata, out)
+
+  manifest <- list(
+    schema_version = uns$schema_version %||% "exploreDE/1.0",
+    writer = "export_h5ad_to_parquet() [R reference implementation]",
+    written_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+    source = .pq_source_identity(input),
+    n_obs = length(obs_names),
+    n_var = length(var_names),
+    layer_orientation = "features_x_samples",
+    layers = layer_names,
+    varm = varm_names,
+    factor_levels = factor_levels
+  )
+  write(jsonlite::toJSON(manifest, auto_unbox = TRUE, null = "null"), file.path(out, "manifest.json"))
+
+  invisible(out)
+}
+
+# AnnData stores samples x features. Parquet gets features-as-ROWS because
+# features is the long axis (25k vs ~25), keeping the column count sane;
+# ExploreDatasetParquet transposes once on load. X becomes the counts layer
+# when there is none. Returns the layer names written.
+.pq_write_layers <- function(adata, obs_names, var_names, out, quiet) {
   layers <- adata$layers %||% list()
   if (!"counts" %in% names(layers) && !is.null(adata$X)) {
     layers[["counts"]] <- adata$X
@@ -105,10 +128,14 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
       message(sprintf("  layer %-16s %d features x %d samples", nm, nrow(fs), ncol(fs)))
     }
   }
+  layer_names
+}
 
-  # varm rows align to var POSITIONALLY — varm/<slot>/_index in the .h5ad holds
-  # row NUMBERS, not feature names. The join is by position and the real
-  # feature ids are written into `_index` here, so the reader never has to know.
+# varm rows align to var POSITIONALLY: varm/<slot>/_index in the .h5ad holds
+# row NUMBERS, not feature names. The join is by position and the real feature
+# ids are written into `_index` here, so the reader never has to know. Returns
+# the varm names written.
+.pq_write_varm <- function(adata, var_names, out, quiet) {
   varm <- adata$varm %||% list()
   varm_names <- character()
   for (nm in names(varm)) {
@@ -124,21 +151,28 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
       message(sprintf("  varm  %-16s %d rows x %d cols", nm, nrow(d), ncol(d)))
     }
   }
+  varm_names
+}
 
-  # uns goes to JSON — without the serialised R objects that files written
-  # before 2026-09-25 carry in enrichment_native. No reader decodes them
-  # (unserialize() on file content can run code), and they were 13 MB of a
-  # 29 MB export.
+# uns goes to JSON, without the serialised R objects that files written before
+# 2026-09-25 carry in enrichment_native. No reader decodes them (unserialize()
+# on file content can run code), and they were 13 MB of a 29 MB export.
+# Returns the uns written.
+.pq_write_uns <- function(adata, out) {
   uns <- adata$uns %||% list()
   uns$enrichment_native <- NULL
   write(jsonlite::toJSON(uns, auto_unbox = TRUE, null = "null", digits = NA), file.path(out, "uns.json"))
+  uns
+}
 
-  # Source identity. A parquet directory is a DERIVED CACHE, so without this a
-  # stale temp dir left over from a previous file reads as current and the user
-  # sees the wrong dataset with no indication anything is wrong. size and mtime
-  # are free to compare at load; the md5 is there for verify_source() when you
-  # want certainty rather than a cheap check.
-  src <- if (is.character(input) && length(input) == 1L && file.exists(input)) {
+# Source identity. A parquet directory is a DERIVED CACHE, so without this a
+# stale temp dir left over from a previous file reads as current and the user
+# sees the wrong dataset with no indication anything is wrong. size and mtime
+# are free to compare at load; the md5 is there for verify_source() when you
+# want certainty rather than a cheap check. A live AnnData has no file behind
+# it, so there is nothing to be stale against: all fields NULL.
+.pq_source_identity <- function(input) {
+  if (is.character(input) && length(input) == 1L && file.exists(input)) {
     fi <- file.info(input)
     list(
       path = normalizePath(input, mustWork = FALSE),
@@ -148,24 +182,6 @@ export_h5ad_to_parquet <- function(input, out, quiet = TRUE) {
       md5 = unname(tools::md5sum(input))
     )
   } else {
-    # A live AnnData has no file behind it, so there is nothing to be stale
-    # against. Say so rather than inventing an identity.
     list(path = NULL, basename = NULL, size = NULL, mtime = NULL, md5 = NULL)
   }
-
-  manifest <- list(
-    schema_version = uns$schema_version %||% "exploreDE/1.0",
-    writer = "export_h5ad_to_parquet() [R reference implementation]",
-    written_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-    source = src,
-    n_obs = length(obs_names),
-    n_var = length(var_names),
-    layer_orientation = "features_x_samples",
-    layers = layer_names,
-    varm = varm_names,
-    factor_levels = factor_levels
-  )
-  write(jsonlite::toJSON(manifest, auto_unbox = TRUE, null = "null"), file.path(out, "manifest.json"))
-
-  invisible(out)
 }

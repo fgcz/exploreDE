@@ -1,54 +1,32 @@
 # ============================================================================
-# build_qc_scatter_types — classifies features into colour-by categories
+# qc_types_significance / qc_types_binned — the colour-by classes of the QC
+# scatters (Standard; GC content and Gene width)
 # ============================================================================
-test_that("build_qc_scatter_types Standard mode labels features Present / Absent / Significants", {
+test_that("qc_types_significance labels features Present / Absent / Significants", {
   rd <- data.frame(
     feature_id = paste0("g", 1:5),
     log2Ratio = c(2.0, -3.0, 0.1, 1.5, NA),
     pValue = c(0.01, 0.01, 0.5, 0.1, NA)
   )
-  present_mask <- c(TRUE, TRUE, TRUE, FALSE, TRUE)
-
-  res <- build_qc_scatter_types(rd, mode = "Standard", present_mask = present_mask, p_thresh = 0.05, lfc_thresh = 1)
-  # g1: present + sig (p<0.05 & |lfc|>=1) → Significants
-  # g2: present + sig → Significants
-  # g3: present + not-sig → Present
-  # g4: absent → Absent
-  # g5: NA p → Present (no override)
+  res <- qc_types_significance(rd, c(TRUE, TRUE, TRUE, FALSE, TRUE), p_thresh = 0.05, lfc_thresh = 1)
+  # g1, g2: p < 0.05 and |lfc| >= 1; g3: not significant; g4: absent; g5: NA p
   expect_equal(res$types, c("Significants", "Significants", "Present", "Absent", "Present"))
   expect_setequal(names(res$colours), c("Absent", "Present", "Significants"))
   expect_equal(res$draw_order, c("Absent", "Present", "Significants"))
 })
 
-test_that("build_qc_scatter_types GC content mode bins by gc_lo / gc_hi", {
-  rd <- data.frame(feature_id = paste0("g", 1:4), gc = c(0.30, 0.50, 0.70, NA))
-  res <- build_qc_scatter_types(rd, mode = "GC content", present_mask = rep(TRUE, 4), gc_lo = 0.4, gc_hi = 0.6)
-  # g1: low, g2: mid, g3: high, g4: mid (NA → falls into default label)
-  expect_equal(res$types[1], "GC < 0.40")
-  expect_equal(res$types[2], "0.40-0.60")
-  expect_equal(res$types[3], "GC > 0.60")
-  expect_equal(res$types[4], "0.40-0.60")
-})
-
-test_that("build_qc_scatter_types Gene width mode bins by w_lo / w_hi", {
-  rd <- data.frame(feature_id = paste0("g", 1:4), featWidth = c(300, 2000, 8000, NA))
-  res <- build_qc_scatter_types(rd, mode = "Gene width", present_mask = rep(TRUE, 4), w_lo = 500, w_hi = 5000)
-  expect_equal(res$types[1], "< 500 nt")
-  expect_equal(res$types[2], "500-5000 nt")
-  expect_equal(res$types[3], "> 5000 nt")
-})
-
-test_that("build_qc_scatter_types default-falls-through to 'All' for unknown mode", {
+test_that("qc_types_significance without DE columns marks presence only", {
   rd <- data.frame(feature_id = paste0("g", 1:3))
-  res <- build_qc_scatter_types(rd, mode = "mystery", present_mask = rep(TRUE, 3))
-  expect_equal(res$types, rep("All", 3))
-  expect_equal(res$colours, c(All = "black"))
+  expect_equal(qc_types_significance(rd, c(TRUE, TRUE, FALSE))$types, c("Present", "Present", "Absent"))
 })
 
-test_that("build_qc_scatter_types handles Standard mode without log2Ratio/pValue columns", {
-  rd <- data.frame(feature_id = paste0("g", 1:3)) # no DE columns
-  res <- build_qc_scatter_types(rd, mode = "Standard", present_mask = c(TRUE, TRUE, FALSE))
-  expect_equal(res$types, c("Present", "Present", "Absent"))
+test_that("qc_types_binned bins GC content and gene width, NA in the middle bin", {
+  gc <- qc_types_binned(c(0.30, 0.50, 0.70, NA), 0.4, 0.6, fmt = "%.2f", prefix = "GC ")
+  expect_equal(gc$types, c("GC < 0.40", "0.40-0.60", "GC > 0.60", "0.40-0.60"))
+  expect_equal(gc$draw_order, c("0.40-0.60", "GC < 0.40", "GC > 0.60"))
+  width <- qc_types_binned(c(300, 2000, 8000), 500, 5000, fmt = "%.0f", suffix = " nt")
+  expect_equal(width$types, c("< 500 nt", "500-5000 nt", "> 5000 nt"))
+  expect_equal(names(width$colours), c("< 500 nt", "500-5000 nt", "> 5000 nt"))
 })
 
 

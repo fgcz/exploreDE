@@ -500,38 +500,55 @@ ht_opt$message <- FALSE
   }
 }
 
-# Sample ratios ----
-# The matrix a ratio is taken from: the count method, guide collapsing and
-# batch correction of the Feature settings tab, always on the log2 scale.
-# Returns the matrix and the batch column applied ("None" when none was, or
-# when the correction could not be applied and returned the matrix as it was).
-heatmap_ratio_source <- function() {
+# Count matrices ----
+# The count method of the Feature settings tab, all features and samples, with
+# CRISPR guides collapsed to genes or left out as set there. Cached: a redraw
+# does not compute the assay (VST, FPKM, ...) again. `collapsed`: rows are
+# genes, not sgRNAs.
+heatmapAssay <- reactive({
+  req(input$heatmapCounts)
   counts <- eds$assay(input$heatmapCounts)
+  collapsed <- eds$data_type() == "CrisprCountQC" && isTRUE(input$heatmapCollapseGuides)
   if (eds$data_type() == "CrisprCountQC") {
-    if (isTRUE(input$heatmapCollapseGuides)) {
+    if (collapsed) {
       counts <- collapse_guides_to_genes(counts, eds$sgrna_to_gene(), exclude = input$heatmapExcludeGuides)
     } else if (length(input$heatmapExcludeGuides) > 0) {
       counts <- counts[!rownames(counts) %in% input$heatmapExcludeGuides, , drop = FALSE]
     }
   }
-  if (!assay_is_log2(eds, input$heatmapCounts)) {
-    counts <- log2(counts + 1)
-  }
-  batch <- "None"
-  batchCol <- input$heatmapBatch %||% "None"
-  if (!batchCol %in% c("", "None")) {
-    corrected <- apply_batch_correction(
-      counts = counts,
-      dataset = eds$samples(),
-      batchCol = batchCol,
-      designCol = input$heatmapDesign %||% "None"
-    )
-    if (!identical(corrected, counts)) {
-      counts <- corrected
-      batch <- batchCol
-    }
-  }
-  list(counts = counts, batch = batch)
+  list(counts = counts, collapsed = collapsed)
+})
+
+# heatmapAssay() with the log2 and batch settings applied; the heatmaps draw
+# from it. Cached: colour, label and layout changes do not prepare it again.
+heatmapPrepared <- reactive({
+  prepare_expression(
+    heatmapAssay()$counts,
+    eds$samples(),
+    is_log2 = eds$assay_is_log2(input$heatmapCounts),
+    take_log2 = input$heatmapLog2,
+    batch = input$heatmapBatch,
+    design = input$heatmapDesign
+  )
+})
+
+# Sample ratios ----
+# The matrix a ratio is taken from: heatmapAssay() with the batch correction
+# of the Feature settings tab, always on the log2 scale. Returns the matrix,
+# whether guides were collapsed to genes, and the batch column applied ("None"
+# when none was, or when the correction could not be applied and returned the
+# matrix as it was).
+heatmap_ratio_source <- function() {
+  src <- heatmapAssay()
+  prep <- prepare_expression(
+    src$counts,
+    eds$samples(),
+    is_log2 = eds$assay_is_log2(input$heatmapCounts),
+    take_log2 = TRUE,
+    batch = input$heatmapBatch %||% "None",
+    design = input$heatmapDesign %||% "None"
+  )
+  list(counts = prep$counts, collapsed = src$collapsed, batch = prep$batch)
 }
 
 # The ratio the add observer wants selected on the Ratios heatmap, picked up
@@ -552,6 +569,10 @@ observeEvent(input$heatmapRatioAdd, {
   }
   if (name %in% c(contrastRatioChoices, names(contrastRatioChoices))) {
     showNotification(paste0("'", name, "' is a contrast of this dataset; choose another name."), type = "warning")
+    return()
+  }
+  if (identical(name, "feature_id")) {
+    showNotification("'feature_id' names the feature column of the download; choose another name.", type = "warning")
     return()
   }
   if (!length(num) || !length(den)) {
@@ -579,6 +600,7 @@ observeEvent(input$heatmapRatioAdd, {
         denominator = den,
         values = sample_log2_ratio(src$counts, num, den),
         assay = eds$assay_label(input$heatmapCounts),
+        collapsed = src$collapsed,
         batch = src$batch
       )
       ratioSelectionPending(name)
@@ -617,6 +639,7 @@ output$heatmapRatioListUI <- renderUI({
           paste(r$denominator, collapse = ", "),
           ") on ",
           r$assay,
+          if (isTRUE(r$collapsed)) ", guides collapsed to genes",
           ", batch: ",
           r$batch
         ))
@@ -626,17 +649,10 @@ output$heatmapRatioListUI <- renderUI({
 })
 
 # The ratios the Ratios heatmap can show: sample ratios first, then the
-# contrasts' log2 fold changes. Keeps the current selection (a NULL selection
-# leaves the widget alone, so a restored selection survives), plus the ratio
+# contrasts' log2 fold changes. Keeps the current selection, plus the ratio
 # the add observer just stored. Runs when the sample ratios change.
-ratioChoicesLast <- NULL
 observe({
   custom <- names(heatmapRatios$ratios) %||% character(0)
-  changed <- !identical(custom, ratioChoicesLast)
-  ratioChoicesLast <<- custom
-  if (isTRUE(isolate(restoring())) && !changed) {
-    return()
-  }
   choices <- c(stats::setNames(custom, custom), contrastRatioChoices)
   current <- isolate(input$heatmapRatioPlot) %||% character(0)
   selected <- unique(c(intersect(current, choices), isolate(ratioSelectionPending())))
@@ -697,11 +713,15 @@ heatmapRatioMatrix <- reactive({
     )
   }
   top_n <- sel$top_n
-  if (is.null(top_n) || is.na(top_n) || top_n < 2) {
-    top_n <- 50
-  }
+  top_n <- if (is.null(top_n) || is.na(top_n)) 50 else max(2, top_n)
   m <- ratio_heatmap_matrix(ratioList, top_n = top_n, rank_by = sel$rank_by %||% "variance")
   if (nrow(m) < 2) {
+    # Ratios on genes (guides collapsed) and on sgRNAs share no features, for one
+    showNotification(
+      "The selected ratios share fewer than 2 features, so there is no Ratios heatmap.",
+      type = "warning",
+      duration = 8
+    )
     return(NULL)
   }
   m
@@ -886,12 +906,14 @@ observeEvent(
       figuresDataReactive[["heatmapCustom"]] <- NULL
       figuresDataReactive[["heatmapGO"]] <- NULL
       figuresDataReactive[["heatmapKEGG"]] <- NULL
+      for (sig in c("heatmapDEFeatures", "heatmapCustom", "heatmapGO", "heatmapKEGG")) {
+        figuresDataReactive[[paste0(sig, "Table")]] <- NULL
+      }
       return(NULL)
     }
 
     # tryCatch({
     req(input$hmKeepBucket1)
-    set.seed(2)
     figuresDataReactive[["heatmapDEFeatures"]] <- NULL
     # Get some variables ----
     peptide_note <- NULL # names the peptide filter when no features are left
@@ -949,45 +971,11 @@ observeEvent(
       return(NULL)
     }
 
-    # Prepare the selected count matrix ----
-    countsHeatmap <- eds$assay(input$heatmapCounts)
-    # Collapse sgRNA guides to gene level if requested
-    if (eds$data_type() == "CrisprCountQC") {
-      if (isTRUE(input$heatmapCollapseGuides)) {
-        countsHeatmap <- collapse_guides_to_genes(
-          countsHeatmap,
-          eds$sgrna_to_gene(),
-          exclude = input$heatmapExcludeGuides
-        )
-      } else if (length(input$heatmapExcludeGuides) > 0) {
-        countsHeatmap <- countsHeatmap[!rownames(countsHeatmap) %in% input$heatmapExcludeGuides, , drop = FALSE]
-      }
-    }
-    # Log2 and batch correction on FULL matrix (all genes, all samples) before subsetting
-    is_logged <- assay_is_log2(eds, input$heatmapCounts)
-    if (input$heatmapLog2 & input$heatmapCounts %in% c("tpm", "fpkm", "normalised", "counts")) {
-      countsHeatmap <- log2(countsHeatmap + 1)
-      is_logged <- TRUE
-    }
-    if (input$heatmapBatch != "None") {
-      if (is_logged) {
-        countsHeatmap <- apply_batch_correction(
-          counts = countsHeatmap,
-          dataset = eds$samples(),
-          batchCol = input$heatmapBatch,
-          designCol = input$heatmapDesign
-        )
-      } else {
-        showNotification(
-          "Batch correction requires log-scale data. Please select a logged count type or enable the log2 transform.",
-          type = "warning",
-          duration = 8
-        )
-      }
-    }
+    # The prepared count matrix (all features and samples; cached) ----
+    countsHeatmap <- heatmapPrepared()$counts
 
     # Subset to selected samples
-    countsHeatmap <- countsHeatmap[, datasetHeatmap$Name]
+    countsHeatmap <- countsHeatmap[, datasetHeatmap$Name, drop = FALSE]
     datasetHeatmapOriginal <- datasetHeatmap
     ## 3. If the user wants to plot gene-wise Z-scores or centre, then do that
     if (input$heatmapZScore == "Z-Score") {
@@ -1089,10 +1077,11 @@ observeEvent(
     heatmapColours <- .heatmap_colours()
     # Top Annotation
     colourListHeatmap <- lapply(input$heatmapColumnSelect, function(f) {
-      lapply(levels(datasetHeatmap[[f]]), function(l) {
-        paste0(col2hex(input[[paste0("GroupColour", f, l)]]), "FF")
-      }) %>%
-        setNames((levels(datasetHeatmap[[f]])))
+      vapply(
+        levels(datasetHeatmap[[f]]),
+        function(l) paste0(col2hex(input[[paste0("GroupColour", f, l)]]), "FF"),
+        character(1)
+      )
     }) %>%
       setNames(input$heatmapColumnSelect)
     if (any(input$heatmapColumnSelect != "")) {
@@ -1117,26 +1106,14 @@ observeEvent(
         )
       }) %>%
         setNames(annoFactors)
-      ha <- do.call(
-        HeatmapAnnotation,
-        c(
-          lapply(setNames(annoFactors, annoFactors), function(g) datasetHeatmap[[g]]),
-          list(
-            show_legend = !annoRich,
-            annotation_legend_param = annoLegendParam,
-            gp = gpar(col = input$cellBorderColourHeatmap1, lwd = input$cellBorderSizeHeatmap1 / 10)
-          )
-        )
+      ha <- heatmap_top_annotation(
+        datasetHeatmap,
+        annoFactors,
+        colourListHeatmap,
+        legend_param = annoLegendParam,
+        gp = gpar(col = input$cellBorderColourHeatmap1, lwd = input$cellBorderSizeHeatmap1 / 10),
+        show_legend = !annoRich
       )
-      # Only apply colors for factors that actually exist in datasetHeatmap
-      for (f in c(input$heatmapColumnSelect)) {
-        if (f %in% colnames(datasetHeatmap)) {
-          for (l in levels(as.factor(datasetHeatmap[, f]))) {
-            ha@anno_list[[f]]@color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
-            ha@anno_list[[f]]@fun@var_env$color_mapping@full_col[[l]] <- colourListHeatmap[[f]][[l]]
-          }
-        }
-      }
       if (annoRich) {
         attr(ha, "rich_legends") <- lapply(annoFactors, function(g) {
           heatmap_legend_spec(
@@ -1194,7 +1171,7 @@ observeEvent(
 
     # Prepare heatmap name (used by all heatmaps) — pretty label for the legend
     hmName <- eds$assay_label(input$heatmapCounts) %>% gsub("\\+", "\n\\+", .)
-    if (input$heatmapLog2 & input$heatmapCounts %in% c("tpm", "fpkm", "normalised", "counts")) {
+    if (input$heatmapLog2 && !eds$assay_is_log2(input$heatmapCounts)) {
       hmName <- paste(hmName, "\n(Log2)")
     }
     if (input$heatmapZScore == "Z-Score") {
@@ -1208,6 +1185,36 @@ observeEvent(
     if (!is.null(input$heatmapShowMeans) && input$heatmapShowMeans) {
       agg_method <- if (!is.null(input$heatmapAggMethod)) input$heatmapAggMethod else "Mean"
       agg_label <- paste0("(Per-condition ", tolower(agg_method), "s)")
+    }
+
+    # The DE, Custom, GO and KEGG heatmaps differ only in matrix, title and
+    # cell border size
+    count_heatmap <- function(mat, title, border_size = input$cellBorderSizeHeatmap2) {
+      ComplexHeatmap::Heatmap(
+        matrix = mat,
+        top_annotation = ha,
+        name = hmName,
+        cluster_columns = input$clusterColsHeatmap,
+        cluster_rows = input$clusterRowsHeatmap,
+        show_column_names = input$colnamesHeatmap,
+        column_labels = hmColumnLabels(mat),
+        show_row_names = input$geneNamesHeatmap,
+        show_column_dend = input$showClusterColDend,
+        show_row_dend = input$showClusterRowDend,
+        rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = border_size / 10),
+        use_raster = FALSE,
+        row_dend_width = unit(1, "cm"),
+        column_dend_height = unit(1, "cm"),
+        col = heatmapColours,
+        row_names_gp = gpar(fontsize = input$textSizeHeatmap),
+        column_names_gp = gpar(fontsize = input$textSizeHeatmap),
+        column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
+        column_title = title,
+        heatmap_legend_param = list(
+          labels_gp = gpar(fontsize = input$textSizeHeatmap),
+          title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold")
+        )
+      )
     }
 
     # Only generate DE Features heatmap if there are genes to display
@@ -1227,13 +1234,12 @@ observeEvent(
       # Limit to requested number of features based on data type
       if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
         max_features <- min(as.numeric(input$heatmapGeneNumberCountQC), nrow(countsHeatmapSig))
-        countsHeatmapSig <- countsHeatmapSig[1:max_features, ]
+        countsHeatmapSig <- countsHeatmapSig[seq_len(max_features), , drop = FALSE]
       } else {
         if (as.numeric(input$heatmapGeneNumber) <= nrow(countsHeatmapSig)) {
-          countsHeatmapSig <- countsHeatmapSig[1:as.numeric(input$heatmapGeneNumber), ]
+          countsHeatmapSig <- countsHeatmapSig[seq_len(as.numeric(input$heatmapGeneNumber)), , drop = FALSE]
         }
       }
-      rownames(countsHeatmapSig) <- substr(rownames(countsHeatmapSig), 1, 15)
 
       # Determine heatmap title based on data type
       heatmap_title <- if (eds$data_type() %in% c("CountQC", "CrisprCountQC")) {
@@ -1245,42 +1251,16 @@ observeEvent(
       # For heatmaps with many features (>200), use no cell border to avoid clutter
       cell_border_size <- if (nrow(countsHeatmapSig) > 200) 0 else input$cellBorderSizeHeatmap2
 
-      heatmap <- ComplexHeatmap::Heatmap(
+      heatmap <- count_heatmap(
         # Row labels follow the "Label features by" radio (proteomics); the
         # matrix itself keeps feature_ids for the download table.
-        matrix = label_rows(countsHeatmapSig, input$fb_label_by_heatmap, width = 15),
-        top_annotation = ha,
-        name = hmName,
-        cluster_columns = input$clusterColsHeatmap,
-        cluster_rows = input$clusterRowsHeatmap,
-        show_column_names = input$colnamesHeatmap,
-        column_labels = hmColumnLabels(countsHeatmapSig),
-        show_row_names = input$geneNamesHeatmap,
-        show_column_dend = input$showClusterColDend,
-        show_row_dend = input$showClusterRowDend,
-        rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = cell_border_size / 10),
-        use_raster = FALSE,
-        row_dend_width = unit(1, "cm"),
-        column_dend_height = unit(1, "cm"),
-        col = heatmapColours,
-        row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-        column_names_gp = gpar(fontsize = input$textSizeHeatmap),
-        column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-        column_title = heatmap_title,
-        heatmap_legend_param = list(
-          labels_gp = gpar(fontsize = input$textSizeHeatmap),
-          title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold")
-        )
+        label_rows(countsHeatmapSig, input$fb_label_by_heatmap, width = 15),
+        heatmap_title,
+        border_size = cell_border_size
       )
       figuresDataReactive[["heatmapDEFeatures"]] <- heatmap
 
-      output[["dlTable_heatmapDE"]] <- heatmap_table_download(
-        countsHeatmapSig,
-        "DE_heatmap_counts",
-        design,
-        "Heatmap Data",
-        "HeatmapData"
-      )
+      figuresDataReactive[["heatmapDEFeaturesTable"]] <- list(counts = countsHeatmapSig, design = design)
       # Show number of genes on plot (changes depending on settings applied)
       output[["hGNDE"]] <- renderText({
         paste0("Number of features per settings chosen: ", nrow(countsHeatmapSig))
@@ -1288,6 +1268,7 @@ observeEvent(
     } else {
       # When no DEGs are found (ntp = 0), provide informative placeholders
       figuresDataReactive[["heatmapDEFeatures"]] <- NULL
+      figuresDataReactive[["heatmapDEFeaturesTable"]] <- NULL
 
       output[["heatmapDesignBoth Directions"]] <- renderText({
         paste("No features found meeting current thresholds for:", design, peptide_note)
@@ -1299,46 +1280,14 @@ observeEvent(
     } # End if (ntp > 0) - DE Features heatmap section
 
     # Custom heatmap ----
-    if (length(input$fb_keep_heatmap) == 1) {
-      countsHeatmapCustom <- t(as.matrix(countsHeatmap[input$fb_keep_heatmap, ]))
-      rownames(countsHeatmapCustom) <- input$fb_keep_heatmap
-    } else {
-      countsHeatmapCustom <- countsHeatmap[input$fb_keep_heatmap, ]
-    }
-    ch <- ComplexHeatmap::Heatmap(
-      matrix = label_rows(countsHeatmapCustom, input$fb_label_by_heatmap),
-      top_annotation = ha,
-      name = hmName,
-      cluster_columns = input$clusterColsHeatmap,
-      cluster_rows = input$clusterRowsHeatmap,
-      show_column_names = input$colnamesHeatmap,
-      column_labels = hmColumnLabels(countsHeatmapCustom),
-      show_row_names = input$geneNamesHeatmap,
-      show_column_dend = input$showClusterColDend,
-      show_row_dend = input$showClusterRowDend,
-      rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2 / 10),
-      use_raster = FALSE,
-      row_dend_width = unit(1, "cm"),
-      column_dend_height = unit(1, "cm"),
-      col = heatmapColours,
-      row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-      column_names_gp = gpar(fontsize = input$textSizeHeatmap),
-      column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-      column_title = paste(input$heatmapCustomTitle, agg_label),
-      heatmap_legend_param = list(
-        labels_gp = gpar(fontsize = input$textSizeHeatmap),
-        title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold")
-      )
+    countsHeatmapCustom <- countsHeatmap[input$fb_keep_heatmap, , drop = FALSE]
+    ch <- count_heatmap(
+      label_rows(countsHeatmapCustom, input$fb_label_by_heatmap),
+      paste(input$heatmapCustomTitle, agg_label)
     )
     figuresDataReactive$heatmapCustom <- ch
 
-    output[["dlTable_heatmapCustom"]] <- heatmap_table_download(
-      countsHeatmapCustom,
-      "Custom_heatmap",
-      design,
-      "Custom Heatmap",
-      "CustomHeatmap"
-    )
+    figuresDataReactive[["heatmapCustomTable"]] <- list(counts = countsHeatmapCustom, design = design)
 
     # GO heatmap ----
     if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
@@ -1362,37 +1311,14 @@ observeEvent(
           goGenes <- goGenes[goGenes %in% deFeatures]
         }
 
-        if (length(goGenes) == 1) {
-          countsHeatmapGO <- t(as.matrix(countsHeatmap[goGenes, ]))
-          rownames(countsHeatmapGO) <- goGenes
-        } else if (length(goGenes) > 1) {
-          countsHeatmapGO <- countsHeatmap[goGenes, ]
-          countsHeatmapGO <- countsHeatmapGO[abs(rowMedians(countsHeatmapGO)) >= input$heatmapGoExpr, ]
-        }
+        countsHeatmapGO <- heatmap_term_matrix(countsHeatmap, goGenes, input$heatmapGoExpr)
       }
 
       if (!is.null(countsHeatmapGO) && nrow(countsHeatmapGO) > 0) {
         req(nrow(datasetHeatmap) == ncol(countsHeatmapGO))
-        gh <- ComplexHeatmap::Heatmap(
-          matrix = countsHeatmapGO,
-          top_annotation = ha,
-          name = hmName,
-          cluster_columns = input$clusterColsHeatmap,
-          cluster_rows = input$clusterRowsHeatmap,
-          show_column_names = input$colnamesHeatmap,
-          column_labels = hmColumnLabels(countsHeatmapGO),
-          show_row_names = input$geneNamesHeatmap,
-          show_column_dend = input$showClusterColDend,
-          show_row_dend = input$showClusterRowDend,
-          rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2 / 10),
-          use_raster = FALSE,
-          row_dend_width = unit(1, "cm"),
-          column_dend_height = unit(1, "cm"),
-          col = heatmapColours,
-          row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-          column_names_gp = gpar(fontsize = input$textSizeHeatmap),
-          column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-          column_title = paste0(
+        gh <- count_heatmap(
+          countsHeatmapGO,
+          paste0(
             goHeatmapReactive$currentGoName %||% goHeatmapReactive$currentGoTerm %||% "",
             "\n",
             nrow(countsHeatmapGO),
@@ -1400,22 +1326,13 @@ observeEvent(
             goGenesTotal,
             " features plotted",
             if (agg_label != "") paste0("\n", agg_label) else ""
-          ),
-          heatmap_legend_param = list(
-            labels_gp = gpar(fontsize = input$textSizeHeatmap),
-            title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold")
           )
         )
         figuresDataReactive$heatmapGO <- gh
-        output[["dlTable_heatmapGO"]] <- heatmap_table_download(
-          countsHeatmapGO,
-          "GO_heatmap",
-          design,
-          "GO Heatmap",
-          "GOHeatmap"
-        )
+        figuresDataReactive[["heatmapGOTable"]] <- list(counts = countsHeatmapGO, design = design)
       } else {
         figuresDataReactive$heatmapGO <- NULL
+        figuresDataReactive[["heatmapGOTable"]] <- NULL
       }
     }
 
@@ -1439,15 +1356,7 @@ observeEvent(
           keggGenes <- keggGenes[keggGenes %in% deFeatures]
         }
 
-        if (length(keggGenes) == 1) {
-          countsHeatmapKEGG <- t(as.matrix(countsHeatmap[keggGenes, ]))
-          rownames(countsHeatmapKEGG) <- keggGenes
-        } else if (length(keggGenes) > 1) {
-          countsHeatmapKEGG <- countsHeatmap[keggGenes, ]
-          if (!is.null(input$heatmapKeggExpr)) {
-            countsHeatmapKEGG <- countsHeatmapKEGG[abs(rowMedians(countsHeatmapKEGG)) >= input$heatmapKeggExpr, ]
-          }
-        }
+        countsHeatmapKEGG <- heatmap_term_matrix(countsHeatmap, keggGenes, input$heatmapKeggExpr)
 
         keggGenesTotal <- length(keggHeatmapReactive$currentGenes)
 
@@ -1464,42 +1373,13 @@ observeEvent(
             if (agg_label != "") paste0("\n", agg_label) else ""
           )
 
-          kh <- ComplexHeatmap::Heatmap(
-            matrix = countsHeatmapKEGG,
-            top_annotation = ha,
-            name = hmName,
-            cluster_columns = input$clusterColsHeatmap,
-            cluster_rows = input$clusterRowsHeatmap,
-            show_column_names = input$colnamesHeatmap,
-            column_labels = hmColumnLabels(countsHeatmapKEGG),
-            show_row_names = input$geneNamesHeatmap,
-            show_column_dend = input$showClusterColDend,
-            show_row_dend = input$showClusterRowDend,
-            rect_gp = gpar(col = input$cellBorderColourHeatmap2, lwd = input$cellBorderSizeHeatmap2 / 10),
-            use_raster = FALSE,
-            row_dend_width = unit(1, "cm"),
-            column_dend_height = unit(1, "cm"),
-            col = heatmapColours,
-            row_names_gp = gpar(fontsize = input$textSizeHeatmap),
-            column_names_gp = gpar(fontsize = input$textSizeHeatmap),
-            column_title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold"),
-            column_title = keggTitle,
-            heatmap_legend_param = list(
-              labels_gp = gpar(fontsize = input$textSizeHeatmap),
-              title_gp = gpar(fontsize = input$textSizeHeatmap, fontface = "bold")
-            )
-          )
+          kh <- count_heatmap(countsHeatmapKEGG, keggTitle)
           figuresDataReactive$heatmapKEGG <- kh
 
-          output[["dlTable_heatmapKEGG"]] <- heatmap_table_download(
-            countsHeatmapKEGG,
-            "KEGG_heatmap",
-            design,
-            "KEGG Heatmap",
-            "KEGGHeatmap"
-          )
+          figuresDataReactive[["heatmapKEGGTable"]] <- list(counts = countsHeatmapKEGG, design = design)
         } else {
           figuresDataReactive$heatmapKEGG <- NULL
+          figuresDataReactive[["heatmapKEGGTable"]] <- NULL
         }
       }
     }
@@ -1537,15 +1417,18 @@ output$heatmapGoInfo <- renderUI({
   )
 })
 
-# The table download of the DE, Custom, GO and KEGG heatmaps: the plotted
-# values, with the selected contrast's DE statistics when "Include DE
-# statistics" is ticked (heatmap_export_table()).
-heatmap_table_download <- function(counts, base_name, design, sheet_name, table_name) {
+# The table downloads of the DE, Custom, GO and KEGG heatmaps: the plotted
+# values the drawing observer stores next to each figure (`<sig>Table`; none
+# while a heatmap is empty), with the selected contrast's DE statistics when
+# "Include DE statistics" is ticked (heatmap_export_table()).
+heatmap_table_download <- function(sig, base_name, sheet_name, table_name) {
   downloadHandler(
     filename = function() {
+      design <- figuresDataReactive[[paste0(sig, "Table")]]$design %||% ""
       generate_filename(base_name = base_name, design_name = design, extension = "xlsx")
     },
     content = function(file) {
+      counts <- figuresDataReactive[[paste0(sig, "Table")]]$counts %||% matrix(numeric(0), 0, 0)
       de <- if (eds$has_de() && !is.null(selectedContrast())) eds$de(selectedContrast())
       export_excel_standard(
         df = heatmap_export_table(counts, de, input$includeDEStatsHeatmap),
@@ -1556,6 +1439,20 @@ heatmap_table_download <- function(counts, base_name, design, sheet_name, table_
     }
   )
 }
+output[["dlTable_heatmapDE"]] <- heatmap_table_download(
+  "heatmapDEFeatures",
+  "DE_heatmap_counts",
+  "Heatmap Data",
+  "HeatmapData"
+)
+output[["dlTable_heatmapCustom"]] <- heatmap_table_download(
+  "heatmapCustom",
+  "Custom_heatmap",
+  "Custom Heatmap",
+  "CustomHeatmap"
+)
+output[["dlTable_heatmapGO"]] <- heatmap_table_download("heatmapGO", "GO_heatmap", "GO Heatmap", "GOHeatmap")
+output[["dlTable_heatmapKEGG"]] <- heatmap_table_download("heatmapKEGG", "KEGG_heatmap", "KEGG Heatmap", "KEGGHeatmap")
 
 # KEGG heatmap: fetch pathway genes on button click
 observeEvent(input$heatmapKeggGo, {

@@ -344,7 +344,7 @@ observeEvent(
           defaultCol <- rep(catalystCols, times = 5)[i]
           return(paste0(defaultCol, "FF"))
         }
-        col <- tryCatch(col2hex(col), error = function(e) "#000000")
+        col <- col2hex(col)
         paste0(col, "FF")
       }),
       names(multiDeReactive$results)
@@ -494,35 +494,12 @@ observeEvent(
         gb <- textGrob("*")
         gb_w <- convertWidth(grobWidth(gb), "mm")
         gb_h <- convertHeight(grobHeight(gb), "mm")
-        if (mat2[i, j] <= 0.0001) {
-          grid.text(
-            "****",
-            x,
-            y - gb_h * 0.5 + gb_w * 0.4,
-            gp = gpar(fontsize = round(input$textSizeTile * 1.7), fontfamily = "HersheySerif")
-          )
-        } else if (mat2[i, j] <= 0.001) {
-          grid.text(
-            "***",
-            x,
-            y - gb_h * 0.5 + gb_w * 0.4,
-            gp = gpar(fontsize = round(input$textSizeTile * 1.7), fontfamily = "HersheySerif")
-          )
-        } else if (mat2[i, j] <= 0.01) {
-          grid.text(
-            "**",
-            x,
-            y - gb_h * 0.5 + gb_w * 0.4,
-            gp = gpar(fontsize = round(input$textSizeTile * 1.7), fontfamily = "HersheySerif")
-          )
-        } else if (mat2[i, j] <= 0.05) {
-          grid.text(
-            "*",
-            x,
-            y - gb_h * 0.5 + gb_w * 0.4,
-            gp = gpar(fontsize = round(input$textSizeTile * 1.7), fontfamily = "HersheySerif")
-          )
-        }
+        grid.text(
+          significance_stars(mat2[i, j]),
+          x,
+          y - gb_h * 0.5 + gb_w * 0.4,
+          gp = gpar(fontsize = round(input$textSizeTile * 1.7), fontfamily = "HersheySerif")
+        )
       },
       name = "Log2FC",
       col = tileColours,
@@ -716,7 +693,7 @@ observeEvent(
       hGT <- strsplit(input$tileGenesText, "\\ +|\\/+|\\,+|\n+|\r+|\n\r+|\t+")[[1]]
     }
     # Proteomics: map gene symbols / protein IDs back to feature_ids
-    customList[["Custom"]][["highlightersC"]] <- resolve_features(
+    customList[["Custom"]][["highlightersC"]] <- fb_resolve(
       c(input$tileGenes, hGT[hGT != ""]),
       input$fb_search_by_multiTile %||% "feature_id"
     )
@@ -808,7 +785,7 @@ observeEvent(
               if (is.null(col)) {
                 return("#000000FF")
               }
-              col <- tryCatch(col2hex(col), error = function(e) "#000000")
+              col <- col2hex(col)
               paste0(col, "FF")
             }),
             names(multiDeReactive$results)
@@ -860,15 +837,7 @@ observeEvent(
                 banana_grid(banana_tier(mat2[i, j]), x, y, h = grid::unit(input$textSizeTile * 3, "pt"))
                 return(invisible(NULL))
               }
-              if (mat2[i, j] <= 0.0001) {
-                grid.text("****", x, y)
-              } else if (mat2[i, j] <= 0.001) {
-                grid.text("***", x, y)
-              } else if (mat2[i, j] <= 0.01) {
-                grid.text("**", x, y)
-              } else if (mat2[i, j] <= 0.05) {
-                grid.text("*", x, y)
-              }
+              grid.text(significance_stars(mat2[i, j]), x, y)
             },
             name = "Log2FC",
             col = tileColours,

@@ -300,7 +300,7 @@ observeEvent(
         if (is.null(col)) {
           return("#000000FF")
         }
-        col <- tryCatch(col2hex(col), error = function(e) "#000000")
+        col <- col2hex(col)
         paste0(col, "FF")
       }),
       names(gl1)

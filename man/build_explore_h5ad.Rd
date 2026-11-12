@@ -17,7 +17,6 @@ build_explore_h5ad(
   pathways = list(),
   enrichment_padj_max = 0.1,
   factors = NULL,
-  gene_symbol = NULL,
   organism = NA_character_,
   ref_build = NA_character_
 )
@@ -80,18 +79,20 @@ and the app uses a per-method value as its significance threshold.}
 \item{factors}{Optional colData columns that are experimental factors
 (default: all character/factor-typed columns).}
 
-\item{gene_symbol, organism, ref_build}{Optional labels.}
+\item{organism, ref_build}{Optional labels.}
 }
 \value{
 The output path, invisibly.
 }
 \description{
-The source-agnostic "bring your own data" constructor. \code{x} is either a rich
-upstream object (a \code{DESeqDataSet} — the preferred starting point) or the
-counts themselves (a matrix, or a named list of matrices such as
-\code{list(counts=, normalised=, vst=, tpm=)}). Any parts the object doesn't
-carry — DE tables, pathway statistics, extra count matrices — are supplied
-as arguments and merged. Only counts + \code{coldata} + \code{omics} are required.
+The source-agnostic "bring your own data" constructor. \code{x} is either a
+\code{DESeqDataSet} (the preferred starting point: its counts, \code{colData},
+\code{rowData} and factors are used) or the counts themselves (a matrix, or a
+named list of matrices such as \code{list(counts=, normalised=, vst=, tpm=)}).
+From a \code{SummarizedExperiment}, pass its assays as such a list, with
+\code{coldata = colData(se)} and \code{rowdata = rowData(se)}. DE tables and pathway
+statistics are supplied as arguments. Only counts + \code{coldata} + \code{omics} are
+required.
 }
 \examples{
 library(SummarizedExperiment)

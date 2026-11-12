@@ -54,9 +54,8 @@ if (file.exists("/srv/shiny-server/fgcz_apps/telemetry_module.R")) {
 
 # Source package R/ helpers at startup (dev mode — no install required).
 # Provides global definitions of the conversion / plotting helpers.
-# server-*.R files are source()d with local = TRUE; helpers that read session
-# reactives (bucket_*, resolve_features, make_rep_*) are bound to the server
-# scope there with bind_to_scope().
+# server-*.R files are source()d with local = TRUE; they pass session state
+# (input, the feature bucket) to these helpers as arguments.
 r_dir <- if (dir.exists("../../R")) {
   "../../R"
 } else if (dir.exists("R")) {

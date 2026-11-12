@@ -346,7 +346,7 @@ maybe_facet <- function(p, df, lbl = NULL) {
 }
 
 build_total_reads_plot <- function() {
-  validate(need(isTRUE(try(countQcBarVisible(), silent = TRUE)), "Total-reads plot not applicable for this data type."))
+  validate(need(isTRUE(countQcBarVisible()), "Total-reads plot not applicable for this data type."))
   df <- countQcBarData()
   lbl <- countQcLevelLabels(df)
   p <- ggplot(df, aes(x = Sample, y = Total_M, fill = Group)) +
@@ -359,7 +359,7 @@ build_total_reads_plot <- function() {
 
 build_features_above_plot <- function() {
   validate(need(
-    isTRUE(try(countQcBarVisible(), silent = TRUE)),
+    isTRUE(countQcBarVisible()),
     "Features-above-threshold plot not applicable for this data type."
   ))
   df <- countQcBarData()
@@ -444,7 +444,7 @@ classify_family <- function(gene, presets_used, user_regex) {
 
 build_dominant_plot <- function() {
   validate(need(
-    isTRUE(try(countQcDomVisible(), silent = TRUE)),
+    isTRUE(countQcDomVisible()),
     "Dominant-genes plot not applicable for this data type."
   ))
   df <- countQcDominantData()
@@ -642,10 +642,10 @@ countQcHasWidth <- reactive({
 # Hide GC/Width radio choices when the columns are absent
 observe({
   choices <- "Standard"
-  if (isTRUE(try(countQcHasGC(), silent = TRUE))) {
+  if (isTRUE(countQcHasGC())) {
     choices <- c(choices, "GC content")
   }
-  if (isTRUE(try(countQcHasWidth(), silent = TRUE))) {
+  if (isTRUE(countQcHasWidth())) {
     choices <- c(choices, "Gene width")
   }
   current <- isolate(input$countQcScatterColourBy)
@@ -742,31 +742,44 @@ countQcIntraData <- reactive({
     rep(TRUE, nrow(rd))
   }
 
-  types_info <- build_qc_scatter_types(
-    rd,
+  types_info <- switch(
     mode,
-    present_mask,
-    p_thresh = input$countQcScatterPval %||% 0.05,
-    lfc_thresh = input$countQcScatterLFC %||% 1,
-    gc_lo = input$countQcScatterGCLow %||% 0.4,
-    gc_hi = input$countQcScatterGCHigh %||% 0.6,
-    w_lo = input$countQcScatterWidthLow %||% 500,
-    w_hi = input$countQcScatterWidthHigh %||% 5000,
-    std_cols = list(
-      Absent = input$countQcColAbsent %||% "grey70",
-      Present = input$countQcColPresent %||% "black",
-      Significants = input$countQcColSig %||% "#A6CEE3"
+    "Standard" = qc_types_significance(
+      rd,
+      present_mask,
+      p_thresh = input$countQcScatterPval %||% 0.05,
+      lfc_thresh = input$countQcScatterLFC %||% 1,
+      cols = list(
+        Absent = input$countQcColAbsent %||% "grey70",
+        Present = input$countQcColPresent %||% "black",
+        Significants = input$countQcColSig %||% "#A6CEE3"
+      )
     ),
-    gc_cols = list(
-      low = input$countQcColGCLow %||% "#1F78B4",
-      mid = input$countQcColGCMid %||% "black",
-      high = input$countQcColGCHigh %||% "#FF7F00"
+    "GC content" = qc_types_binned(
+      rd$gc,
+      input$countQcScatterGCLow %||% 0.4,
+      input$countQcScatterGCHigh %||% 0.6,
+      cols = list(
+        low = input$countQcColGCLow %||% "#1F78B4",
+        mid = input$countQcColGCMid %||% "black",
+        high = input$countQcColGCHigh %||% "#FF7F00"
+      ),
+      fmt = "%.2f",
+      prefix = "GC "
     ),
-    width_cols = list(
-      low = input$countQcColWidthLow %||% "#B15928",
-      mid = input$countQcColWidthMid %||% "black",
-      high = input$countQcColWidthHigh %||% "#33A02C"
-    )
+    "Gene width" = qc_types_binned(
+      rd$featWidth,
+      input$countQcScatterWidthLow %||% 500,
+      input$countQcScatterWidthHigh %||% 5000,
+      cols = list(
+        low = input$countQcColWidthLow %||% "#B15928",
+        mid = input$countQcColWidthMid %||% "black",
+        high = input$countQcColWidthHigh %||% "#33A02C"
+      ),
+      fmt = "%.0f",
+      suffix = " nt"
+    ),
+    stop("unknown colour-by mode: ", mode)
   )
 
   list(
@@ -905,7 +918,10 @@ output$countQcIntraScatter <- renderPlot(
 # Downloads
 # ==============================================================================
 
-countQcDownloadFile <- function(plot_reactive, suffix, width_in = 8, height_in = 5) {
+# size_px: a function giving c(width, height) in pixels, read at each download
+# so the figure settings at that moment apply (a value would be fixed by the
+# first download).
+countQcDownloadFile <- function(plot_reactive, suffix, size_px) {
   downloadHandler(
     filename = function() {
       ext <- tolower(input$countQcDlFormat %||% "pdf")
@@ -913,6 +929,9 @@ countQcDownloadFile <- function(plot_reactive, suffix, width_in = 8, height_in =
     },
     content = function(file) {
       fmt <- tolower(input$countQcDlFormat %||% "pdf")
+      size_in <- size_px() / 96
+      width_in <- size_in[1]
+      height_in <- size_in[2]
       if (fmt == "png") {
         ggsave(
           file,
@@ -937,24 +956,20 @@ countQcDownloadFile <- function(plot_reactive, suffix, width_in = 8, height_in =
 output$dlPlot_countQcTotalReads <- countQcDownloadFile(
   reactive(build_total_reads_plot()),
   "total_reads",
-  width_in = cqW() / 96,
-  height_in = cqH() / 96
+  function() c(cqW(), cqH())
 )
 output$dlPlot_countQcFeaturesAbove <- countQcDownloadFile(
   reactive(build_features_above_plot()),
   "features_above",
-  width_in = cqW() / 96,
-  height_in = cqH() / 96
+  function() c(cqW(), cqH())
 )
 output$dlPlot_countQcDominant <- countQcDownloadFile(
   reactive(build_dominant_plot()),
   "dominant_genes",
-  width_in = cqW() / 96,
-  height_in = cqH() / 96
+  function() c(cqW(), cqH())
 )
 output$dlPlot_countQcIntra <- countQcDownloadFile(
   reactive(build_intra_scatter_plot()),
   "intra_group",
-  width_in = intraPlotWidth() / 96,
-  height_in = intraPlotHeight() / 96
+  function() c(intraPlotWidth(), intraPlotHeight())
 )

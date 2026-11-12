@@ -28,6 +28,7 @@ differs.
 }
 \if{html}{\out{<details><summary>Inherited methods</summary>
 <ul>
+  <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="assay_is_log2"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-assay_is_log2'><code>ExploreDataset$assay_is_log2()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="assay_label"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-assay_label'><code>ExploreDataset$assay_label()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="background_expression"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-background_expression'><code>ExploreDataset$background_expression()</code></a></span></li>
   <li><span class="pkg-link" data-pkg="exploreDE" data-topic="ExploreDataset" data-id="contrast_label"><a href='../../exploreDE/html/ExploreDataset.html#method-ExploreDataset-contrast_label'><code>ExploreDataset$contrast_label()</code></a></span></li>

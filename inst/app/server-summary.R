@@ -162,16 +162,16 @@ output$groupLabelWarningsUI <- renderUI({
   div(class = "alert alert-warning", style = "margin-top: 10px;", tags$ul(msgs))
 })
 
-saved_inputs <- reactiveVal(data.frame(Input = character(), Value = character(), stringsAsFactors = FALSE))
-# Observe all inputs and store their values
-observe({
-  current_inputs <- data.frame(
-    Input = names(input),
-    Value = sapply(names(input), function(x) paste(input[[x]], collapse = " ")),
+# The group colour inputs (GroupColour<level>) as Level / Colour rows, read
+# when the template is downloaded or a file imported
+colour_template <- function() {
+  ids <- grep("^GroupColour", names(input), value = TRUE)
+  data.frame(
+    Level = ids,
+    Colour = vapply(ids, function(x) paste(input[[x]], collapse = " "), character(1), USE.NAMES = FALSE),
     stringsAsFactors = FALSE
   )
-  saved_inputs(current_inputs)
-})
+}
 output$dlColourTemplate <- downloadHandler(
   filename = function() {
     generate_filename(
@@ -181,9 +181,7 @@ output$dlColourTemplate <- downloadHandler(
     )
   },
   content = function(file) {
-    colourTemplate <- saved_inputs()
-    colnames(colourTemplate) <- c("Level", "Colour")
-    colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
+    colourTemplate <- colour_template()
     colourTemplate$Label <- vapply(
       sub("^GroupColour", "GroupLabel", colourTemplate$Level),
       function(id) {
@@ -201,9 +199,7 @@ observeEvent(input$importColourFile, {
   importedColours <- openxlsx::read.xlsx(input$importColourFile[1, "datapath"], colNames = T)
   importedColours <- importedColours %>% data.frame(check.names = F)
 
-  colourTemplate <- saved_inputs()
-  colnames(colourTemplate) <- c("Level", "Colour")
-  colourTemplate <- colourTemplate[grep("^GroupColour", colourTemplate$Level), ]
+  colourTemplate <- colour_template()
 
   if (any(!importedColours$Level %in% colourTemplate$Level)) {
     showModal(modalDialog(
@@ -213,7 +209,11 @@ observeEvent(input$importColourFile, {
     ))
   } else {
     lapply(importedColours$Level, function(l) {
-      updateColourInput(session = session, inputId = l, value = importedColours$Colour[importedColours$Level == l])
+      colourpicker::updateColourInput(
+        session = session,
+        inputId = l,
+        value = importedColours$Colour[importedColours$Level == l]
+      )
     })
     # Label column is optional: older templates only have Level + Colour
     if ("Label" %in% colnames(importedColours)) {
@@ -253,8 +253,11 @@ observeEvent(eds$data_type(), {
         )
       )
     })
-    # Methods download UI - show for RNASeq (validation happens in download handler)
+    # Methods text comes from a SUSHI result's parameters and directory
     output$methodsDownloadUI <- renderUI({
+      if (eds$backend_kind() != "se") {
+        return(helpText("A methods section can be downloaded for SUSHI RNA-seq results only."))
+      }
       tagList(
         # hr(style = "border-top: 1px solid #000000;"),
         h4("Download Methods Section"),
@@ -512,264 +515,24 @@ observe({
         extension = "docx"
       )
     },
+    # The button exists only for SUSHI RNA-seq results with DE (methodsDownloadUI)
     content = function(file) {
-      tryCatch(
-        {
-          # Only proceed if RNASeq data
-          req(eds$data_type() == "RNASeq")
-
-          # Methods generation is SUSHI/ezRun-only.
-          if (eds$backend_kind() != "se") {
-            showNotification(
-              "Methods text is only available for SUSHI-processed datasets.",
-              type = "message",
-              duration = 8
-            )
-            return(NULL)
-          }
-
-          # Reach for the SE + param via the backend escape hatch.
-          se <- eds$backend()
-          param <- S4Vectors::metadata(se)$param
-
-          # Extract dataDir from attribute (still emitted by the legacy shim)
-          dataDir <- attr(inputDataReactive(), "dataDir")
-          if (is.null(dataDir)) {
-            dataDir <- ""
-          }
-
-          # Detect aligner and DE method
-          aligner <- detectAligner(dataDir)
-          de_method <- detectDEMethod(dataDir, param)
-
-          # Additional safety check - only proceed for DESeq2 or edgeR (case insensitive)
-          if (!tolower(de_method) %in% c("deseq2", "edger")) {
-            showNotification(
-              paste0("Methods download is only available for DESeq2 and edgeR analyses. Detected method: ", de_method),
-              type = "error",
-              duration = 10
-            )
-            return(NULL)
-          }
-
-          # Normalize DE method capitalization for consistency
-          de_method <- if (tolower(de_method) == "deseq2") {
-            "DESeq2"
-          } else if (tolower(de_method) == "edger") {
-            "edgeR"
-          } else {
-            de_method
-          }
-
-          fastp_version <- getFastpVersion(dataDir)
-
-          # Get package versions
-          pkg_names <- c("DESeq2", "edgeR", "clusterProfiler")
-          pkg_versions <- getPackageVersions(pkg_names)
-
-          # Check if GO was run
-          run_go <- if (!is.null(param$runGO)) param$runGO else FALSE
-
-          # Get reference build for GENCODE detection
-          ref_build <- if (!is.null(param$refBuild)) param$refBuild else NULL
-
-          # Build citations
-          citations <- buildCitationsList(aligner, de_method, run_go, ref_build)
-
-          # Prepare raw reads text
-          raw_reads_text <- ""
-          dataset <- eds$samples()
-          if (!is.null(dataset)) {
-            # Look for common read count column names (Reads, Total Reads, Read Count, etc)
-            # Look for common read count column names (Reads, Total Reads, Read Count, etc)
-            cols <- colnames(dataset)
-            # Priority 1: Exact matches (with or without underscores/spaces)
-            read_cols <- grep(
-              "^Read_?Count$|^Reads$|^Raw_?Reads$|^Total_?Reads$",
-              cols,
-              value = TRUE,
-              ignore.case = TRUE
-            )
-
-            # Priority 2: Contains "Read" and "Count" (e.g., "PF Read Count") if no exact match
-            if (length(read_cols) == 0) {
-              read_cols <- grep("Read", cols, value = TRUE, ignore.case = TRUE)
-              read_cols <- grep("Count", read_cols, value = TRUE, ignore.case = TRUE)
-              # Exclude filenames
-              read_cols <- grep("File|Path|Name", read_cols, value = TRUE, invert = TRUE, ignore.case = TRUE)
-            }
-
-            # Priority 3: Just "Reads" but cautious
-            if (length(read_cols) == 0) {
-              read_cols <- grep("Read", cols, value = TRUE, ignore.case = TRUE)
-              read_cols <- grep(
-                "File|Path|Name|Mapped|Gene|Feature|Aligned",
-                read_cols,
-                value = TRUE,
-                invert = TRUE,
-                ignore.case = TRUE
-              )
-            }
-            if (length(read_cols) > 0) {
-              tryCatch(
-                {
-                  raw_val <- dataset[[read_cols[1]]]
-                  raw_reads <- suppressWarnings(as.numeric(as.character(raw_val)))
-                  if (!all(is.na(raw_reads))) {
-                    min_raw <- round(min(raw_reads, na.rm = TRUE) / 1e6, 1)
-                    max_raw <- round(max(raw_reads, na.rm = TRUE) / 1e6, 1)
-                    # User requested format: "Individual library size ranged from X to Y million reads."
-                    raw_reads_text <- paste0(
-                      "Individual library size ranged from ",
-                      min_raw,
-                      " million to ",
-                      max_raw,
-                      " million reads. "
-                    )
-                  }
-                },
-                error = function(e) {}
-              )
-            }
-          }
-
-          # Generate methods text
-          methods_sections <- generateMethodsText(
-            param,
-            aligner,
-            de_method,
-            fastp_version,
-            pkg_versions,
-            se,
-            raw_reads_text = raw_reads_text
-          )
-
-          # Create Word document using officer package
-          doc <- officer::read_docx()
-
-          # Add title
-          doc <- doc %>%
-            officer::body_add_fpar(
-              officer::fpar(officer::ftext("Methods", prop = officer::fp_text(bold = TRUE, font.size = 16)))
-            ) %>%
-            officer::body_add_par("")
-
-          # Add disclaimer
-          doc <- doc %>%
-            officer::body_add_fpar(
-              officer::fpar(officer::ftext("IMPORTANT NOTICE", prop = officer::fp_text(bold = TRUE, font.size = 14)))
-            ) %>%
-            officer::body_add_par(paste0(
-              "This methods section was automatically generated by the exploreDE Shiny application (beta version). ",
-              "All information contained herein MUST be carefully reviewed and verified for accuracy before inclusion in any publication or report. ",
-              "Please verify: (1) all software versions are correct, (2) all analysis parameters match your study design, ",
-              "(3) all citations are complete and properly formatted, and (4) the description accurately reflects your experimental procedures. ",
-              "If you have any questions or concerns, please consult with your bioinformatics coach or contact the FGCZ team at sequencing@fgcz.ethz.ch. ",
-              "Generated on: ",
-              format(Sys.Date(), "%d %B %Y"),
-              "."
-            )) %>%
-            officer::body_add_par("")
-
-          # Add Library Preparation section (placeholder for user to fill in)
-          doc <- doc %>%
-            officer::body_add_fpar(
-              officer::fpar(officer::ftext("Library Preparation", prop = officer::fp_text(bold = TRUE, font.size = 14)))
-            ) %>%
-            officer::body_add_par(
-              "[User to complete: Include RNA quality assessment methods (Qubit, Fragment Analyzer, RIN values), library preparation kit details, and final library normalisation procedures.]"
-            ) %>%
-            officer::body_add_par("")
-
-          # Add RNA-Seq Analysis section
-          doc <- doc %>%
-            officer::body_add_fpar(
-              officer::fpar(officer::ftext(
-                "RNA-Seq Data Analysis",
-                prop = officer::fp_text(bold = TRUE, font.size = 14)
-              ))
-            ) %>%
-            officer::body_add_par("")
-
-          # Add Data Processing section
-          doc <- doc %>%
-            officer::body_add_fpar(
-              officer::fpar(officer::ftext("Data Processing", prop = officer::fp_text(bold = TRUE, font.size = 12)))
-            ) %>%
-            officer::body_add_par(methods_sections$data_processing) %>%
-            officer::body_add_par("")
-
-          # Add Read Trimming section
-          doc <- doc %>%
-            officer::body_add_fpar(
-              officer::fpar(officer::ftext(
-                "Read Trimming and Quality Control",
-                prop = officer::fp_text(bold = TRUE, font.size = 12)
-              ))
-            ) %>%
-            officer::body_add_par(methods_sections$trimming) %>%
-            officer::body_add_par("")
-
-          # Add Mapping section
-          doc <- doc %>%
-            officer::body_add_fpar(
-              officer::fpar(officer::ftext(
-                "Read Mapping and Quantification",
-                prop = officer::fp_text(bold = TRUE, font.size = 12)
-              ))
-            ) %>%
-            officer::body_add_par(methods_sections$mapping) %>%
-            officer::body_add_par("")
-
-          # Add DE Analysis section
-          doc <- doc %>%
-            officer::body_add_fpar(
-              officer::fpar(officer::ftext(
-                "Differential Expression Analysis",
-                prop = officer::fp_text(bold = TRUE, font.size = 12)
-              ))
-            ) %>%
-            officer::body_add_par(methods_sections$de_analysis) %>%
-            officer::body_add_par("")
-
-          # Add GO Analysis section if applicable
-          if (!is.null(methods_sections$go_analysis)) {
-            doc <- doc %>%
-              officer::body_add_fpar(
-                officer::fpar(officer::ftext(
-                  "Gene Ontology Enrichment Analysis",
-                  prop = officer::fp_text(bold = TRUE, font.size = 12)
-                ))
-              ) %>%
-              officer::body_add_par(methods_sections$go_analysis) %>%
-              officer::body_add_par("")
-          }
-
-          # Add References section
-          doc <- doc %>%
-            officer::body_add_fpar(
-              officer::fpar(officer::ftext("References", prop = officer::fp_text(bold = TRUE, font.size = 14)))
-            ) %>%
-            officer::body_add_par("")
-
-          for (citation_name in names(citations)) {
-            doc <- doc %>%
-              officer::body_add_par(citations[[citation_name]]) %>%
-              officer::body_add_par("")
-          }
-
-          # Save the document
-          print(doc, target = file)
-        },
-        error = function(e) {
-          showNotification(
-            paste0("Error generating methods document: ", e$message),
-            type = "error",
-            duration = 10
-          )
-          cat("Methods download error:", e$message, "\n")
-        }
+      se <- eds$backend()
+      param <- S4Vectors::metadata(se)$param
+      dataDir <- attr(inputDataReactive(), "dataDir") %||% ""
+      aligner <- detectAligner(dataDir)
+      de_method <- detectDEMethod(dataDir, param)
+      citations <- buildCitationsList(aligner, de_method, param$runGO %||% FALSE, param$refBuild)
+      sections <- generateMethodsText(
+        param,
+        aligner,
+        de_method,
+        getFastpVersion(dataDir),
+        getPackageVersions(c("DESeq2", "edgeR", "clusterProfiler")),
+        se,
+        raw_reads_text = library_size_text(eds$samples())
       )
+      print(build_methods_docx(sections, citations), target = file)
     }
   )
 

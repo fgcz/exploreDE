@@ -229,7 +229,7 @@ ldap_lookup <- function(user) {
   )
 }
 .ldap_cache <- NULL
-# The LDAP role decided by the last ?data= load ("employee", "user", "demo",
+# The LDAP role decided by the last ?data= load ("employee", "user", "course",
 # ...); NA until then. The Ordination tab shows its staff-only panel for
 # "employee".
 ldapRole <- reactiveVal(NA_character_)
@@ -240,36 +240,44 @@ session_ldap <- function() {
   .ldap_cache
 }
 
+# A proteomics result on pStore: an .rds, or a prolfquapp DEA AnnData.
+read_pstore_se <- function(dataDir) {
+  if (grepl("\\.h5ad$", dataDir, ignore.case = TRUE)) {
+    # The reader needs a local file.
+    path <- dataDir
+    if (is_url(dataDir)) {
+      path <- tempfile(fileext = ".h5ad")
+      on.exit(unlink(path), add = TRUE)
+      utils::download.file(dataDir, path, mode = "wb", quiet = TRUE)
+    }
+    return(se_from_prolfquapp_anndata(.h5ad_read(path)))
+  }
+  if (is_url(dataDir)) readRDS(url(dataDir)) else readRDS(dataDir)
+}
+
 # Load a SUSHI SE (proteomics or genomics) from a resolved dataDir.
 # Returns list(se, seUnfiltered, dataDir) or NULL (after a modal). LDAP checks
 # and every load branch are preserved verbatim from the original eager block.
 load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
   # ---- Import proteomics data from pStore ----
   if (dataType == "proteomics") {
-    se <- if (grepl("\\.h5ad$", dataDir, ignore.case = TRUE)) {
-      # prolfquapp DEA AnnData; the reader needs a local file.
-      path <- dataDir
-      if (is_url(dataDir)) {
-        path <- tempfile(fileext = ".h5ad")
-        on.exit(unlink(path), add = TRUE)
-        utils::download.file(dataDir, path, mode = "wb", quiet = TRUE)
-      }
-      se_from_prolfquapp_anndata(.h5ad_read(path))
-    } else if (is_url(dataDir)) {
-      readRDS(url(dataDir))
-    } else {
-      readRDS(dataDir)
+    # A link to a missing file, or pStore out of reach: a message, not the end
+    # of the session (this runs while the server function starts).
+    se <- tryCatch(read_pstore_se(dataDir), error = function(e) e)
+    if (inherits(se, "error")) {
+      showModal(modalDialog(
+        title = "This link can't be opened",
+        paste0("exploreDE could not read ", dataDir, ": ", conditionMessage(se)),
+        easyClose = TRUE
+      ))
+      return(NULL)
     }
     return(list(se = se, seUnfiltered = NULL, dataDir = dataDir))
   }
 
   # ---- Import RNA-seq / CountQC / Mageck data from SUSHI ----
   # Run LDAP queries — demo + course skip checks.
-  if (dataType == "demo") {
-    message("Loading demo data, so no LDAP checks required.")
-    allowed <- TRUE
-    ldap_role <- "demo"
-  } else if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
+  if (grepl("/srv/GT/analysis/course_sushi/public/gstore/projects", dataDir)) {
     message("Loading SUSHI course data, so no LDAP checks required.")
     allowed <- TRUE
     ldap_role <- "course"
@@ -316,27 +324,15 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
     if (grepl("EzResult.RData", dataDir)) {
       dataDir <- gsub("\\/result-.*.-EzResult.RData", "", dataDir)
     }
-    if (file.exists(file.path(dataDir, "deResult.rds"))) {
-      se <- readRDS(file.path(dataDir, "deResult.rds"))
-    } else if (file.exists(file.path(dataDir, "deResult.qs2"))) {
-      se <- qs2::qs_read(file.path(dataDir, "deResult.qs2"), nthreads = 4)
-    }
+    se <- read_se_any(dataDir, "deResult")
     # If CountQC, load that (we use only the 'present' genes because it has the normalised counts in the assays)
   } else if (grepl("CountQC|ExploreMageckCounts", dataDir)) {
     dataDir <- dirname(dataDir)
-    if (file.exists(file.path(dataDir, "rawData_final.rds"))) {
-      se <- readRDS(file.path(dataDir, "rawData_final.rds"))
-    } else if (file.exists(file.path(dataDir, "rawData_final.qs2"))) {
-      se <- qs2::qs_read(file.path(dataDir, "rawData_final.qs2"), nthreads = 4)
-    }
+    se <- read_se_any(dataDir, "rawData_final")
     # Also load the unfiltered SE (pre-isValid) so the Features Above
     # Threshold bar plot can use the full transcriptome as denominator
     # (matching the ezRun CountQC.Rmd report).
-    if (file.exists(file.path(dataDir, "rawData.rds"))) {
-      seUnfiltered <- readRDS(file.path(dataDir, "rawData.rds"))
-    } else if (file.exists(file.path(dataDir, "rawData.qs2"))) {
-      seUnfiltered <- qs2::qs_read(file.path(dataDir, "rawData.qs2"), nthreads = 4)
-    }
+    seUnfiltered <- read_se_any(dataDir, "rawData")
   }
 
   if (is.null(se)) {
@@ -419,20 +415,18 @@ load_demo <- function() {
 # A file handed to exploreDE(file = ...): an .h5ad goes through the same checks
 # as an upload; anything else (a SummarizedExperiment .rds/.qs2, or a SUSHI
 # result directory) through new_explore_dataset().
+# Returns NULL when the file opened, otherwise why it did not.
 load_local_file <- function(path) {
   if (grepl("\\.h5ad$", path, ignore.case = TRUE)) {
     res <- load_h5ad_upload(path)
-    if (!isTRUE(res$ok)) {
-      showModal(modalDialog(title = "Could not load this file", res$msg, easyClose = TRUE))
-    }
-    return(invisible())
+    return(if (isTRUE(res$ok)) NULL else res$msg)
   }
   eds <- tryCatch(new_explore_dataset(path), error = function(e) e)
   if (inherits(eds, "error")) {
-    showModal(modalDialog(title = "Could not load this file", conditionMessage(eds), easyClose = TRUE))
-    return(invisible())
+    return(conditionMessage(eds))
   }
   set_eds(eds, dataDir = if (dir.exists(path)) path else dirname(path))
+  NULL
 }
 
 # A user-uploaded canonical .h5ad, read and validated but not published.
@@ -463,6 +457,21 @@ read_h5ad_upload <- function(path) {
 
 # A user-uploaded canonical .h5ad. Returns list(ok, msg) so the landing screen
 # can surface a friendly validation message; publishes the eds only on success.
+# The rows of a fileInput value whose names end in .h5ad; the others are
+# refused with a message. readRDS() on an uploaded .rds could run code, so the
+# upload boxes take .h5ad only (exploreDE(file) still opens a local .rds).
+h5ad_uploads_only <- function(files) {
+  ok <- grepl("\\.h5ad$", files$name, ignore.case = TRUE)
+  for (name in files$name[!ok]) {
+    showNotification(
+      paste0(name, " is not an .h5ad file; only .h5ad files can be uploaded."),
+      type = "error",
+      duration = 10
+    )
+  }
+  files[ok, , drop = FALSE]
+}
+
 load_h5ad_upload <- function(path) {
   res <- read_h5ad_upload(path)
   if (!isTRUE(res$ok)) {
@@ -569,13 +578,30 @@ if (!is.null(dataUrl)) {
   dataType <- if (grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) "proteomics" else "gStore"
   load_from_url(dataUrl)
 } else if (!is.null(getOption("exploreDE.file"))) {
-  # Launched locally as exploreDE(file = ...): the first file opens, the others
-  # go to Multi DE.
+  # Launched locally as exploreDE(file = ...): the first file that loads opens,
+  # the ones after it go to Multi DE (as on the landing page).
   files <- getOption("exploreDE.file")
-  load_local_file(files[1])
-  if (length(files) > 1 && !is.null(isolate(edsState()))) {
+  failed <- character()
+  opened <- 0L
+  for (i in seq_along(files)) {
+    why <- load_local_file(files[i])
+    if (is.null(why)) {
+      opened <- i
+      break
+    }
+    failed <- c(failed, paste0(basename(files[i]), ": ", why))
+  }
+  if (length(failed)) {
+    showModal(modalDialog(
+      title = if (length(failed) == 1) "Could not load this file" else "Could not load these files",
+      tags$ul(lapply(failed, tags$li)),
+      easyClose = TRUE
+    ))
+  }
+  rest <- if (opened > 0) files[-seq_len(opened)] else character()
+  if (length(rest)) {
     tryCatch(
-      multi_add_uploads(data.frame(name = basename(files[-1]), datapath = files[-1], stringsAsFactors = FALSE)),
+      multi_add_uploads(data.frame(name = basename(rest), datapath = rest, stringsAsFactors = FALSE)),
       error = function(e) {
         showNotification(paste("Could not add the other files to Multi DE:", conditionMessage(e)), type = "error")
       }

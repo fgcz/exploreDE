@@ -96,7 +96,7 @@ test_that("save_state_fingerprint builds a sorted, complete identity", {
   expect_equal(fp$dataDir, "/gstore/pX/oY/")
 })
 
-test_that("save_state_fingerprint is NULL-safe and never throws on a bad accessor", {
+test_that("save_state_fingerprint is NULL-safe and passes a failing accessor's error on", {
   expect_null(save_state_fingerprint(NULL))
   bad <- list(
     data_type = function() stop("boom"),
@@ -106,9 +106,10 @@ test_that("save_state_fingerprint is NULL-safe and never throws on a bad accesso
     factor_names = function() "F",
     contrasts = function() character()
   )
-  expect_silent(fp <- save_state_fingerprint(bad, NULL))
-  expect_true(is.na(fp$dataType)) # errored accessor -> NA, not a crash
-  expect_true(is.na(fp$dataDir)) # NULL dataDir -> NA
+  # An NA would let two datasets that both fail the accessor match
+  expect_error(save_state_fingerprint(bad, NULL), "boom")
+  bad$data_type <- function() "RNASeq"
+  expect_true(is.na(save_state_fingerprint(bad, NULL)$dataDir)) # NULL dataDir -> NA
 })
 
 # ---- save_state_fp_match (exact-dataset gate) -------------------------------
@@ -370,4 +371,22 @@ test_that("save_state_multi_datasets lists sources in display order", {
   expect_equal(vapply(out, `[[`, "", "name"), c("My KO", "B_vs_A", "study2_KO_vs_WT"))
   expect_equal(out[[1]]$link, "p1/D/KO")
   expect_identical(out[[3]], list(name = "study2_KO_vs_WT", source = "upload", file = "study2", contrast = "KO_vs_WT"))
+})
+
+test_that("file uploads are not saved in a session", {
+  upload <- data.frame(name = "B.h5ad", size = 1, type = "", datapath = "/tmp/Rtmp/0.h5ad")
+  expect_length(save_state_multi_inputs(list(multiUploadH5ad = upload)), 0)
+  expect_length(save_state_filter_inputs(list(uploadH5ad = upload)), 0)
+})
+
+test_that("the sample-ratio widgets are not saved, since the ratios are not", {
+  x <- list(
+    heatmapRatioPlot = c("r1", "diff_vs_undiff"),
+    heatmapRatioName = "r2",
+    heatmapRatioNumerator = "S1",
+    heatmapRatioDenominator = "S2",
+    heatmapRatioRemove = "r1",
+    heatmapRatioTopN = 30
+  )
+  expect_identical(names(save_state_filter_inputs(x)), "heatmapRatioTopN")
 })

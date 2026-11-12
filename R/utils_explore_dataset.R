@@ -3,7 +3,7 @@
 #
 # All identifiers in this file are package-internal (not exported) and are
 # prefixed with `eds_` to avoid colliding with similar helpers in
-# `helperFunctions.R` (e.g. `build_feature_id`, `standardise_columns`)
+# `feature_ids.R` (e.g. `build_feature_id`, `standardise_columns`)
 # whose contracts differ.
 # =============================================================================
 
@@ -45,23 +45,11 @@ eds_load_column_patterns <- function() {
   if (!nzchar(path)) {
     path <- system.file("dictionaries", "column_patterns.json", package = "exploreDE")
   }
-  if (!nzchar(path)) {
-    # Last resort: a few plausible getwd()-relative locations (devtools::
-    # load_all()/testthat with cwd == package root or tests/testthat/, or
-    # app.R's own inst/app runtime cwd) for code pasted into the console.
-    candidates <- c(
-      file.path("inst", "dictionaries", "column_patterns.json"),
-      file.path("..", "dictionaries", "column_patterns.json"),
-      file.path("..", "..", "inst", "dictionaries", "column_patterns.json")
-    )
-    hit <- candidates[file.exists(candidates)]
-    if (length(hit)) path <- hit[[1]]
-  }
   if (!nzchar(path) || !file.exists(path)) {
     stop(
       "exploreDE: inst/dictionaries/column_patterns.json not found ",
-      "(checked this file's own checkout, the installed package location, ",
-      "and dev-mode relative paths). Only the column-standardising helpers ",
+      "(checked this file's own checkout and the installed package location). ",
+      "Only the column-standardising helpers ",
       "need it; if you are running a cut-down build that does not import ",
       "arbitrary column names, nothing should be reaching this."
     )
@@ -232,6 +220,7 @@ eds_standardise_de_columns <- function(df) {
 
 # SUSHI param$species is rarely set; fall back to the first slash-segment of
 # refBuild ("Homo_sapiens/GENCODE/..." → "Homo sapiens").
+# nolint start: cyclocomp_linter. Flat organism lookup.
 eds_infer_organism <- function(param) {
   sp <- param$species
   if (!is.null(sp) && !is.na(sp) && nzchar(sp)) {
@@ -246,6 +235,24 @@ eds_infer_organism <- function(param) {
     return(NA_character_)
   }
   gsub("_", " ", parts[1], fixed = TRUE)
+}
+# nolint end
+
+# Gene symbol / protein id -> feature ids of proteomics data, for the "Search
+# by: Gene Symbol / Protein ID" pickers (config$proteomics). A row whose name
+# is missing or equals its feature id adds nothing, so protein-level data,
+# whose feature ids are the protein ids, has no protein choices.
+eds_proteomics_choices <- function(feature_id, gene = NULL, protein = NULL) {
+  fid <- as.character(feature_id)
+  by_name <- function(name) {
+    name <- as.character(name)
+    valid <- !is.na(name) & nzchar(name) & name != fid
+    if (!length(name) || !any(valid)) {
+      return(list(choices = NULL, lookup = NULL))
+    }
+    list(choices = unique(name[valid]), lookup = split(fid[valid], name[valid]))
+  }
+  list(gene = by_name(gene), protein = by_name(protein))
 }
 
 # Gene symbol -> transcript feature_ids for isoform-level RNA-seq / CountQC.
@@ -296,27 +303,75 @@ eds_flatten_cp_results <- function(x, prefix = "") {
   list()
 }
 
+# ---- genomics SummarizedExperiments (RNA-seq, Count QC) --------------------
+# Factors: the colData columns SUSHI marks " [Factor]", named without the mark
+# and with "_" for spaces, and their levels.
+eds_genomics_factors <- function(se) {
+  cd <- data.frame(SummarizedExperiment::colData(se), check.names = FALSE, stringsAsFactors = FALSE)
+  factor_cols <- grep("\\[Factor]", colnames(cd), value = TRUE)
+  factor_names <- gsub(" ", "_", gsub(" \\[.*", "", factor_cols))
+  levels <- lapply(factor_cols, function(fc) {
+    v <- cd[[fc]]
+    if (is.factor(v)) levels(v) else sort(unique(as.character(v)))
+  })
+  list(names = factor_names, levels = stats::setNames(levels, factor_names))
+}
+
+# Feature table from rowData, in rowData order and named by feature_id:
+# feature_id is the gene symbol made unique (scuttle::uniquifyFeatureNames, as
+# the canonical AnnData var_names; keyed on transcript_id at isoform level,
+# where a gene has several rows), else the SE rowname; display_name falls
+# back to feature_id; description loses its " [Source:...]" suffix.
+eds_genomics_features <- function(se, cfg) {
+  rd <- data.frame(SummarizedExperiment::rowData(se), check.names = FALSE, stringsAsFactors = FALSE)
+  rownames(rd) <- rownames(se)
+  is_isoform <- identical(cfg$feature_id_kind, "isoform")
+  rd$feature_id <- if (is_isoform && all(c("transcript_id", "gene_name") %in% colnames(rd))) {
+    scuttle::uniquifyFeatureNames(ID = rd$transcript_id, names = rd$gene_name)
+  } else if (all(c("gene_id", "gene_name") %in% colnames(rd))) {
+    scuttle::uniquifyFeatureNames(ID = rd$gene_id, names = rd$gene_name)
+  } else {
+    rownames(rd)
+  }
+  leading_us <- grep("^_", rd$feature_id)
+  if (length(leading_us)) {
+    rd$feature_id[leading_us] <- gsub("_", "", rd$feature_id[leading_us])
+  }
+  rd$display_name <- if (cfg$display_name_field %in% colnames(rd)) {
+    rd[[cfg$display_name_field]]
+  } else {
+    rd$feature_id
+  }
+  blank <- is.na(rd$display_name) | !nzchar(rd$display_name)
+  rd$display_name[blank] <- rd$feature_id[blank]
+  if ("description" %in% colnames(rd)) {
+    rd$description <- gsub(" \\[.*", "", as.character(rd$description))
+  }
+  rownames(rd) <- rd$feature_id
+  rd
+}
+
 # Regex-safe identifier (used for contrast names built from group labels).
 eds_safe <- function(x) gsub("[^A-Za-z0-9_]+", "_", x)
 
-# Compute VST on a genomics SE — mirrors the legacy convert_genomics_se
-# logic exactly: integer-cast counts; vst() for >=1000 rows, fall back to
-# varianceStabilizingTransformation otherwise (and on any vst() error).
+# VST of raw counts (features x samples, cast to integer). DESeq2's fast vst()
+# fits the dispersion trend on 1000 features with a mean normalised count
+# above 5 and stops with fewer; then the full
+# varianceStabilizingTransformation() runs instead.
+eds_vst_matrix <- function(counts) {
+  counts <- as.matrix(counts)
+  mode(counts) <- "integer"
+  base_mean <- rowMeans(sweep(counts, 2, DESeq2::estimateSizeFactorsForMatrix(counts), "/"))
+  if (sum(base_mean > 5) >= 1000) {
+    DESeq2::vst(counts, blind = FALSE)
+  } else {
+    DESeq2::varianceStabilizingTransformation(counts, blind = FALSE)
+  }
+}
+
+# VST of a genomics SE's counts assay.
 eds_compute_vst <- function(se) {
-  forVST <- as.matrix(SummarizedExperiment::assay(se, "counts"))
-  mode(forVST) <- "integer"
-  tryCatch(
-    {
-      if (nrow(forVST) < 1000) {
-        DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
-      } else {
-        DESeq2::vst(forVST, blind = FALSE)
-      }
-    },
-    error = function(e) {
-      DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
-    }
-  )
+  eds_vst_matrix(SummarizedExperiment::assay(se, "counts"))
 }
 
 # Compute RPKM/TPM on a genomics SE from raw counts + rowData()$featWidth.
@@ -354,6 +409,24 @@ eds_compute_tpm <- function(se) {
   m
 }
 
+#' read_se_any
+#' A SUSHI result object saved as `<stem>.rds` or `<stem>.qs2` in `dir`.
+#' @param dir Result directory.
+#' @param stem File name without extension, e.g. `"deResult"`.
+#' @return The object, or `NULL` when neither file exists.
+#' @noRd
+read_se_any <- function(dir, stem) {
+  rds <- file.path(dir, paste0(stem, ".rds"))
+  qs2 <- file.path(dir, paste0(stem, ".qs2"))
+  if (file.exists(rds)) {
+    return(readRDS(rds))
+  }
+  if (file.exists(qs2)) {
+    return(qs2::qs_read(qs2, nthreads = 4))
+  }
+  NULL
+}
+
 # Resolve a path / URL / directory to an in-memory SE. Mirrors the load
 # behaviour of the existing app's SE-fetching code:
 #   - http(s) URL                  → readRDS(url(...))
@@ -361,12 +434,16 @@ eds_compute_tpm <- function(se) {
 #   - .rds file                    → readRDS
 #   - .qs2 file                    → qs2::qs_read
 #   - directory                    → search for the standard SUSHI artefacts
+# nolint start: cyclocomp_linter. Dispatch over file kinds.
 eds_load_se <- function(input) {
   if (grepl("^https?://", input)) {
     return(readRDS(url(input)))
   }
   if (grepl("\\.RData$", input, ignore.case = TRUE)) {
     dir_input <- gsub("/(result|counts)-.*-EzResult\\.RData$", "", input)
+    if (identical(dir_input, input)) {
+      stop("eds_load_se: not a SUSHI EzResult .RData path (.../result-...-EzResult.RData): ", input)
+    }
     return(eds_load_se(dir_input))
   }
   if (grepl("\\.rds$", input, ignore.case = TRUE) && file.exists(input)) {
@@ -396,6 +473,7 @@ eds_load_se <- function(input) {
   }
   stop("Cannot interpret input: ", input)
 }
+# nolint end
 
 # Flatten a (possibly nested) clusterProfiler result into ONE tidy data.frame.
 #
@@ -418,6 +496,7 @@ eds_load_se <- function(input) {
 # Reads the result table via attributes(), never `@` or as.data.frame(): both
 # of those are fine on the cluster but as.data.frame() is S4 dispatch and dies
 # where DOSE is absent, and this helper must work in both places.
+# nolint start: cyclocomp_linter. One branch per result class.
 .enr_tidy_from_native <- function(obj, method = NA_character_, padj_max = NULL, prefix = "") {
   # `prefix` matters when the caller already flattened: eds_flatten_cp_results()
   # on a bare leaf names it "default", which would throw away the ontology the
@@ -456,6 +535,7 @@ eds_load_se <- function(input) {
   rownames(out) <- NULL
   out
 }
+# nolint end
 
 # What a reader needs, beyond the tidy table, to rebuild clusterProfiler
 # objects for the network / ridge / running-score plots. Written alongside
@@ -650,14 +730,10 @@ batch_design_defaults <- function(eds) {
   )
 }
 
-# Whether an assay (canonical key, as in eds$assay_names()) is on log2 scale,
-# which batch correction requires. Genomics: normalised_log2 and vst.
-# Proteomics: the transformed intensities, not the raw ones.
-assay_is_log2 <- function(eds, key) {
-  if (eds$omics_class() == "proteomics") {
-    return(identical(key, "intensities"))
-  }
-  isTRUE(key %in% c("normalised_log2", "vst"))
+# The config's assay_log2 for genomics assays (canonical keys): log2 counts and
+# VST are on the log2 scale, raw and normalised counts, FPKM and TPM are not.
+.genomics_assay_log2 <- function(keys) {
+  stats::setNames(keys %in% c("normalised_log2", "vst"), keys)
 }
 
 # ---- feature lists in the Multi DE Upset / Venn tab ---------------------------

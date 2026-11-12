@@ -29,18 +29,9 @@ ExploreDatasetSE_CountQC <- R6::R6Class(
   private = list(
     .build_config = function(se) {
       param <- S4Vectors::metadata(se)$param %||% list()
-      cd <- data.frame(SummarizedExperiment::colData(se), check.names = FALSE, stringsAsFactors = FALSE)
-
-      factor_cols <- grep("\\[Factor]", colnames(cd), value = TRUE)
-      factor_names <- gsub(" \\[.*", "", factor_cols)
-      factor_names <- gsub(" ", "_", factor_names)
-      factor_levels <- setNames(
-        lapply(factor_cols, function(fc) {
-          v <- cd[[fc]]
-          if (is.factor(v)) levels(v) else sort(unique(as.character(v)))
-        }),
-        factor_names
-      )
+      factors <- eds_genomics_factors(se)
+      factor_names <- factors$names
+      factor_levels <- factors$levels
 
       ass_nms <- SummarizedExperiment::assayNames(se)
       norm_key <- intersect(c("signal", "xNorm"), ass_nms)
@@ -84,6 +75,7 @@ ExploreDatasetSE_CountQC <- R6::R6Class(
         },
         assay_map = assay_map_l,
         assay_labels = assay_labels_l,
+        assay_log2 = .genomics_assay_log2(names(assay_map_l)),
         background_expression = param$backgroundExpression %||% 10,
         raw_assay_name = "counts",
         primary_assay_name = "counts",
@@ -107,38 +99,10 @@ ExploreDatasetSE_CountQC <- R6::R6Class(
       se <- private$.se
       cfg <- private$.config
 
-      rd <- data.frame(SummarizedExperiment::rowData(se), check.names = FALSE, stringsAsFactors = FALSE)
-      rownames(rd) <- rownames(se)
-
-      # Build feature_id via scuttle::uniquifyFeatureNames where gene_id +
-      # gene_name are present (genomics CountQC). Isoform-level data (e.g.
-      # Kallisto) has several rows per gene, so it must be keyed on
-      # transcript_id, as in ExploreDatasetSE_RNASeq; keying on gene_id gives
-      # duplicate feature_ids and the rownames assignment below fails.
-      # CRISPR CountQC inherits this .prep() but its rowData has no
-      # gene_id/gene_name, so feature_id falls through to rownames(se)
-      # (guide IDs).
+      # CRISPR Count QC inherits this .prep(); its rowData has no gene_id /
+      # gene_name, so its feature ids are the guide ids (rownames).
+      rd <- eds_genomics_features(se, cfg)
       is_isoform <- identical(cfg$feature_id_kind, "isoform")
-      rd$feature_id <- if (is_isoform && all(c("transcript_id", "gene_name") %in% colnames(rd))) {
-        scuttle::uniquifyFeatureNames(ID = rd$transcript_id, names = rd$gene_name)
-      } else if (all(c("gene_id", "gene_name") %in% colnames(rd))) {
-        scuttle::uniquifyFeatureNames(ID = rd$gene_id, names = rd$gene_name)
-      } else {
-        rownames(rd)
-      }
-      leading_us <- grep("^_", rd$feature_id)
-      if (length(leading_us)) {
-        rd$feature_id[leading_us] <- gsub("_", "", rd$feature_id[leading_us])
-      }
-
-      rd$display_name <- if (cfg$display_name_field %in% colnames(rd)) {
-        rd[[cfg$display_name_field]]
-      } else {
-        rd$feature_id
-      }
-      blank <- is.na(rd$display_name) | !nzchar(rd$display_name)
-      rd$display_name[blank] <- rd$feature_id[blank]
-      rownames(rd) <- rd$feature_id
       private$.features_df <- rd
 
       if (is_isoform && "gene_name" %in% colnames(rd)) {

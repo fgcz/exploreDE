@@ -2,7 +2,7 @@ name: lint
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
   workflow_dispatch:
 
@@ -21,7 +21,6 @@ jobs:
         with:
           version: "0.11.0"
 
-      # Formatting is blocking since the air reformat (6e98403); lint stays report-only until a lint cleanup.
       - name: Check formatting
         run: air format . --check
 
@@ -35,7 +34,6 @@ jobs:
           needs: lint
 
       - name: Lint
-        continue-on-error: true
         run: lintr::lint_package()
         shell: Rscript {0}
         env:

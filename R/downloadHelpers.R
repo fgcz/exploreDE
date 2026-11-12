@@ -114,21 +114,24 @@ generate_filename <- function(base_name, suffix = NULL, extension, design_name =
 
 #' Valid Excel worksheet names
 #'
-#' Excel refuses sheet names longer than 31 characters or containing
-#' `: \ / ? * [ ]`, and two sheets whose names differ only in case. Replaces
-#' those characters with `_`, truncates to 31 characters and makes the names
-#' unique (case-insensitively), keeping their order.
+#' Excel refuses sheet names longer than 31 characters, containing
+#' `: \ / ? * [ ]` or starting or ending with `'`, the name `History`, and two
+#' sheets whose names differ only in case. Replaces those characters with `_`,
+#' strips the apostrophes, truncates to 31 characters and makes the names
+#' unique (case-insensitively, `History` counting as taken), keeping their
+#' order.
 #'
 #' @param x Character vector of wanted sheet names
 #' @return Character vector of the same length
 #' @noRd
 xlsx_sheet_names <- function(x) {
   x <- gsub("[\\[\\]:\\\\/?*]", "_", x, perl = TRUE)
+  x <- gsub("^'+|'+$", "", x)
   x[!nzchar(x)] <- "Sheet"
   out <- substr(x, 1, 31)
   for (i in seq_along(out)) {
     k <- 1L
-    while (tolower(out[i]) %in% tolower(out[seq_len(i - 1L)])) {
+    while (tolower(out[i]) %in% tolower(c("History", out[seq_len(i - 1L)]))) {
       suffix <- paste0("_", k)
       out[i] <- paste0(substr(x[i], 1, 31 - nchar(suffix)), suffix)
       k <- k + 1L

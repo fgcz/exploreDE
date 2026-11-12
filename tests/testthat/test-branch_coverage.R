@@ -1,6 +1,6 @@
 # ============================================================================
 # Targeted branch-coverage tests — fill in specific uncovered branches that
-# covr identifies in R/helperFunctions.R.
+# covr identified in the former R/helperFunctions.R (now split by topic).
 # ============================================================================
 
 # --- plot_ordination_samples: toggle permutations -----------------------------
@@ -31,7 +31,7 @@ test_that("plot_ordination_samples renders with every toggle combination enabled
     textSizePCA = 12,
     pcaLabelMaxOverlap = 10,
     pcaAxesProp = TRUE,
-    boldPCA = "TRUE",
+    boldPCA = TRUE,
     showLinesPCA = FALSE,
     showAxesPCA = FALSE
   )
@@ -61,7 +61,7 @@ test_that("plot_ordination_biplot handles per_pc selection with list arrow_colou
     alphaPCA = 0.8,
     dotBorderPCA = 0.3,
     textSizePCA = 12,
-    boldPCA = "TRUE",
+    boldPCA = TRUE,
     showLinesPCA = FALSE,
     showAxesPCA = FALSE
   )
@@ -146,14 +146,15 @@ test_that("generateMethodsText falls back to the generic wording for unknown ali
 
 
 # --- detectAligner error path ------------------------------------------------
-test_that("detectAligner swallows file-read errors and returns 'Unknown'", {
-  # Malformed / unreadable tsv → tryCatch returns "Unknown"
+test_that("detectAligner reports an unreadable input_dataset.tsv instead of guessing 'Unknown'", {
+  # Malformed / unreadable tsv: the read error surfaces (the Methods download
+  # then fails with it); only a missing file means "Unknown"
   td <- tempfile("detectAligner_bad_")
   dir.create(file.path(td, "sub"), recursive = TRUE)
   on.exit(unlink(td, recursive = TRUE))
   # Create an invalid tsv (just binary gibberish)
   writeBin(as.raw(c(0xff, 0x00, 0xff)), file.path(td, "input_dataset.tsv"))
-  expect_equal(detectAligner(file.path(td, "sub")), "Unknown")
+  expect_error(detectAligner(file.path(td, "sub")))
 })
 
 
@@ -173,24 +174,6 @@ test_that("prepare_biplot_data manual mode with NULL custom_genes returns empty 
   pca <- calculate_pca(m)
   bp <- prepare_biplot_data(pca, custom_genes = NULL, selection_method = "manual")
   expect_equal(nrow(bp$gene_data), 0)
-})
-
-
-# --- step_batch_correction: NA batch column warns and returns counts ---------
-test_that("step_batch_correction warns and skips when batch column contains NAs", {
-  counts <- matrix(runif(20), nrow = 5, dimnames = list(NULL, paste0("s", 1:4)))
-  ds <- data.frame(row.names = paste0("s", 1:4), batch = c("x", NA, "y", "y"), cond = c("A", "A", "B", "B"))
-  # Outside a Shiny session the skip message is a warning.
-  expect_warning(result <- step_batch_correction(counts, ds, "batch", "cond"), "missing values")
-  expect_identical(result$counts, counts)
-})
-
-
-# --- build_qc_scatter_types: NULL present_mask defaults to all-TRUE ---------
-test_that("build_qc_scatter_types defaults present_mask to all-TRUE when NULL", {
-  rd <- data.frame(feature_id = paste0("g", 1:3))
-  res <- build_qc_scatter_types(rd, mode = "Standard", present_mask = NULL)
-  expect_equal(res$types, rep("Present", 3))
 })
 
 

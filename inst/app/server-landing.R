@@ -35,8 +35,8 @@ observeEvent(input$loadDemo, {
 # copies. The first file that loads opens in the tabs; the contrasts of the
 # others join it in Multi DE.
 observeEvent(input$uploadH5ad, {
-  f <- input$uploadH5ad
-  req(f)
+  f <- h5ad_uploads_only(input$uploadH5ad)
+  req(nrow(f) > 0)
   .landing_spinner(if (nrow(f) > 1) "Loading your files…" else "Loading your data…")
   failed <- character()
   opened <- NULL

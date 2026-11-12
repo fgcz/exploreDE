@@ -1,14 +1,13 @@
 # ============================================================================
 # make_rep_heatmap / make_rep_dendrogram — smoke tests
 #
-# These are visualisation-heavy and tightly Shiny-coupled (reference
-# `input$...` from enclosing scope and call shiny::req() / col2hex() /
-# dendextend internals). We inject a complete mock `input` via with_mock_env()
-# and assert the functions run to completion without erroring. Visual output
-# is verified by eye / shinytest2 end-to-end, not here.
+# Visualisation-heavy: they read the Replicability settings from `input` (a
+# plain list here) and call shiny::req() / col2hex() / dendextend internals.
+# The tests assert they run to completion. Visual output is verified by eye /
+# shinytest2 end-to-end, not here.
 # ============================================================================
 
-# helperFunctions.R calls functions from these packages without namespace
+# replicability_plots.R calls functions from these packages without namespace
 # qualifiers (it was written for a Shiny app context where all are attached).
 # Attach them explicitly here since devtools::load_all() doesn't attach Imports.
 skip_if_not_installed("dendextend")
@@ -66,13 +65,13 @@ test_that("make_rep_heatmap runs without error when replicabilityFactors is NULL
   skip_on_cran()
   data <- make_rep_data()
   input <- make_rep_input()
-  fn <- with_mock_env(make_rep_heatmap, input = input)
+  rep_fn <- make_rep_heatmap
 
   # draw() writes to a graphics device — capture it
   pdf(tempfile(fileext = ".pdf"))
   on.exit(dev.off(), add = TRUE)
 
-  expect_error(fn(data, title_suffix = "Smoke"), NA) # NA = no error
+  expect_error(rep_fn(data, input, title_suffix = "Smoke"), NA) # NA = no error
 })
 
 test_that("make_rep_heatmap runs with replicabilityFactors and GroupColour inputs", {
@@ -83,12 +82,12 @@ test_that("make_rep_heatmap runs with replicabilityFactors and GroupColour input
     GroupColourcondA = "red",
     GroupColourcondB = "blue"
   ))
-  fn <- with_mock_env(make_rep_heatmap, input = input)
+  rep_fn <- make_rep_heatmap
 
   pdf(tempfile(fileext = ".pdf"))
   on.exit(dev.off(), add = TRUE)
 
-  expect_error(fn(data, title_suffix = "Smoke-with-factor"), NA)
+  expect_error(rep_fn(data, input, title_suffix = "Smoke-with-factor"), NA)
 })
 
 test_that("make_rep_heatmap runs with Colours-tab level labels", {
@@ -101,24 +100,24 @@ test_that("make_rep_heatmap runs with Colours-tab level labels", {
     # No Greek: this helper draws plain labels straight onto the base pdf() device below
     GroupLabelcondA = "<i>Il4ra</i><sup>fl/fl</sup>"
   ))
-  fn <- with_mock_env(make_rep_heatmap, input = input)
+  rep_fn <- make_rep_heatmap
 
   pdf(tempfile(fileext = ".pdf"))
   on.exit(dev.off(), add = TRUE)
 
-  expect_error(fn(data, title_suffix = "Smoke-with-labels"), NA)
+  expect_error(rep_fn(data, input, title_suffix = "Smoke-with-labels"), NA)
 })
 
 test_that("make_rep_heatmap runs with a BrewerPal-derived palette", {
   skip_on_cran()
   data <- make_rep_data()
   input <- make_rep_input(list(replicabilityPalette = "RdBu"))
-  fn <- with_mock_env(make_rep_heatmap, input = input)
+  rep_fn <- make_rep_heatmap
 
   pdf(tempfile(fileext = ".pdf"))
   on.exit(dev.off(), add = TRUE)
 
-  expect_error(fn(data, title_suffix = "Smoke-with-palette"), NA)
+  expect_error(rep_fn(data, input, title_suffix = "Smoke-with-palette"), NA)
 })
 
 
@@ -127,12 +126,12 @@ test_that("make_rep_dendrogram runs without error when replicabilityFactors is N
   skip_on_cran()
   data <- make_rep_data()
   input <- make_rep_input()
-  fn <- with_mock_env(make_rep_dendrogram, input = input)
+  rep_fn <- make_rep_dendrogram
 
   pdf(tempfile(fileext = ".pdf"))
   on.exit(dev.off(), add = TRUE)
 
-  expect_error(fn(data, title_suffix = "Smoke"), NA)
+  expect_error(rep_fn(data, input, title_suffix = "Smoke"), NA)
 })
 
 test_that("make_rep_dendrogram runs with replicabilityFactors and GroupColour inputs", {
@@ -143,10 +142,20 @@ test_that("make_rep_dendrogram runs with replicabilityFactors and GroupColour in
     GroupColourcondA = "red",
     GroupColourcondB = "blue"
   ))
-  fn <- with_mock_env(make_rep_dendrogram, input = input)
+  rep_fn <- make_rep_dendrogram
 
   pdf(tempfile(fileext = ".pdf"))
   on.exit(dev.off(), add = TRUE)
 
-  expect_error(fn(data, title_suffix = "Smoke-with-factor"), NA)
+  expect_error(rep_fn(data, input, title_suffix = "Smoke-with-factor"), NA)
+})
+
+
+# --- group_colours ----------------------------------------------------------
+test_that("group_colours takes each level's colour from the Colours tab, grey without a picker", {
+  input <- list(GroupColourcondA = "red", GroupColourcondB = "#0000FF")
+  expect_identical(
+    group_colours(input, "cond", c("A", "B", "C")),
+    c(A = "#FF0000FF", B = "#0000FFFF", C = "#808080FF")
+  )
 })

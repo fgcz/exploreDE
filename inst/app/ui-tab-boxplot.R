@@ -399,7 +399,7 @@ tabItem(
         width = NULL,
         solidHeader = TRUE,
         status = "primary",
-        textOutput("boxplotDesign"),
+        textOutput("boxplotContrastLabel"),
         tabsetPanel(
           id = "boxbarplots",
           tabPanel(

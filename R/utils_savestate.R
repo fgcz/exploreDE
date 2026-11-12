@@ -11,7 +11,7 @@
 #' save-state tab's own widgets, download buttons, every `multi*` input
 #' (out of scope for save-state v1), and the per-tab `contrastSelected_<tab>`
 #' mirrors (only the canonical `contrastSelected` is saved; restoring it syncs
-#' the mirrors).
+#' the mirrors), and the sample-ratio widgets (ratios are not saved).
 #'
 #' @param x Named list, typically `reactiveValuesToList(input, all.names = TRUE)`.
 #' @return `x` with the non-restorable entries removed.
@@ -19,14 +19,16 @@
 save_state_filter_inputs <- function(x) {
   ids <- names(x)
   skip_pat <- paste0(
-    "^(load_state_file|importColourFile|multiImportFile|multiImportColourFile",
+    "^(load_state_file|uploadH5ad|importColourFile|multiImportFile|multiImportColourFile",
     "|fb_reset_|fb_add_|resetGeneBucket|resetDEGTableSelectRows|multi",
     "|contrastSelected_)",
     "|(_btn|_cell_edit|_cell_clicked|_rows_selected|_row_last_clicked",
     "|_state|_search|_hover|_click|_relayout|_brush|_selected)$"
   )
   keep <- !grepl(skip_pat, ids)
-  nv_exact <- c("download_state", "sidebarMenu", "load_settings_file")
+  # Sample ratios are not saved, so neither are the widgets that name them
+  ratio_widgets <- paste0("heatmapRatio", c("Plot", "Name", "Numerator", "Denominator", "Remove"))
+  nv_exact <- c("download_state", "sidebarMenu", "load_settings_file", ratio_widgets)
   nv_prefix <- grepl("^(dl|download)", ids)
   nv_suffix <- grepl("(Go|Button|Brush)$", ids)
   keep <- keep & !(ids %in% nv_exact) & !nv_prefix & !nv_suffix
@@ -38,9 +40,8 @@ save_state_filter_inputs <- function(x) {
 #' Identity = resolved `dataDir` plus a content fingerprint built entirely from
 #' base-class `ExploreDataset` accessors (uniform across RNASeq / CountQC /
 #' CrisprCountQC / proteomics; `factor_names`/`contrasts` default to empty where
-#' a concept doesn't apply). Every field is `tryCatch`-wrapped so no data form can
-#' make it throw, and collections are sorted so ordering can't cause a false
-#' mismatch.
+#' a concept doesn't apply). Collections are sorted so ordering can't cause a
+#' false mismatch.
 #'
 #' @param eds An `ExploreDataset` (or `NULL`).
 #' @param dataDir Resolved dataset path/URL, or `NULL`.
@@ -52,15 +53,16 @@ save_state_fingerprint <- function(eds, dataDir = NULL) {
   }
   list(
     dataDir = if (is.null(dataDir)) NA_character_ else as.character(dataDir),
-    dataType = tryCatch(as.character(eds$data_type()), error = function(e) NA_character_),
-    omics = tryCatch(as.character(eds$omics_class()), error = function(e) NA_character_),
-    nSamples = tryCatch(as.integer(eds$n_samples()), error = function(e) NA_integer_),
-    nFeatures = tryCatch(as.integer(length(eds$feature_ids())), error = function(e) NA_integer_),
-    factors = tryCatch(sort(as.character(eds$factor_names())), error = function(e) character()),
-    contrasts = tryCatch(sort(as.character(eds$contrasts())), error = function(e) character())
+    dataType = as.character(eds$data_type()),
+    omics = as.character(eds$omics_class()),
+    nSamples = as.integer(eds$n_samples()),
+    nFeatures = length(eds$feature_ids()),
+    factors = sort(as.character(eds$factor_names())),
+    contrasts = sort(as.character(eds$contrasts()))
   )
 }
 
+# nolint start: cyclocomp_linter. Field-by-field comparison.
 #' Do two fingerprints denote the exact same dataset?
 #'
 #' `dataDir` must match when both sides have it; the content fields must always
@@ -86,6 +88,7 @@ save_state_fp_match <- function(a, b) {
     identical(a$factors, b$factors) &&
     identical(a$contrasts, b$contrasts)
 }
+# nolint end
 
 #' Resolve a widget default during a session-state restore
 #'
@@ -132,16 +135,21 @@ restore_default_value <- function(id, computed_default, valid = NULL, restoring,
 save_state_multi_inputs <- function(x) {
   ids <- names(x)
   keep <- grepl("^multi", ids) &
-    !ids %in% c("multiImportFile", "multiImportColourFile", "multiDatasetsCheckbox", "multiContrastOrder") &
+    !ids %in%
+      c("multiImportFile", "multiImportColourFile", "multiUploadH5ad", "multiDatasetsCheckbox", "multiContrastOrder") &
     !grepl("^multiDl", ids) &
     !grepl(
-      "(_rows_selected|_rows_current|_rows_all|_row_last_clicked|_state|_search|_cell_clicked|_cell_edit|_cells_selected)$",
+      paste0(
+        "(_rows_selected|_rows_current|_rows_all|_row_last_clicked|_state|_search|_cell_clicked|_cell_edit|",
+        "_cells_selected)$"
+      ),
       ids
     )
   x <- x[keep]
   Filter(function(v) !inherits(v, "shinyActionButtonValue"), x)
 }
 
+# nolint start: cyclocomp_linter. One branch per record kind.
 #' Describe the loaded Multi DE datasets for a saved session
 #'
 #' One entry per dataset, in display order: Its display name and where it came
@@ -171,12 +179,14 @@ save_state_multi_datasets <- function(results) {
   }
   out
 }
+# nolint end
 
 # ---- JSON session files (format exploreDE-session/2) -----------------------
 # See inst/spec/exploreDE-session-2.md. JSON can only hold text, numbers,
 # true/false, null, arrays, and objects, so reading a session file can never
-# run code. (The .rds format it replaced could; it was retired in 3.9.0.) Every value is written as an array (no unboxing), so
-# single values and multi-selects read back the same way.
+# run code. (The .rds format it replaced could; it was retired in 3.9.0.)
+# Every value is written as an array (no unboxing), so single values and
+# multi-selects read back the same way.
 
 SAVE_STATE_JSON_FORMAT <- "exploreDE-session/2"
 
@@ -203,6 +213,7 @@ save_state_to_json <- function(bundle) {
   ))
 }
 
+# nolint start: cyclocomp_linter. One guard per session-file field.
 #' Read a JSON saved-session file
 #'
 #' Refuses anything larger than `max_bytes`, anything that isn't an exploreDE
@@ -223,7 +234,7 @@ save_state_from_json <- function(path, max_bytes = 5 * 1024^2) {
   txt <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   x <- tryCatch(
     jsonlite::fromJSON(txt, simplifyVector = TRUE, simplifyDataFrame = FALSE, simplifyMatrix = FALSE),
-    error = function(e) stop("not valid JSON")
+    error = function(e) stop("not valid JSON: ", conditionMessage(e))
   )
   depth <- function(v) if (is.list(v) && length(v)) 1L + max(vapply(v, depth, integer(1))) else 0L
   if (!is.list(x) || is.null(names(x)) || depth(x) > 6L) {
@@ -237,69 +248,79 @@ save_state_from_json <- function(path, max_bytes = 5 * 1024^2) {
     stop(sprintf("unsupported session format (expected %s)", SAVE_STATE_JSON_FORMAT))
   }
 
-  # [] reads back as list(); the restore expects character(0) there.
-  empty_to_chr <- function(v) {
-    if (is.list(v) && !length(v) && is.null(names(v))) {
-      return(character())
-    }
-    if (is.list(v)) {
-      v[] <- lapply(v, empty_to_chr)
-    }
-    v
+  if (!is.null(meta[["fingerprint"]])) {
+    meta$fingerprint <- .session_fingerprint_from_json(meta[["fingerprint"]])
   }
-  chr <- function(v) as.character(unlist(v))
-  one <- function(v, as = as.character) if (length(v)) as(unlist(v))[1] else as(NA)
+  meta$saved_at <- as.POSIXct(.json_one(meta[["saved_at"]]), format = "%Y-%m-%dT%H:%M:%S")
+  list(
+    meta = meta,
+    inputs = .json_named_list(x[["inputs"]]),
+    rv = .session_rv_from_json(x[["rv"]] %||% list()),
+    multi = if (!is.null(x[["multi"]])) .session_multi_from_json(x[["multi"]])
+  )
+}
+# nolint end
 
-  fp <- meta[["fingerprint"]]
-  if (!is.null(fp)) {
-    meta$fingerprint <- list(
-      dataDir = one(fp[["dataDir"]]),
-      dataType = one(fp[["dataType"]]),
-      omics = one(fp[["omics"]]),
-      nSamples = one(fp[["nSamples"]], as.integer),
-      nFeatures = one(fp[["nFeatures"]], as.integer),
-      factors = chr(fp[["factors"]]),
-      contrasts = chr(fp[["contrasts"]])
-    )
+# ---- JSON read-back helpers ---------------------------------------------------
+
+# [] reads back as list(); the restore expects character(0) there.
+.json_empty_to_chr <- function(v) {
+  if (is.list(v) && !length(v) && is.null(names(v))) {
+    return(character())
   }
-  meta$saved_at <- tryCatch(as.POSIXct(one(meta[["saved_at"]]), format = "%Y-%m-%dT%H:%M:%S"), error = function(e) NA)
+  if (is.list(v)) {
+    v[] <- lapply(v, .json_empty_to_chr)
+  }
+  v
+}
+.json_chr <- function(v) as.character(unlist(v))
+.json_one <- function(v, as = as.character) if (length(v)) as(unlist(v))[1] else as(NA)
+# A named list of widget values, or list() for anything else
+.json_named_list <- function(v) {
+  if (is.list(v) && length(v) && !is.null(names(v))) .json_empty_to_chr(v) else list()
+}
 
-  inputs <- x[["inputs"]]
-  inputs <- if (is.list(inputs) && length(inputs) && !is.null(names(inputs))) empty_to_chr(inputs) else list()
+.session_fingerprint_from_json <- function(fp) {
+  list(
+    dataDir = .json_one(fp[["dataDir"]]),
+    dataType = .json_one(fp[["dataType"]]),
+    omics = .json_one(fp[["omics"]]),
+    nSamples = .json_one(fp[["nSamples"]], as.integer),
+    nFeatures = .json_one(fp[["nFeatures"]], as.integer),
+    factors = .json_chr(fp[["factors"]]),
+    contrasts = .json_chr(fp[["contrasts"]])
+  )
+}
 
-  rv <- x[["rv"]] %||% list()
+.session_rv_from_json <- function(rv) {
   if (!is.null(rv[["featureBucket"]])) {
-    rv$featureBucket <- chr(rv[["featureBucket"]])
+    rv$featureBucket <- .json_chr(rv[["featureBucket"]])
   }
   for (k in c("oraSelected", "gseaSelected")) {
     if (!is.null(rv[[k]])) rv[[k]] <- as.integer(unlist(rv[[k]]))
   }
+  rv
+}
 
-  multi <- x[["multi"]]
-  if (!is.null(multi)) {
-    ds <- lapply(multi[["datasets"]] %||% list(), function(d) {
-      kind <- one(d[["source"]])
-      name <- one(d[["name"]])
-      if (is.na(name) || !kind %in% c("link", "contrast", "upload")) {
+# Multi DE datasets: each a link, a contrast of the loaded dataset, or an
+# uploaded file's contrast; an entry missing its references is dropped.
+.session_multi_from_json <- function(multi) {
+  ds <- lapply(multi[["datasets"]] %||% list(), function(d) {
+    kind <- .json_one(d[["source"]])
+    name <- .json_one(d[["name"]])
+    if (is.na(name) || !kind %in% c("link", "contrast", "upload")) {
+      return(NULL)
+    }
+    refs <- switch(kind, link = "link", contrast = "contrast", upload = c("file", "contrast"))
+    out <- list(name = name, source = kind)
+    for (r in refs) {
+      v <- .json_one(d[[r]])
+      if (is.na(v)) {
         return(NULL)
       }
-      refs <- switch(kind, link = "link", contrast = "contrast", upload = c("file", "contrast"))
-      out <- list(name = name, source = kind)
-      for (r in refs) {
-        v <- one(d[[r]])
-        if (is.na(v)) {
-          return(NULL)
-        }
-        out[[r]] <- v
-      }
-      out
-    })
-    mi <- multi[["inputs"]]
-    multi <- list(
-      datasets = Filter(Negate(is.null), ds),
-      inputs = if (is.list(mi) && length(mi) && !is.null(names(mi))) empty_to_chr(mi) else list()
-    )
-  }
-
-  list(meta = meta, inputs = inputs, rv = rv, multi = multi)
+      out[[r]] <- v
+    }
+    out
+  })
+  list(datasets = Filter(Negate(is.null), ds), inputs = .json_named_list(multi[["inputs"]]))
 }

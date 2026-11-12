@@ -98,6 +98,7 @@
 
 # ---- class ------------------------------------------------------------------
 
+# nolint start: cyclocomp_linter. R6 class, scored as one expression.
 #' Concrete `ExploreDataset` backend over a parquet directory
 #'
 #' The exploreDElight backend. Reads the parquet directory a native Rust
@@ -261,3 +262,4 @@ ExploreDatasetParquet <- R6::R6Class(
     }
   )
 )
+# nolint end

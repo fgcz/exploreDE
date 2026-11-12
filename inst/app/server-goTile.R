@@ -1,5 +1,15 @@
 eds <- inputDataReactive()$.eds
 
+# The KEGG tile's state. Defined for every dataset, so saving a session can
+# read it without checking that it exists.
+goTileKeggReactive <- reactiveValues(
+  keggCode = NULL,
+  cache = list(),
+  currentGenes = NULL,
+  currentPathwayName = NULL,
+  currentKeggId = NULL
+)
+
 if (eds$data_type() == "RNASeq" && eds$has_de()) {
   allPathways <- eds$all_pathways()
   # GO behaves like KEGG: The GO selector shows only when the features carry
@@ -16,13 +26,6 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
 
   # --- KEGG tile support (mirrors the heatmap KEGG option) -----------------
   # A fetched pathway is rendered as an additional tile alongside any GO terms.
-  goTileKeggReactive <- reactiveValues(
-    keggCode = NULL,
-    cache = list(),
-    currentGenes = NULL,
-    currentPathwayName = NULL,
-    currentKeggId = NULL
-  )
 
   observe({
     # Detect species -> KEGG organism code (only hsa/mmu/rno supported)
@@ -214,18 +217,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
             }
             # No stars for an untested p-value (e.g. DESeq2's independent
             # filtering leaves padj NA).
-            if (is.na(m2[i, j])) {
-              return(invisible(NULL))
-            }
-            if (m2[i, j] <= 0.0001) {
-              grid.text("****", x, y)
-            } else if (m2[i, j] <= 0.001) {
-              grid.text("***", x, y)
-            } else if (m2[i, j] <= 0.01) {
-              grid.text("**", x, y)
-            } else if (m2[i, j] <= 0.05) {
-              grid.text("*", x, y)
-            }
+            grid.text(significance_stars(m2[i, j]), x, y)
           },
           name = "Log2FC",
           col = cols,

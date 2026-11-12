@@ -18,11 +18,8 @@ tabItem(
             value = FALSE
           )
         ),
-        conditionalPanel(
-          condition = "input.replicabilityCounts == 'TPM' || input.replicabilityCounts == 'FPKM' || input.replicabilityCounts == 'Normalised' || input.replicabilityCounts == 'Raw'",
-          checkboxInput(inputId = "replicabilityCountsLog", label = "Log2 Counts?", value = FALSE),
-          helpText("Only applies to counts that are not already on in log space.")
-        ),
+        checkboxInput(inputId = "replicabilityCountsLog", label = "Log2 Counts?", value = FALSE),
+        helpText("Only applies to counts that are not already in log space."),
         uiOutput("replicabilityFactorSelectUI"),
         sliderInput(
           inputId = "replicabilityTopGenes",

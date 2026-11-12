@@ -12,7 +12,7 @@
 #    obs                 sample metadata; experimental factors prefixed "factor_"
 #    var                 feature annotation; rownames = feature_id
 #    varm$de_<slot>      effect_log2fc / score_pvalue / score_fdr / label_*
-#    uns$omics_type / hierarchy / design / de / enrichment (+ enrichment_support) / ...
+#    the uns entries omics_type, hierarchy, design, de, enrichment (with enrichment_support), ...
 #
 #  Cross-API equivalence with ExploreDatasetSE_RNASeq is asserted in
 #  tests/testthat/test-explore_dataset-h5ad.R (assays agree to max|d| = 0).
@@ -127,6 +127,7 @@
 
 # ---- class ------------------------------------------------------------------
 
+# nolint start: cyclocomp_linter. R6 class, scored as one expression.
 #' Concrete `ExploreDataset` backend over a canonical AnnData (`.h5ad`)
 #'
 #' Reads a canonical exploreDE/1.0 AnnData and implements the accessor
@@ -229,7 +230,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         keys,
         function(k) {
           v <- private$.config$assay_map[[k]]
-          is.null(v) || v %in% names(private$.layers) # NULL = computed
+          is.null(v) || v %in% names(private$.layers) # computed when the map gives no layer
         },
         logical(1)
       )]
@@ -305,8 +306,8 @@ ExploreDatasetH5AD <- R6::R6Class(
     #'   and up/down feature selections at the contrast's FDR and log2FC thresholds.
     #' @param contrast Contrast name, one of `contrasts()`.
     enrichment_input = function(contrast) {
-      de <- tryCatch(self$de(contrast), error = function(e) NULL)
-      if (is.null(de) || !nrow(de)) {
+      de <- self$de(contrast)
+      if (!nrow(de)) {
         return(list(seq_anno = NULL, ranked_l2fc = NULL, selections = list()))
       }
       l2fc <- setNames(de$effect_log2fc, de$feature_id)
@@ -354,35 +355,22 @@ ExploreDatasetH5AD <- R6::R6Class(
       out
     },
 
-    # Matrix-based VST — mirrors eds_compute_vst() (which takes an SE).
     # Size-factor-normalised counts, for files built from raw counts alone
     # (SUSHI results ship their own normalised layer). DESeq2 median-of-ratios;
     # when every feature has a zero somewhere (no geometric mean), fall back to
     # library-size scaling.
     .compute_normalised = function() {
       cts <- self$assay("counts") # features x samples
-      sf <- tryCatch(DESeq2::estimateSizeFactorsForMatrix(cts), error = function(e) NULL)
-      if (is.null(sf) || any(!is.finite(sf)) || any(sf <= 0)) {
-        sf <- colSums(cts) / mean(colSums(cts))
+      sf <- if (any(rowSums(cts > 0) == ncol(cts))) {
+        DESeq2::estimateSizeFactorsForMatrix(cts)
+      } else {
+        colSums(cts) / mean(colSums(cts))
       }
       sweep(cts, 2, sf, "/")
     },
 
     .compute_vst = function() {
-      forVST <- t(as.matrix(private$.layers[["counts"]])) # features x samples
-      mode(forVST) <- "integer"
-      tryCatch(
-        {
-          if (nrow(forVST) < 1000) {
-            DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
-          } else {
-            DESeq2::vst(forVST, blind = FALSE)
-          }
-        },
-        error = function(e) {
-          DESeq2::varianceStabilizingTransformation(forVST, blind = FALSE)
-        }
-      )
+      eds_vst_matrix(t(private$.layers[["counts"]])) # features x samples
     },
 
     # Per-feature gene lengths (featWidth), aligned to feature_id.
@@ -495,7 +483,13 @@ ExploreDatasetH5AD <- R6::R6Class(
           if (length(raw)) setNames(list(raw[[1]]), "intensities_raw")
         )
         assay_labels <- c(intensities = "Intensities", intensities_raw = "Raw intensities")
-        raw_layer_name <- "intensities"
+        # A raw or normalised layer standing in for missing intensities stays linear
+        assay_log2 <- c(
+          intensities = prim %in% c("intensities", "log2", "normalised_log2"),
+          intensities_raw = FALSE
+        )[names(assay_map)]
+        raw_layer_name <- if ("intensities_raw" %in% names(assay_map)) "intensities_raw" else "intensities"
+        primary_name <- "intensities"
       } else {
         assay_map <- c(
           if ("counts" %in% have) list(counts = "counts"),
@@ -536,10 +530,12 @@ ExploreDatasetH5AD <- R6::R6Class(
           tpm = "TPM",
           fpkm = "FPKM"
         )
+        assay_log2 <- .genomics_assay_log2(names(assay_map))
         raw_layer_name <- if ("counts" %in% names(assay_map)) "counts" else names(assay_map)[1]
+        primary_name <- if ("normalised_log2" %in% names(assay_map)) "normalised_log2" else raw_layer_name
       }
 
-      ref_build <- uns$reference_genome %||% (private$.obs$organism %||% NA_character_)[1]
+      ref_build <- uns$reference_genome %||% (private$.obs[["organism"]] %||% NA_character_)[1]
       if (is.null(ref_build) || is.na(ref_build) || !nzchar(as.character(ref_build))) {
         ref_build <- NA_character_
       }
@@ -551,7 +547,8 @@ ExploreDatasetH5AD <- R6::R6Class(
       enrich_kinds <- character()
       en <- uns$enrichment_support %||% list()
       methods <- unique(unlist(lapply(en, names), use.names = FALSE))
-      if (any(grepl("ora", methods))) {
+      # As enrichment(): every method other than gsea is read as ORA
+      if (any(methods != "gsea")) {
         enrich_kinds <- c(enrich_kinds, "ora")
       }
       if ("gsea" %in% methods) {
@@ -562,7 +559,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         schema_version = uns[["schema_version"]],
         omics_class = omics_class,
         data_type = data_type,
-        organism = (private$.obs$organism %||% NA_character_)[1],
+        organism = (private$.obs[["organism"]] %||% NA_character_)[1],
         ref_build = ref_build,
         feature_id_kind = feature_id_kind,
         factors = factor_names,
@@ -571,16 +568,13 @@ ExploreDatasetH5AD <- R6::R6Class(
         secondary_grouping = if (length(factor_names) > 1) factor_names[[2]] else NA_character_,
         assay_map = assay_map,
         assay_labels = assay_labels,
+        assay_log2 = assay_log2,
         # Proteomics intensities sit on a log2 scale; the low-signal floor the
         # SE proteomics backend uses is 1, not the RNA-seq count floor of 10.
         background_expression = if (omics_class == "proteomics") 1 else 10,
         featwidth_col = fw_col,
         raw_assay_name = raw_layer_name,
-        primary_assay_name = if ("normalised_log2" %in% names(assay_map)) {
-          "normalised_log2"
-        } else {
-          raw_layer_name
-        },
+        primary_assay_name = primary_name,
         display_name_field = .h5ad_role_col(colnames(private$.var), "symbol") %||% NA_character_,
         description_field = "description",
         primary_contrast = if (length(cm)) names(cm)[[1]] else NA_character_,
@@ -621,35 +615,13 @@ ExploreDatasetH5AD <- R6::R6Class(
 
       # proteomics_choices: the gene / protein lookup maps that drive the
       # proteomics-only feature picker (server-featureBucket / server-correlation).
-      # Mirrors ExploreDatasetSE_Proteomics$.prep(): gene symbols come from the
-      # symbol column; a protein-id set is exposed only when it differs from the
-      # feature_id (so protein-level data — where feature_id IS the protein_Id —
-      # yields NULL protein choices, matching the SE backend).
       if (identical(cfg$omics_class, "proteomics")) {
-        fid <- as.character(var$feature_id)
         gcol <- .h5ad_role_col(colnames(var), "symbol")
-        gene_lookup <- gene_choices <- NULL
-        if (!is.null(gcol)) {
-          gene <- as.character(var[[gcol]])
-          valid <- !is.na(gene) & nzchar(gene) & gene != fid
-          if (any(valid)) {
-            gene_lookup <- split(fid[valid], gene[valid])
-            gene_choices <- unique(gene[valid])
-          }
-        }
         pcol <- .h5ad_role_col(colnames(var), "protein_id")
-        protein_lookup <- protein_choices <- NULL
-        if (!is.null(pcol)) {
-          pid <- as.character(var[[pcol]])
-          valid <- !is.na(pid) & nzchar(pid) & pid != fid
-          if (any(valid)) {
-            protein_lookup <- split(fid[valid], pid[valid])
-            protein_choices <- unique(pid[valid])
-          }
-        }
-        private$.config$proteomics <- list(
-          gene = list(choices = gene_choices, lookup = gene_lookup),
-          protein = list(choices = protein_choices, lookup = protein_lookup)
+        private$.config$proteomics <- eds_proteomics_choices(
+          var$feature_id,
+          gene = if (!is.null(gcol)) var[[gcol]],
+          protein = if (!is.null(pcol)) var[[pcol]]
         )
       } else if (identical(cfg$feature_id_kind, "isoform")) {
         # Isoform RNA-seq: gene symbol -> transcripts, as for the SE backends.
@@ -691,7 +663,7 @@ ExploreDatasetH5AD <- R6::R6Class(
         }
         # Feature length and GC content for the DE QC bias plots, which read
         # featWidth / gc from de(). build_explore_h5ad() stores them as
-        # label_featwidth / label_gc.
+        # label_featwidth and label_gc.
         if (!is.null(cfg$featwidth_col) && !"featWidth" %in% colnames(d)) {
           d$featWidth <- as.numeric(fv[d$feature_id, cfg$featwidth_col])
         }
@@ -719,3 +691,4 @@ ExploreDatasetH5AD <- R6::R6Class(
     }
   )
 )
+# nolint end

@@ -153,8 +153,8 @@ output$multiUploadNoteUI <- renderUI({
 
 # Files added through the "Upload files" panel.
 observeEvent(input$multiUploadH5ad, {
-  files <- input$multiUploadH5ad
-  req(files)
+  files <- h5ad_uploads_only(input$multiUploadH5ad)
+  req(nrow(files) > 0)
   waiter <- Waiter$new(
     id = "multiDataSelectionBoxUI",
     html = spin_fading_circles(),

@@ -110,3 +110,23 @@ test_that("RNA-seq isoform-level: Gene Symbol lookup covers every transcript", {
 test_that("RNA-seq gene-level: no gene -> feature lookup", {
   expect_null(new_explore_dataset(fx_rnaseq_gene()$se)$proteomics_choices("gene")$lookup)
 })
+
+test_that("RNA-seq: FPKM and TPM are offered only with feature lengths", {
+  fx <- fx_rnaseq_gene()
+  se <- fx$se
+  expect_true(all(c("fpkm", "tpm") %in% new_explore_dataset(se)$assay_names()))
+  SummarizedExperiment::rowData(se)$featWidth <- NULL
+  expect_false(any(c("fpkm", "tpm") %in% new_explore_dataset(se)$assay_names()))
+})
+
+test_that("RNA-seq isoform level without gene_name falls back to the row names", {
+  fx <- fx_rnaseq_gene()
+  se <- fx$se
+  md <- S4Vectors::metadata(se)
+  md$param$featureLevel <- "isoform"
+  S4Vectors::metadata(se) <- md
+  SummarizedExperiment::rowData(se)$gene_name <- NULL
+  eds <- new_explore_dataset(se)
+  expect_identical(eds$feature_id_kind(), "isoform")
+  expect_setequal(eds$features()$feature_id, rownames(se))
+})

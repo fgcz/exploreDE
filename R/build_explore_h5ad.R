@@ -11,9 +11,8 @@
 #               (B) statistics -> contrast-bound objects (ORA/GSEA tabs)
 #    Identity : ONE feature_id, identical + same order across counts & rowData;
 #               DE a subset within them; colData rows == counts columns.
-#    Routes in: a rich object (DESeqDataSet/edgeR/limma/prolfqua) is the
-#               PREFERRED starting point but never a dependency; it and loose
-#               pieces COMPOSE.
+#    Routes in: a DESeqDataSet is the PREFERRED starting point but never a
+#               dependency; it and loose pieces COMPOSE.
 #    Validation: lenient/permissive first (warn-and-degrade), tighten later.
 #
 #  .assemble_parts() is the pure generic core the Phase B upload wizard reuses.
@@ -255,7 +254,7 @@
     ids
   }
   prot_plus <- function(sub_concept) {
-    # protein_Id [+ site/peptide]
+    # protein_Id, with the site or peptide
     pcol <- id_col %||% .rd_col(rd, "protein_Id")
     if (is.null(pcol)) {
       return(make.unique(base_ids))
@@ -373,8 +372,7 @@
   rowdata_columns,
   omics_type,
   feature_level,
-  feature_id,
-  gene_symbol
+  feature_id
 ) {
   rd <- .as_df_keep_names(rowdata)
   if (!is.null(rd)) {
@@ -396,7 +394,7 @@
   }
 
   gid <- feature_id %||% (if (!is.null(id_col)) as.character(rd[[id_col]]) else base_ids)
-  sym <- gene_symbol %||% (if (!is.null(sym_col)) as.character(rd[[sym_col]]) else gid)
+  sym <- if (!is.null(sym_col)) as.character(rd[[sym_col]]) else gid
 
   # feature_level: detection-with-override, then level-aware feature_id.
   level <- .resolve_feature_level(omics_type, rd, feature_level)
@@ -440,7 +438,7 @@
   } else {
     # Derived from plain character: mixedsort, not sort, so "0h/6h/24h"
     # and "S1/S2/S10" come out the way a human means them. Matches
-    # ExploreDatasetSE.R:80 and helperFunctions.R:484, so the h5ad and SE
+    # ExploreDatasetSE_Proteomics's samples(), so the h5ad and SE
     # backends agree on level order rather than diverging.
     factor(v, levels = unique(gtools::mixedsort(v)))
   }
@@ -589,7 +587,10 @@
   missing_stats <- setdiff(c("effect_log2fc", "score_fdr"), colnames(d))
   if (length(missing_stats)) {
     warning(sprintf(
-      "DE '%s': could not resolve %s from columns (%s) \u2014 values will be NA. Pass de_columns= for this file, or add a pattern to inst/dictionaries/column_patterns.json if this naming will recur.",
+      paste0(
+        "DE '%s': could not resolve %s from columns (%s) \u2014 values will be NA. Pass de_columns= for this file, ",
+        "or add a pattern to inst/dictionaries/column_patterns.json if this naming will recur."
+      ),
       cn,
       paste(missing_stats, collapse = " and "),
       paste(orig_cols, collapse = ", ")
@@ -756,6 +757,7 @@
 #     ridge / running-score plots. The objects themselves are not stored:
 #     >90% of them is the full gene-set collection, which nothing displays
 #     (plans/exploredelight/enrichment_detach_plan.md).
+# nolint start: cyclocomp_linter. One branch per enrichment method.
 .assemble_pathways <- function(pathways, de, de_slot, enrichment_padj_max) {
   enr_support <- list()
   enr_tidy <- list()
@@ -799,6 +801,7 @@
   methods <- unique(unlist(lapply(enr_tidy, names)))
   list(tidy = enr_tidy, support = enr_support, filtered = filtered, methods = methods)
 }
+# nolint end
 
 # -- uns : schema, design, DE metadata, enrichment and declared mappings ------
 # The enrichment filter to record: the caller's threshold when every stored
@@ -847,6 +850,10 @@
     reference_genome = as.character(ref_build),
     provenance = list(source_format = "build_explore_h5ad")
   )
+  # An NA would be written as the string "NA"
+  if (is.na(ref_build)) {
+    uns_list$reference_genome <- NULL
+  }
   # `mapping` stays a DISTINCT key from `design` (design = what the experiment
   # is; mapping = where to find things / how to read the stats) -- this is the
   # declared dictionary itself (plans/jambon/anndata_manifest_design.md): which raw
@@ -880,7 +887,6 @@
   pathways = list(),
   enrichment_padj_max = 0.1,
   factors = NULL,
-  gene_symbol = NULL,
   feature_id = NULL,
   rowdata_columns = NULL,
   organism = NA_character_,
@@ -889,7 +895,7 @@
   omics_type <- .omics_type_of(omics)
   cnt <- .assemble_counts(counts, coldata, omics_type)
   base_ids <- cnt$base_ids
-  f <- .assemble_feature_ids(base_ids, rowdata, rowdata_columns, omics_type, feature_level, feature_id, gene_symbol)
+  f <- .assemble_feature_ids(base_ids, rowdata, rowdata_columns, omics_type, feature_level, feature_id)
   id2fid <- stats::setNames(f$fid, base_ids) # user identifiers -> canonical fid
   obs <- .assemble_obs(coldata, cnt$sample_ids, factors, organism)
   factor_prefixed <- colnames(obs)[grepl("^factor_", colnames(obs))]
@@ -921,15 +927,14 @@
 
 .pieces_from_deseq2 <- function(dds) {
   counts <- list(counts = SummarizedExperiment::assay(dds, "counts"))
-  nd <- tryCatch(DESeq2::counts(dds, normalized = TRUE), error = function(e) NULL)
-  if (!is.null(nd)) {
-    counts$normalised <- nd
+  if (!is.null(DESeq2::sizeFactors(dds)) || !is.null(DESeq2::normalizationFactors(dds))) {
+    counts$normalised <- DESeq2::counts(dds, normalized = TRUE)
   }
   rd <- .as_df_keep_names(SummarizedExperiment::rowData(dds))
   if (!ncol(rd)) {
     rd <- NULL
   }
-  fcols <- tryCatch(all.vars(DESeq2::design(dds)), error = function(e) NULL)
+  fcols <- all.vars(DESeq2::design(dds))
   list(
     counts = counts,
     coldata = .as_df_keep_names(SummarizedExperiment::colData(dds)),
@@ -940,12 +945,14 @@
 
 #' Build a canonical exploreDE `.h5ad` from user-supplied data
 #'
-#' The source-agnostic "bring your own data" constructor. `x` is either a rich
-#' upstream object (a `DESeqDataSet` — the preferred starting point) or the
-#' counts themselves (a matrix, or a named list of matrices such as
-#' `list(counts=, normalised=, vst=, tpm=)`). Any parts the object doesn't
-#' carry — DE tables, pathway statistics, extra count matrices — are supplied
-#' as arguments and merged. Only counts + `coldata` + `omics` are required.
+#' The source-agnostic "bring your own data" constructor. `x` is either a
+#' `DESeqDataSet` (the preferred starting point: its counts, `colData`,
+#' `rowData` and factors are used) or the counts themselves (a matrix, or a
+#' named list of matrices such as `list(counts=, normalised=, vst=, tpm=)`).
+#' From a `SummarizedExperiment`, pass its assays as such a list, with
+#' `coldata = colData(se)` and `rowdata = rowData(se)`. DE tables and pathway
+#' statistics are supplied as arguments. Only counts + `coldata` + `omics` are
+#' required.
 #'
 #' @param x A `DESeqDataSet`, a counts matrix, or a named list of count
 #'   matrices.
@@ -992,7 +999,7 @@
 #'   and the app uses a per-method value as its significance threshold.
 #' @param factors Optional colData columns that are experimental factors
 #'   (default: all character/factor-typed columns).
-#' @param gene_symbol,organism,ref_build Optional labels.
+#' @param organism,ref_build Optional labels.
 #' @return The output path, invisibly.
 #' @examples
 #' library(SummarizedExperiment)
@@ -1031,7 +1038,6 @@ build_explore_h5ad <- function(
   pathways = list(),
   enrichment_padj_max = 0.1,
   factors = NULL,
-  gene_symbol = NULL,
   organism = NA_character_,
   ref_build = NA_character_
 ) {
@@ -1046,11 +1052,6 @@ build_explore_h5ad <- function(
     coldata <- coldata %||% pc$coldata
     rowdata <- rowdata %||% pc$rowdata
     factors <- factors %||% pc$factors
-  } else if (inherits(x, "SummarizedExperiment")) {
-    counts <- list(counts = SummarizedExperiment::assay(x, 1))
-    coldata <- coldata %||% .as_df_keep_names(SummarizedExperiment::colData(x))
-    rd <- .as_df_keep_names(SummarizedExperiment::rowData(x))
-    rowdata <- rowdata %||% (if (ncol(rd)) rd else NULL)
   } else if (is.matrix(x) || inherits(x, "Matrix") || is.list(x)) {
     counts <- x
   } else {
@@ -1078,7 +1079,6 @@ build_explore_h5ad <- function(
     pathways = pathways,
     enrichment_padj_max = enrichment_padj_max,
     factors = factors,
-    gene_symbol = gene_symbol,
     organism = organism,
     ref_build = ref_build
   )

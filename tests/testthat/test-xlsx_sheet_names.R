@@ -20,3 +20,10 @@ test_that("xlsx_sheet_names makes names unique, ignoring case", {
   expect_true(all(nchar(out) <= 31))
   expect_identical(out[3:4], c("bp", "BP_1"))
 })
+
+test_that("xlsx_sheet_names drops leading and trailing apostrophes and avoids the reserved name History", {
+  expect_identical(
+    xlsx_sheet_names(c("'quoted'", "History", "history", "BP")),
+    c("quoted", "History_1", "history_2", "BP")
+  )
+})

@@ -97,10 +97,6 @@ output$keggOutput <- renderImage(
 
         list(src = output_file, contentType = 'image/png')
       },
-      error = function(e) {
-        cat("KEGG plot error:", conditionMessage(e), "\n")
-        NULL
-      },
       finally = {
         # Always restore working directory
         setwd(old_wd)
@@ -154,9 +150,6 @@ output$dlPlot_kegg <- downloadHandler(
         } else {
           stop("Pathview failed to generate the output file.")
         }
-      },
-      error = function(e) {
-        cat("KEGG download error:", conditionMessage(e), "\n")
       },
       finally = {
         setwd(old_wd)

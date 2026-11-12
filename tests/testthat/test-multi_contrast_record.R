@@ -9,7 +9,17 @@ expect_multi_record <- function(rec, data_type) {
   expect_true(all(c("dataset", "factors", "groupingName", "genes", "param", "design") %in% names(rec)))
   expect_match(rec$param$comparison, "--over--", fixed = TRUE)
   expect_true(all(rec$genes %in% rownames(rec$countList[[1]])))
+  # Which count methods are on the log2 scale, by the same names
+  expect_type(rec$countLog2, "logical")
+  expect_identical(names(rec$countLog2), names(rec$countList))
 }
+
+test_that("a record says which count methods are on the log2 scale", {
+  eds <- new_explore_dataset(system.file("examples", "genomics", "deResult.rds", package = "exploreDE"))
+  rec <- legacy_multi_contrast_from_eds(eds, eds$contrasts()[[1]])
+  expect_setequal(names(rec$countLog2)[rec$countLog2], c("Normalised + Log2", "VST"))
+  expect_setequal(names(rec$countLog2)[!rec$countLog2], c("Raw", "Normalised", "FPKM", "TPM"))
+})
 
 build_toy_prot_h5ad <- function(env = parent.frame()) {
   p <- make_toy_prot("protein")
@@ -61,4 +71,16 @@ test_that("legacy_multi_contrast_from_eds builds a record for a prolfquapp resul
   rec <- legacy_multi_contrast_from_eds(eds, eds$contrasts()[1])
   expect_multi_record(rec, "proteomics")
   expect_identical(rec$param$comparison, "G_2--over--G_1")
+})
+
+test_that("enrichment results get a Label column; tables pass through as they are", {
+  skip_if_not_installed("DOSE")
+  er <- methods::new(
+    "enrichResult",
+    result = data.frame(ID = c("GO:1", "GO:2"), Description = c("short", strrep("x", 50)))
+  )
+  tab <- data.frame(ID = "GO:1", Description = "t")
+  out <- .label_enrichment_results(list(BP = list(upGenes = er), tab = tab))
+  expect_identical(out$BP$upGenes@result$Label, c("GO:1\nshort", paste0("GO:2\n", strrep("x", 45))))
+  expect_identical(out$tab, tab)
 })

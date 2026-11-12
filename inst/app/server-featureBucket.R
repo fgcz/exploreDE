@@ -10,7 +10,7 @@
 #   - Each tab's consumer reads input$fb_keep_<tab> for LOCAL ordering/exclusion
 #   - Reorder/exclude is LOCAL per tab (no cross-tab sync — avoids stale-input loops)
 #   - Adding features (selectize, textarea, DEG table, volcano brush) goes through
-#     bucket_add() which updates the central store → all tabs re-render
+#     fb_add() which updates the central store → all tabs re-render
 
 eds <- inputDataReactive()$.eds
 req(eds)
@@ -28,13 +28,38 @@ featureBucket <- reactiveValues(
 fbSearchMode <- reactiveVal("feature_id")
 
 # --- API functions ---
+# The session's bucket and lookups around the pure helpers bucket_add(),
+# bucket_remove() and fb_resolve() (R/). seqAnnoReactive is set by
+# server-boxplot.R, sourced after this file; it is read when they run.
 
-# Defined in R/helperFunctions.R; bound to this scope so they see featureBucket,
-# seqAnnoReactive and eds.
-bucket_add <- bind_to_scope(bucket_add)
-bucket_remove <- bind_to_scope(bucket_remove)
-bucket_clear <- bind_to_scope(bucket_clear)
-resolve_features <- bind_to_scope(resolve_features)
+# Ids that may enter the bucket: the DE table's, or every feature of a
+# counts-only upload (no DE table); for CRISPR also the genes guides collapse to.
+fb_known_ids <- function() {
+  ids <- if (!is.null(seqAnnoReactive$sa)) seqAnnoReactive$sa$feature_id else eds$feature_ids()
+  c(ids, unique(eds$sgrna_to_gene()))
+}
+
+# Store a new bucket; the version counts the changes.
+fb_set <- function(features) {
+  if (!identical(features, isolate(featureBucket$features))) {
+    featureBucket$features <- features
+    featureBucket$version <- isolate(featureBucket$version) + 1L
+  }
+}
+
+fb_add <- function(new) fb_set(bucket_add(isolate(featureBucket$features), new, fb_known_ids()))
+fb_remove <- function(ids) fb_set(bucket_remove(isolate(featureBucket$features), ids))
+
+# Empty the bucket; the version changes even when it was empty already.
+fb_clear <- function() {
+  featureBucket$features <- character(0)
+  featureBucket$version <- isolate(featureBucket$version) + 1L
+}
+
+fb_resolve <- function(tokens, mode = "feature_id") {
+  lookups <- list(gene = eds$proteomics_choices("gene")$lookup, protein = eds$proteomics_choices("protein")$lookup)
+  resolve_features(tokens, mode, lookups, seqAnnoReactive$sa$feature_id)
+}
 
 # --- Centralised bucket UI rendering (one per participating tab) ---
 fb_tabs <- c("boxplot", "volcano", "heatmap", "deg")
@@ -153,11 +178,14 @@ lapply(c("boxplot", "volcano", "heatmap"), function(tab) {
       } else {
         character(0)
       }
-      pattern_info(fb_pattern_message(pattern, matched))
-      genes <- c(input[[sel_id]] %||% character(0), parse_gene_text(input[[text_id]]), matched)
-      genes <- resolve_features(genes, search_mode)
-      bucket_remove(setdiff(contributed, genes), source = tab)
-      bucket_add(genes, source = tab)
+      # The cap counts features: a protein ID or gene symbol can stand for
+      # many peptides or sites.
+      pattern_ids <- cap_pattern_features(matched, function(x) fb_resolve(x, search_mode))
+      pattern_info(fb_pattern_message(pattern, matched, pattern_ids))
+      genes <- c(input[[sel_id]] %||% character(0), parse_gene_text(input[[text_id]]))
+      genes <- unique(c(fb_resolve(genes, search_mode), pattern_ids))
+      fb_remove(setdiff(contributed, genes))
+      fb_add(genes)
       contributed <<- genes
     }
   )
@@ -181,13 +209,13 @@ observeEvent(input$degTable_rows_selected, ignoreNULL = FALSE, ignoreInit = TRUE
     sa <- sa[order(sa$pValue), ]
   }
   selected <- sa$feature_id[input$degTable_rows_selected]
-  bucket_add(selected, source = "deg_table")
+  fb_add(selected)
 })
 
 # --- Volcano brush staging area handler ---
 observeEvent(input$fb_add_brushed, ignoreInit = TRUE, {
   req(length(volcanoStagedGenes$brushGenes) > 0)
-  bucket_add(volcanoStagedGenes$brushGenes, source = "volcano_brush")
+  fb_add(volcanoStagedGenes$brushGenes)
   showNotification(
     paste0("Added ", length(volcanoStagedGenes$brushGenes), " features to bucket"),
     type = "message",
@@ -201,7 +229,7 @@ fb_reset_tabs <- c("boxplot", "volcano", "heatmap", "deg")
 
 lapply(fb_reset_tabs, function(tab) {
   observeEvent(input[[paste0("fb_reset_", tab)]], ignoreInit = TRUE, {
-    bucket_clear(source = paste0("reset_", tab))
+    fb_clear()
     # Clear the inputs of ALL tabs, respecting the current search mode so
     # choices stay consistent
     fb_clear_inputs(search_mode_choices(fbSearchMode(), eds$feature_ids()))
@@ -360,7 +388,7 @@ lapply(fb_input_tabs, function(tab) {
     # Clear everything — search mode change invalidates bucket contents.
     # Bucket-driven plots (boxplot, barplot, custom heatmap) follow their own
     # tab's bucket, so they are not nulled here (see the reset handler above).
-    bucket_clear(source = paste0("search_mode_", tab))
+    fb_clear()
     # Empty every tab's inputs, with the selectize choices of the new mode
     fb_clear_inputs(search_mode_choices(mode, eds$feature_ids()))
     volcanoStagedGenes$brushGenes <- character(0)

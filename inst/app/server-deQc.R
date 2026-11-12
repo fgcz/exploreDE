@@ -33,10 +33,10 @@ observe({
   # Adjust scatter colour-by choices based on what's available
   choices <- "Standard"
   if (is_rna) {
-    if (isTRUE(try(deQcHasGC(), silent = TRUE))) {
+    if (isTRUE(deQcHasGC())) {
       choices <- c(choices, "GC content")
     }
-    if (isTRUE(try(deQcHasWidth(), silent = TRUE))) choices <- c(choices, "Gene width")
+    if (isTRUE(deQcHasWidth())) choices <- c(choices, "Gene width")
   }
   current <- isolate(input$deQcScatterColourBy)
   selected <- if (!is.null(current) && current %in% choices) current else "Standard"
@@ -216,31 +216,44 @@ deQcScatterData <- reactive({
     mode <- "Standard"
   }
 
-  types_info <- build_qc_scatter_types(
-    rd,
+  types_info <- switch(
     mode,
-    present_mask,
-    p_thresh = input$deQcScatterPval %||% 0.05,
-    lfc_thresh = input$deQcScatterLFC %||% 1,
-    gc_lo = input$deQcScatterGCLow %||% 0.4,
-    gc_hi = input$deQcScatterGCHigh %||% 0.6,
-    w_lo = input$deQcScatterWidthLow %||% 500,
-    w_hi = input$deQcScatterWidthHigh %||% 5000,
-    std_cols = list(
-      Absent = input$deQcColAbsent %||% "grey70",
-      Present = input$deQcColPresent %||% "black",
-      Significants = input$deQcColSig %||% "#A6CEE3"
+    "Standard" = qc_types_significance(
+      rd,
+      present_mask,
+      p_thresh = input$deQcScatterPval %||% 0.05,
+      lfc_thresh = input$deQcScatterLFC %||% 1,
+      cols = list(
+        Absent = input$deQcColAbsent %||% "grey70",
+        Present = input$deQcColPresent %||% "black",
+        Significants = input$deQcColSig %||% "#A6CEE3"
+      )
     ),
-    gc_cols = list(
-      low = input$deQcColGCLow %||% "#1F78B4",
-      mid = input$deQcColGCMid %||% "black",
-      high = input$deQcColGCHigh %||% "#FF7F00"
+    "GC content" = qc_types_binned(
+      rd$gc,
+      input$deQcScatterGCLow %||% 0.4,
+      input$deQcScatterGCHigh %||% 0.6,
+      cols = list(
+        low = input$deQcColGCLow %||% "#1F78B4",
+        mid = input$deQcColGCMid %||% "black",
+        high = input$deQcColGCHigh %||% "#FF7F00"
+      ),
+      fmt = "%.2f",
+      prefix = "GC "
     ),
-    width_cols = list(
-      low = input$deQcColWidthLow %||% "#B15928",
-      mid = input$deQcColWidthMid %||% "black",
-      high = input$deQcColWidthHigh %||% "#33A02C"
-    )
+    "Gene width" = qc_types_binned(
+      rd$featWidth,
+      input$deQcScatterWidthLow %||% 500,
+      input$deQcScatterWidthHigh %||% 5000,
+      cols = list(
+        low = input$deQcColWidthLow %||% "#B15928",
+        mid = input$deQcColWidthMid %||% "black",
+        high = input$deQcColWidthHigh %||% "#33A02C"
+      ),
+      fmt = "%.0f",
+      suffix = " nt"
+    ),
+    stop("unknown colour-by mode: ", mode)
   )
 
   labels <- if ("gene_name" %in% colnames(rd) && any(nzchar(rd$gene_name))) {
@@ -490,14 +503,14 @@ output$pvalHistogram <- renderPlot(
 # ---- Bias plots (GC, length) -------------------------------------------------
 # Which bias plots are supported depends on seqAnno columns.
 deQcHasGC <- reactive({
-  if (eds$data_type() != "RNASeq") {
+  if (eds$data_type() != "RNASeq" || !eds$has_de()) {
     return(FALSE)
   }
   sa <- eds$de(selectedContrast())
   "gc" %in% colnames(sa) && !all(is.na(sa$gc))
 })
 deQcHasWidth <- reactive({
-  if (eds$data_type() != "RNASeq") {
+  if (eds$data_type() != "RNASeq" || !eds$has_de()) {
     return(FALSE)
   }
   sa <- eds$de(selectedContrast())
@@ -562,7 +575,7 @@ bias_labels <- function(df) {
 
 build_gc_bias_plot <- function() {
   validate(need(
-    isTRUE(try(deQcHasGC(), silent = TRUE)),
+    isTRUE(deQcHasGC()),
     "GC bias plot not available: the 'gc' column is missing from seqAnno."
   ))
   df <- deQcBiasData()
@@ -581,7 +594,7 @@ build_gc_bias_plot <- function() {
 
 build_length_bias_plot <- function() {
   validate(need(
-    isTRUE(try(deQcHasWidth(), silent = TRUE)),
+    isTRUE(deQcHasWidth()),
     "Length bias plot not available: the 'featWidth' column is missing from seqAnno."
   ))
   df <- deQcBiasData()
