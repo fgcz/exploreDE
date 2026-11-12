@@ -180,6 +180,10 @@
   is no longer taken for mouse or human. A KEGG pathway fetch reports
   only a failed download as “Failed to fetch KEGG pathway”; a
   gene-mapping error shows as itself.
+- Heatmaps: the DE, Custom, GO and KEGG table downloads include the
+  contrast’s log2 ratio, p-value and FDR only when “Include DE
+  statistics” is ticked. RNA-seq downloads always included them,
+  whatever the box said.
 - The Multi DE “Integrated DE Table” shows each contrast’s p-value. It
   looked for a `pvalue` column, while the results carry `pValue`, so the
   column was never there.
