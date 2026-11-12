@@ -26,19 +26,7 @@ contrastRatioChoices <- stats::setNames(eds$contrasts(), vapply(eds$contrasts(),
 
 observe({
   # Detect species for KEGG heatmap
-  keggHeatmapReactive$keggCode <- tryCatch(
-    {
-      spp <- if (kegg_installed()) kegg_species_label(eds$ref_build())
-      switch(spp %||% "", "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
-    },
-    error = function(e) NULL
-  )
-
-  # Output flag for conditionalPanel in UI
-  output$keggSpeciesSupported <- reactive({
-    !is.null(keggHeatmapReactive$keggCode)
-  })
-  outputOptions(output, "keggSpeciesSupported", suspendWhenHidden = FALSE)
+  keggHeatmapReactive$keggCode <- if (kegg_installed()) kegg_org_code(eds$ref_build())
 
   # Add KEGG heatmap tab dynamically for supported species
   if (!is.null(keggHeatmapReactive$keggCode)) {
@@ -820,10 +808,6 @@ heatmapInputs <- reactive({
     input$lfcHeatmap,
     input$pTypeHeatmap,
     input$pThresholdHeatmap,
-    input$heatmapLimitD,
-    input$heatmapLimitCHigh,
-    input$heatmapLimitCMid,
-    input$heatmapLimitCLow,
     input$heatmapLimitCPalette,
     input$heatmapLimitCPaletteRev,
     input$heatmapGeneNumber,
@@ -910,13 +894,26 @@ observeEvent(
     set.seed(2)
     figuresDataReactive[["heatmapDEFeatures"]] <- NULL
     # Get some variables ----
+    peptide_note <- NULL # names the peptide filter when no features are left
     if (eds$omics_class() == "proteomics") {
       design <- selectedContrast()
       req(!is.null(design) && nzchar(design) && design %in% eds$contrasts())
       seqAnnoHeatmap <- eds$de(design)
       seqAnnoHeatmap[["usedInTest"]] <- TRUE
       if (!is.null(input$nrPeptideHeatmap) && "nrPeptides" %in% colnames(seqAnnoHeatmap)) {
+        n_before <- nrow(seqAnnoHeatmap)
         seqAnnoHeatmap <- seqAnnoHeatmap[which(seqAnnoHeatmap$nrPeptides >= input$nrPeptideHeatmap), ]
+        if (nrow(seqAnnoHeatmap) < n_before) {
+          peptide_note <- paste0(
+            "'Minimum number of peptides' (",
+            input$nrPeptideHeatmap,
+            ") keeps ",
+            nrow(seqAnnoHeatmap),
+            " of ",
+            n_before,
+            " features."
+          )
+        }
       }
     } else if (length(eds$contrasts()) > 0) {
       design <- eds$contrast_label(selectedContrast())
@@ -1277,57 +1274,12 @@ observeEvent(
       )
       figuresDataReactive[["heatmapDEFeatures"]] <- heatmap
 
-      # Download the count file
-      countsHeatmapSigDL <- as.data.frame(countsHeatmapSig) %>% rownames_to_column("feature_id")
-      output[["dlTable_heatmapDE"]] <- downloadHandler(
-        filename = function() {
-          generate_filename(
-            base_name = "DE_heatmap_counts",
-            design_name = design,
-            extension = "xlsx"
-          )
-        },
-        content = function(file) {
-          counts_export <- countsHeatmapSigDL
-
-          # Determine which columns to include
-          # Basic columns: feature_id + all sample columns
-          basic_cols <- colnames(counts_export)
-
-          # Add DE statistics if requested
-          if (
-            eds$data_type() == "RNASeq" ||
-              eds$omics_class() == "proteomics" &&
-                !is.null(input$includeDEStatsHeatmap) &&
-                input$includeDEStatsHeatmap
-          ) {
-            if (eds$data_type() == "RNASeq" && eds$has_de()) {
-              de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-              valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
-              if (length(valid_de_cols) > 1) {
-                de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
-                counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
-              }
-            } else if (!is.null(selectedContrast())) {
-              de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-              valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
-              if (length(valid_de_cols) > 1) {
-                de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
-                counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
-              }
-            }
-          } else {
-            # Export only basic columns (feature_id + sample columns)
-            counts_export <- counts_export[, basic_cols, drop = FALSE]
-          }
-
-          export_excel_standard(
-            df = counts_export,
-            filename = file,
-            sheet_name = "Heatmap Data",
-            table_name = "HeatmapData"
-          )
-        }
+      output[["dlTable_heatmapDE"]] <- heatmap_table_download(
+        countsHeatmapSig,
+        "DE_heatmap_counts",
+        design,
+        "Heatmap Data",
+        "HeatmapData"
       )
       # Show number of genes on plot (changes depending on settings applied)
       output[["hGNDE"]] <- renderText({
@@ -1338,42 +1290,12 @@ observeEvent(
       figuresDataReactive[["heatmapDEFeatures"]] <- NULL
 
       output[["heatmapDesignBoth Directions"]] <- renderText({
-        paste("No features found meeting current thresholds for:", design)
+        paste("No features found meeting current thresholds for:", design, peptide_note)
       })
 
       output[["hGNDE"]] <- renderText({
         "Number of features per settings chosen: 0"
       })
-
-      output[["dlHeatmapDFButtonDEFeatures"]] <- downloadHandler(
-        filename = function() {
-          "no_data.txt"
-        },
-        content = function(file) {
-          writeLines(
-            paste0(
-              "No differentially expressed features found for: ",
-              design,
-              "\n\n",
-              "Current filter settings:\n",
-              "- P-value type: ",
-              input$pTypeHeatmap,
-              "\n",
-              "- P-value threshold: ",
-              input$pThresholdHeatmap,
-              "\n",
-              "- Log2 fold-change threshold: ",
-              input$lfcHeatmap,
-              "\n",
-              "- Feature direction: ",
-              input$heatmapFeatureDirection,
-              "\n\n",
-              "Try adjusting these thresholds to find more features."
-            ),
-            file
-          )
-        }
-      )
     } # End if (ntp > 0) - DE Features heatmap section
 
     # Custom heatmap ----
@@ -1410,55 +1332,12 @@ observeEvent(
     )
     figuresDataReactive$heatmapCustom <- ch
 
-    output[["dlTable_heatmapCustom"]] <- downloadHandler(
-      filename = function() {
-        generate_filename(
-          base_name = "Custom_heatmap",
-          design_name = design,
-          extension = "xlsx"
-        )
-      },
-      content = function(file) {
-        counts_export <- as.data.frame(countsHeatmapCustom) %>% rownames_to_column("feature_id")
-
-        # Determine which columns to include
-        # Basic columns: feature_id + all sample columns
-        basic_cols <- colnames(counts_export)
-
-        # Add DE statistics if requested
-        if (
-          eds$data_type() == "RNASeq" ||
-            eds$omics_class() == "proteomics" &&
-              !is.null(input$includeDEStatsHeatmap) &&
-              input$includeDEStatsHeatmap
-        ) {
-          if (eds$data_type() == "RNASeq" && eds$has_de()) {
-            de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-            valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
-            if (length(valid_de_cols) > 1) {
-              de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
-              counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
-            }
-          } else if (!is.null(selectedContrast())) {
-            de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-            valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
-            if (length(valid_de_cols) > 1) {
-              de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
-              counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
-            }
-          }
-        } else {
-          # Export only basic columns (feature_id + sample columns)
-          counts_export <- counts_export[, basic_cols, drop = FALSE]
-        }
-
-        export_excel_standard(
-          df = counts_export,
-          filename = file,
-          sheet_name = "Custom Heatmap",
-          table_name = "CustomHeatmap"
-        )
-      }
+    output[["dlTable_heatmapCustom"]] <- heatmap_table_download(
+      countsHeatmapCustom,
+      "Custom_heatmap",
+      design,
+      "Custom Heatmap",
+      "CustomHeatmap"
     )
 
     # GO heatmap ----
@@ -1528,55 +1407,12 @@ observeEvent(
           )
         )
         figuresDataReactive$heatmapGO <- gh
-        output[["dlTable_heatmapGO"]] <- downloadHandler(
-          filename = function() {
-            generate_filename(
-              base_name = "GO_heatmap",
-              design_name = design,
-              extension = "xlsx"
-            )
-          },
-          content = function(file) {
-            counts_export <- as.data.frame(countsHeatmapGO) %>% rownames_to_column("feature_id")
-
-            # Determine which columns to include
-            # Basic columns: feature_id + all sample columns
-            basic_cols <- colnames(counts_export)
-
-            # Add DE statistics if requested
-            if (
-              eds$data_type() == "RNASeq" ||
-                eds$omics_class() == "proteomics" &&
-                  !is.null(input$includeDEStatsHeatmap) &&
-                  input$includeDEStatsHeatmap
-            ) {
-              if (eds$data_type() == "RNASeq" && eds$has_de()) {
-                de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
-                if (length(valid_de_cols) > 1) {
-                  de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
-                  counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
-                }
-              } else if (!is.null(selectedContrast())) {
-                de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
-                if (length(valid_de_cols) > 1) {
-                  de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
-                  counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
-                }
-              }
-            } else {
-              # Export only basic columns (feature_id + sample columns)
-              counts_export <- counts_export[, basic_cols, drop = FALSE]
-            }
-
-            export_excel_standard(
-              df = counts_export,
-              filename = file,
-              sheet_name = "GO Heatmap",
-              table_name = "GOHeatmap"
-            )
-          }
+        output[["dlTable_heatmapGO"]] <- heatmap_table_download(
+          countsHeatmapGO,
+          "GO_heatmap",
+          design,
+          "GO Heatmap",
+          "GOHeatmap"
         )
       } else {
         figuresDataReactive$heatmapGO <- NULL
@@ -1655,50 +1491,12 @@ observeEvent(
           )
           figuresDataReactive$heatmapKEGG <- kh
 
-          output[["dlTable_heatmapKEGG"]] <- downloadHandler(
-            filename = function() {
-              generate_filename(
-                base_name = "KEGG_heatmap",
-                design_name = design,
-                extension = "xlsx"
-              )
-            },
-            content = function(file) {
-              counts_export <- as.data.frame(countsHeatmapKEGG) %>% rownames_to_column("feature_id")
-              basic_cols <- colnames(counts_export)
-
-              if (
-                eds$data_type() == "RNASeq" ||
-                  eds$omics_class() == "proteomics" &&
-                    !is.null(input$includeDEStatsHeatmap) &&
-                    input$includeDEStatsHeatmap
-              ) {
-                if (eds$data_type() == "RNASeq" && eds$has_de()) {
-                  de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                  valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
-                  if (length(valid_de_cols) > 1) {
-                    de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
-                    counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
-                  }
-                } else if (!is.null(selectedContrast())) {
-                  de_cols <- c("feature_id", "log2Ratio", "pValue", "fdr")
-                  valid_de_cols <- intersect(de_cols, colnames(eds$de(selectedContrast())))
-                  if (length(valid_de_cols) > 1) {
-                    de_data <- eds$de(selectedContrast())[, valid_de_cols, drop = FALSE]
-                    counts_export <- counts_export %>% left_join(de_data, by = "feature_id")
-                  }
-                }
-              } else {
-                counts_export <- counts_export[, basic_cols, drop = FALSE]
-              }
-
-              export_excel_standard(
-                df = counts_export,
-                filename = file,
-                sheet_name = "KEGG Heatmap",
-                table_name = "KEGGHeatmap"
-              )
-            }
+          output[["dlTable_heatmapKEGG"]] <- heatmap_table_download(
+            countsHeatmapKEGG,
+            "KEGG_heatmap",
+            design,
+            "KEGG Heatmap",
+            "KEGGHeatmap"
           )
         } else {
           figuresDataReactive$heatmapKEGG <- NULL
@@ -1739,6 +1537,26 @@ output$heatmapGoInfo <- renderUI({
   )
 })
 
+# The table download of the DE, Custom, GO and KEGG heatmaps: the plotted
+# values, with the selected contrast's DE statistics when "Include DE
+# statistics" is ticked (heatmap_export_table()).
+heatmap_table_download <- function(counts, base_name, design, sheet_name, table_name) {
+  downloadHandler(
+    filename = function() {
+      generate_filename(base_name = base_name, design_name = design, extension = "xlsx")
+    },
+    content = function(file) {
+      de <- if (eds$has_de() && !is.null(selectedContrast())) eds$de(selectedContrast())
+      export_excel_standard(
+        df = heatmap_export_table(counts, de, input$includeDEStatsHeatmap),
+        filename = file,
+        sheet_name = sheet_name,
+        table_name = table_name
+      )
+    }
+  )
+}
+
 # KEGG heatmap: fetch pathway genes on button click
 observeEvent(input$heatmapKeggGo, {
   req(input$heatmapKeggInput)
@@ -1763,45 +1581,18 @@ observeEvent(input$heatmapKeggGo, {
   }
 
   # Fetch from KEGG API
-  result <- withProgress(message = "Fetching KEGG pathway genes...", {
+  fetched <- withProgress(message = "Fetching KEGG pathway genes...", {
     tryCatch(
-      {
-        # Get pathway name
-        pathInfo <- KEGGREST::keggGet(pathwayId)
-        pathwayName <- sub(" - .*$", "", pathInfo[[1]]$NAME)
-
-        # Get gene list (returns ENTREZ IDs with species prefix)
-        geneLinks <- KEGGREST::keggLink(keggCode, paste0("path:", pathwayId))
-        entrezIds <- gsub(paste0(keggCode, ":"), "", geneLinks)
-
-        # Match ENTREZ IDs to feature_ids in seqAnno
-        seqAnno <- eds$de(eds$primary_contrast())
-
-        if ("entrez_id" %in% colnames(seqAnno)) {
-          # Primary strategy: direct match on entrez_id column
-          keggFeatureIds <- seqAnno$feature_id[seqAnno$entrez_id %in% entrezIds]
-        } else {
-          # Fallback: convert via pathview
-          idMapping <- pathview::eg2id(entrezIds, category = c("SYMBOL", "ENSEMBL"), org = keggCode)
-          geneSymbols <- na.omit(idMapping[, "SYMBOL"])
-          ensemblIds <- na.omit(idMapping[, "ENSEMBL"])
-          matchByName <- seqAnno$feature_id[seqAnno$gene_name %in% geneSymbols]
-          matchById <- seqAnno$feature_id[seqAnno$gene_id %in% ensemblIds]
-          keggFeatureIds <- unique(c(matchByName, matchById))
-        }
-
-        list(genes = keggFeatureIds, name = pathwayName)
-      },
+      kegg_fetch_pathway(pathwayId, keggCode),
       error = function(e) {
-        showNotification(
-          paste("Failed to fetch KEGG pathway:", e$message),
-          type = "error",
-          duration = 8
-        )
+        showNotification(paste("Failed to fetch KEGG pathway:", e$message), type = "error", duration = 8)
         NULL
       }
     )
   })
+  result <- if (!is.null(fetched)) {
+    list(genes = kegg_map_genes(eds$de(eds$primary_contrast()), fetched$entrez, keggCode), name = fetched$name)
+  }
 
   if (!is.null(result)) {
     keggHeatmapReactive$cache[[pathwayId]] <- result

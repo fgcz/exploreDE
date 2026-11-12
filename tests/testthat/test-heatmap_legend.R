@@ -58,3 +58,12 @@ test_that("draw_heatmap() copes with regex characters in heatmap / annotation na
     expect_no_error(draw_heatmap(ht, merge_legend = TRUE, legend_dx = 10, legend_dy = 5))
   }
 })
+
+test_that("columns_differ() is FALSE for identical or single columns", {
+  x <- c(1.5, -2, 0.3)
+  expect_false(columns_differ(cbind(a = x, b = x)))
+  expect_false(columns_differ(matrix(0, 3, 2)))
+  expect_false(columns_differ(cbind(a = x)))
+  expect_true(columns_differ(cbind(a = x, b = -x)))
+  expect_true(columns_differ(cbind(a = x, b = x, c = -x)))
+})

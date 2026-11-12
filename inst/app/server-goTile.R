@@ -26,13 +26,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
 
   observe({
     # Detect species -> KEGG organism code (only hsa/mmu/rno supported)
-    goTileKeggReactive$keggCode <- tryCatch(
-      {
-        spp <- if (kegg_installed()) kegg_species_label(eds$ref_build())
-        switch(spp %||% "", "Human" = "hsa", "Mouse" = "mmu", "Rat" = "rno", NULL)
-      },
-      error = function(e) NULL
-    )
+    goTileKeggReactive$keggCode <- if (kegg_installed()) kegg_org_code(eds$ref_build())
     output$goTileKeggSupported <- reactive({
       !is.null(goTileKeggReactive$keggCode)
     })
@@ -79,42 +73,18 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
       return()
     }
 
-    result <- withProgress(message = "Fetching KEGG pathway genes...", {
+    fetched <- withProgress(message = "Fetching KEGG pathway genes...", {
       tryCatch(
-        {
-          # Pathway name
-          pathInfo <- KEGGREST::keggGet(pathwayId)
-          pathwayName <- sub(" - .*$", "", pathInfo[[1]]$NAME)
-
-          # Member genes (ENTREZ IDs with species prefix)
-          geneLinks <- KEGGREST::keggLink(keggCode, paste0("path:", pathwayId))
-          entrezIds <- gsub(paste0(keggCode, ":"), "", geneLinks)
-
-          # Map ENTREZ IDs to feature_ids in the DE table
-          seqAnno <- eds$de(selectedContrast())
-          if ("entrez_id" %in% colnames(seqAnno)) {
-            keggFeatureIds <- seqAnno$feature_id[seqAnno$entrez_id %in% entrezIds]
-          } else {
-            idMapping <- pathview::eg2id(entrezIds, category = c("SYMBOL", "ENSEMBL"), org = keggCode)
-            geneSymbols <- na.omit(idMapping[, "SYMBOL"])
-            ensemblIds <- na.omit(idMapping[, "ENSEMBL"])
-            matchByName <- seqAnno$feature_id[seqAnno$gene_name %in% geneSymbols]
-            matchById <- seqAnno$feature_id[seqAnno$gene_id %in% ensemblIds]
-            keggFeatureIds <- unique(c(matchByName, matchById))
-          }
-
-          list(genes = keggFeatureIds, name = pathwayName)
-        },
+        kegg_fetch_pathway(pathwayId, keggCode),
         error = function(e) {
-          showNotification(
-            paste("Failed to fetch KEGG pathway:", e$message),
-            type = "error",
-            duration = 8
-          )
+          showNotification(paste("Failed to fetch KEGG pathway:", e$message), type = "error", duration = 8)
           NULL
         }
       )
     })
+    result <- if (!is.null(fetched)) {
+      list(genes = kegg_map_genes(eds$de(selectedContrast()), fetched$entrez, keggCode), name = fetched$name)
+    }
 
     if (!is.null(result)) {
       goTileKeggReactive$cache[[pathwayId]] <- result

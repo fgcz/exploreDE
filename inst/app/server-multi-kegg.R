@@ -22,20 +22,12 @@ observeEvent(
       refBuild <- results[[1]]$param$ezRef@refBuild
     }
 
-    sp <- "other"
-    if (!is.null(refBuild)) {
-      # Simple check for human/mouse
-      if (grepl("Homo_sapiens|GRCh|hg", refBuild, ignore.case = TRUE)) {
-        sp <- "hsa"
-      } else if (grepl("Mus_musculus|GRCm|mm", refBuild, ignore.case = TRUE)) {
-        sp <- "mmu"
-      }
-    }
+    sp <- kegg_org_code(refBuild) %||% "other"
 
     if (sp == "other") {
       showModal(modalDialog(
-        title = "Your data is not human or mouse.",
-        paste0("KEGG Pathways are only compatible with human and mouse data, unfortunately."),
+        title = "Your data is not human, mouse or rat.",
+        "KEGG Pathways are only compatible with human, mouse and rat data, unfortunately.",
         easyClose = TRUE,
         footer = NULL
       ))
@@ -192,14 +184,7 @@ output$dlPlot_multiKegg <- downloadHandler(
       refBuild <- results[[1]]$param$ezRef@refBuild
     }
 
-    sp <- "other"
-    if (!is.null(refBuild)) {
-      if (grepl("Homo_sapiens|GRCh|hg", refBuild, ignore.case = TRUE)) {
-        sp <- "hsa"
-      } else if (grepl("Mus_musculus|GRCm|mm", refBuild, ignore.case = TRUE)) {
-        sp <- "mmu"
-      }
-    }
+    sp <- kegg_org_code(refBuild) %||% "other"
 
     req(sp != "other")
 

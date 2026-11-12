@@ -32,6 +32,70 @@ kegg_installed <- function() {
   requireNamespace("pathview", quietly = TRUE) && requireNamespace("KEGGREST", quietly = TRUE)
 }
 
+#' kegg_org_code
+#' KEGG organism code of a reference build, from `kegg_species_label()`.
+#' @param ref_build A `ref_build`/`refBuild` string, or `NA`/`NULL`.
+#' @return `"hsa"`, `"mmu"`, `"rno"`, or `NULL` for any other species.
+#' @noRd
+kegg_org_code <- function(ref_build) {
+  switch(kegg_species_label(ref_build) %||% "", Human = "hsa", Mouse = "mmu", Rat = "rno", NULL)
+}
+
+#' kegg_fetch_pathway
+#' Name and member genes of a KEGG pathway, from the KEGG REST server. The
+#' only network access of the KEGG tile and heatmap views; its errors (no
+#' connection, unknown pathway) are for the caller to report.
+#' @param pathway_id Pathway id with organism prefix, e.g. `"hsa04110"`.
+#' @param org KEGG organism code, e.g. `"hsa"`.
+#' @return `list(name, entrez)`: the pathway name without its organism suffix,
+#'   and the Entrez ids of its genes.
+#' @noRd
+kegg_fetch_pathway <- function(pathway_id, org) {
+  info <- KEGGREST::keggGet(pathway_id)
+  links <- KEGGREST::keggLink(org, paste0("path:", pathway_id))
+  list(name = sub(" - .*$", "", info[[1]]$NAME), entrez = gsub(paste0(org, ":"), "", links))
+}
+
+#' kegg_map_genes
+#' Feature ids of a DE table whose genes are in a KEGG pathway. Matches the
+#' table's `entrez_id` column when it has one; otherwise maps the Entrez ids
+#' to gene symbols and Ensembl ids with `pathview::eg2id()` and matches
+#' `gene_name` and `gene_id`.
+#' @param de A DE table with `feature_id`.
+#' @param entrez Entrez ids, as from `kegg_fetch_pathway()`.
+#' @param org KEGG organism code.
+#' @return Character vector of feature ids.
+#' @noRd
+kegg_map_genes <- function(de, entrez, org) {
+  if ("entrez_id" %in% colnames(de)) {
+    return(de$feature_id[de$entrez_id %in% entrez])
+  }
+  ids <- pathview::eg2id(entrez, category = c("SYMBOL", "ENSEMBL"), org = org)
+  unique(c(
+    de$feature_id[de$gene_name %in% stats::na.omit(ids[, "SYMBOL"])],
+    de$feature_id[de$gene_id %in% stats::na.omit(ids[, "ENSEMBL"])]
+  ))
+}
+
+#' heatmap_export_table
+#' The table a heatmap's "Download ... Counts" button writes: the plotted
+#' values per feature and, when asked for, the contrast's DE statistics.
+#' @param counts The plotted matrix, features x samples, feature ids as rownames.
+#' @param de The DE table (with `feature_id`), or `NULL` when there is none.
+#' @param include_de Whether to add `log2Ratio`, `pValue` and `fdr`
+#'   ("Include DE statistics").
+#' @return A data frame: `feature_id`, the sample columns, then the statistics
+#'   the DE table has.
+#' @noRd
+heatmap_export_table <- function(counts, de, include_de) {
+  out <- tibble::rownames_to_column(as.data.frame(counts), "feature_id")
+  stats <- if (isTRUE(include_de) && !is.null(de)) intersect(c("log2Ratio", "pValue", "fdr"), colnames(de))
+  if (length(stats) == 0) {
+    return(out)
+  }
+  dplyr::left_join(out, de[, c("feature_id", stats), drop = FALSE], by = "feature_id")
+}
+
 #' go_annotation_columns
 #' The GO annotation columns a feature table carries, out of `GO BP`, `GO MF`,
 #' and `GO CC`. Any subset is valid: Non-reference organisms often have only
@@ -309,49 +373,6 @@ convert_genomics_se <- function(se, dataDir, param = NULL) {
   # plans/archive/legacy_converters/).
   eds <- new_explore_dataset(se)
   return(legacy_gStoreList_from_eds(eds, se = se, dataDir = dataDir, param = param))
-}
-
-#' convert_proteomics_se
-#' @noRd
-convert_proteomics_se <- function(se) {
-  # Phase 1 (2026-05-15): body delegates to the ExploreDataset hierarchy +
-  # legacy_gStoreList_from_eds() shim. See convert_genomics_se() for context.
-  eds <- new_explore_dataset(se)
-  # eds$backend() is the SE the dataset was built from (after any layout
-  # conversion in new_explore_dataset()), so the shim reads the same frames.
-  return(legacy_gStoreList_from_eds(eds, se = eds$backend()))
-}
-
-#' generateParams
-#' @noRd
-generateParams <- function(
-  sampleGroup = "diff",
-  refGroup = "undiff",
-  groupingName = "Condition",
-  comparison = "diff--over--undiff",
-  featureLevel = "gene",
-  runGO = TRUE,
-  fdrThreshORA = 0.05,
-  fdrThreshGSEA = 0.05,
-  pValThreshGO = 0.01,
-  log2RatioThreshGO = 0,
-  backgroundExpression = 10,
-  refBuild = "GRCh38"
-) {
-  return(list(
-    sampleGroup = sampleGroup,
-    refGroup = refGroup,
-    groupingName = groupingName,
-    comparison = comparison,
-    featureLevel = featureLevel,
-    runGO = runGO,
-    fdrThreshORA = fdrThreshORA,
-    fdrThreshGSEA = fdrThreshGSEA,
-    pValThreshGO = pValThreshGO,
-    log2RatioThreshGO = log2RatioThreshGO,
-    backgroundExpression = backgroundExpression,
-    refBuild = refBuild
-  ))
 }
 
 #' is_url

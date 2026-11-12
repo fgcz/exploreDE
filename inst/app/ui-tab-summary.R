@@ -18,7 +18,6 @@ tabItem(
           br(),
           tableOutput("summaryTable"),
         ),
-        # uiOutput(outputId = "linkToMultiDEG"),
         box(
           title = paste("Input dataset"),
           width = NULL,

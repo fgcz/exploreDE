@@ -186,16 +186,6 @@ test_that("step_batch_correction warns and skips when batch column contains NAs"
 })
 
 
-# --- convert_proteomics_se: ensure description fallback column exists --------
-test_that("convert_proteomics_se guarantees a description column for volcano/brush tables", {
-  fx <- fx_proteomics_phospho()
-  out <- convert_proteomics_se(fx$se)
-  for (con in out$contrasts) {
-    expect_true("description" %in% colnames(out$seqAnnoList[[con]]))
-  }
-})
-
-
 # --- build_qc_scatter_types: NULL present_mask defaults to all-TRUE ---------
 test_that("build_qc_scatter_types defaults present_mask to all-TRUE when NULL", {
   rd <- data.frame(feature_id = paste0("g", 1:3))

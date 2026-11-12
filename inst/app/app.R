@@ -524,12 +524,6 @@ server <- function(input, output, session) {
     )
     start_telemetry_server(input, session, telemetry)
   }
-  # Source download helpers (adjust path as needed for deployment structure)
-  if (file.exists("../../R/downloadHelpers.R")) {
-    source("../../R/downloadHelpers.R")
-  } else if (file.exists("R/downloadHelpers.R")) {
-    source("R/downloadHelpers.R")
-  }
   # Data-dependent server modules run `eds <- inputDataReactive()$.eds; req(eds)`
   # at source time, so they can only be sourced once a dataset exists (otherwise
   # req() aborts the whole server function and the app never starts). Defer them
@@ -652,13 +646,7 @@ server <- function(input, output, session) {
     # 3. Pathway tabs (Shown ONLY if RNASeq with DE results)
     if (dataType == "RNASeq" && eds$has_de()) {
       # Check if species is supported for KEGG (human, mouse, rat)
-      keggSpeciesSupported <- kegg_installed() &&
-        tryCatch(
-          {
-            !is.null(kegg_species_label(eds$ref_build()))
-          },
-          error = function(e) FALSE
-        )
+      keggSpeciesSupported <- kegg_installed() && !is.null(kegg_org_code(eds$ref_build()))
 
       pathwayItems <- list(
         tags$li(class = "header", "Pathway Analyses"),

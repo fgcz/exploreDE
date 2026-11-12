@@ -231,18 +231,6 @@ observeEvent(input$importColourFile, {
 
 observeEvent(eds$data_type(), {
   if (eds$data_type() == "RNASeq" && eds$has_de()) {
-    output$linkToMultiDEG <- renderUI({
-      box(
-        title = "Compare Multiple DE Tests!",
-        width = NULL,
-        solidHeader = TRUE,
-        status = "primary",
-        tags$p(
-          "Do you want to compare the results in this DE test with other DE tests you have run? Then, good news, because there is an app for just that! Head to https://fgcz-shiny.uzh.ch/multiDEG to find out more!"
-        ),
-        h4("Try the MultiDEG app:", a("MultiDEG", href = "https://fgcz-shiny.uzh.ch/multiDEG/", target = "_blank"))
-      )
-    })
     output$referencesText <- renderUI({
       box(
         title = "Cite us!",

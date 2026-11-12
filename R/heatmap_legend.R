@@ -155,3 +155,18 @@ draw_heatmap <- function(ht, ..., legend_dx = 0, legend_dy = 0) {
   grid::grid.draw(.shift_heatmap_legends(.sanitise_grob_vps(g), dx, dy))
   invisible(NULL)
 }
+
+#' columns_differ
+#' Whether a heatmap's columns can be clustered as column slices.
+#' Workaround for ComplexHeatmap 2.28.0: with `column_split` and
+#' `cluster_column_slices = TRUE`, its layout pushes a viewport with
+#' `yscale = c(0, <dendrogram height>)`, which fails ("invalid 'yscale' in
+#' viewport") when every column is the same, as the dendrogram then has height
+#' 0. Identical columns have no order to find, so they are left unclustered.
+#' @param mat A numeric matrix.
+#' @return `TRUE` when the matrix has two or more columns and they are not all
+#'   identical.
+#' @noRd
+columns_differ <- function(mat) {
+  ncol(mat) > 1 && any(stats::dist(t(mat)) > 0)
+}

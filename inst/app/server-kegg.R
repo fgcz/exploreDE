@@ -7,7 +7,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
     eds$contrast_label(selectedContrast())
   })
 
-  spp <- if (kegg_installed()) kegg_species_label(eds$ref_build())
+  spp <- if (kegg_installed()) kegg_org_code(eds$ref_build())
 
   observeEvent(
     {
@@ -20,7 +20,7 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
     },
     ignoreInit = TRUE,
     {
-      # KEGG covers human, mouse and rat only; for other species spp is NULL and switch() below would fail.
+      # KEGG covers human, mouse and rat only; for other species spp is NULL.
       req(spp)
       # tryCatch({
       if (input$pTypeKEGG == "Raw") {
@@ -28,19 +28,6 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
       } else {
         pTypeKEGG <- "fdr"
       }
-
-      switch(
-        spp,
-        "Human" = {
-          spp <- "hsa"
-        },
-        "Mouse" = {
-          spp <- "mmu"
-        },
-        "Rat" = {
-          spp <- "rno"
-        }
-      )
 
       if (grepl("^[0-9]", input$keggInput)) {
         keggInput <- paste0(spp, input$keggInput)

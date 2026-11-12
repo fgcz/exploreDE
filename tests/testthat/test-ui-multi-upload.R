@@ -66,6 +66,35 @@ test_that("the contrasts of several uploaded files are compared in Multi DE", {
   expect_true(app$get_js("Shiny.shinyapp.isConnected()"))
 })
 
+# The same contrast loaded twice gives identical tile columns; ComplexHeatmap
+# cannot cluster those ("invalid 'yscale' in viewport").
+test_that("DE Tile Plots draw the same contrast loaded twice", {
+  skip_if_not_installed("anndataR")
+  dir <- withr::local_tempdir()
+  dds <- make_toy_dds(n_genes = 80, seed = 1)
+  one <- file.path(dir, "one.h5ad")
+  build_explore_h5ad(
+    dds,
+    out = one,
+    omics = "rnaseq",
+    de = list(treated_vs_control = DESeq2::results(dds, contrast = c("condition", "treated", "control"))),
+    organism = "Homo sapiens"
+  )
+  copy <- file.path(dir, "copy.h5ad")
+  file.copy(one, copy)
+
+  app <- app_start("multi-tile-identical")
+  app$upload_file(uploadH5ad = c(one, copy), timeout_ = 180e3)
+  app$wait_for_value(output = "settingsTable", timeout = 180e3)
+  app$wait_for_idle()
+  app_open_tab(app, "multiDataSelectionTab")
+  expect_setequal(multi_datasets(app), c("treated_vs_control", "copy_treated_vs_control"))
+
+  app_open_tab(app, "multiTilePlotTab")
+  expect_identical(app_output_errors(app), character(0))
+  expect_false(is.null(app$get_value(output = "TopNTileMap")$src))
+})
+
 # exploreDE(c(...)) sets the option exploreDE.file to its paths; set here
 # directly in the app's process.
 test_that("exploreDE() with several files opens the first and compares the others' contrasts", {

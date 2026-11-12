@@ -468,20 +468,6 @@ volcanoResultsList <- eventReactive(
     xlim <- as.numeric(input$xLimVolcano)
     volcanoTable$log2Ratio <- pmin(pmax(volcanoTable$log2Ratio, -xlim), xlim)
 
-    # Summary table
-    output$volcanoOverview <- function() {
-      table(as.factor(volcanoTable$Status)) %>%
-        kable(
-          format = "html",
-          caption = paste("DE Summary with Volcano Settings")
-        ) %>%
-        kable_styling(
-          bootstrap_options = "striped",
-          full_width = FALSE,
-          position = "left"
-        )
-    }
-
     # Results table
     output$volcanoOverviewTable <- DT::renderDataTable({
       if (scoreMode) {

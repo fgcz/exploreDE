@@ -167,24 +167,6 @@ if (eds$data_type() == "RNASeq" && eds$has_de()) {
 
 # God observer, reset handler, and bucket render removed — now in server-featureBucket.R
 
-# observeEvent({
-#   figuresDataReactive
-#   }, {
-#     if (!is.null(figuresDataReactive$boxplotStatic)) {
-#       output$boxplotWarn <- renderUI({NULL})
-#     } else {
-#       output$boxplotWarn <- renderUI({
-#         div(
-#           style = "text-align: center; padding: 50px; color: #666; font-size: 18px;",
-#           icon("info-circle", style = "font-size: 48px; color: #3c8dbc; margin-bottom: 20px;"),
-#           h3("Please Select Features", style = "color: #3c8dbc;"),
-#           p("Select one or more features from the 'Features for Boxplots' dropdown above to generate your plots."),
-#           p("You can also paste a list of features in the text area provided.", style = "font-style: italic;")
-#         )
-#       })
-#     }
-#   })
-
 # Generate a reactive list of the count data to be plotted ----
 # We do this so we can make aesthetic changes to the plot without having to recalculate the required boxplots and results
 
@@ -215,7 +197,6 @@ boxplotCountsReactive <- eventReactive(
     input$boxplotDesign
     input$boxplotCounts
     selectedContrast()
-    input$boxplotShowPHeight
     input$boxplotCountsLog
     input$boxplotZScore
   },
@@ -382,18 +363,14 @@ observeEvent(
   {
     boxplotCountsReactive()
     bananaMode() # redraw with bananas / asterisks when banana mode toggles
-    input$boxplotYLimLFC
     input$textSizeBoxplot
     input$boxplotNCol
     input$boxplotVertLines
     input$boxplotGrey
     input$boxplotShowP
-    input$boxplotFreeX
-    input$boxplotThemeChoice
     input$boxplotShowBox
     input$boxplotShowPoint
     input$boxplotShowViolin
-    input$boxplotPoints
     input$showDotsBarplot
     selectedContrast()
     input$boxplotPointSize

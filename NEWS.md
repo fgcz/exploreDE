@@ -24,9 +24,13 @@
 - Batch correction is skipped, with a message, when the batch or design column has missing values. A missing value in the design column stopped the tab with "number of rows of matrices must match".
 - Ordination (PCA, PCoA, NMDS) leaves out features with missing values instead of samples. Proteomics data has missing values in every sample, so when "Use top n features" covered all features (the default for datasets with fewer than 500), no plot appeared.
 - Ordination: FGCZ staff see the "Preprocessing order" settings again; everybody saw the staff-only message instead.
+- Ordination and Heatmaps say when "Minimum number of peptides" (default 2) leaves too few features, as for a prolfquapp result whose proteins all have one peptide. Ordination showed an empty plot behind a spinner: its point-selection table, drawn without columns, made the browser drop the rest of the update. The Heatmaps' "No features found" message did not name the filter.
 - The README says how the `?data=` LDAP check identifies the user (`SHINYPROXY_USERNAME`, one ShinyProxy container per user), and that without it every gStore link is refused.
 - Every backend builds its DE table the same way: SAINT `.h5ad` results are sorted by FDR, as SAINT `SummarizedExperiment`s are (they kept feature order), and an RNA-seq `SummarizedExperiment` without a `usedInTest` column marks as tested the features with a p-value, as `.h5ad` files do (it had no such column).
 - Multi DE opens canonical proteomics `.h5ad` files and Parquet directories: their contrasts are loaded into the Multi DE tabs, as for a prolfquapp result; before, the tabs stayed empty. All proteomics data now goes through the same converter, so the Multi-Contrast Boxplot offers the intensities as `intensities` / `intensities_raw` instead of the result's own assay names (`transformedData`, `imputedData`, ...).
+- Multi DE "DE Tile Plots" draw when all plotted contrasts have the same log2 fold changes, for example one contrast loaded from two copies of a file; they stopped with "invalid 'yscale' in viewport". Such columns are left unclustered.
+- Multi DE KEGG Pathway Plots and the DE Tile Plots' KEGG tab recognise the species as the single-dataset KEGG views do, from the reference build's species (`Homo_sapiens/...`, `Mus_musculus/...`, `Rattus_norvegicus/...`): rat data gets them too, and a build whose name merely contains "mm" or "hg" (macaque's `Mmul_10`, for example) is no longer taken for mouse or human. A KEGG pathway fetch reports only a failed download as "Failed to fetch KEGG pathway"; a gene-mapping error shows as itself.
+- Heatmaps: the DE, Custom, GO and KEGG table downloads include the contrast's log2 ratio, p-value and FDR only when "Include DE statistics" is ticked. RNA-seq downloads always included them, whatever the box said.
 - The Multi DE "Integrated DE Table" shows each contrast's p-value. It looked for a `pvalue` column, while the results carry `pValue`, so the column was never there.
 - Multi DE results added through Browse Projects or Manual Import are read like the dataset in the main tabs, with the sample table taken from the result itself. Before, it came from `../input_dataset.tsv`, and a result without that file got an empty sample table.
 - An RNA-seq `SummarizedExperiment` whose p-value column is named `P Value` lists its features by p-value, as one named `pValue` or `P.Value` does.
@@ -80,8 +84,7 @@
   GO sub-tab) appear only when the features carry GO annotation columns, and
   any subset of `GO BP` / `GO MF` / `GO CC` works. The Pathway Tile Plots tab
   shows when GO annotation or a supported KEGG species is available, so
-  human/mouse/rat data without GO columns now get KEGG tiles. New exported
-  helpers `go_annotation_columns()` and `features_in_go_term()`.
+  human/mouse/rat data without GO columns now get KEGG tiles.
 
 ## Bug fixes
 

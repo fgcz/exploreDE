@@ -43,11 +43,15 @@ ordinationResults <- reactive({
   design_col <- input$pcaBatchDesign # read here so ordinationResults() tracks it as a dep even if the cascade step short-circuits
   is_logged <- assay_is_log2(eds, input$pcaCounts)
 
+  # Features before and after the peptide filter, for the message below
+  peptide_filter <- NULL
   step_map <- list(
     "Group subsetting" = function(cd) step_group_subset(cd$counts, cd$dataset, input$pcaFactor1, valid_groups),
     "Peptide filter" = function(cd) {
       if (eds$omics_class() == "proteomics" && length(eds$contrasts())) {
-        step_peptide_filter(cd$counts, cd$dataset, eds$de(eds$contrasts()[[1]]), input$nrPeptidePCA)
+        res <- step_peptide_filter(cd$counts, cd$dataset, eds$de(eds$contrasts()[[1]]), input$nrPeptidePCA)
+        peptide_filter <<- c(before = nrow(cd$counts), after = nrow(res$counts))
+        res
       } else {
         cd
       }
@@ -117,20 +121,23 @@ ordinationResults <- reactive({
     return(NULL)
   }
 
-  # Validate we have enough features for ordination
-  if (ncol(countsPrepared) < 3) {
-    showNotification(
-      paste0(
-        "Not enough features for ordination (",
-        ncol(countsPrepared),
-        " features available). ",
-        "Please try reducing the 'Use top n features' setting or adjust other filters."
-      ),
-      type = "warning",
-      duration = 10
+  # Enough features for ordination? Said in the plot area, naming the peptide
+  # filter when it removed features.
+  peptide_note <- if (!is.null(peptide_filter) && peptide_filter[["after"]] < peptide_filter[["before"]]) {
+    paste0(
+      " 'Minimum number of peptides' (",
+      input$nrPeptidePCA,
+      ") keeps ",
+      peptide_filter[["after"]],
+      " of ",
+      peptide_filter[["before"]],
+      " features."
     )
-    return(NULL)
   }
+  validate(need(
+    nrow(countsOrd) >= 3,
+    paste0("Ordination needs at least 3 features; these settings leave ", nrow(countsOrd), ".", peptide_note)
+  ))
 
   # Calculate ordination based on selected method
   ord_result <- NULL
@@ -805,6 +812,8 @@ observeEvent(
 
 output$pcaStatic <- renderPlot(
   {
+    # Shows ordinationResults()' validation message, if any, in the plot area
+    ordinationResults()
     req(figuresDataReactive$pcaStatic)
     figuresDataReactive$pcaStatic
   },
@@ -873,7 +882,10 @@ output$dlPlot_ordinationPairs <- downloadHandler(
 )
 
 output$pcaBrushTable <- DT::renderDataTable({
-  pc_scores <- figuresDataReactive$pc_scores
+  # Without scores the table would have no columns; DT's JavaScript fails on
+  # that and the browser drops the rest of the update, including the plot's
+  # validation message.
+  pc_scores <- req(figuresDataReactive$pc_scores)
   xvar <- figuresDataReactive$x_selected
   yvar <- figuresDataReactive$y_selected
   brushed_df <- brushedPoints(pc_scores, input$pcaBrush, xvar = xvar, yvar = yvar)

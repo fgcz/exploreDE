@@ -173,7 +173,7 @@ observe({
 })
 
 # Detect species for the KEGG tile tab; hide the tab for unsupported species
-# (mirrors server-multi-kegg.R: human/mouse only, from the first contrast's refBuild)
+# (human, mouse or rat, from the first contrast's refBuild)
 observe({
   req(multiDeReactive$results)
   req(length(multiDeReactive$results) > 0)
@@ -181,14 +181,7 @@ observe({
   if (is.null(refBuild) && !is.null(multiDeReactive$results[[1]]$param$ezRef)) {
     refBuild <- multiDeReactive$results[[1]]$param$ezRef@refBuild
   }
-  code <- NULL
-  if (!is.null(refBuild) && kegg_installed()) {
-    if (grepl("Homo_sapiens|GRCh|hg", refBuild, ignore.case = TRUE)) {
-      code <- "hsa"
-    } else if (grepl("Mus_musculus|GRCm|mm", refBuild, ignore.case = TRUE)) {
-      code <- "mmu"
-    }
-  }
+  code <- if (kegg_installed()) kegg_org_code(refBuild)
   multiTileKegg$keggCode <- code
   if (is.null(code)) {
     hideTab(inputId = "multiTileTabs", target = "KEGG Pathway Genes")
@@ -219,38 +212,18 @@ observeEvent(input$tileKeggGo, {
   firstTable <- multiDeReactive$results[[1]]$seqAnno
   req(firstTable)
 
-  result <- withProgress(message = "Fetching KEGG pathway genes...", {
+  fetched <- withProgress(message = "Fetching KEGG pathway genes...", {
     tryCatch(
-      {
-        pathInfo <- KEGGREST::keggGet(pathwayId)
-        pathwayName <- sub(" - .*$", "", pathInfo[[1]]$NAME)
-
-        geneLinks <- KEGGREST::keggLink(keggCode, paste0("path:", pathwayId))
-        entrezIds <- gsub(paste0(keggCode, ":"), "", geneLinks)
-
-        if ("entrez_id" %in% colnames(firstTable)) {
-          keggFeatureIds <- firstTable$feature_id[firstTable$entrez_id %in% entrezIds]
-        } else {
-          idMapping <- pathview::eg2id(entrezIds, category = c("SYMBOL", "ENSEMBL"), org = keggCode)
-          geneSymbols <- na.omit(idMapping[, "SYMBOL"])
-          ensemblIds <- na.omit(idMapping[, "ENSEMBL"])
-          matchByName <- firstTable$feature_id[firstTable$gene_name %in% geneSymbols]
-          matchById <- firstTable$feature_id[firstTable$gene_id %in% ensemblIds]
-          keggFeatureIds <- unique(c(matchByName, matchById))
-        }
-
-        list(genes = keggFeatureIds, name = pathwayName)
-      },
+      kegg_fetch_pathway(pathwayId, keggCode),
       error = function(e) {
-        showNotification(
-          paste("Failed to fetch KEGG pathway:", e$message),
-          type = "error",
-          duration = 8
-        )
+        showNotification(paste("Failed to fetch KEGG pathway:", e$message), type = "error", duration = 8)
         NULL
       }
     )
   })
+  result <- if (!is.null(fetched)) {
+    list(genes = kegg_map_genes(firstTable, fetched$entrez, keggCode), name = fetched$name)
+  }
 
   if (!is.null(result)) {
     multiTileKegg$cache[[pathwayId]] <- result
@@ -309,7 +282,6 @@ observeEvent(
     input$cellBorderSizeTile2
 
     input$textSizeTile
-    input$figWidthHeatmapTile
     input$figHeightTile
 
     lapply(seq_along(multiDeReactive$results), function(i) {
@@ -555,7 +527,8 @@ observeEvent(
       name = "Log2FC",
       col = tileColours,
       right_annotation = rowAnno,
-      cluster_columns = input$clusterColsTile,
+      # columns_differ(): workaround for ComplexHeatmap, which fails on identical slices
+      cluster_columns = isTRUE(input$clusterColsTile) && columns_differ(mat1),
       cluster_rows = input$clusterRowsTile,
       show_column_names = input$colnamesTile,
       show_row_names = F,
@@ -900,7 +873,8 @@ observeEvent(
             name = "Log2FC",
             col = tileColours,
             # right_annotation = rowAnno[which(rownames(matList$LFC) %in% df3$Gene)], # This line was problematic, removed or adapted
-            cluster_columns = input$clusterColsTile,
+            # columns_differ(): workaround for ComplexHeatmap, which fails on identical slices
+            cluster_columns = isTRUE(input$clusterColsTile) && columns_differ(mat1),
             cluster_rows = input$clusterRowsTile,
             show_column_names = input$colnamesTile,
             show_row_names = TRUE, # Changed to TRUE for custom plots

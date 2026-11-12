@@ -44,7 +44,6 @@ observeEvent(
     input$dataToBubble
     input$subdataToBubble
     input$bubblePathwayNumber
-    input$colourByBubble
     input$colnamesBubble
     input$textSizeBubble
     input$figWidthBubble

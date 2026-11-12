@@ -1,39 +1,3 @@
-# --- generateParams ---------------------------------------------------------
-test_that("generateParams returns a list with all parameter defaults", {
-  p <- generateParams()
-  expect_type(p, "list")
-  expect_true(all(
-    c(
-      "sampleGroup",
-      "refGroup",
-      "groupingName",
-      "comparison",
-      "featureLevel",
-      "runGO",
-      "fdrThreshORA",
-      "fdrThreshGSEA",
-      "pValThreshGO",
-      "log2RatioThreshGO",
-      "backgroundExpression",
-      "refBuild"
-    ) %in%
-      names(p)
-  ))
-  expect_equal(p$sampleGroup, "diff")
-  expect_equal(p$refGroup, "undiff")
-  expect_equal(p$featureLevel, "gene")
-  expect_true(p$runGO)
-})
-
-test_that("generateParams applies overrides passed as named arguments", {
-  p <- generateParams(sampleGroup = "tumour", refGroup = "normal", featureLevel = "isoform", runGO = FALSE)
-  expect_equal(p$sampleGroup, "tumour")
-  expect_equal(p$refGroup, "normal")
-  expect_equal(p$featureLevel, "isoform")
-  expect_false(p$runGO)
-})
-
-
 # --- transform_feature_id ---------------------------------------------------
 test_that("transform_feature_id replaces special characters with '.'", {
   expect_equal(transform_feature_id("ENST00000001:001"), "ENST00000001.001")
