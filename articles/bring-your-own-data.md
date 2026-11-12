@@ -376,7 +376,7 @@ sessionInfo()
 #>   [1] splines_4.6.2               later_1.4.8                
 #>   [3] ggplotify_0.1.4             tibble_3.3.1               
 #>   [5] polyclip_1.10-7             enrichit_0.2.7             
-#>   [7] httr2_1.3.0                 lifecycle_1.0.5            
+#>   [7] lifecycle_1.0.5             httr2_1.3.0                
 #>   [9] rstatix_1.1.0               rprojroot_2.1.1            
 #>  [11] processx_3.9.0              lattice_0.23-1             
 #>  [13] MASS_7.3-66                 backports_1.5.1            
@@ -431,8 +431,8 @@ sessionInfo()
 #> [111] uuid_1.2-2                  nlme_3.1-171               
 #> [113] anndataR_1.3.4              cachem_1.1.0               
 #> [115] rhdf5_2.57.20               stringr_1.6.0              
-#> [117] parallel_4.6.2              miniUI_0.1.2               
-#> [119] vipor_0.4.7                 shinycssloaders_1.1.0      
+#> [117] shinycssloaders_1.1.0       parallel_4.6.2             
+#> [119] miniUI_0.1.2                vipor_0.4.7                
 #> [121] AnnotationDbi_1.75.2        desc_1.4.3                 
 #> [123] pillar_1.11.1               grid_4.6.2                 
 #> [125] vctrs_0.7.3                 promises_1.5.0             
@@ -451,12 +451,12 @@ sessionInfo()
 #> [151] lazyeval_0.2.3              colourpicker_1.3.0         
 #> [153] GOSemSim_2.39.4             fontquiver_0.2.1           
 #> [155] Matrix_1.7-6                patchwork_1.3.2            
-#> [157] bit64_4.8.6                 ggplot2_4.0.3              
-#> [159] learnr_0.11.6               Rhdf5lib_2.1.0             
+#> [157] bit64_4.8.6                 learnr_0.11.6              
+#> [159] ggplot2_4.0.3               Rhdf5lib_2.1.0             
 #> [161] KEGGREST_1.53.6             shiny_1.14.0               
 #> [163] igraph_2.3.4                broom_1.0.13               
 #> [165] memoise_2.0.1               bslib_0.12.0               
 #> [167] ggtree_4.3.0                bit_4.6.0                  
-#> [169] officer_0.7.8               gson_0.2.2                 
-#> [171] ape_5.8-1
+#> [169] officer_0.7.8               ape_5.8-1                  
+#> [171] gson_0.2.2
 ```

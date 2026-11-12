@@ -24,6 +24,12 @@
   takes a vector of paths the same way. Saved sessions record these
   datasets by file label and contrast, and restore them when the same
   files have been added again (the files themselves are never saved).
+- Count QC shows feature descriptions without the
+  `[Source:HGNC Symbol;Acc:...]` suffix, as RNA-seq does.
+- Multi DE reads a dataset’s count methods once for all its contrasts
+  and keeps one copy of them. It computed VST, FPKM and TPM again for
+  every contrast and held a copy per contrast, so a dataset with many
+  contrasts loaded slowly and took that many times the memory.
 - Heatmaps: a “Sample ratios” setting defines log2 ratios between any
   two sets of samples (the difference of their mean log2 values on the
   chosen count method, always taken on the log2 scale, with no
