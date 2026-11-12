@@ -67,6 +67,11 @@
   folders only for users with access to it. A link the user was denied
   no longer leaves its project browsable after loading the demo or an
   upload.
+- Security: the landing page and Multi DE’s “Upload files” panel take
+  `.h5ad` files only. An uploaded `.rds` was opened with
+  [`readRDS()`](https://rdrr.io/r/base/readRDS.html), which can run code
+  that the file carries. `exploreDE("file.rds")` still opens a local
+  `.rds`.
 - Security: the Multi DE Upset/Venn tab shows the features of a selected
   intersection as text. It inserted the feature ids as HTML, so a
   dataset whose ids contained markup could run script in the viewer’s
@@ -237,6 +242,29 @@
 - Loading a saved session reports a Multi DE dataset whose file exists
   but cannot be read as “Could not be read”, with the error, instead of
   “Not found or not accessible”.
+- The GSEA table shows again after switching back from a contrast
+  without GSEA results. It stayed on the “No GSEA results” message for
+  the rest of the session, and with GSEA results on a second contrast
+  only it never appeared.
+- Select features by pattern: a regular expression is matched with R’s
+  default engine instead of Perl’s. Some patterns, such as `(.+)+X$`,
+  made the Perl engine search for over a minute on a few thousand
+  protein IDs, holding up every session served by that R process;
+  Perl-only syntax such as lookarounds is no longer accepted.
+- Saved sessions no longer contain the upload boxes’ last file (its name
+  and the server’s temporary path); loading such a session tried to set
+  the upload box again and again.
+- Select features by pattern: the limit of 1000 counts features, not
+  names. With protein IDs or gene symbols each name can stand for many
+  peptides or sites, so `*` added 5000 peptides of 1000 proteins; the
+  box now says how many features matched when the limit applies.
+- `exploreDE(c(...))` opens the first file that loads and compares the
+  files after it in Multi DE, as the landing page does; one message
+  lists the files that could not be loaded. When the first file failed,
+  the app stayed on the landing page and dropped the others.
+- Loading a saved session brings back the loaded dataset’s own contrasts
+  in Multi DE, also in a fresh session where Multi DE does not hold them
+  yet; they were reported as “Not found or not accessible”.
 - The Multi DE “Integrated DE Table” shows each contrast’s p-value. It
   looked for a `pvalue` column, while the results carry `pValue`, so the
   column was never there.
