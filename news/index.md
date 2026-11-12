@@ -172,6 +172,14 @@
   log2 fold changes, for example one contrast loaded from two copies of
   a file; they stopped with “invalid ‘yscale’ in viewport”. Such columns
   are left unclustered.
+- Multi DE KEGG Pathway Plots and the DE Tile Plots’ KEGG tab recognise
+  the species as the single-dataset KEGG views do, from the reference
+  build’s species (`Homo_sapiens/...`, `Mus_musculus/...`,
+  `Rattus_norvegicus/...`): rat data gets them too, and a build whose
+  name merely contains “mm” or “hg” (macaque’s `Mmul_10`, for example)
+  is no longer taken for mouse or human. A KEGG pathway fetch reports
+  only a failed download as “Failed to fetch KEGG pathway”; a
+  gene-mapping error shows as itself.
 - The Multi DE “Integrated DE Table” shows each contrast’s p-value. It
   looked for a `pvalue` column, while the results carry `pValue`, so the
   column was never there.
