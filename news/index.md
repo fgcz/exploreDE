@@ -168,6 +168,10 @@
   Boxplot offers the intensities as `intensities` / `intensities_raw`
   instead of the result’s own assay names (`transformedData`,
   `imputedData`, …).
+- Multi DE “DE Tile Plots” draw when all plotted contrasts have the same
+  log2 fold changes, for example one contrast loaded from two copies of
+  a file; they stopped with “invalid ‘yscale’ in viewport”. Such columns
+  are left unclustered.
 - The Multi DE “Integrated DE Table” shows each contrast’s p-value. It
   looked for a `pvalue` column, while the results carry `pValue`, so the
   column was never there.
