@@ -147,6 +147,12 @@
   for datasets with fewer than 500), no plot appeared.
 - Ordination: FGCZ staff see the “Preprocessing order” settings again;
   everybody saw the staff-only message instead.
+- Ordination and Heatmaps say when “Minimum number of peptides”
+  (default 2) leaves too few features, as for a prolfquapp result whose
+  proteins all have one peptide. Ordination showed an empty plot behind
+  a spinner: its point-selection table, drawn without columns, made the
+  browser drop the rest of the update. The Heatmaps’ “No features found”
+  message did not name the filter.
 - The README says how the `?data=` LDAP check identifies the user
   (`SHINYPROXY_USERNAME`, one ShinyProxy container per user), and that
   without it every gStore link is refused.
