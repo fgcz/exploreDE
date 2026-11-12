@@ -24,6 +24,20 @@
   takes a vector of paths the same way. Saved sessions record these
   datasets by file label and contrast, and restore them when the same
   files have been added again (the files themselves are never saved).
+- Heatmaps redraw without computing the counts again when only colours,
+  labels, fonts or layout change. Every change recomputed the count
+  method (VST runs DESeq2) and the batch correction on all features, and
+  repeated their messages.
+- Heatmap table downloads list features under their full ids, so
+  “Include DE statistics” fills in every row. The DE heatmap cut ids to
+  15 characters, which left the statistics empty for longer ids and
+  merged ids that share their first 15 characters. A heatmap that shows
+  no features downloads an empty table instead of the last one it drew,
+  and a dataset whose DE heatmap starts empty can download its table
+  once it has features.
+- Heatmaps: a GO term or KEGG pathway with one gene left after its
+  filters, or a single kept sample, draws instead of ending the session;
+  the expression filter now applies to a single-gene term too.
 - Count QC shows feature descriptions without the
   `[Source:HGNC Symbol;Acc:...]` suffix, as RNA-seq does.
 - Multi DE reads a dataset’s count methods once for all its contrasts
