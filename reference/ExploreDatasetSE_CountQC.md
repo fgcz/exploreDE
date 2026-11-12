@@ -120,7 +120,7 @@ eds
 #>   factors (1):
 #>     Condition  (primary): diff, undiff
 #>   contrasts (0): 
-#>   primary_contrast: NA
+#>   primary_contrast: (none)
 #>   assays:           counts, vst
 #>   enrichment:       (none)
 eds$has_de()

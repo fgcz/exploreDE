@@ -193,6 +193,43 @@
   contrast’s log2 ratio, p-value and FDR only when “Include DE
   statistics” is ticked. RNA-seq downloads always included them,
   whatever the box said.
+- An `.h5ad` whose sample table has a column such as `organism part` but
+  no `organism` no longer shows that column’s value (a tissue, say) as
+  the organism and reference in the Results Summary.
+- [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  without `ref_build` writes no `reference_genome`; it wrote the text
+  “NA”, which the app then showed as the reference build. Files written
+  before keep it until rebuilt.
+- The Results Summary’s settings table of a SUSHI result leaves out a
+  setting the result does not record (analysis, method, reference, …)
+  instead of failing to show.
+- An RNA-seq `SummarizedExperiment` without feature lengths
+  (`featWidth`) no longer offers FPKM and TPM, which could not be
+  computed; an isoform-level one without `gene_name` loads with its row
+  names as feature ids instead of failing. CountQC results already did
+  both.
+- [`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md)
+  and
+  [`new_explore_dataset()`](https://fgcz.github.io/exploreDE/reference/new_explore_dataset.md)
+  refuse an `.RData` file that is not a SUSHI `...-EzResult.RData` with
+  a message; it ran until R’s stack overflowed.
+- A prolfqua `SummarizedExperiment` without contrasts opens as
+  proteomics data with all its proteins. It was taken for a CountQC
+  result and offered a VST of raw counts it does not have; built
+  directly as `ExploreDatasetSE_Proteomics` it had no features.
+- A proteomics `?data=` link to a file that does not exist on pStore (or
+  with pStore out of reach) shows “This link can’t be opened” with the
+  reason. The session used to end on a grey screen.
+- Count QC plot downloads use the figure width and height set at the
+  time of the download. The first download fixed the size for every
+  later one.
+- KEGG Pathway views show why a pathway map could not be drawn, and a
+  failed KEGG image download fails visibly. The error went only to the
+  server log: the user saw no image, or got an empty file.
+- Colours / Labels: importing a colour template sets the colours again.
+  The import ended the session with “updateColourInput() has been moved
+  to the ‘colourpicker’ package”: the app called shinyjs’s retired
+  function of that name, attached after colourpicker.
 - The Multi DE “Integrated DE Table” shows each contrast’s p-value. It
   looked for a `pvalue` column, while the results carry `pValue`, so the
   column was never there.

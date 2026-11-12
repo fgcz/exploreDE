@@ -124,7 +124,7 @@ eds
 #>   factors (1):
 #>     Condition  (primary): ctrl, treated
 #>   contrasts (0): 
-#>   primary_contrast: NA
+#>   primary_contrast: (none)
 #>   assays:           counts, vst
 #>   enrichment:       (none)
 head(eds$sgrna_to_gene())
