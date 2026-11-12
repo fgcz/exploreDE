@@ -301,8 +301,7 @@
   columns, and any subset of `GO BP` / `GO MF` / `GO CC` works. The
   Pathway Tile Plots tab shows when GO annotation or a supported KEGG
   species is available, so human/mouse/rat data without GO columns now
-  get KEGG tiles. New exported helpers `go_annotation_columns()` and
-  `features_in_go_term()`.
+  get KEGG tiles.
 
 ### Bug fixes
 

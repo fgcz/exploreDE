@@ -111,7 +111,7 @@
 <code>.h5ad</code> DE tables can say which features entered the test: Optional <code>used_in_test</code> column (spec §5). <code><a href="../reference/build_explore_h5ad.html">build_explore_h5ad()</a></code> picks up a <code>usedInTest</code> / <code>used_in_test</code> column from the DE table through the column dictionary, so files built from SUSHI results show the same tested features as the SUSHI original. Without it, “tested” still means a non-<code>NA</code> p-value.</li>
 <li>Reads the prolfquapp DEA’s <code>AnnData.h5ad</code> and prolfquapp ≥ 2.10 <code>SummarizedExperiment</code> results.</li>
 <li>Container RAM/CPU badge in the header.</li>
-<li>GO behaves like KEGG: The GO parts of the app (tile plot selector, heatmap GO sub-tab) appear only when the features carry GO annotation columns, and any subset of <code>GO BP</code> / <code>GO MF</code> / <code>GO CC</code> works. The Pathway Tile Plots tab shows when GO annotation or a supported KEGG species is available, so human/mouse/rat data without GO columns now get KEGG tiles. New exported helpers <code>go_annotation_columns()</code> and <code>features_in_go_term()</code>.</li>
+<li>GO behaves like KEGG: The GO parts of the app (tile plot selector, heatmap GO sub-tab) appear only when the features carry GO annotation columns, and any subset of <code>GO BP</code> / <code>GO MF</code> / <code>GO CC</code> works. The Pathway Tile Plots tab shows when GO annotation or a supported KEGG species is available, so human/mouse/rat data without GO columns now get KEGG tiles.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-3-9-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-3-9-0"></a></h3>
