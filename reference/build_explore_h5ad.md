@@ -1,12 +1,14 @@
 # Build a canonical exploreDE `.h5ad` from user-supplied data
 
 The source-agnostic "bring your own data" constructor. `x` is either a
-rich upstream object (a `DESeqDataSet` — the preferred starting point)
-or the counts themselves (a matrix, or a named list of matrices such as
-`list(counts=, normalised=, vst=, tpm=)`). Any parts the object doesn't
-carry — DE tables, pathway statistics, extra count matrices — are
-supplied as arguments and merged. Only counts + `coldata` + `omics` are
-required.
+`DESeqDataSet` (the preferred starting point: its counts, `colData`,
+`rowData` and factors are used) or the counts themselves (a matrix, or a
+named list of matrices such as
+`list(counts=, normalised=, vst=, tpm=)`). From a
+`SummarizedExperiment`, pass its assays as such a list, with
+`coldata = colData(se)` and `rowdata = rowData(se)`. DE tables and
+pathway statistics are supplied as arguments. Only counts + `coldata` +
+`omics` are required.
 
 ## Usage
 
@@ -24,7 +26,6 @@ build_explore_h5ad(
   pathways = list(),
   enrichment_padj_max = 0.1,
   factors = NULL,
-  gene_symbol = NULL,
   organism = NA_character_,
   ref_build = NA_character_
 )
@@ -113,7 +114,7 @@ build_explore_h5ad(
   Optional colData columns that are experimental factors (default: all
   character/factor-typed columns).
 
-- gene_symbol, organism, ref_build:
+- organism, ref_build:
 
   Optional labels.
 

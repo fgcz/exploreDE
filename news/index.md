@@ -113,6 +113,15 @@
   the check that the file is exploreDE/1.0.
 - Breaking:
   [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  no longer takes a plain `SummarizedExperiment` or a `gene_symbol`
+  argument. From a `SummarizedExperiment` it kept only the first assay,
+  unannounced, so a proteomics object’s raw intensities were stored as
+  its log2 intensities; pass the assays as a named list with
+  `coldata = colData(se)` and `rowdata = rowData(se)`. For symbols, name
+  the `rowdata` column with `rowdata_columns = list(symbol_col = ...)`.
+  A `DESeqDataSet` works as before.
+- Breaking:
+  [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
   requires contrast names of the form `<test>_vs_<reference>`, with both
   groups levels of one `coldata` factor, and records that factor as
   `factor_used`. Before, it stored any name split at `_vs_` as the
