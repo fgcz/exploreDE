@@ -230,6 +230,13 @@
   The import ended the session with “updateColourInput() has been moved
   to the ‘colourpicker’ package”: the app called shinyjs’s retired
   function of that name, attached after colourpicker.
+- Results Summary, Methods download: when the document cannot be built,
+  the download fails with the error instead of saving an empty file. For
+  an RNA-seq `.h5ad` the tab says that methods text needs a SUSHI
+  result, instead of offering a button that gave an empty file.
+- Loading a saved session reports a Multi DE dataset whose file exists
+  but cannot be read as “Could not be read”, with the error, instead of
+  “Not found or not accessible”.
 - The Multi DE “Integrated DE Table” shows each contrast’s p-value. It
   looked for a `pvalue` column, while the results carry `pValue`, so the
   column was never there.
