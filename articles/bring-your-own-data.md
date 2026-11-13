@@ -368,7 +368,7 @@ sessionInfo()
 #>  [1] SummarizedExperiment_1.43.0 Biobase_2.73.2             
 #>  [3] GenomicRanges_1.65.4        Seqinfo_1.3.2              
 #>  [5] IRanges_2.47.5              S4Vectors_0.51.10          
-#>  [7] BiocGenerics_0.59.12        generics_0.1.4             
+#>  [7] BiocGenerics_0.59.13        generics_0.1.4             
 #>  [9] MatrixGenerics_1.25.0       matrixStats_1.5.0          
 #> [11] exploreDE_3.10.0           
 #> 
@@ -395,7 +395,7 @@ sessionInfo()
 #>  [39] ggrepel_0.9.8               tidytree_0.4.8             
 #>  [41] pkgdown_2.2.1               svglite_2.2.2              
 #>  [43] codetools_0.2-20            DelayedArray_0.39.8        
-#>  [45] scuttle_1.23.2              DOSE_4.7.3                 
+#>  [45] scuttle_1.23.2              DOSE_4.7.4                 
 #>  [47] DT_0.34.0                   xml2_1.6.0                 
 #>  [49] ggforce_0.5.0               tidyselect_1.2.1           
 #>  [51] aplot_0.3.2                 farver_2.1.2               
@@ -429,7 +429,7 @@ sessionInfo()
 #> [107] ggfun_0.2.2                 knitr_1.52                 
 #> [109] rstudioapi_0.19.0           reshape2_1.4.5             
 #> [111] uuid_1.2-2                  nlme_3.1-171               
-#> [113] anndataR_1.3.4              cachem_1.1.0               
+#> [113] anndataR_1.3.5              cachem_1.1.0               
 #> [115] rhdf5_2.57.20               stringr_1.6.0              
 #> [117] shinycssloaders_1.1.0       parallel_4.6.2             
 #> [119] miniUI_0.1.2                vipor_0.4.7                
