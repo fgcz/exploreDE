@@ -28,115 +28,28 @@ group_colours <- function(input, factor, levels) {
 #' @noRd
 make_rep_heatmap <- function(data, input, title_suffix = "") {
   shiny::req(data)
-
-  # Prepare annotations
-  ha_top <- NULL
-  ha_left <- NULL
-  row_names_gp <- grid::gpar(fontsize = input$replicabilityTextSize)
-  column_names_gp <- grid::gpar(fontsize = input$replicabilityTextSize)
-
+  size <- input$replicabilityTextSize
+  names_gp <- grid::gpar(fontsize = size)
+  anno <- list(top = NULL, left = NULL)
   if (!is.null(input$replicabilityFactors)) {
-    dataset <- data$dataset
-    sample_names <- rownames(data$corr)
-    dataset <- dataset[match(sample_names, dataset$Name), ]
-
-    # Get colors
-    colourList <- lapply(input$replicabilityFactors, function(f) {
-      group_colours(input, f, levels(as.factor(dataset[[f]])))
-    }) |>
-      stats::setNames(input$replicabilityFactors)
-
-    # Color labels based on the first selected factor
-    factor_col <- input$replicabilityFactors[1]
-    colors <- group_colours(input, factor_col, levels(as.factor(dataset[[factor_col]])))
-
-    sample_colors <- colors[as.character(dataset[[factor_col]])]
-    names(sample_colors) <- dataset$Name
-
-    row_names_gp <- grid::gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
-    column_names_gp <- grid::gpar(fontsize = input$replicabilityTextSize, col = sample_colors)
-
-    anno_df <- dataset[, input$replicabilityFactors, drop = FALSE]
-
-    # Legend shows the Colours-tab display labels: rich ones via legends
-    # built at draw time by draw_heatmap() (see R/level_labels.R)
-    repRich <- any(vapply(
-      input$replicabilityFactors,
-      function(f) {
-        is_rich_labels(level_labels(input, f, names(colourList[[f]])))
-      },
-      logical(1)
-    ))
-    annoLegendParam <- lapply(input$replicabilityFactors, function(f) {
-      levs <- names(colourList[[f]])
-      list(at = levs, labels = unname(level_labels(input, f, levs, mode = "plain")))
-    }) |>
-      stats::setNames(input$replicabilityFactors)
-
-    ha_top <- ComplexHeatmap::HeatmapAnnotation(
-      df = anno_df,
-      col = colourList,
-      show_legend = !repRich,
-      annotation_legend_param = annoLegendParam,
-      annotation_name_gp = grid::gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-      gp = grid::gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
-    )
-    if (repRich) {
-      attr(ha_top, "rich_legends") <- lapply(input$replicabilityFactors, function(f) {
-        heatmap_legend_spec(
-          title = f,
-          labels = level_labels(input, f, names(colourList[[f]]), force_rich = TRUE),
-          fill = colourList[[f]],
-          title_gp = grid::gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-          labels_gp = grid::gpar(fontsize = input$replicabilityTextSize)
-        )
-      })
-    }
-
-    ha_left <- ComplexHeatmap::rowAnnotation(
-      df = anno_df,
-      col = colourList,
-      show_legend = FALSE,
-      annotation_name_gp = grid::gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
-      gp = grid::gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
-    )
+    anno <- rep_annotations(data, input)
+    names_gp <- grid::gpar(fontsize = size, col = anno$sample_colours)
   }
-
-  # Get color breaks
-  at <- c(input$replicabilityAtLow, input$replicabilityAtMid, input$replicabilityAtHigh)
-
-  # Determine color scheme - use palette if selected, otherwise use manual colors
-  if (!is.null(input$replicabilityPalette) && input$replicabilityPalette != "None") {
-    palette_colours <- RColorBrewer::brewer.pal(9, input$replicabilityPalette)
-    selected_colours <- palette_colours[c(1, 5, 9)]
-    if (input$replicabilityPaletteRev) {
-      heatmap_colours <- circlize::colorRamp2(at, selected_colours)
-    } else {
-      heatmap_colours <- circlize::colorRamp2(at, rev(selected_colours))
-    }
-  } else {
-    heatmap_colours <- circlize::colorRamp2(
-      at,
-      c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh)
-    )
-  }
-
   hm <- ComplexHeatmap::Heatmap(
     data$corr,
     name = "Correlation",
-    col = heatmap_colours,
-    top_annotation = ha_top,
-    left_annotation = ha_left,
+    col = rep_heatmap_colours(input),
+    top_annotation = anno$top,
+    left_annotation = anno$left,
     show_row_names = input$replicabilityShowNames,
     show_column_names = input$replicabilityShowNames,
-    row_names_gp = row_names_gp,
-    column_names_gp = column_names_gp,
-    heatmap_legend_param = list(title_gp = grid::gpar(fontsize = input$replicabilityTextSize, fontface = "bold")),
+    row_names_gp = names_gp,
+    column_names_gp = names_gp,
+    heatmap_legend_param = list(title_gp = grid::gpar(fontsize = size, fontface = "bold")),
     rect_gp = grid::gpar(col = input$replicabilityBorderColor2, lwd = input$replicabilityBorderSize2 / 10),
     column_title = paste0("Correlation Heatmap: ", title_suffix),
-    column_title_gp = grid::gpar(fontsize = input$replicabilityTextSize + 2, fontface = "bold")
+    column_title_gp = grid::gpar(fontsize = size + 2, fontface = "bold")
   )
-
   draw_heatmap(
     hm,
     merge_legend = TRUE,
@@ -144,6 +57,81 @@ make_rep_heatmap <- function(data, input, title_suffix = "") {
     legend_dx = input$replicabilityLegendDX,
     legend_dy = input$replicabilityLegendDY
   )
+}
+
+# Annotation bars of the selected factors (top and left) and the sample label
+# colours, which follow the first selected factor.
+rep_annotations <- function(data, input) {
+  factors <- input$replicabilityFactors
+  dataset <- data$dataset[match(rownames(data$corr), data$dataset$Name), ]
+  colour_list <- stats::setNames(
+    lapply(factors, function(f) group_colours(input, f, levels(as.factor(dataset[[f]])))),
+    factors
+  )
+  anno_df <- dataset[, factors, drop = FALSE]
+  list(
+    top = rep_top_annotation(anno_df, colour_list, input),
+    left = ComplexHeatmap::rowAnnotation(
+      df = anno_df,
+      col = colour_list,
+      show_legend = FALSE,
+      annotation_name_gp = grid::gpar(fontsize = input$replicabilityTextSize, fontface = "bold"),
+      gp = grid::gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
+    ),
+    sample_colours = stats::setNames(colour_list[[1]][as.character(dataset[[factors[1]]])], dataset$Name)
+  )
+}
+
+# The top annotation. Its legend shows the Colours-tab display labels: rich
+# ones via legends built at draw time by draw_heatmap() (see R/level_labels.R).
+rep_top_annotation <- function(anno_df, colour_list, input) {
+  factors <- names(colour_list)
+  size <- input$replicabilityTextSize
+  rich <- any(vapply(
+    factors,
+    function(f) is_rich_labels(level_labels(input, f, names(colour_list[[f]]))),
+    logical(1)
+  ))
+  legend_param <- stats::setNames(
+    lapply(factors, function(f) {
+      levs <- names(colour_list[[f]])
+      list(at = levs, labels = unname(level_labels(input, f, levs, mode = "plain")))
+    }),
+    factors
+  )
+  ha <- ComplexHeatmap::HeatmapAnnotation(
+    df = anno_df,
+    col = colour_list,
+    show_legend = !rich,
+    annotation_legend_param = legend_param,
+    annotation_name_gp = grid::gpar(fontsize = size, fontface = "bold"),
+    gp = grid::gpar(col = input$replicabilityBorderColor1, lwd = input$replicabilityBorderSize1 / 10)
+  )
+  if (rich) {
+    attr(ha, "rich_legends") <- lapply(factors, function(f) {
+      heatmap_legend_spec(
+        title = f,
+        labels = level_labels(input, f, names(colour_list[[f]]), force_rich = TRUE),
+        fill = colour_list[[f]],
+        title_gp = grid::gpar(fontsize = size, fontface = "bold"),
+        labels_gp = grid::gpar(fontsize = size)
+      )
+    })
+  }
+  ha
+}
+
+# Correlation colour scale: a Brewer palette, else the three picked colours.
+rep_heatmap_colours <- function(input) {
+  at <- c(input$replicabilityAtLow, input$replicabilityAtMid, input$replicabilityAtHigh)
+  if (is.null(input$replicabilityPalette) || input$replicabilityPalette == "None") {
+    return(circlize::colorRamp2(
+      at,
+      c(input$replicabilityColorLow, input$replicabilityColorMid, input$replicabilityColorHigh)
+    ))
+  }
+  selected <- RColorBrewer::brewer.pal(9, input$replicabilityPalette)[c(1, 5, 9)]
+  circlize::colorRamp2(at, if (input$replicabilityPaletteRev) selected else rev(selected))
 }
 
 #' make_rep_dendrogram
