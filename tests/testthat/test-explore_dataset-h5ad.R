@@ -645,7 +645,7 @@ test_that("S4 DataFrame colData preserves '[Factor]' column names and factors cl
 
 test_that("ExploreDatasetH5AD matches ExploreDatasetSE_RNASeq accessor-for-accessor", {
   skip_if_no_anndataR()
-  fx <- fx_rnaseq_gene() # skips if gstore unreachable
+  fx <- fx_rnaseq_gene()
   eds_se <- new_explore_dataset(fx$se)
 
   out <- withr::local_tempfile(fileext = ".h5ad")

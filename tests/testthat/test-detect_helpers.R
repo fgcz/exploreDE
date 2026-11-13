@@ -1,8 +1,7 @@
-# --- detectAligner on real fixture ------------------------------------------
-test_that("detectAligner identifies the aligner from the real RNASeq fixture's input_dataset.tsv", {
-  fx <- fx_rnaseq_gene_gstore()
-  aligner <- detectAligner(fx$dataDir)
-  expect_true(aligner %in% c("STAR", "Kallisto", "FeatureCounts"), info = paste("got:", aligner))
+# --- detectAligner on the demo's SUSHI directory ----------------------------
+test_that("detectAligner reads Kallisto from a SUSHI DESeq2 directory's input_dataset.tsv", {
+  fx <- fx_rnaseq_gene_dir()
+  expect_identical(detectAligner(fx$dataDir), "Kallisto")
 })
 
 test_that("detectAligner returns 'Unknown' when input_dataset.tsv is missing", {
