@@ -61,7 +61,7 @@ ExploreDatasetSE_CountQC <- R6::R6Class(
         schema_version = "exploreDE/config/1.0",
         omics_class = "genomics",
         data_type = "CountQC",
-        organism = eds_infer_organism(param),
+        organism = eds_infer_organism(param, SummarizedExperiment::colData(se)),
         ref_build = param$refBuild %||% NA_character_,
         feature_id_kind = param$featureLevel %||% "gene",
         factors = factor_names,

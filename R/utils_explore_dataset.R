@@ -219,22 +219,30 @@ eds_standardise_de_columns <- function(df) {
 }
 
 # SUSHI param$species is rarely set; fall back to the first slash-segment of
-# refBuild ("Homo_sapiens/GENCODE/..." → "Homo sapiens").
+# refBuild ("Homo_sapiens/GENCODE/..." → "Homo sapiens"), then to the dataset's
+# Species column ("Mus musculus (house mouse)" → "Mus musculus"), which apps
+# without a refBuild (e.g. ExploreMageckCounts) still carry.
 # nolint start: cyclocomp_linter. Flat organism lookup.
-eds_infer_organism <- function(param) {
+eds_infer_organism <- function(param, col_data = NULL) {
   sp <- param$species
   if (!is.null(sp) && !is.na(sp) && nzchar(sp)) {
     return(sp)
   }
   rb <- param$refBuild
-  if (is.null(rb) || is.na(rb) || !nzchar(rb)) {
-    return(NA_character_)
+  if (!is.null(rb) && !is.na(rb) && nzchar(rb)) {
+    parts <- strsplit(rb, "/", fixed = TRUE)[[1]]
+    if (length(parts)) {
+      return(gsub("_", " ", parts[1], fixed = TRUE))
+    }
   }
-  parts <- strsplit(rb, "/", fixed = TRUE)[[1]]
-  if (!length(parts)) {
-    return(NA_character_)
+  if (!is.null(col_data) && "Species" %in% colnames(col_data)) {
+    sp <- unique(trimws(sub("\\s*\\(.*\\)\\s*$", "", as.character(col_data$Species))))
+    sp <- sp[!is.na(sp) & nzchar(sp)]
+    if (length(sp) == 1L) {
+      return(sp)
+    }
   }
-  gsub("_", " ", parts[1], fixed = TRUE)
+  NA_character_
 }
 # nolint end
 

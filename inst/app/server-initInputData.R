@@ -327,12 +327,20 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
     se <- read_se_any(dataDir, "deResult")
     # If CountQC, load that (we use only the 'present' genes because it has the normalised counts in the assays)
   } else if (grepl("CountQC|ExploreMageckCounts", dataDir)) {
-    dataDir <- dirname(dataDir)
+    # Current SUSHI links point at the result directory; old CountQC links
+    # point at a file inside it (counts-...-EzResult.RData).
+    if (!dir.exists(dataDir)) {
+      dataDir <- dirname(dataDir)
+    }
     se <- read_se_any(dataDir, "rawData_final")
     # Also load the unfiltered SE (pre-isValid) so the Features Above
     # Threshold bar plot can use the full transcriptome as denominator
     # (matching the ezRun CountQC.Rmd report).
     seUnfiltered <- read_se_any(dataDir, "rawData")
+    # Apps without a filtered object (ExploreMageckCounts) only write rawData.
+    if (is.null(se) && !is.null(seUnfiltered)) {
+      se <- seUnfiltered
+    }
   }
 
   if (is.null(se)) {
