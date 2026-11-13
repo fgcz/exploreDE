@@ -29,7 +29,7 @@ the package (`inst/examples/`).
 
 ```{r install, eval = FALSE}
 install.packages("BiocManager")
-BiocManager::install("fgcz/exploreDE")   # pulls in the Bioconductor dependencies
+BiocManager::install("exploreDE")
 ```
 
 Start the app with:
