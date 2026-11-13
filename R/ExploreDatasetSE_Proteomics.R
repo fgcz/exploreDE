@@ -11,6 +11,97 @@
 # log2Ratio/fdr by the time this runs, but it never touches SaintScore.
 .se_is_saint <- function(contrast_df) "SaintScore" %in% colnames(contrast_df)
 
+# --- config of a prolfqua SE ---------------------------------------------------
+
+# Factors: the colData columns the legacy convert_proteomics_se exclusion
+# regex keeps. Names are taken verbatim from colData (NO `G_` stripping) to
+# match the legacy gStoreList$factors / $groupingName values that modules
+# consume.
+.se_proteomics_factors <- function(cd) {
+  cols <- grep("Sample|Name|names|channel|raw\\.file", colnames(cd), invert = TRUE, ignore.case = TRUE, value = TRUE)
+  levels <- lapply(cols, function(fc) {
+    v <- cd[[fc]]
+    if (is.factor(v)) levels(v) else sort(unique(as.character(v)))
+  })
+  list(names = cols, levels = setNames(levels, cols))
+}
+
+# Flavour (protein / phospho / peptide) and SAINT, from the first contrast's
+# columns as standardise_columns() names them (it leaves SaintScore as-is).
+# data_type names the flavour, so server modules can dispatch on it;
+# omics_class keeps the umbrella.
+.se_proteomics_flavour <- function(se, contrasts) {
+  if (!length(contrasts)) {
+    return(list(feature_id_kind = "protein", data_type = "proteomics", saint = FALSE))
+  }
+  df1 <- standardise_columns(
+    data.frame(
+      SummarizedExperiment::rowData(se)[[paste0("constrast_", contrasts[1])]],
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  )
+  kind <- if ("site" %in% colnames(df1)) {
+    "phospho"
+  } else if ("peptide_Id" %in% colnames(df1)) {
+    "peptide"
+  } else {
+    "protein"
+  }
+  list(
+    feature_id_kind = kind,
+    data_type = switch(kind, peptide = "peptidomics", phospho = "phosphoproteomics", "proteomics"),
+    saint = .se_is_saint(df1)
+  )
+}
+
+# SAINTexpress reference = the grouping level flagged as control (colData
+# CONTROL == "C", e.g. eGFP); the contrast names carry no `_vs_`.
+.se_saint_reference <- function(cd, factor1, saint) {
+  if (!saint || !"CONTROL" %in% colnames(cd) || !(factor1 %||% "") %in% colnames(cd)) {
+    return(NA_character_)
+  }
+  ctrl_lvls <- unique(as.character(cd[[factor1]])[toupper(trimws(as.character(cd$CONTROL))) == "C"])
+  if (length(ctrl_lvls) == 1L) ctrl_lvls else NA_character_
+}
+
+.se_proteomics_contrast_meta <- function(contrasts, factor1, saint, reference_default) {
+  setNames(
+    lapply(contrasts, function(cn) {
+      grp <- strsplit(cn, "_vs_|--over--")[[1]]
+      list(
+        test_group = grp[1],
+        reference_group = if (saint) reference_default else grp[2],
+        factor_name = factor1,
+        method = if (saint) "SAINTexpress" else "prolfqua",
+        thresholds = list(fdr = 0.05, log2fc = 1),
+        # SAINT carries a second, display-only significance axis (SaintScore,
+        # high = significant); mirrors the h5ad backend's score label.
+        score_label = if (saint) "SaintScore" else NULL
+      )
+    }),
+    contrasts
+  )
+}
+
+# Assays: the transformed one is primary (without one, the first stands in on
+# its own scale), the untransformed one raw. Display labels are the SE's assay
+# names, as the legacy convert_proteomics_se used them.
+.se_proteomics_assays <- function(ass_nms) {
+  transformed_key <- intersect(c("transformedData", "transformed", "intensities", "log2"), ass_nms)
+  primary_key <- if (length(transformed_key)) transformed_key[1] else ass_nms[1]
+  raw_key <- intersect(c("intensities_raw", "raw", "intensities"), ass_nms)
+  raw_key <- if (length(raw_key)) raw_key[1] else primary_key
+  has_raw <- !identical(raw_key, primary_key) && !is.null(raw_key) && !is.na(raw_key)
+  assay_map <- c(list(intensities = primary_key), if (has_raw) list(intensities_raw = raw_key))
+  list(
+    map = assay_map,
+    labels = c(intensities = primary_key, if (has_raw) c(intensities_raw = raw_key)),
+    log2 = c(intensities = length(transformed_key) > 0, intensities_raw = FALSE)[names(assay_map)],
+    raw_name = if (has_raw) "intensities_raw" else "intensities"
+  )
+}
+
 # Map a SAINT contrast frame's stat columns onto the canonical legacy names the
 # rest of the app expects (log2Ratio / fdr) and synthesise an all-NA pValue so
 # p-value-driven code (order(sa$pValue), select(pValue), ...) neither errors on a
@@ -79,140 +170,45 @@ ExploreDatasetSE_Proteomics <- R6::R6Class(
     },
     .build_config = function(se) {
       cd <- data.frame(SummarizedExperiment::colData(se), check.names = FALSE, stringsAsFactors = FALSE)
-
-      # Factors: legacy convert_proteomics_se exclusion regex. Names are
-      # taken verbatim from colData (NO `G_` stripping) to match the legacy
-      # gStoreList$factors / $groupingName values that modules consume.
-      factor_cols <- grep(
-        "Sample|Name|names|channel|raw\\.file",
-        colnames(cd),
-        invert = TRUE,
-        ignore.case = TRUE,
-        value = TRUE
-      )
-      factor_names <- factor_cols
-      factor_levels <- setNames(
-        lapply(factor_cols, function(fc) {
-          v <- cd[[fc]]
-          if (is.factor(v)) levels(v) else sort(unique(as.character(v)))
-        }),
-        factor_names
-      )
-
+      factors <- .se_proteomics_factors(cd)
+      factor1 <- factors$names[1]
       # Contrasts from rowData `^constrast_` columns (typo preserved).
-      rd_nms <- names(SummarizedExperiment::rowData(se))
-      contrasts <- gsub("^constrast_", "", grep("^constrast_", rd_nms, value = TRUE))
-
-      # Inspect first contrast to determine flavour (protein/phospho/peptide).
-      # Uses the package-level standardise_columns() which renames both
-      # rowdata-annotation columns and DE-stat columns in a single pass.
-      feature_id_kind <- "protein"
-      saint <- FALSE
-      if (length(contrasts)) {
-        df1 <- standardise_columns(
-          data.frame(
-            SummarizedExperiment::rowData(se)[[paste0("constrast_", contrasts[1])]],
-            check.names = FALSE,
-            stringsAsFactors = FALSE
-          )
-        )
-        if ("site" %in% colnames(df1)) {
-          feature_id_kind <- "phospho"
-        } else if ("peptide_Id" %in% colnames(df1)) {
-          feature_id_kind <- "peptide"
-        }
-        saint <- .se_is_saint(df1) # standardise_columns leaves SaintScore as-is
-      }
-
-      # SAINTexpress reference = the grouping level flagged as control
-      # (colData CONTROL == "C", e.g. eGFP); the contrast names carry no `_vs_`.
-      reference_default <- NA_character_
-      if (saint && "CONTROL" %in% colnames(cd) && (factor_names[1] %||% "") %in% colnames(cd)) {
-        ctrl_lvls <- unique(as.character(cd[[factor_names[1]]])[
-          toupper(trimws(as.character(cd$CONTROL))) == "C"
-        ])
-        if (length(ctrl_lvls) == 1L) reference_default <- ctrl_lvls
-      }
-
-      cm <- setNames(
-        lapply(contrasts, function(cn) {
-          grp <- strsplit(cn, "_vs_|--over--")[[1]]
-          list(
-            test_group = grp[1],
-            reference_group = if (saint) reference_default else grp[2],
-            factor_name = factor_names[1],
-            method = if (saint) "SAINTexpress" else "prolfqua",
-            thresholds = list(fdr = 0.05, log2fc = 1),
-            # SAINT carries a second, display-only significance axis (SaintScore,
-            # high = significant); mirrors the h5ad backend's score label.
-            score_label = if (saint) "SaintScore" else NULL
-          )
-        }),
-        contrasts
-      )
-
-      ass_nms <- SummarizedExperiment::assayNames(se)
-      transformed_key <- intersect(c("transformedData", "transformed", "intensities", "log2"), ass_nms)
-      # Without a transformed assay the first one stands in, on its own scale
-      primary_key <- if (length(transformed_key)) transformed_key[1] else ass_nms[1]
-      raw_key <- intersect(c("intensities_raw", "raw", "intensities"), ass_nms)
-      raw_key <- if (length(raw_key)) raw_key[1] else primary_key
-
-      # Derive data_type from feature_id_kind so server modules can dispatch
-      # at the flavour level if they want; omics_class keeps the umbrella.
-      data_type_flavour <- switch(
-        feature_id_kind,
-        protein = "proteomics",
-        peptide = "peptidomics",
-        phospho = "phosphoproteomics",
-        "proteomics"
-      )
-
-      has_raw <- !identical(raw_key, primary_key) &&
-        !is.null(raw_key) &&
-        !is.na(raw_key)
-      assay_map_l <- c(
-        list(intensities = primary_key),
-        if (has_raw) list(intensities_raw = raw_key)
-      )
-      # Display labels = original SE assayNames (matches legacy
-      # convert_proteomics_se which uses them verbatim).
-      assay_labels_l <- c(
-        intensities = primary_key,
-        if (has_raw) c(intensities_raw = raw_key)
-      )
-
+      contrasts <- gsub("^constrast_", "", grep("^constrast_", names(SummarizedExperiment::rowData(se)), value = TRUE))
+      flavour <- .se_proteomics_flavour(se, contrasts)
+      saint <- flavour$saint
+      assays <- .se_proteomics_assays(SummarizedExperiment::assayNames(se))
       list(
         schema_version = "exploreDE/config/1.0",
         omics_class = "proteomics",
-        data_type = data_type_flavour,
+        data_type = flavour$data_type,
         organism = NA_character_,
         ref_build = NA_character_,
-        feature_id_kind = feature_id_kind,
-        factors = factor_names,
-        factor_levels = factor_levels,
-        primary_grouping = factor_names[1] %||% NA_character_,
+        feature_id_kind = flavour$feature_id_kind,
+        factors = factors$names,
+        factor_levels = factors$levels,
+        primary_grouping = factor1 %||% NA_character_,
         secondary_grouping = NA_character_,
-        assay_map = assay_map_l,
-        assay_labels = assay_labels_l,
-        assay_log2 = c(intensities = length(transformed_key) > 0, intensities_raw = FALSE)[names(assay_map_l)],
+        assay_map = assays$map,
+        assay_labels = assays$labels,
+        assay_log2 = assays$log2,
         background_expression = 1,
-        raw_assay_name = if (has_raw) "intensities_raw" else "intensities",
+        raw_assay_name = assays$raw_name,
         primary_assay_name = "intensities",
         display_name_field = NA_character_, # handled in .prep()
         description_field = "description",
         primary_contrast = if (length(contrasts)) contrasts[1] else NA_character_,
-        contrast_meta = cm,
+        contrast_meta = .se_proteomics_contrast_meta(
+          contrasts,
+          factor1,
+          saint,
+          .se_saint_reference(cd, factor1, saint)
+        ),
         de_display_extras = if (saint) "SaintScore" else character(),
         enrichment_kinds = character(),
         enrichment_locator = list(),
         sgrna_to_gene = NULL,
         proteomics = NULL, # filled by .prep()
-        source = list(
-          backend_kind = "se",
-          schema_version = "exploreDE/config/1.0",
-          built_at = Sys.time()
-        )
+        source = list(backend_kind = "se", schema_version = "exploreDE/config/1.0", built_at = Sys.time())
       )
     },
 
