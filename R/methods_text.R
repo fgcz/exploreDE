@@ -12,18 +12,21 @@ count_result_summary <- function(param, se) {
   md <- S4Vectors::metadata(se)
   settings <- character()
   # A setting the result does not record (NULL) gets no row
-  put <- function(label, value) {
-    if (length(value) > 0) settings[label] <<- value
+  put <- function(settings, label, value) {
+    if (length(value) > 0) {
+      settings[label] <- value
+    }
+    settings
   }
-  put("Analysis:", md$analysis)
-  put("Reference:", param$refBuild)
-  put("Feature level:", md$featureLevel)
-  put("Data Column Used:", md$countName)
-  put("Method:", md$method)
+  settings <- put(settings, "Analysis:", md$analysis)
+  settings <- put(settings, "Reference:", param$refBuild)
+  settings <- put(settings, "Feature level:", md$featureLevel)
+  settings <- put(settings, "Data Column Used:", md$countName)
+  settings <- put(settings, "Method:", md$method)
   if (specified(param$sampleGroupBaseline) && specified(param$refGroupBaseline)) {
     settings["Baseline correction:"] <- paste(param$sampleGroupBaseline, "and", param$refGroupBaseline)
   }
-  put("Comparison:", param$comparison)
+  settings <- put(settings, "Comparison:", param$comparison)
   if (!is.null(param$normMethod)) {
     settings["Normalization:"] <- param$normMethod
   }
