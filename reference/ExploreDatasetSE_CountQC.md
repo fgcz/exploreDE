@@ -115,7 +115,7 @@ eds
 #> <ExploreDatasetSE_CountQC  (se)>
 #>   data_type:        CountQC
 #>   feature_id_kind:  gene
-#>   organism:         NA
+#>   organism:         Homo sapiens
 #>   ref_build:        NA
 #>   samples x features: 9 x 21057
 #>   factors (1):
