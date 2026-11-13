@@ -92,6 +92,167 @@
   NULL
 }
 
+# --- config of a canonical .h5ad ---------------------------------------------
+
+.h5ad_data_type <- function(omics_type, feature_id_kind) {
+  switch(
+    omics_type,
+    rnaseq_bulk = "RNASeq",
+    crispr_countqc = "CrisprCountQC",
+    proteomics = switch(feature_id_kind, peptide = "peptidomics", phospho = "phosphoproteomics", "proteomics")
+  )
+}
+
+# The obs factor_ columns, their names and levels, and the primary grouping
+# (uns$design$grouping, else the first factor).
+.h5ad_factors <- function(obs, uns) {
+  cols <- grep("^factor_", colnames(obs), value = TRUE)
+  fnames <- .h5ad_strip_factor(cols)
+  levels <- lapply(cols, function(fc) {
+    v <- obs[[fc]]
+    if (is.factor(v)) levels(v) else sort(unique(as.character(v)))
+  })
+  list(
+    names = fnames,
+    levels = setNames(levels, fnames),
+    grouping = .h5ad_strip_factor(uns$design$grouping %||% (if (length(cols)) cols[[1]] else NA_character_))
+  )
+}
+
+# Contrasts: one per uns$de entry, keyed test_vs_reference to match the SE
+# subclass, with the varm slot each maps to and the union of the extra-score
+# display labels (for the DE table).
+.h5ad_contrasts <- function(uns, grouping) {
+  # Declared significance-semantics mapping (uns$exploreDE$mapping): the
+  # display label + direction of an optional extra score, and the fdr
+  # direction. Resolved per-contrast as default (+) per-contrast override.
+  de_map <- ((uns$exploreDE %||% list())$mapping %||% list())$de %||% list()
+  de_default <- de_map$default %||% list()
+  cm <- list()
+  slot_map <- list()
+  # [[ ]], not $: Without a `de` key, uns$de partial-matches uns$design.
+  de_meta <- uns[["de"]] %||% list()
+  for (slot in names(de_meta)) {
+    d <- de_meta[[slot]]
+    test <- d$test_group %||% NA_character_
+    ref <- d$reference_group %||% NA_character_
+    # Prefer the caller's original contrast name (contrast_formula) so the
+    # key matches what they typed; else rebuild an identifier from groups.
+    key <- d$contrast_formula %||%
+      (if (!is.na(test) && !is.na(ref)) paste0(.h5ad_safe(test), "_vs_", .h5ad_safe(ref)) else slot)
+    sem <- utils::modifyList(de_default, de_map$contrasts[[slot]] %||% list())
+    cm[[key]] <- list(
+      test_group = test,
+      reference_group = ref,
+      factor_name = grouping,
+      method = d$model %||% "DESeq2",
+      thresholds = list(fdr = 0.05, log2fc = 0, go_p = 0.01),
+      # Display-only extra score (e.g. SAINTexpress SaintScore): its column
+      # label. NULL when the file declares none. (Older files may also carry
+      # score_kind / fdr_kind tokens; nothing used them, so they are ignored.)
+      score_label = sem$score_label
+    )
+    slot_map[[key]] <- paste0("de_", slot)
+  }
+  list(
+    meta = cm,
+    slots = slot_map,
+    display_extras = unique(Filter(nzchar, vapply(cm, function(x) x$score_label %||% "", character(1))))
+  )
+}
+
+# Proteomics carries intensities, not RNA-seq counts: the intensity layers
+# directly, never the RNA-seq-only derived assays (vst/tpm/fpkm). Mirrors
+# ExploreDatasetSE_Proteomics: a transformed "intensities" (primary) and an
+# optional "intensities_raw".
+.h5ad_proteomics_assays <- function(have) {
+  prim <- intersect(c("intensities", "normalised", "log2", "normalised_log2"), have)
+  prim <- if (length(prim)) prim[[1]] else have[[1]]
+  raw <- setdiff(intersect(c("intensities_raw", "counts", "raw"), have), prim)
+  assay_map <- c(
+    setNames(list(prim), "intensities"),
+    if (length(raw)) setNames(list(raw[[1]]), "intensities_raw")
+  )
+  list(
+    map = assay_map,
+    labels = c(intensities = "Intensities", intensities_raw = "Raw intensities"),
+    # A raw or normalised layer standing in for missing intensities stays linear
+    log2 = c(
+      intensities = prim %in% c("intensities", "log2", "normalised_log2"),
+      intensities_raw = FALSE
+    )[names(assay_map)],
+    raw_name = if ("intensities_raw" %in% names(assay_map)) "intensities_raw" else "intensities",
+    primary_name = "intensities"
+  )
+}
+
+# Genomics assays are driven by whichever canonical layers are present (raw is
+# not privileged). A NULL map value = computed on the fly in assay(); built via
+# c(list(...)) because `lst$k <- NULL` would DROP the key. FPKM/TPM are
+# computed when there are counts and a per-feature length column (can_len).
+.h5ad_genomics_assays <- function(have, can_len) {
+  assay_map <- c(
+    if ("counts" %in% have) list(counts = "counts"),
+    if ("normalised" %in% have) {
+      list(normalised = "normalised")
+    } else if ("counts" %in% have) {
+      list(normalised = NULL)
+    },
+    if ("log2" %in% have) {
+      list(normalised_log2 = "log2")
+    } else if (any(c("normalised", "counts") %in% have)) {
+      list(normalised_log2 = NULL)
+    },
+    if ("vst" %in% have) {
+      list(vst = "vst")
+    } else if ("counts" %in% have) {
+      list(vst = NULL)
+    },
+    if ("tpm" %in% have) {
+      list(tpm = "tpm")
+    } else if (can_len) {
+      list(tpm = NULL)
+    },
+    if ("fpkm" %in% have) {
+      list(fpkm = "fpkm")
+    } else if (can_len) {
+      list(fpkm = NULL)
+    }
+  )
+  if (!length(assay_map)) {
+    assay_map <- setNames(list(have[1]), have[1])
+  }
+  raw_name <- if ("counts" %in% names(assay_map)) "counts" else names(assay_map)[1]
+  list(
+    map = assay_map,
+    labels = c(
+      counts = "Raw",
+      normalised = "Normalised",
+      normalised_log2 = "Normalised + Log2",
+      vst = "VST",
+      tpm = "TPM",
+      fpkm = "FPKM"
+    ),
+    log2 = .genomics_assay_log2(names(assay_map)),
+    raw_name = raw_name,
+    primary_name = if ("normalised_log2" %in% names(assay_map)) "normalised_log2" else raw_name
+  )
+}
+
+.h5ad_ref_build <- function(uns, obs) {
+  ref_build <- uns$reference_genome %||% (obs[["organism"]] %||% NA_character_)[1]
+  if (is.null(ref_build) || is.na(ref_build) || !nzchar(as.character(ref_build))) NA_character_ else ref_build
+}
+
+# Enrichment kinds come from the support block only (spec section 7.4): a
+# method without one has no rebuildable objects, so it does not count. Any
+# contrast counts: a file whose first contrast has no ORA may still carry ORA
+# for a later one. As enrichment(): every method other than gsea is read as ORA.
+.h5ad_enrichment_kinds <- function(uns) {
+  methods <- unique(unlist(lapply(uns$enrichment_support %||% list(), names), use.names = FALSE))
+  c(if (any(methods != "gsea")) "ora", if ("gsea" %in% methods) "gsea") %||% character()
+}
+
 # Read a .h5ad into memory (anndataR >= 1.2.3, see DESCRIPTION).
 .h5ad_read <- function(path) {
   anndataR::read_h5ad(path, as = "InMemoryAnnData")
@@ -395,201 +556,47 @@ ExploreDatasetH5AD <- R6::R6Class(
     .build_config = function() {
       uns <- private$.uns
       .h5ad_require_identity(uns)
-      omics_type <- uns[["omics_type"]]
-      omics_class <- if (omics_type == "proteomics") "proteomics" else "genomics"
-      feature_id_kind <- uns[["feature_id_kind"]]
-      data_type <- switch(
-        omics_type,
-        rnaseq_bulk = "RNASeq",
-        crispr_countqc = "CrisprCountQC",
-        proteomics = switch(feature_id_kind, peptide = "peptidomics", phospho = "phosphoproteomics", "proteomics")
-      )
-
-      factor_cols <- grep("^factor_", colnames(private$.obs), value = TRUE)
-      factor_names <- .h5ad_strip_factor(factor_cols)
-      factor_levels <- setNames(
-        lapply(factor_cols, function(fc) {
-          v <- private$.obs[[fc]]
-          if (is.factor(v)) levels(v) else sort(unique(as.character(v)))
-        }),
-        factor_names
-      )
-
-      grouping <- .h5ad_strip_factor(
-        uns$design$grouping %||% (if (length(factor_cols)) factor_cols[[1]] else NA_character_)
-      )
-
-      # Declared significance-semantics mapping (uns$exploreDE$mapping): the
-      # display label + direction of an optional extra score, and the fdr
-      # direction. Resolved per-contrast as default (+) per-contrast override.
-      de_map <- ((uns$exploreDE %||% list())$mapping %||% list())$de %||% list()
-      de_default <- de_map$default %||% list()
-
-      # Contrasts: one per uns$de entry, keyed test_vs_reference to match the
-      # SE subclass; remember which varm slot each maps to.
-      cm <- list()
-      slot_map <- list()
-      # [[ ]], not $: Without a `de` key, uns$de partial-matches uns$design.
-      de_meta <- uns[["de"]] %||% list()
-      for (slot in names(de_meta)) {
-        d <- de_meta[[slot]]
-        test <- d$test_group %||% NA_character_
-        ref <- d$reference_group %||% NA_character_
-        # Prefer the caller's original contrast name (contrast_formula) so the
-        # key matches what they typed; else rebuild an identifier from groups.
-        key <- d$contrast_formula %||%
-          (if (!is.na(test) && !is.na(ref)) {
-            paste0(.h5ad_safe(test), "_vs_", .h5ad_safe(ref))
-          } else {
-            slot
-          })
-        sem <- utils::modifyList(de_default, de_map$contrasts[[slot]] %||% list())
-        cm[[key]] <- list(
-          test_group = test,
-          reference_group = ref,
-          factor_name = grouping,
-          method = d$model %||% "DESeq2",
-          thresholds = list(fdr = 0.05, log2fc = 0, go_p = 0.01),
-          # Display-only extra score (e.g. SAINTexpress SaintScore): its column
-          # label. NULL when the file declares none. (Older files may also carry
-          # score_kind / fdr_kind tokens; nothing used them, so they are ignored.)
-          score_label = sem$score_label
-        )
-        slot_map[[key]] <- paste0("de_", slot)
-      }
-      private$.contrast_slot <- slot_map
-      # Union of extra-score display labels across contrasts (for the DE table).
-      de_display_extras <- unique(Filter(nzchar, vapply(cm, function(x) x$score_label %||% "", character(1))))
-
-      # Assays are driven by whichever canonical layers are present (raw is not
-      # privileged). A NULL map value = computed on the fly in assay(); built
-      # via c(list(...)) because `lst$k <- NULL` would DROP the key.
-      have <- names(private$.layers)
-      # A per-feature gene-length column (featWidth / gene_length / Length / …)
-      # enables computed FPKM/TPM — no ezRun, no GTF lookup, just base R over
-      # lengths already in the data.
+      omics_class <- if (uns[["omics_type"]] == "proteomics") "proteomics" else "genomics"
+      factors <- .h5ad_factors(private$.obs, uns)
+      contrasts <- .h5ad_contrasts(uns, factors$grouping)
+      private$.contrast_slot <- contrasts$slots
       fw_col <- .h5ad_find_length_col(colnames(private$.var))
-      can_len <- !is.null(fw_col) && "counts" %in% have
-      if (omics_class == "proteomics") {
-        # Proteomics carries intensities, not RNA-seq counts. Expose the
-        # intensity layers directly and never synthesise RNA-seq-only derived
-        # assays (vst/tpm/fpkm). Mirrors ExploreDatasetSE_Proteomics, which maps
-        # a transformed "intensities" (primary) + optional "intensities_raw".
-        prim <- intersect(c("intensities", "normalised", "log2", "normalised_log2"), have)
-        prim <- if (length(prim)) prim[[1]] else have[[1]]
-        raw <- setdiff(intersect(c("intensities_raw", "counts", "raw"), have), prim)
-        assay_map <- c(
-          setNames(list(prim), "intensities"),
-          if (length(raw)) setNames(list(raw[[1]]), "intensities_raw")
-        )
-        assay_labels <- c(intensities = "Intensities", intensities_raw = "Raw intensities")
-        # A raw or normalised layer standing in for missing intensities stays linear
-        assay_log2 <- c(
-          intensities = prim %in% c("intensities", "log2", "normalised_log2"),
-          intensities_raw = FALSE
-        )[names(assay_map)]
-        raw_layer_name <- if ("intensities_raw" %in% names(assay_map)) "intensities_raw" else "intensities"
-        primary_name <- "intensities"
+      have <- names(private$.layers)
+      assays <- if (omics_class == "proteomics") {
+        .h5ad_proteomics_assays(have)
       } else {
-        assay_map <- c(
-          if ("counts" %in% have) list(counts = "counts"),
-          if ("normalised" %in% have) {
-            list(normalised = "normalised")
-          } else if ("counts" %in% have) {
-            list(normalised = NULL)
-          }, # computed
-          if ("log2" %in% have) {
-            list(normalised_log2 = "log2")
-          } else if (any(c("normalised", "counts") %in% have)) {
-            list(normalised_log2 = NULL)
-          }, # computed
-          if ("vst" %in% have) {
-            list(vst = "vst")
-          } else if ("counts" %in% have) {
-            list(vst = NULL)
-          }, # computed
-          if ("tpm" %in% have) {
-            list(tpm = "tpm")
-          } else if (can_len) {
-            list(tpm = NULL)
-          },
-          if ("fpkm" %in% have) {
-            list(fpkm = "fpkm")
-          } else if (can_len) {
-            list(fpkm = NULL)
-          }
-        )
-        if (!length(assay_map)) {
-          assay_map <- setNames(list(have[1]), have[1])
-        }
-        assay_labels <- c(
-          counts = "Raw",
-          normalised = "Normalised",
-          normalised_log2 = "Normalised + Log2",
-          vst = "VST",
-          tpm = "TPM",
-          fpkm = "FPKM"
-        )
-        assay_log2 <- .genomics_assay_log2(names(assay_map))
-        raw_layer_name <- if ("counts" %in% names(assay_map)) "counts" else names(assay_map)[1]
-        primary_name <- if ("normalised_log2" %in% names(assay_map)) "normalised_log2" else raw_layer_name
+        .h5ad_genomics_assays(have, can_len = !is.null(fw_col) && "counts" %in% have)
       }
-
-      ref_build <- uns$reference_genome %||% (private$.obs[["organism"]] %||% NA_character_)[1]
-      if (is.null(ref_build) || is.na(ref_build) || !nzchar(as.character(ref_build))) {
-        ref_build <- NA_character_
-      }
-
-      # Enrichment kinds come from the support block only (spec §7.4): a method
-      # without one has no rebuildable objects, so it does not count. Any
-      # contrast counts: a file whose first contrast has no ORA may still carry
-      # ORA for a later one.
-      enrich_kinds <- character()
-      en <- uns$enrichment_support %||% list()
-      methods <- unique(unlist(lapply(en, names), use.names = FALSE))
-      # As enrichment(): every method other than gsea is read as ORA
-      if (any(methods != "gsea")) {
-        enrich_kinds <- c(enrich_kinds, "ora")
-      }
-      if ("gsea" %in% methods) {
-        enrich_kinds <- c(enrich_kinds, "gsea")
-      }
-
       list(
         schema_version = uns[["schema_version"]],
         omics_class = omics_class,
-        data_type = data_type,
+        data_type = .h5ad_data_type(uns[["omics_type"]], uns[["feature_id_kind"]]),
         organism = (private$.obs[["organism"]] %||% NA_character_)[1],
-        ref_build = ref_build,
-        feature_id_kind = feature_id_kind,
-        factors = factor_names,
-        factor_levels = factor_levels,
-        primary_grouping = grouping,
-        secondary_grouping = if (length(factor_names) > 1) factor_names[[2]] else NA_character_,
-        assay_map = assay_map,
-        assay_labels = assay_labels,
-        assay_log2 = assay_log2,
-        # Proteomics intensities sit on a log2 scale; the low-signal floor the
-        # SE proteomics backend uses is 1, not the RNA-seq count floor of 10.
+        ref_build = .h5ad_ref_build(uns, private$.obs),
+        feature_id_kind = uns[["feature_id_kind"]],
+        factors = factors$names,
+        factor_levels = factors$levels,
+        primary_grouping = factors$grouping,
+        secondary_grouping = if (length(factors$names) > 1) factors$names[[2]] else NA_character_,
+        assay_map = assays$map,
+        assay_labels = assays$labels,
+        assay_log2 = assays$log2,
+        # Proteomics intensities sit on a log2 scale: the SE backend's floor of 1, not the count floor of 10
         background_expression = if (omics_class == "proteomics") 1 else 10,
         featwidth_col = fw_col,
-        raw_assay_name = raw_layer_name,
-        primary_assay_name = primary_name,
+        raw_assay_name = assays$raw_name,
+        primary_assay_name = assays$primary_name,
         display_name_field = .h5ad_role_col(colnames(private$.var), "symbol") %||% NA_character_,
         description_field = "description",
-        primary_contrast = if (length(cm)) names(cm)[[1]] else NA_character_,
-        contrast_meta = cm,
-        de_display_extras = de_display_extras,
-        enrichment_kinds = enrich_kinds,
+        primary_contrast = if (length(contrasts$meta)) names(contrasts$meta)[[1]] else NA_character_,
+        contrast_meta = contrasts$meta,
+        de_display_extras = contrasts$display_extras,
+        enrichment_kinds = .h5ad_enrichment_kinds(uns),
         enrichment_filter = (uns$enrichment_filter %||% list())$padj_max %||% NA_real_,
         enrichment_locator = list(),
         sgrna_to_gene = NULL,
         proteomics = NULL,
-        source = list(
-          backend_kind = "h5ad",
-          schema_version = uns[["schema_version"]],
-          built_at = Sys.time()
-        )
+        source = list(backend_kind = "h5ad", schema_version = uns[["schema_version"]], built_at = Sys.time())
       )
     },
 
