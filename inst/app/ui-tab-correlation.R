@@ -23,6 +23,16 @@ tabItem(
         tabsetPanel(
           tabPanel(
             title = "Main settings",
+            conditionalPanel(
+              condition = "output.test == 'CrisprCountQC'",
+              radioButtons(
+                inputId = "correlationCollapseGuides",
+                label = "Feature level",
+                choices = c("Per guide" = "guide", "Per gene (summed)" = "gene"),
+                selected = "guide",
+                inline = TRUE
+              )
+            ),
             uiOutput("fb_search_mode_correlation"),
             selectizeInput(
               inputId = "correlationGene1",
@@ -37,16 +47,6 @@ tabItem(
               multiple = FALSE,
               choices = NULL,
               selected = NULL
-            ),
-            conditionalPanel(
-              condition = "output.test == 'CrisprCountQC'",
-              radioButtons(
-                inputId = "correlationCollapseGuides",
-                label = "Feature level",
-                choices = c("Per guide" = "guide", "Per gene (summed)" = "gene"),
-                selected = "guide",
-                inline = TRUE
-              )
             ),
             selectInput(
               inputId = "correlationColourBy",

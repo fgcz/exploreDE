@@ -56,6 +56,16 @@ tabItem(
           id = "boxplotSettingsTabs",
           tabPanel(
             title = "Main settings",
+            conditionalPanel(
+              condition = "output.test == 'CrisprCountQC'",
+              radioButtons(
+                inputId = "boxplotCollapseGuides",
+                label = "Feature level",
+                choices = c("Per guide" = "guide", "Per gene (summed)" = "gene"),
+                selected = "guide",
+                inline = TRUE
+              )
+            ),
             uiOutput("fb_search_mode_boxplot"),
             selectizeInput(
               inputId = "fb_select_boxplot",
@@ -80,16 +90,6 @@ tabItem(
               resize = "vertical"
             ),
             fb_pattern_ui("boxplot"),
-            conditionalPanel(
-              condition = "output.test == 'CrisprCountQC'",
-              radioButtons(
-                inputId = "boxplotCollapseGuides",
-                label = "Feature level",
-                choices = c("Per guide" = "guide", "Per gene (summed)" = "gene"),
-                selected = "guide",
-                inline = TRUE
-              )
-            ),
             uiOutput("boxplotGTError"),
             selectInput(
               inputId = "boxplotFactor1",

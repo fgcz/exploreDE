@@ -80,6 +80,16 @@ tabItem(
             title = "Feature settings",
             h4("Feature selection"),
             conditionalPanel(
+              condition = "output.test == 'CrisprCountQC'",
+              radioButtons(
+                inputId = "heatmapCollapseGuides",
+                label = "Feature level",
+                choices = c("Per guide" = "guide", "Per gene (summed)" = "gene"),
+                selected = "guide",
+                inline = TRUE
+              )
+            ),
+            conditionalPanel(
               # DE-based feature selection applies to RNA-seq AND every proteomics
               # flavour (proteomics / peptidomics / phosphoproteomics). Gate as the
               # complement of the SD-based CountQC/CrisprCountQC panel below so new
@@ -137,13 +147,6 @@ tabItem(
             ),
             conditionalPanel(
               condition = "output.test == 'CrisprCountQC'",
-              radioButtons(
-                inputId = "heatmapCollapseGuides",
-                label = "Feature level",
-                choices = c("Per guide" = "guide", "Per gene (summed)" = "gene"),
-                selected = "guide",
-                inline = TRUE
-              ),
               selectizeInput(
                 inputId = "heatmapExcludeGuides",
                 label = "Exclude genes/guides:",
@@ -496,6 +499,10 @@ tabItem(
               width = 3,
               helpText(
                 "Plot the expression of any feature detected, irrespective of the DE test. Requires at least three features."
+              ),
+              conditionalPanel(
+                condition = "output.test == 'CrisprCountQC'",
+                helpText("Per guide or per gene is set under Settings > Feature settings > Feature level.")
               ),
               uiOutput("fb_search_mode_heatmap"),
               selectizeInput(
