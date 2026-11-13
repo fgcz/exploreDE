@@ -85,7 +85,8 @@ test_that("match_feature_pattern matches nothing for an empty, NULL or invalid p
     expect_equal(as.character(m), character(0))
     expect_identical(attr(m, "n_matched"), 0L)
   }
-  bad <- match_feature_pattern("Hsp(", pattern_candidates, regex = TRUE)
+  # TRE warns before it errors on the pattern; neither reaches the user
+  expect_no_warning(bad <- match_feature_pattern("Hsp(", pattern_candidates, regex = TRUE))
   expect_equal(as.character(bad), character(0))
   expect_identical(attr(bad, "n_matched"), NA_integer_)
   expect_identical(attr(match_feature_pattern("hsp*", character(0)), "n_matched"), 0L)

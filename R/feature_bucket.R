@@ -61,11 +61,13 @@ match_feature_pattern <- function(pattern, candidates, regex = FALSE) {
     pattern <- gsub("?", ".", gsub("*", ".*", pattern, fixed = TRUE), fixed = TRUE)
     pattern <- paste0("^", pattern, "$")
   }
+  # R's default (TRE) engine, not PCRE: it does not backtrack, so a pattern
+  # such as (.+)+X$ cannot hold the R process (and every session on it) for
+  # minutes. An invalid pattern makes TRE warn, then error: either means no
+  # match can be computed.
   hit <- tryCatch(
-    # R's default (TRE) engine, not PCRE: it does not backtrack, so a pattern
-    # such as (.+)+X$ cannot hold the R process (and every session on it)
-    # for minutes.
-    suppressWarnings(grepl(pattern, candidates, ignore.case = TRUE)),
+    grepl(pattern, candidates, ignore.case = TRUE),
+    warning = function(w) NULL,
     error = function(e) NULL
   )
   if (is.null(hit)) {

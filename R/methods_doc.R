@@ -38,7 +38,7 @@ library_size_text <- function(dataset) {
   if (is.null(col)) {
     return("")
   }
-  reads <- suppressWarnings(as.numeric(as.character(dataset[[col]])))
+  reads <- eds_as_numeric(as.character(dataset[[col]]))
   if (all(is.na(reads))) {
     return("")
   }
