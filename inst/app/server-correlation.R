@@ -36,7 +36,7 @@ observeEvent(
     } # save-state restore guard
     eds <- inputDataReactive()$.eds
     if (eds$data_type() == "CrisprCountQC") {
-      if (isTRUE(input$correlationCollapseGuides)) {
+      if (identical(input$correlationCollapseGuides, "gene")) {
         gene_choices <- sort(unique(eds$sgrna_to_gene()))
       } else {
         gene_choices <- eds$feature_ids()
@@ -234,7 +234,7 @@ observeEvent(
     # get the counts (full matrix — all features, all samples)
     countsCorrelation <- eds$assay(input$correlationCounts)
     # Collapse sgRNA guides to gene level if requested
-    if (eds$data_type() == "CrisprCountQC" && isTRUE(input$correlationCollapseGuides)) {
+    if (eds$data_type() == "CrisprCountQC" && identical(input$correlationCollapseGuides, "gene")) {
       countsCorrelation <- collapse_guides_to_genes(countsCorrelation, eds$sgrna_to_gene())
     }
 

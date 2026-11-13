@@ -79,10 +79,12 @@ tabItem(
 
             conditionalPanel(
               condition = "output.test == 'CrisprCountQC'",
-              checkboxInput(
+              radioButtons(
                 inputId = "pcaCollapseGuides",
-                label = "Collapse sgRNA guides per gene (sum)",
-                value = FALSE
+                label = "Feature level",
+                choices = c("Per guide" = "guide", "Per gene (summed)" = "gene"),
+                selected = "guide",
+                inline = TRUE
               )
             ),
 

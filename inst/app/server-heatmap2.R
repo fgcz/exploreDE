@@ -162,7 +162,7 @@ observe({
       if (isTRUE(restoring())) {
         return()
       } # save-state restore guard
-      if (eds$data_type() == "CrisprCountQC" && isTRUE(input$heatmapCollapseGuides)) {
+      if (eds$data_type() == "CrisprCountQC" && identical(input$heatmapCollapseGuides, "gene")) {
         gene_choices <- sort(unique(eds$sgrna_to_gene()))
       } else {
         gene_choices <- eds$feature_ids()
@@ -508,7 +508,7 @@ ht_opt$message <- FALSE
 heatmapAssay <- reactive({
   req(input$heatmapCounts)
   counts <- eds$assay(input$heatmapCounts)
-  collapsed <- eds$data_type() == "CrisprCountQC" && isTRUE(input$heatmapCollapseGuides)
+  collapsed <- eds$data_type() == "CrisprCountQC" && identical(input$heatmapCollapseGuides, "gene")
   if (eds$data_type() == "CrisprCountQC") {
     if (collapsed) {
       counts <- collapse_guides_to_genes(counts, eds$sgrna_to_gene(), exclude = input$heatmapExcludeGuides)

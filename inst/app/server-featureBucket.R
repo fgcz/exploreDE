@@ -169,7 +169,7 @@ lapply(c("boxplot", "volcano", "heatmap"), function(tab) {
       search_mode <- input[[paste0("fb_search_by_", tab)]] %||% "feature_id"
       pattern <- trimws(pattern_val() %||% "")
       matched <- if (nzchar(pattern)) {
-        candidates <- if (eds$data_type() == "CrisprCountQC" && isTRUE(input[[collapse_id]])) {
+        candidates <- if (eds$data_type() == "CrisprCountQC" && identical(input[[collapse_id]], "gene")) {
           sort(unique(eds$sgrna_to_gene()))
         } else {
           search_mode_choices(search_mode, eds$feature_ids())

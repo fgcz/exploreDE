@@ -91,9 +91,31 @@ build_feature_id <- function(df) {
 collapse_guides_to_genes <- function(counts, sgRNA_to_gene, exclude = NULL) {
   common <- intersect(rownames(counts), names(sgRNA_to_gene))
   counts <- counts[common, , drop = FALSE]
+  # A logical assay (present flag) sums to the number of guides present per gene
+  if (is.logical(counts)) {
+    storage.mode(counts) <- "integer"
+  }
   collapsed <- rowsum(counts, group = sgRNA_to_gene[common], reorder = FALSE)
   if (length(exclude) > 0) {
     collapsed <- collapsed[!rownames(collapsed) %in% exclude, , drop = FALSE]
   }
   collapsed
+}
+
+#' Collapse an assay to gene level for download, respecting its scale
+#'
+#' Linear assays are summed per gene. Log2-scale assays are summed on the
+#' linear scale and logged again (`log2(sum(2^x))`), because a sum of logs is
+#' not a meaningful gene-level value.
+#' @param m Numeric matrix, sgRNA rows and sample columns.
+#' @param sgRNA_to_gene Named character vector mapping sgRNA ids to genes.
+#' @param is_log2 Whether `m` is on the log2 scale.
+#' @return A numeric matrix with gene rows.
+#' @noRd
+collapse_assay_to_genes <- function(m, sgRNA_to_gene, is_log2 = FALSE) {
+  m <- as.matrix(m)
+  if (!isTRUE(is_log2)) {
+    return(collapse_guides_to_genes(m, sgRNA_to_gene))
+  }
+  log2(collapse_guides_to_genes(2^m, sgRNA_to_gene))
 }

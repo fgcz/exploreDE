@@ -37,7 +37,7 @@ observeEvent(
       return()
     } # save-state restore guard
     if (eds$data_type() == "CrisprCountQC") {
-      if (isTRUE(input$boxplotCollapseGuides)) {
+      if (identical(input$boxplotCollapseGuides, "gene")) {
         gene_choices <- sort(unique(eds$sgrna_to_gene()))
       } else {
         gene_choices <- eds$feature_ids()
@@ -230,7 +230,7 @@ boxplotCountsReactive <- eventReactive(
     # Get the count data
     countsBoxplot <- eds$assay(input$boxplotCounts)
     # Collapse sgRNA guides to gene level if requested
-    if (eds$data_type() == "CrisprCountQC" && isTRUE(input$boxplotCollapseGuides)) {
+    if (eds$data_type() == "CrisprCountQC" && identical(input$boxplotCollapseGuides, "gene")) {
       countsBoxplot <- collapse_guides_to_genes(countsBoxplot, eds$sgrna_to_gene())
       # Map any sgRNA-level feature names to gene names
       sgRNA_map <- eds$sgrna_to_gene()

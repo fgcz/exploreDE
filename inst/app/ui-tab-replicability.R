@@ -12,10 +12,12 @@ tabItem(
         selectInput(inputId = "replicabilityCounts", label = "Select count method", choices = NULL, selected = NULL),
         conditionalPanel(
           condition = "output.test == 'CrisprCountQC'",
-          checkboxInput(
+          radioButtons(
             inputId = "replicabilityCollapseGuides",
-            label = "Collapse sgRNA guides per gene (sum)",
-            value = FALSE
+            label = "Feature level",
+            choices = c("Per guide" = "guide", "Per gene (summed)" = "gene"),
+            selected = "guide",
+            inline = TRUE
           )
         ),
         checkboxInput(inputId = "replicabilityCountsLog", label = "Log2 Counts?", value = FALSE),

@@ -33,7 +33,7 @@ ordinationResults <- reactive({
     countsOrd <- eds$assay(input$pcaCounts)
   }
   # Collapse sgRNA guides to gene level if requested
-  if (eds$data_type() == "CrisprCountQC" && isTRUE(input$pcaCollapseGuides)) {
+  if (eds$data_type() == "CrisprCountQC" && identical(input$pcaCollapseGuides, "gene")) {
     countsOrd <- collapse_guides_to_genes(countsOrd, eds$sgrna_to_gene())
   }
 

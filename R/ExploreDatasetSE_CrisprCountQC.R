@@ -38,10 +38,17 @@ ExploreDatasetSE_CrisprCountQC <- R6::R6Class(
       # both ending in the protospacer sequence:
       #   GENE_<n>_<SEQ>              (e.g. Actb_1_ACGT… / Actb_sgrna1_ACGT…)
       #   GENE_<strand>_<locus>_<SEQ> (e.g. Ptplad2_-_88439147.23-P1P2_GATCC…)
-      cfg$sgrna_to_gene <- setNames(
-        gsub("_((sgrna)?[0-9]+|[+-]_[^_]+)_[ACGTN]+$", "", rn, ignore.case = TRUE),
-        rn
-      )
+      genes <- gsub("_((sgrna)?[0-9]+|[+-]_[^_]+)_[ACGTN]+$", "", rn, ignore.case = TRUE)
+      # Prefer the gene column the counting step wrote (MAGeCK's "Gene"): Names
+      # carrying transcript ids (GENE_+_locus-ENSMUST…_ENSMUST…_SEQ) defeat the regex.
+      rd <- as.data.frame(SummarizedExperiment::rowData(se))
+      gene_col <- intersect(c("Gene", "gene", "gene_name"), colnames(rd))[1]
+      if (!is.na(gene_col)) {
+        from_rd <- as.character(rd[[gene_col]])
+        ok <- !is.na(from_rd) & nzchar(from_rd)
+        genes[ok] <- from_rd[ok]
+      }
+      cfg$sgrna_to_gene <- setNames(genes, rn)
       cfg
     }
     # .prep() inherited from _CountQC unchanged

@@ -70,7 +70,7 @@ replicabilityData <- reactive({
 
   counts <- eds$assay(input$replicabilityCounts)
   # Collapse sgRNA guides to gene level if requested
-  if (eds$data_type() == "CrisprCountQC" && isTRUE(input$replicabilityCollapseGuides)) {
+  if (eds$data_type() == "CrisprCountQC" && identical(input$replicabilityCollapseGuides, "gene")) {
     counts <- collapse_guides_to_genes(counts, eds$sgrna_to_gene())
   }
 

@@ -389,6 +389,20 @@ observeEvent(eds$data_type(), {
           width = "33%"
         ),
 
+        if (eds$data_type() == "CrisprCountQC") {
+          tagList(
+            radioButtons(
+              inputId = "downloadFeatureLevel",
+              label = "Feature level",
+              choices = c("Per guide" = "guide", "Per gene (summed)" = "gene"),
+              selected = "guide",
+              inline = TRUE
+            ),
+            helpText(
+              "Per gene sums each gene's guides. Log-scale tables are summed on the linear scale, then logged again."
+            )
+          )
+        },
         textInput(inputId = "filename_summary", label = NULL, value = "Counts", placeholder = "Filename"),
         downloadButton("dlTable_summary", "Download selected count file"),
         checkboxInput(inputId = "log2DownloadedCounts", label = "Log2 Counts?", value = FALSE),
@@ -447,10 +461,19 @@ observe({
     content = function(file) {
       if (eds$data_type() %in% c("RNASeq", "CountQC", "CrisprCountQC")) {
         ctdl <- eds$assay(input$downloadCount)
+        # CRISPR: optionally roll the guides up into one summed row per gene
+        gene_level <- eds$data_type() == "CrisprCountQC" && identical(input$downloadFeatureLevel, "gene")
+        if (gene_level) {
+          ctdl <- collapse_assay_to_genes(
+            ctdl,
+            eds$sgrna_to_gene(),
+            is_log2 = eds$assay_is_log2(input$downloadCount)
+          )
+        }
         if (input$log2DownloadedCounts & !input$downloadCount %in% c("normalised_log2", "vst")) {
           ctdl <- log2(ctdl + 1)
         }
-        ctdl <- as.data.frame(ctdl) %>% rownames_to_column("feature_id")
+        ctdl <- as.data.frame(ctdl) %>% rownames_to_column(if (gene_level) "gene" else "feature_id")
 
         # Try to add annotation columns if they exist (RNA-seq has DE; CountQC does not)
         if (eds$data_type() == "RNASeq" && eds$has_de()) {
