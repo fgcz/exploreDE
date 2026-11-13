@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use exploreDE, please cite it using these metadata."
 title: exploreDE
 type: software
-version: 3.10.0
+version: 0.99.0
 license: MIT
 repository-code: "https://github.com/fgcz/exploreDE"
 authors:
