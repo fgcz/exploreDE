@@ -1,4 +1,3 @@
-# nolint start: cyclocomp_linter. One check per contract item.
 #' Runtime validator for a live `ExploreDataset` instance
 #'
 #' Checks subclass-agnostic invariants by walking the accessor API:
@@ -30,120 +29,8 @@
 #' validate_explore_dataset(eds, strict = FALSE)
 #' @export
 validate_explore_dataset <- function(eds, strict = TRUE) {
-  # The checks below record failures from inside tryCatch() handlers, so the
-  # list lives in an environment they can all write to.
-  found <- new.env(parent = emptyenv())
-  found$errors <- character()
-  add <- function(msg) found$errors <- c(found$errors, msg)
-
-  # 1. Concrete subclass
-  if (!inherits(eds, "ExploreDataset")) {
-    add("Object does not inherit from 'ExploreDataset'.")
-  }
-  abstract <- c("ExploreDataset", "ExploreDatasetSE")
-  rt_class <- class(eds)[1]
-  if (rt_class %in% abstract) {
-    add(sprintf("Runtime class '%s' is abstract; expected a concrete subclass.", rt_class))
-  }
-
-  # 2. Cross-references
-  fnames <- tryCatch(eds$factor_names(), error = function(e) {
-    add(paste0("factor_names() failed: ", conditionMessage(e)))
-    character()
-  })
-  samples_df <- tryCatch(eds$samples(), error = function(e) {
-    add(paste0("samples() failed: ", conditionMessage(e)))
-    data.frame()
-  })
-  missing_factors <- setdiff(fnames, colnames(samples_df))
-  if (length(missing_factors)) {
-    add(sprintf("factor_names not in samples() columns: %s", paste(missing_factors, collapse = ", ")))
-  }
-
-  pg <- tryCatch(eds$primary_grouping(), error = function(e) {
-    add(paste0("primary_grouping() failed: ", conditionMessage(e)))
-    NA_character_
-  })
-  if (!is.na(pg) && !pg %in% fnames) {
-    add(sprintf("primary_grouping '%s' is not a member of factor_names.", pg))
-  }
-
-  cs <- tryCatch(eds$contrasts(), error = function(e) {
-    add(paste0("contrasts() failed: ", conditionMessage(e)))
-    character()
-  })
-  pc <- tryCatch(eds$primary_contrast(), error = function(e) {
-    add(paste0("primary_contrast() failed: ", conditionMessage(e)))
-    NA_character_
-  })
-  if (!is.na(pc) && !pc %in% cs) {
-    add(sprintf("primary_contrast '%s' is not a member of contrasts().", pc))
-  }
-  for (c in cs) {
-    de <- tryCatch(eds$de(c), error = function(e) {
-      add(sprintf("de('%s') failed: %s", c, conditionMessage(e)))
-      NULL
-    })
-    if (is.null(de)) {
-      next
-    }
-    if (!is.data.frame(de)) {
-      add(sprintf("de('%s') is not a data.frame.", c))
-      next
-    }
-    # The two DE statistics the spec requires (section 5); the app's volcano,
-    # tables and enrichment inputs fail without them.
-    missing_stats <- setdiff(c("effect_log2fc", "score_fdr"), colnames(de))
-    if (length(missing_stats)) {
-      add(sprintf("de('%s') lacks column(s): %s", c, paste(missing_stats, collapse = ", ")))
-    }
-  }
-
-  # 3. The raw and primary assays are offered, and the raw assay is aligned
-  # to the samples and features.
-  an <- tryCatch(eds$assay_names(), error = function(e) {
-    add(paste0("assay_names() failed: ", conditionMessage(e)))
-    character()
-  })
-  for (acc in c("raw_assay_name", "primary_assay_name")) {
-    nm <- tryCatch(eds[[acc]](), error = function(e) {
-      add(sprintf("%s() failed: %s", acc, conditionMessage(e)))
-      NA_character_
-    })
-    if (!is.na(nm) && !nm %in% an) {
-      add(sprintf("%s() '%s' is not in assay_names().", acc, nm))
-    }
-  }
-  for (a in an) {
-    log2 <- tryCatch(eds$assay_is_log2(a), error = function(e) {
-      add(sprintf("assay_is_log2('%s') failed: %s", a, conditionMessage(e)))
-      FALSE
-    })
-    if (!isTRUE(log2) && !isFALSE(log2)) {
-      add(sprintf("assay_is_log2('%s') is not TRUE or FALSE.", a))
-    }
-  }
-  raw_name <- tryCatch(eds$raw_assay_name(), error = function(e) NA_character_)
-  if (!is.na(raw_name) && raw_name %in% an) {
-    a <- tryCatch(eds$raw_assay(), error = function(e) {
-      add(paste0("raw_assay() failed: ", conditionMessage(e)))
-      NULL
-    })
-    fids <- tryCatch(eds$feature_ids(), error = function(e) {
-      add(paste0("feature_ids() failed: ", conditionMessage(e)))
-      NULL
-    })
-    if (!is.null(a)) {
-      if (!is.null(colnames(a)) && !all(colnames(a) %in% rownames(samples_df))) {
-        add("raw_assay() colnames are not a subset of sample_ids().")
-      }
-      if (!is.null(fids) && !is.null(rownames(a)) && !all(rownames(a) %in% fids)) {
-        add("raw_assay() rownames are not a subset of feature_ids().")
-      }
-    }
-  }
-
-  errors <- found$errors
+  checked <- .vx_factors(eds)
+  errors <- c(.vx_class(eds), checked$errors, .vx_contrasts(eds), .vx_assays(eds, checked$samples))
   ok <- length(errors) == 0L
   if (strict && !ok) {
     stop(
@@ -159,4 +46,111 @@ validate_explore_dataset <- function(eds, strict = TRUE) {
   }
   list(ok = ok, errors = errors)
 }
-# nolint end
+
+# Calls one accessor: its value, or `default` and the failure message.
+.vx_call <- function(f, what, default) {
+  tryCatch(
+    list(value = f(), error = character()),
+    error = function(e) list(value = default, error = paste0(what, " failed: ", conditionMessage(e)))
+  )
+}
+
+# 1. A concrete subclass
+.vx_class <- function(eds) {
+  errors <- character()
+  if (!inherits(eds, "ExploreDataset")) {
+    errors <- c(errors, "Object does not inherit from 'ExploreDataset'.")
+  }
+  rt_class <- class(eds)[1]
+  if (rt_class %in% c("ExploreDataset", "ExploreDatasetSE")) {
+    errors <- c(errors, sprintf("Runtime class '%s' is abstract; expected a concrete subclass.", rt_class))
+  }
+  errors
+}
+
+# 2. Factors and the primary grouping are columns of samples(); returns the
+# messages and samples() for the assay checks.
+.vx_factors <- function(eds) {
+  fnames <- .vx_call(function() eds$factor_names(), "factor_names()", character())
+  samples <- .vx_call(function() eds$samples(), "samples()", data.frame())
+  errors <- c(fnames$error, samples$error)
+  missing_factors <- setdiff(fnames$value, colnames(samples$value))
+  if (length(missing_factors)) {
+    errors <- c(errors, sprintf("factor_names not in samples() columns: %s", paste(missing_factors, collapse = ", ")))
+  }
+  pg <- .vx_call(function() eds$primary_grouping(), "primary_grouping()", NA_character_)
+  errors <- c(errors, pg$error)
+  if (!is.na(pg$value) && !pg$value %in% fnames$value) {
+    errors <- c(errors, sprintf("primary_grouping '%s' is not a member of factor_names.", pg$value))
+  }
+  list(errors = errors, samples = samples$value)
+}
+
+# 2. Every contrast has a DE table with the two DE statistics the spec
+# requires (section 5); the app's volcano, tables and enrichment inputs fail
+# without them.
+.vx_contrasts <- function(eds) {
+  cs <- .vx_call(function() eds$contrasts(), "contrasts()", character())
+  pc <- .vx_call(function() eds$primary_contrast(), "primary_contrast()", NA_character_)
+  errors <- c(cs$error, pc$error)
+  if (!is.na(pc$value) && !pc$value %in% cs$value) {
+    errors <- c(errors, sprintf("primary_contrast '%s' is not a member of contrasts().", pc$value))
+  }
+  for (cn in cs$value) {
+    de <- .vx_call(function() eds$de(cn), sprintf("de('%s')", cn), NULL)
+    errors <- c(errors, de$error)
+    if (is.null(de$value)) {
+      next
+    }
+    if (!is.data.frame(de$value)) {
+      errors <- c(errors, sprintf("de('%s') is not a data.frame.", cn))
+      next
+    }
+    missing_stats <- setdiff(c("effect_log2fc", "score_fdr"), colnames(de$value))
+    if (length(missing_stats)) {
+      errors <- c(errors, sprintf("de('%s') lacks column(s): %s", cn, paste(missing_stats, collapse = ", ")))
+    }
+  }
+  errors
+}
+
+# 3. The raw and primary assays are offered, and every assay states its scale.
+.vx_assays <- function(eds, samples_df) {
+  an <- .vx_call(function() eds$assay_names(), "assay_names()", character())
+  errors <- an$error
+  for (acc in c("raw_assay_name", "primary_assay_name")) {
+    nm <- .vx_call(function() eds[[acc]](), paste0(acc, "()"), NA_character_)
+    errors <- c(errors, nm$error)
+    if (!is.na(nm$value) && !nm$value %in% an$value) {
+      errors <- c(errors, sprintf("%s() '%s' is not in assay_names().", acc, nm$value))
+    }
+  }
+  for (a in an$value) {
+    log2 <- .vx_call(function() eds$assay_is_log2(a), sprintf("assay_is_log2('%s')", a), FALSE)
+    errors <- c(errors, log2$error)
+    if (!isTRUE(log2$value) && !isFALSE(log2$value)) {
+      errors <- c(errors, sprintf("assay_is_log2('%s') is not TRUE or FALSE.", a))
+    }
+  }
+  c(errors, .vx_raw_assay(eds, an$value, samples_df))
+}
+
+# 3. The raw assay is aligned to the samples and features.
+.vx_raw_assay <- function(eds, assay_names, samples_df) {
+  raw_name <- .vx_call(function() eds$raw_assay_name(), "raw_assay_name()", NA_character_)$value
+  if (is.na(raw_name) || !raw_name %in% assay_names) {
+    return(character())
+  }
+  a <- .vx_call(function() eds$raw_assay(), "raw_assay()", NULL)
+  fids <- .vx_call(function() eds$feature_ids(), "feature_ids()", NULL)
+  errors <- c(a$error, fids$error)
+  if (!is.null(a$value)) {
+    if (!is.null(colnames(a$value)) && !all(colnames(a$value) %in% rownames(samples_df))) {
+      errors <- c(errors, "raw_assay() colnames are not a subset of sample_ids().")
+    }
+    if (!is.null(fids$value) && !is.null(rownames(a$value)) && !all(rownames(a$value) %in% fids$value)) {
+      errors <- c(errors, "raw_assay() rownames are not a subset of feature_ids().")
+    }
+  }
+  errors
+}
