@@ -55,8 +55,21 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: |
+            any::rcmdcheck
+            bioc::BiocCheck
           needs: check
+
+      # BiocCheck as Bioconductor's review runs it on a new package; drop
+      # new-package once exploreDE is accepted. Errors and warnings fail the
+      # job, notes are printed. It runs before R CMD check, whose check/
+      # folder it would otherwise scan. no-check-bioc-help skips the
+      # support-site and mailing-list lookups of the maintainer's accounts.
+      - name: BiocCheck
+        if: runner.os == 'Linux'
+        run: |
+          Rscript -e 'res <- BiocCheck::BiocCheck(".", checkDir = tempdir(), `new-package` = TRUE, `no-check-bioc-help` = TRUE)' \
+            -e 'quit(status = as.integer(length(res$error) + length(res$warning) > 0L))'
 
       - uses: r-lib/actions/check-r-package@v2
         with:
