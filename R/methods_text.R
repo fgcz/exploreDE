@@ -292,7 +292,6 @@ buildCitationsList <- function(aligner, de_method, run_go = FALSE, ref_build = N
   return(citations)
 }
 
-# nolint start: cyclocomp_linter. One text block per section.
 #' generateMethodsText
 #' Build the named list of methods-section paragraphs (trimming, mapping, DE analysis, GO, processing).
 #' @param param Parameter list from the SE
@@ -306,23 +305,39 @@ buildCitationsList <- function(aligner, de_method, run_go = FALSE, ref_build = N
 #' @noRd
 generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_versions, se, raw_reads_text = "") {
   sections <- list()
-
-  # Final Mapped/Counted Reads (from SE)
-  final_reads_info <- ""
-  if (!is.null(se) && "counts" %in% SummarizedExperiment::assayNames(se)) {
-    lib_sizes <- colSums(SummarizedExperiment::assay(se, "counts"))
-    final_reads_info <- paste0(
-      "Final library sizes ranged from ",
-      round(min(lib_sizes) / 1e6, 1),
-      " million to ",
-      round(max(lib_sizes) / 1e6, 1),
-      " million reads. "
-    )
+  sections$trimming <- methods_trimming_text(raw_reads_text, fastp_version)
+  sections$mapping <- paste0(methods_mapping_text(param, aligner), " ", final_library_size_text(se))
+  sections$de_analysis <- methods_de_text(de_method, pkg_versions)
+  if (!is.null(param$runGO) && param$runGO) {
+    sections$go_analysis <- methods_go_text(param, pkg_versions)
   }
+  sections$data_processing <- methods_processing_text()
+  sections
+}
 
-  # Read trimming section
+# " (version x.y.z)" for a package of getPackageVersions(), or "".
+methods_version_text <- function(pkg_versions, pkg) {
+  if (pkg_versions[pkg] != "version unavailable") paste0(" (version ", pkg_versions[pkg], ")") else ""
+}
+
+# Final mapped / counted reads, from the SE's counts.
+final_library_size_text <- function(se) {
+  if (is.null(se) || !"counts" %in% SummarizedExperiment::assayNames(se)) {
+    return("")
+  }
+  lib_sizes <- colSums(SummarizedExperiment::assay(se, "counts"))
+  paste0(
+    "Final library sizes ranged from ",
+    round(min(lib_sizes) / 1e6, 1),
+    " million to ",
+    round(max(lib_sizes) / 1e6, 1),
+    " million reads. "
+  )
+}
+
+methods_trimming_text <- function(raw_reads_text, fastp_version) {
   fastp_ver_text <- if (!is.null(fastp_version)) paste0(" (version ", fastp_version, ")") else ""
-  sections$trimming <- paste0(
+  paste0(
     raw_reads_text,
     "Read quality was inspected using FastQC (Andrews, 2010) and MultiQC (Ewels et al., 2016), and sequencing ",
     "adaptors removed using fastp",
@@ -331,158 +346,116 @@ generateMethodsText <- function(param, aligner, de_method, fastp_version, pkg_ve
     "Quality trimming was performed to remove low-quality bases, with reads shorter than 18 bases discarded. ",
     "Poly-X tails were trimmed with a minimum length threshold of 10 bases."
   )
+}
 
-  # Mapping and quantification section
-  ref_build_raw <- if (!is.null(param$refBuild)) param$refBuild else "the reference genome"
-  ref_build <- formatRefBuild(ref_build_raw)
+methods_mapping_text <- function(param, aligner) {
+  ref_build <- formatRefBuild(if (!is.null(param$refBuild)) param$refBuild else "the reference genome")
   feature_level <- if (!is.null(param$featureLevel)) param$featureLevel else "gene"
   transcript_types <- if (!is.null(param$transcriptTypes)) param$transcriptTypes else "protein-coding"
-
-  if (aligner == "Kallisto") {
-    sections$mapping <- paste0(
-      "Transcript-level abundance was estimated using Kallisto ",
-      "(Bray et al., 2016), which performs pseudo-alignment of reads to the ",
+  # STAR and featureCounts share the alignment sentence and what was kept
+  star <- paste0(
+    "Alignment of the RNA-seq reads was performed using the STAR aligner (Dobin et al., 2013) with the ",
+    ref_build,
+    " reference genome as the reference. "
+  )
+  genes_kept <- paste0("Only ", transcript_types, " genes were retained for downstream analysis.")
+  switch(
+    aligner,
+    Kallisto = paste0(
+      "Transcript-level abundance was estimated using Kallisto (Bray et al., 2016), which performs ",
+      "pseudo-alignment of reads to the ",
       ref_build,
-      " reference transcriptome. ",
-      "Kallisto uses an expectation-maximisation algorithm to quantify transcript abundances. ",
-      "Only ",
+      " reference transcriptome. Kallisto uses an expectation-maximisation algorithm to quantify transcript ",
+      "abundances. Only ",
       transcript_types,
       " transcripts were retained for downstream analysis."
-    )
-  } else if (aligner == "STAR") {
-    sections$mapping <- paste0(
-      "Alignment of the RNA-seq reads was performed using the STAR aligner ",
-      "(Dobin et al., 2013) with the ",
-      ref_build,
-      " reference genome as the reference. ",
-      "STAR employs a seed-and-extend approach optimised for RNA-seq data, ",
-      "enabling accurate detection of splice junctions. ",
-      "Only ",
-      transcript_types,
-      " genes were retained for downstream analysis."
-    )
-  } else if (aligner == "FeatureCounts") {
-    sections$mapping <- paste0(
-      "Alignment of the RNA-seq reads was performed using the STAR aligner ",
-      "(Dobin et al., 2013) with the ",
-      ref_build,
-      " reference genome as the reference. ",
+    ),
+    STAR = paste0(
+      star,
+      "STAR employs a seed-and-extend approach optimised for RNA-seq data, enabling accurate detection of splice ",
+      "junctions. ",
+      genes_kept
+    ),
+    FeatureCounts = paste0(
+      star,
       "The counting of ",
       feature_level,
-      "-level expression values was performed using the 'featureCounts' function ",
-      "of the R package Rsubread (Liao et al., 2013). ",
-      "Only ",
-      transcript_types,
-      " genes were retained for downstream analysis."
-    )
-  } else {
-    sections$mapping <- paste0(
+      "-level expression values was performed using the 'featureCounts' function of the R package Rsubread ",
+      "(Liao et al., 2013). ",
+      genes_kept
+    ),
+    paste0(
       "Reads were aligned to the ",
       ref_build,
-      " reference genome and ",
-      "quantified at the ",
+      " reference genome and quantified at the ",
       feature_level,
-      " level using standard RNA-seq ",
-      "alignment and quantification methods, ",
-      "with only ",
+      " level using standard RNA-seq alignment and quantification methods, with only ",
       transcript_types,
       " genes retained for downstream analysis."
     )
-  }
+  )
+}
 
-  # Append final library size info
-  sections$mapping <- paste0(sections$mapping, " ", final_reads_info)
-
-  # Filter, Normalisation and Differential Expression section
-
-  deseq2_ver <- if (pkg_versions["DESeq2"] != "version unavailable") {
-    paste0(" (version ", pkg_versions["DESeq2"], ")")
-  } else {
-    ""
-  }
-  edger_ver <- if (pkg_versions["edgeR"] != "version unavailable") {
-    paste0(" (version ", pkg_versions["edgeR"], ")")
-  } else {
-    ""
-  }
-
-  if (de_method == "DESeq2") {
-    sections$de_analysis <- paste0(
+# Filter, normalisation and DE; NULL for a method other than DESeq2 or edgeR.
+methods_de_text <- function(de_method, pkg_versions) {
+  switch(
+    de_method,
+    DESeq2 = paste0(
       "Count data were normalised using DESeq2's median-of-ratios method, which accounts for differences in library ",
-      "size ",
-      "and RNA composition bias between samples. ",
+      "size and RNA composition bias between samples. ",
       "Differential expression was performed using the DESeq2 Bioconductor R package",
-      deseq2_ver,
-      " ",
-      "(Love et al., 2014), which implements a generalised linear model with a negative binomial distribution ",
+      methods_version_text(pkg_versions, "DESeq2"),
+      " (Love et al., 2014), which implements a generalised linear model with a negative binomial distribution ",
       "to account for technical and biological variability. ",
       "Dispersion and log2 fold change estimates were moderated using shrinkage methods to improve stability. ",
       "Statistical significance was assessed using the Wald test, with p-values adjusted for multiple testing ",
       "using the Benjamini-Hochberg method to control the false discovery rate (FDR)."
-    )
-  } else if (de_method == "edgeR") {
-    sections$de_analysis <- paste0(
+    ),
+    edgeR = paste0(
       "Count data were normalised using the trimmed mean of M-values (TMM) method implemented in edgeR, ",
       "which corrects for differences in library size and RNA composition between samples. ",
       "Differential expression was performed using the edgeR Bioconductor R package",
-      edger_ver,
-      " ",
-      "(Robinson et al., 2010), which implements a generalised linear model with a negative binomial distribution ",
+      methods_version_text(pkg_versions, "edgeR"),
+      " (Robinson et al., 2010), which implements a generalised linear model with a negative binomial distribution ",
       "to account for technical and biological variability. ",
       "Dispersion estimates were moderated using empirical Bayes shrinkage to improve reliability for genes with low ",
-      "counts. ",
-      "Statistical significance was assessed using the likelihood ratio test (LRT), ",
+      "counts. Statistical significance was assessed using the likelihood ratio test (LRT), ",
       "with p-values adjusted for multiple testing using the Benjamini-Hochberg method to control the false ",
       "discovery rate (FDR)."
     )
+  )
+}
+
+methods_go_text <- function(param, pkg_versions) {
+  paste0(
+    "Gene Ontology (GO) term pathway analysis was performed using both the hypergeometric over-representation test ",
+    "via the 'enricher' function, and gene-set enrichment analysis via the 'GSEA' function, ",
+    "of the clusterProfiler Bioconductor R package",
+    methods_version_text(pkg_versions, "clusterProfiler"),
+    " (Yu et al., 2012), with FDR thresholds of ",
+    if (!is.null(param$fdrThreshORA)) param$fdrThreshORA else 0.05,
+    " and ",
+    if (!is.null(param$fdrThreshGSEA)) param$fdrThreshGSEA else 0.05,
+    ", respectively."
+  )
+}
+
+methods_processing_text <- function() {
+  bioc_version <- if (requireNamespace("BiocManager", quietly = TRUE)) {
+    paste0(" and Bioconductor version ", as.character(BiocManager::version()))
+  } else {
+    ""
   }
-
-  # Gene ontology section (if applicable)
-  if (!is.null(param$runGO) && param$runGO) {
-    cluster_ver <- if (pkg_versions["clusterProfiler"] != "version unavailable") {
-      paste0(" (version ", pkg_versions["clusterProfiler"], ")")
-    } else {
-      ""
-    }
-    fdr_ora <- if (!is.null(param$fdrThreshORA)) param$fdrThreshORA else 0.05
-    fdr_gsea <- if (!is.null(param$fdrThreshGSEA)) param$fdrThreshGSEA else 0.05
-
-    sections$go_analysis <- paste0(
-      "Gene Ontology (GO) term pathway analysis was performed using both the hypergeometric over-representation test ",
-      "via the 'enricher' function, and gene-set enrichment analysis via the 'GSEA' function, ",
-      "of the clusterProfiler Bioconductor R package",
-      cluster_ver,
-      " ",
-      "(Yu et al., 2012), ",
-      "with FDR thresholds of ",
-      fdr_ora,
-      " and ",
-      fdr_gsea,
-      ", respectively."
-    )
-  }
-
-  # Data processing section
-  # Get R version info if available
-  r_version <- paste0("R version ", R.version$major, ".", R.version$minor)
-
-  # Get Bioconductor version if available
-  bioc_version <- ""
-  if (requireNamespace("BiocManager", quietly = TRUE)) {
-    bioc_version <- paste0(" and Bioconductor version ", as.character(BiocManager::version()))
-  }
-
-  sections$data_processing <- paste0(
+  paste0(
     "All analyses were conducted using the SUSHI framework (Hatakeyama et al., 2016), ",
     "which provides a reproducible and documented workflow for NGS data analysis. ",
-    "All R functions were executed on ",
-    r_version,
+    "All R functions were executed on R version ",
+    R.version$major,
+    ".",
+    R.version$minor,
     bioc_version,
     " (R Core Team, 2020). ",
     "Figures were generated using the exploreDE Shiny application using the data generated from the above steps ",
     "(Leary and Rehrauer, 2024)."
   )
-
-  return(sections)
 }
-# nolint end
