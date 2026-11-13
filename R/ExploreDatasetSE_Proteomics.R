@@ -23,7 +23,7 @@
     v <- cd[[fc]]
     if (is.factor(v)) levels(v) else sort(unique(as.character(v)))
   })
-  list(names = cols, levels = setNames(levels, cols))
+  list(names = cols, levels = stats::setNames(levels, cols))
 }
 
 # Flavour (protein / phospho / peptide) and SAINT, from the first contrast's
@@ -66,7 +66,7 @@
 }
 
 .se_proteomics_contrast_meta <- function(contrasts, factor1, saint, reference_default) {
-  setNames(
+  stats::setNames(
     lapply(contrasts, function(cn) {
       grp <- strsplit(cn, "_vs_|--over--")[[1]]
       list(

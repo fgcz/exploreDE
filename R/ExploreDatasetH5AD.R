@@ -114,7 +114,7 @@
   })
   list(
     names = fnames,
-    levels = setNames(levels, fnames),
+    levels = stats::setNames(levels, fnames),
     grouping = .h5ad_strip_factor(uns$design$grouping %||% (if (length(cols)) cols[[1]] else NA_character_))
   )
 }
@@ -170,8 +170,8 @@
   prim <- if (length(prim)) prim[[1]] else have[[1]]
   raw <- setdiff(intersect(c("intensities_raw", "counts", "raw"), have), prim)
   assay_map <- c(
-    setNames(list(prim), "intensities"),
-    if (length(raw)) setNames(list(raw[[1]]), "intensities_raw")
+    stats::setNames(list(prim), "intensities"),
+    if (length(raw)) stats::setNames(list(raw[[1]]), "intensities_raw")
   )
   list(
     map = assay_map,
@@ -220,7 +220,7 @@
     }
   )
   if (!length(assay_map)) {
-    assay_map <- setNames(list(have[1]), have[1])
+    assay_map <- stats::setNames(list(have[1]), have[1])
   }
   raw_name <- if ("counts" %in% names(assay_map)) "counts" else names(assay_map)[1]
   list(
