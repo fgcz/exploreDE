@@ -7,6 +7,12 @@
   3.10.0. Witold Wolski is the maintainer.
 - The vignette installs exploreDE from Bioconductor
   (`BiocManager::install("exploreDE")`).
+- The app opens about a second faster: checking whether the KEGG views
+  can be offered no longer loads pathview, which now loads when a KEGG
+  view is first opened.
+- VST is computed once per dataset: switching a tab to VST again, or a
+  second plot on VST, no longer recomputes it (0.3 s on the demo, much
+  longer on large datasets).
 - [`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md)
   opens a `SummarizedExperiment` or AnnData object as well as a path:
   `exploreDE(se)`. The object is written to a temporary file that the

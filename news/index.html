@@ -40,6 +40,8 @@
 <h2 class="pkg-version" data-toc-text="0.99.0" id="explorede-0990">exploreDE 0.99.0<a class="anchor" aria-label="anchor" href="#explorede-0990"></a></h2>
 <ul><li>Submitted to Bioconductor. The version restarts at 0.99.0, the number Bioconductor gives a new package; the changes below were developed as 3.10.0. Witold Wolski is the maintainer.</li>
 <li>The vignette installs exploreDE from Bioconductor (<code>BiocManager::install("exploreDE")</code>).</li>
+<li>The app opens about a second faster: checking whether the KEGG views can be offered no longer loads pathview, which now loads when a KEGG view is first opened.</li>
+<li>VST is computed once per dataset: switching a tab to VST again, or a second plot on VST, no longer recomputes it (0.3 s on the demo, much longer on large datasets).</li>
 <li>
 <code><a href="../reference/exploreDE.html">exploreDE()</a></code> opens a <code>SummarizedExperiment</code> or AnnData object as well as a path: <code>exploreDE(se)</code>. The object is written to a temporary file that the app opens; a SummarizedExperiment that is not a SUSHI or prolfqua result opens as a Count QC dataset.</li>
 <li>
