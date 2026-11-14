@@ -1,3 +1,21 @@
+#' exploreDE: interactive exploration of differential expression results
+#'
+#' A Shiny app for exploring differential expression results from RNA-seq,
+#' proteomics and CRISPR screens, and for making figures from them.
+#'
+#' - [exploreDE()] starts the app, on a file or a `SummarizedExperiment` or
+#'   AnnData object.
+#' - [build_explore_h5ad()] writes an exploreDE `.h5ad` from any pipeline's
+#'   results, and [validate_explore_dataset()] checks it.
+#' - [new_explore_dataset()] opens a dataset in R, through the same interface
+#'   the app's tabs use.
+#'
+#' Start with `vignette("exploreDE")`; `vignette("bring-your-own-data")`
+#' explains how to build a file from your own results.
+#'
+#' @keywords internal
+"_PACKAGE"
+
 #' @importFrom R6 R6Class
 #' @importFrom rlang .data
 NULL

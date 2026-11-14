@@ -1,6 +1,6 @@
 ---
 title: "Bring your own data: building an exploreDE file"
-output: rmarkdown::html_vignette
+output: BiocStyle::html_document
 vignette: >
   %\VignetteIndexEntry{Bring your own data: building an exploreDE file}
   %\VignetteEngine{knitr::rmarkdown}

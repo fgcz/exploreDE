@@ -943,19 +943,40 @@
   )
 }
 
+# Every assay of a SummarizedExperiment under its name (.assemble_counts maps
+# the names to layers: rawData -> intensities_raw, transformedData ->
+# intensities, counts, vst, ...), with its colData and rowData. A single
+# unnamed assay is passed as a plain matrix, so the single-matrix rule applies.
+.pieces_from_se <- function(se) {
+  counts <- as.list(SummarizedExperiment::assays(se))
+  if (is.null(names(counts))) {
+    if (length(counts) > 1L) {
+      stop("build_explore_h5ad: name the assays of the SummarizedExperiment; their names become the layer names")
+    }
+    counts <- counts[[1L]]
+  }
+  rd <- .as_df_keep_names(SummarizedExperiment::rowData(se))
+  list(
+    counts = counts,
+    coldata = .as_df_keep_names(SummarizedExperiment::colData(se)),
+    rowdata = if (ncol(rd)) rd else NULL
+  )
+}
+
 #' Build a canonical exploreDE `.h5ad` from user-supplied data
 #'
-#' The source-agnostic "bring your own data" constructor. `x` is either a
-#' `DESeqDataSet` (the preferred starting point: its counts, `colData`,
-#' `rowData` and factors are used) or the counts themselves (a matrix, or a
-#' named list of matrices such as `list(counts=, normalised=, vst=, tpm=)`).
-#' From a `SummarizedExperiment`, pass its assays as such a list, with
-#' `coldata = colData(se)` and `rowdata = rowData(se)`. DE tables and pathway
-#' statistics are supplied as arguments. Only counts + `coldata` + `omics` are
-#' required.
+#' The source-agnostic "bring your own data" constructor. `x` is a
+#' `DESeqDataSet` (its counts, `colData`, `rowData` and factors are used), a
+#' `SummarizedExperiment` (every assay under its name, its `colData` and its
+#' `rowData`), or the counts themselves (a matrix, or a named list of matrices
+#' such as `list(counts=, normalised=, vst=, tpm=)`). Assay and matrix names
+#' become layer names: `rawData` and `raw` are raw intensities in proteomics,
+#' `transformedData` the analysis-ready ones. DE tables and pathway statistics
+#' are supplied as arguments. Only counts + `coldata` + `omics` are required;
+#' `coldata` and `rowdata`, when given, replace those of `x`.
 #'
-#' @param x A `DESeqDataSet`, a counts matrix, or a named list of count
-#'   matrices.
+#' @param x A `DESeqDataSet`, a `SummarizedExperiment` with named assays, a
+#'   counts matrix, or a named list of count matrices.
 #' @param out Output `.h5ad` path.
 #' @param omics Required: `"rnaseq"`, `"proteomics"`, or `"crispr"`.
 #' @param feature_level Optional override of the feature granularity within the
@@ -1017,6 +1038,17 @@
 #' )
 #' file.exists(path)
 #'
+#' # The SummarizedExperiment itself: rawData and transformedData become the
+#' # layers intensities_raw and intensities
+#' se_path <- build_explore_h5ad(
+#'   se,
+#'   out = tempfile(fileext = ".h5ad"),
+#'   omics = "proteomics",
+#'   rowdata = de,
+#'   factors = "G_",
+#'   de = list(B_vs_A = de)
+#' )
+#'
 #' # Counts only
 #' counts_only <- build_explore_h5ad(
 #'   assay(se, "rawData"),
@@ -1052,10 +1084,18 @@ build_explore_h5ad <- function(
     coldata <- coldata %||% pc$coldata
     rowdata <- rowdata %||% pc$rowdata
     factors <- factors %||% pc$factors
+  } else if (inherits(x, "SummarizedExperiment")) {
+    pc <- .pieces_from_se(x)
+    counts <- pc$counts
+    coldata <- coldata %||% pc$coldata
+    rowdata <- rowdata %||% pc$rowdata
   } else if (is.matrix(x) || inherits(x, "Matrix") || is.list(x)) {
     counts <- x
   } else {
-    stop("build_explore_h5ad: `x` must be a DESeqDataSet, a counts matrix, or a named list of matrices")
+    stop(
+      "build_explore_h5ad: `x` must be a DESeqDataSet, a SummarizedExperiment, a counts matrix, ",
+      "or a named list of matrices"
+    )
   }
   if (is.null(coldata)) {
     stop("build_explore_h5ad: `coldata` is required (no rich object supplied it)")

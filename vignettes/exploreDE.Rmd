@@ -1,7 +1,7 @@
 ---
 title: "exploreDE: interactive exploration of differential expression results"
 author: "Peter Leary and Witold Wolski, Functional Genomics Center Zurich"
-output: rmarkdown::html_vignette
+output: BiocStyle::html_document
 vignette: >
   %\VignetteIndexEntry{exploreDE: interactive exploration of differential expression results}
   %\VignetteEngine{knitr::rmarkdown}
@@ -30,6 +30,28 @@ It opens:
 
 This vignette shows how to start the app, what its tabs do, and how to open a dataset in R. The companion vignette `vignette("bring-your-own-data", package = "exploreDE")` explains how to build a file from your own results.
 
+## exploreDE and Bioconductor
+
+exploreDE is built on Bioconductor data structures and methods:
+
+- it opens `SummarizedExperiment` objects, directly with `exploreDE(se)` or `new_explore_dataset(se)`, and AnnData files through anndataR; `build_explore_h5ad()` takes a `SummarizedExperiment` or a `DESeqDataSet`;
+- it computes variance-stabilised counts with DESeq2 (`vst()`), removes batch effects with limma (`removeBatchEffect()`), draws heatmaps with ComplexHeatmap and shows clusterProfiler enrichment results with enrichplot.
+
+Other Bioconductor packages explore expression data interactively:
+
+- iSEE explores any `SummarizedExperiment`, including its row and column metadata, in linked and extensible panels;
+- pcaExplorer visualises RNA-seq data through principal components analysis;
+- ideal works on RNA-seq datasets downstream of the differential expression step, with a report template for reproducibility;
+- GeneTonic combines RNA-seq differential expression and functional enrichment results, and captures the genes and gene sets highlighted in a session in an HTML report;
+- debrowser provides interactive plots and tables for differential gene and region expression studies.
+
+exploreDE differs in what it opens and who it is for:
+
+- one app for RNA-seq, proteomics (protein, peptide and phosphosite level) and CRISPR screen results;
+- it shows DE and enrichment results that a pipeline has already computed (DESeq2, edgeR, limma, prolfqua, SAINTexpress, clusterProfiler) rather than running the test itself;
+- it compares the contrasts of several datasets in its Multi DE tabs;
+- its figures are point and click, for the experimenter rather than the analyst, and its settings are saved and restored as JSON session files.
+
 ## Installation
 
 ```{r install, eval = FALSE}
@@ -54,6 +76,7 @@ library(exploreDE)
 exploreDE() # landing page: upload a file, or load the demo dataset
 exploreDE("my_data.h5ad") # open a file directly
 exploreDE(c("a.h5ad", "b.h5ad")) # compare the contrasts of several files
+exploreDE(se) # open a SummarizedExperiment or AnnData object
 ```
 
 On the landing page, **Load a demo dataset instead** opens the RNA-seq comparison that ships with the package: 9 samples in two groups (`diff`, `undiff`), about 21,000 genes, one DESeq2 contrast, and its GO over-representation and gene set enrichment results. The screenshots below show it.
@@ -158,6 +181,18 @@ new_explore_dataset(out)$contrasts()
 
 ```{r run-own, eval = FALSE}
 exploreDE(out)
+```
+
+`build_explore_h5ad()` also takes a `SummarizedExperiment` as it is: every assay becomes a layer of the file under its name, here the prolfqua result's raw and transformed intensities.
+
+```{r build-se}
+prot_h5ad <- build_explore_h5ad(
+  se_prot,
+  out = file.path(tempdir(), "prot.h5ad"),
+  omics = "proteomics",
+  factors = "G_"
+)
+new_explore_dataset(prot_h5ad)$assay_names()
 ```
 
 The column names of the DE table do not need to follow a convention: a dictionary recognises the usual names of DESeq2, edgeR, limma, prolfqua and SAINTexpress. `vignette("bring-your-own-data", package = "exploreDE")` covers counts-only files, proteomics, pathway results, organisms without an annotation package, and what to do when a column is not recognised.

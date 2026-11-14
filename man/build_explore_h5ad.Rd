@@ -22,8 +22,8 @@ build_explore_h5ad(
 )
 }
 \arguments{
-\item{x}{A \code{DESeqDataSet}, a counts matrix, or a named list of count
-matrices.}
+\item{x}{A \code{DESeqDataSet}, a \code{SummarizedExperiment} with named assays, a
+counts matrix, or a named list of count matrices.}
 
 \item{out}{Output \code{.h5ad} path.}
 
@@ -85,14 +85,15 @@ and the app uses a per-method value as its significance threshold.}
 The output path, invisibly.
 }
 \description{
-The source-agnostic "bring your own data" constructor. \code{x} is either a
-\code{DESeqDataSet} (the preferred starting point: its counts, \code{colData},
-\code{rowData} and factors are used) or the counts themselves (a matrix, or a
-named list of matrices such as \code{list(counts=, normalised=, vst=, tpm=)}).
-From a \code{SummarizedExperiment}, pass its assays as such a list, with
-\code{coldata = colData(se)} and \code{rowdata = rowData(se)}. DE tables and pathway
-statistics are supplied as arguments. Only counts + \code{coldata} + \code{omics} are
-required.
+The source-agnostic "bring your own data" constructor. \code{x} is a
+\code{DESeqDataSet} (its counts, \code{colData}, \code{rowData} and factors are used), a
+\code{SummarizedExperiment} (every assay under its name, its \code{colData} and its
+\code{rowData}), or the counts themselves (a matrix, or a named list of matrices
+such as \code{list(counts=, normalised=, vst=, tpm=)}). Assay and matrix names
+become layer names: \code{rawData} and \code{raw} are raw intensities in proteomics,
+\code{transformedData} the analysis-ready ones. DE tables and pathway statistics
+are supplied as arguments. Only counts + \code{coldata} + \code{omics} are required;
+\code{coldata} and \code{rowdata}, when given, replace those of \code{x}.
 }
 \examples{
 library(SummarizedExperiment)
@@ -109,6 +110,17 @@ path <- build_explore_h5ad(
   de = list(B_vs_A = de)
 )
 file.exists(path)
+
+# The SummarizedExperiment itself: rawData and transformedData become the
+# layers intensities_raw and intensities
+se_path <- build_explore_h5ad(
+  se,
+  out = tempfile(fileext = ".h5ad"),
+  omics = "proteomics",
+  rowdata = de,
+  factors = "G_",
+  de = list(B_vs_A = de)
+)
 
 # Counts only
 counts_only <- build_explore_h5ad(

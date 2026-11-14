@@ -1392,6 +1392,34 @@ test_that("proteomics files carry the spec's layer names: intensities, intensiti
   expect_equal(sort(as.vector(e$assay("intensities"))), sort(as.vector(pr$intensities)))
 })
 
+test_that("a SummarizedExperiment builds with every assay under its layer name", {
+  skip_if_no_anndataR()
+  pr <- make_toy_prot("protein")
+  se <- SummarizedExperiment::SummarizedExperiment(
+    assays = list(rawData = 2^pr$intensities, transformedData = pr$intensities),
+    colData = pr$coldata,
+    rowData = pr$rowdata
+  )
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(se, out = out, omics = "proteomics")
+  expect_setequal(names(anndataR::read_h5ad(out, as = "InMemoryAnnData")$layers), c("intensities_raw", "intensities"))
+  e <- new_explore_dataset(out)
+  expect_equal(sort(as.vector(e$assay("intensities"))), sort(as.vector(pr$intensities)))
+  expect_setequal(e$samples()$group, c("A", "B"))
+})
+
+test_that("a SummarizedExperiment needs named assays unless it has only one", {
+  skip_if_no_anndataR()
+  pr <- make_toy_prot("protein")
+  out <- withr::local_tempfile(fileext = ".h5ad")
+  two <- SummarizedExperiment::SummarizedExperiment(assays = list(2^pr$intensities, pr$intensities), colData = pr$coldata)
+  expect_error(build_explore_h5ad(two, out = out, omics = "proteomics"), "name the assays")
+
+  one <- SummarizedExperiment::SummarizedExperiment(assays = list(pr$intensities), colData = pr$coldata)
+  build_explore_h5ad(one, out = out, omics = "proteomics")
+  expect_identical(names(anndataR::read_h5ad(out, as = "InMemoryAnnData")$layers), "intensities")
+})
+
 test_that("contrast groups must be levels of a factor; model is written only for DESeq2 results", {
   skip_if_no_anndataR()
   dds <- make_toy_dds()
@@ -1426,16 +1454,7 @@ test_that("enrichment_filter records padj_max only for tables that were filtered
   expect_equal(nrow(u$enrichment$treated_vs_control$ora), 2L) # stored as given
 })
 
-test_that("build_explore_h5ad refuses a plain SummarizedExperiment instead of keeping only its first assay", {
-  p <- make_toy_pieces()
-  se <- SummarizedExperiment::SummarizedExperiment(
-    assays = list(rawData = p$counts, transformedData = log2(p$counts + 1)),
-    colData = p$coldata
-  )
-  expect_error(
-    build_explore_h5ad(se, out = tempfile(fileext = ".h5ad"), omics = "proteomics"),
-    "must be a DESeqDataSet, a counts matrix, or a named list of matrices"
-  )
+test_that("build_explore_h5ad has no gene_symbol argument", {
   expect_false("gene_symbol" %in% names(formals(build_explore_h5ad)))
 })
 

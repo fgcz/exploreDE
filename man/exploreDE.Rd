@@ -7,9 +7,11 @@
 exploreDE(file = NULL, ...)
 }
 \arguments{
-\item{file}{Optional path to an exploreDE \code{.h5ad}, a SummarizedExperiment
-\code{.rds}/\code{.qs2}, or a SUSHI result directory; or several paths, the first of
-which opens in the tabs, the others going to Multi DE.}
+\item{file}{Optional dataset: a \code{SummarizedExperiment} or AnnData object; a
+path to an exploreDE \code{.h5ad}, a SummarizedExperiment \code{.rds}/\code{.qs2}, or a
+SUSHI result directory; or several paths, the first of which opens in the
+tabs, the others going to Multi DE. An object is written to a temporary
+file, which the app opens.}
 
 \item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}} (e.g. \code{port}, \code{launch.browser}).}
 }
@@ -24,10 +26,18 @@ or load the demo dataset. With \code{file}, it opens straight into that dataset;
 with several files, the first opens in the tabs and the contrasts of the
 others join it in the Multi DE tabs.
 }
+\details{
+A \code{SummarizedExperiment} opens as \code{\link[=new_explore_dataset]{new_explore_dataset()}} classifies it: a
+SUSHI RNA-seq or prolfqua proteomics result with all its tabs, any other as
+a Count QC dataset. To see the DE tabs for another \code{SummarizedExperiment},
+build an \code{.h5ad} from it with \code{\link[=build_explore_h5ad]{build_explore_h5ad()}} and open that.
+}
 \examples{
 if (interactive()) {
   exploreDE()
   exploreDE("my_data.h5ad")
   exploreDE(c("design1.h5ad", "design2.h5ad"))
+  se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+  exploreDE(se)
 }
 }
