@@ -3,11 +3,14 @@ message: "If you use exploreDE, please cite it using these metadata."
 title: exploreDE
 type: software
 version: 0.99.0
-doi: 10.5281/zenodo.8167437
+doi: 10.5281/zenodo.24224551
 identifiers:
   - type: doi
+    value: 10.5281/zenodo.24224551
+    description: Zenodo concept DOI of the GitHub releases, resolves to the latest version
+  - type: doi
     value: 10.5281/zenodo.8167437
-    description: Zenodo concept DOI, resolves to the latest version
+    description: Zenodo concept DOI of the earlier app versions (2023-2024)
 license: MIT
 repository-code: "https://github.com/fgcz/exploreDE"
 keywords:
