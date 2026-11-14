@@ -3,11 +3,23 @@ message: "If you use exploreDE, please cite it using these metadata."
 title: exploreDE
 type: software
 version: 0.99.0
+doi: 10.5281/zenodo.8167437
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.8167437
+    description: Zenodo concept DOI, resolves to the latest version
 license: MIT
 repository-code: "https://github.com/fgcz/exploreDE"
+keywords:
+  - shiny
+  - R
+  - differential expression
 authors:
   - family-names: Leary
     given-names: Peter
     email: peter.leary@uzh.ch
     orcid: "https://orcid.org/0000-0003-1430-6185"
+    affiliation: Functional Genomics Center Zurich (FGCZ)
+  - family-names: Rehrauer
+    given-names: Hubert
     affiliation: Functional Genomics Center Zurich (FGCZ)
