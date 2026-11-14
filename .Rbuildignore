@@ -2,8 +2,6 @@
 ^\.Rproj\.user$
 ^plans$
 ^\.claude$
-^chain\.pem$
-^shiny-server\.conf$
 ^h5ad_import_testing\.R$
 ^Dev_R_Code$
 ^\.gitignore$

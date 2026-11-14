@@ -10,3 +10,4 @@ banana-twemoji-512.png
 docs/
 tests/testthat/Rplots.pdf
 vignettes/*.html
+*.Rproj
