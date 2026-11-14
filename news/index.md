@@ -1,7 +1,12 @@
 # Changelog
 
-## exploreDE 3.10.0
+## exploreDE 0.99.0
 
+- Submitted to Bioconductor. The version restarts at 0.99.0, the number
+  Bioconductor gives a new package; the changes below were developed as
+  3.10.0. Witold Wolski is the maintainer.
+- The vignette installs exploreDE from Bioconductor
+  (`BiocManager::install("exploreDE")`).
 - The app run from the installed package
   ([`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md),
   or [`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html) on

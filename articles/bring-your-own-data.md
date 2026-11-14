@@ -22,7 +22,7 @@ with the package (`inst/examples/`).
 
 ``` r
 install.packages("BiocManager")
-BiocManager::install("fgcz/exploreDE")   # pulls in the Bioconductor dependencies
+BiocManager::install("exploreDE")
 ```
 
 Start the app with:
@@ -59,6 +59,8 @@ labels such as `organism`, `ref_build`, and `factors`.
 ``` r
 library(exploreDE)
 library(SummarizedExperiment)
+#> Warning: replacing previous import 'S4Arrays::makeNindexFromArrayViewport' by
+#> 'DelayedArray::makeNindexFromArrayViewport' when loading 'SummarizedExperiment'
 out_dir <- tempdir()
 ```
 
@@ -370,7 +372,7 @@ sessionInfo()
 #>  [5] IRanges_2.47.5              S4Vectors_0.51.10          
 #>  [7] BiocGenerics_0.59.13        generics_0.1.4             
 #>  [9] MatrixGenerics_1.25.0       matrixStats_1.5.0          
-#> [11] exploreDE_3.10.0           
+#> [11] exploreDE_0.99.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] splines_4.6.2               later_1.4.8                
@@ -391,8 +393,8 @@ sessionInfo()
 #>  [31] abind_1.4-8                 purrr_1.2.2                
 #>  [33] yulab.utils_0.2.5           tweenr_2.0.3               
 #>  [35] rappdirs_0.3.4              aisdk_1.4.12               
-#>  [37] gdtools_0.5.3               enrichplot_1.99.8          
-#>  [39] ggrepel_0.9.8               tidytree_0.4.8             
+#>  [37] gdtools_0.6.0               enrichplot_1.99.8          
+#>  [39] ggrepel_0.9.8               tidytree_0.4.9             
 #>  [41] pkgdown_2.2.1               svglite_2.2.2              
 #>  [43] codetools_0.2-20            DelayedArray_0.39.8        
 #>  [45] scuttle_1.23.2              DOSE_4.7.4                 
@@ -452,7 +454,7 @@ sessionInfo()
 #> [153] GOSemSim_2.39.4             fontquiver_0.2.1           
 #> [155] Matrix_1.7-6                patchwork_1.3.2            
 #> [157] bit64_4.8.6                 learnr_0.11.6              
-#> [159] ggplot2_4.0.3               Rhdf5lib_2.1.0             
+#> [159] ggplot2_4.0.4               Rhdf5lib_2.1.0             
 #> [161] KEGGREST_1.53.6             shiny_1.14.0               
 #> [163] igraph_2.3.4                broom_1.0.13               
 #> [165] memoise_2.0.1               bslib_0.12.0               
