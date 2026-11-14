@@ -807,7 +807,6 @@ The objects of this class are cloneable with this method.
 ``` r
 se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
 #> Loading required namespace: SummarizedExperiment
-#> Warning: replacing previous import ‘S4Arrays::makeNindexFromArrayViewport’ by ‘DelayedArray::makeNindexFromArrayViewport’ when loading ‘SummarizedExperiment’
 eds <- new_explore_dataset(se)
 inherits(eds, "ExploreDataset")
 #> [1] TRUE

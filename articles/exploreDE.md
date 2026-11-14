@@ -125,8 +125,6 @@ opening it in the app, or for reusing the numbers the app shows.
 library(exploreDE)
 se <- readRDS(system.file("examples/genomics/deResult.rds", package = "exploreDE"))
 eds <- new_explore_dataset(se)
-#> Warning: replacing previous import 'S4Arrays::makeNindexFromArrayViewport' by
-#> 'DelayedArray::makeNindexFromArrayViewport' when loading 'SummarizedExperiment'
 eds
 #> <ExploreDatasetSE_RNASeq  (se)>
 #>   data_type:        RNASeq
