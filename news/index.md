@@ -7,6 +7,20 @@
   3.10.0. Witold Wolski is the maintainer.
 - The vignette installs exploreDE from Bioconductor
   (`BiocManager::install("exploreDE")`).
+- [`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md)
+  opens a `SummarizedExperiment` or AnnData object as well as a path:
+  `exploreDE(se)`. The object is written to a temporary file that the
+  app opens; a SummarizedExperiment that is not a SUSHI or prolfqua
+  result opens as a Count QC dataset.
+- [`?"exploreDE-package"`](https://fgcz.github.io/exploreDE/reference/exploreDE-package.md)
+  gives an overview of the package’s functions and vignettes.
+  [`vignette("exploreDE")`](https://fgcz.github.io/exploreDE/articles/exploreDE.md)
+  has a section on how exploreDE builds on Bioconductor and how it
+  differs from iSEE, pcaExplorer, ideal, GeneTonic and debrowser; both
+  vignettes use BiocStyle.
+- `inst/examples/README.md` lists the source of each example dataset:
+  the RNA-seq demo is a trimmed SUSHI DESeq2 result, the proteomics
+  example six runs of the public LFQ benchmark PXD028735.
 - New vignette
   [`vignette("exploreDE")`](https://fgcz.github.io/exploreDE/articles/exploreDE.md):
   starting the app, a tour of its tabs with screenshots of the demo
@@ -148,15 +162,18 @@
   `config` argument. Nothing in the package passed one; for an `.h5ad`
   or a Parquet directory a supplied config made loading fail and skipped
   the check that the file is exploreDE/1.0.
+- [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+  stores every assay of a `SummarizedExperiment` under its name, with
+  its `colData` and `rowData`: a prolfqua result’s `rawData` and
+  `transformedData` become the layers `intensities_raw` and
+  `intensities`. It kept only the first assay, unannounced, so a
+  proteomics object’s raw intensities were stored as its log2
+  intensities. Several assays need names; `coldata` and `rowdata`, when
+  given, replace the object’s own.
 - Breaking:
   [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
-  no longer takes a plain `SummarizedExperiment` or a `gene_symbol`
-  argument. From a `SummarizedExperiment` it kept only the first assay,
-  unannounced, so a proteomics object’s raw intensities were stored as
-  its log2 intensities; pass the assays as a named list with
-  `coldata = colData(se)` and `rowdata = rowData(se)`. For symbols, name
-  the `rowdata` column with `rowdata_columns = list(symbol_col = ...)`.
-  A `DESeqDataSet` works as before.
+  no longer takes a `gene_symbol` argument. For symbols, name the
+  `rowdata` column with `rowdata_columns = list(symbol_col = ...)`.
 - Breaking:
   [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
   requires contrast names of the form `<test>_vs_<reference>`, with both

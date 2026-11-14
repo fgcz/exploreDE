@@ -7,6 +7,8 @@
 - **Witold Wolski**. Maintainer.
   [](https://orcid.org/0000-0002-6468-120X)
 
+- **Functional Genomics Center Zurich**. Funder.
+
 ## Citation
 
 Source:

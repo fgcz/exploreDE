@@ -45,6 +45,7 @@ library(exploreDE)
 exploreDE()                            # landing page: upload a file or load the demo dataset
 exploreDE("my_data.h5ad")              # open a file directly
 exploreDE(c("a.h5ad", "b.h5ad"))       # compare the contrasts of several files
+exploreDE(se)                          # open a SummarizedExperiment or AnnData object
 ```
 
 The menu shows only the tabs your data supports: DE tabs need a DE
@@ -116,6 +117,34 @@ links still work.
 
 - Questions: <https://support.bioconductor.org>, tag `exploreDE`
 - Bugs and feature requests: <https://github.com/fgcz/exploreDE/issues>
+
+## AI use and provenance
+
+AI coding agents helped write this package:
+
+- Tools: Claude Code (Anthropic)
+- Extent: the review fixes, refactoring, tests and documentation of the
+  Bioconductor submission in late 2026; the app itself was written from
+  2025 on by Peter Leary and contributors
+- Marking: commits written with AI help carry an
+  `Assisted-by: AI coding agent` trailer since 2 November 2026; earlier
+  commits are not marked, so treat the whole code base as AI-assisted
+- Review: the maintainer reviewed every change before committing it
+- Testing: the testthat suite covers the dataset classes, the `.h5ad`
+  builder and reader, and the session format; shinytest2 tests drive the
+  app in a browser; R CMD check, BiocCheck, lintr and the browser tests
+  run in CI on every push
+
+Provenance and licence:
+
+- No code is copied from other software projects
+- The example datasets and their sources are listed in
+  [`inst/examples/README.md`](https://fgcz.github.io/exploreDE/inst/examples/README.md)
+- Anthropic’s terms assign the rights in generated output to the user,
+  so all code can be redistributed under this package’s MIT licence
+
+The maintainer is responsible for all code in this package, whatever
+helped write it, and for its reliability and maintenance.
 
 ## Citing exploreDE
 

@@ -1,14 +1,15 @@
 # Build a canonical exploreDE `.h5ad` from user-supplied data
 
-The source-agnostic "bring your own data" constructor. `x` is either a
-`DESeqDataSet` (the preferred starting point: its counts, `colData`,
-`rowData` and factors are used) or the counts themselves (a matrix, or a
-named list of matrices such as
-`list(counts=, normalised=, vst=, tpm=)`). From a
-`SummarizedExperiment`, pass its assays as such a list, with
-`coldata = colData(se)` and `rowdata = rowData(se)`. DE tables and
+The source-agnostic "bring your own data" constructor. `x` is a
+`DESeqDataSet` (its counts, `colData`, `rowData` and factors are used),
+a `SummarizedExperiment` (every assay under its name, its `colData` and
+its `rowData`), or the counts themselves (a matrix, or a named list of
+matrices such as `list(counts=, normalised=, vst=, tpm=)`). Assay and
+matrix names become layer names: `rawData` and `raw` are raw intensities
+in proteomics, `transformedData` the analysis-ready ones. DE tables and
 pathway statistics are supplied as arguments. Only counts + `coldata` +
-`omics` are required.
+`omics` are required; `coldata` and `rowdata`, when given, replace those
+of `x`.
 
 ## Usage
 
@@ -35,7 +36,8 @@ build_explore_h5ad(
 
 - x:
 
-  A `DESeqDataSet`, a counts matrix, or a named list of count matrices.
+  A `DESeqDataSet`, a `SummarizedExperiment` with named assays, a counts
+  matrix, or a named list of count matrices.
 
 - out:
 
@@ -140,6 +142,17 @@ path <- build_explore_h5ad(
 )
 file.exists(path)
 #> [1] TRUE
+
+# The SummarizedExperiment itself: rawData and transformedData become the
+# layers intensities_raw and intensities
+se_path <- build_explore_h5ad(
+  se,
+  out = tempfile(fileext = ".h5ad"),
+  omics = "proteomics",
+  rowdata = de,
+  factors = "G_",
+  de = list(B_vs_A = de)
+)
 
 # Counts only
 counts_only <- build_explore_h5ad(

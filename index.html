@@ -89,7 +89,8 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://fgcz.github.io/exploreDE/">exploreDE</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="op">)</span>                            <span class="co"># landing page: upload a file or load the demo dataset</span></span>
 <span><span class="fu"><a href="reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="st">"my_data.h5ad"</span><span class="op">)</span>              <span class="co"># open a file directly</span></span>
-<span><span class="fu"><a href="reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a.h5ad"</span>, <span class="st">"b.h5ad"</span><span class="op">)</span><span class="op">)</span>       <span class="co"># compare the contrasts of several files</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a.h5ad"</span>, <span class="st">"b.h5ad"</span><span class="op">)</span><span class="op">)</span>       <span class="co"># compare the contrasts of several files</span></span>
+<span><span class="fu"><a href="reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span>                          <span class="co"># open a SummarizedExperiment or AnnData object</span></span></code></pre></div>
 <p>The menu shows only the tabs your data supports: DE tabs need a DE table, pathway tabs need enrichment results.</p>
 </div>
 <div class="section level2">
@@ -151,6 +152,26 @@
 </ul>
 </div>
 <div class="section level2">
+<h2 id="ai-use-and-provenance">AI use and provenance<a class="anchor" aria-label="anchor" href="#ai-use-and-provenance"></a>
+</h2>
+<p>AI coding agents helped write this package:</p>
+<ul>
+<li>Tools: Claude Code (Anthropic)</li>
+<li>Extent: the review fixes, refactoring, tests and documentation of the Bioconductor submission in late 2026; the app itself was written from 2025 on by Peter Leary and contributors</li>
+<li>Marking: commits written with AI help carry an <code>Assisted-by: AI coding agent</code> trailer since 2 November 2026; earlier commits are not marked, so treat the whole code base as AI-assisted</li>
+<li>Review: the maintainer reviewed every change before committing it</li>
+<li>Testing: the testthat suite covers the dataset classes, the <code>.h5ad</code> builder and reader, and the session format; shinytest2 tests drive the app in a browser; R CMD check, BiocCheck, lintr and the browser tests run in CI on every push</li>
+</ul>
+<p>Provenance and licence:</p>
+<ul>
+<li>No code is copied from other software projects</li>
+<li>The example datasets and their sources are listed in <a href="inst/examples/README.html"><code>inst/examples/README.md</code></a>
+</li>
+<li>Anthropic’s terms assign the rights in generated output to the user, so all code can be redistributed under this package’s MIT licence</li>
+</ul>
+<p>The maintainer is responsible for all code in this package, whatever helped write it, and for its reliability and maintenance.</p>
+</div>
+<div class="section level2">
 <h2 id="citing-explorede">Citing exploreDE<a class="anchor" aria-label="anchor" href="#citing-explorede"></a>
 </h2>
 <p>See <a href="CITATION.cff">CITATION.cff</a>.</p>
@@ -186,6 +207,7 @@
 <ul class="list-unstyled">
 <li>Peter Leary <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0003-1430-6185" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
 <li>Witold Wolski <br><small class="roles"> Maintainer </small> <a href="https://orcid.org/0000-0002-6468-120X" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
+<li>Functional Genomics Center Zurich <br><small class="roles"> Funder </small>   </li>
 </ul>
 </div>
 
@@ -196,7 +218,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Peter Leary, Witold Wolski.</p>
+  <p>Developed by Peter Leary, Witold Wolski, Functional Genomics Center Zurich.</p>
 </div>
 
 <div class="pkgdown-footer-right">

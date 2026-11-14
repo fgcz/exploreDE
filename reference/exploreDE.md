@@ -17,9 +17,11 @@ exploreDE(file = NULL, ...)
 
 - file:
 
-  Optional path to an exploreDE `.h5ad`, a SummarizedExperiment
-  `.rds`/`.qs2`, or a SUSHI result directory; or several paths, the
-  first of which opens in the tabs, the others going to Multi DE.
+  Optional dataset: a `SummarizedExperiment` or AnnData object; a path
+  to an exploreDE `.h5ad`, a SummarizedExperiment `.rds`/`.qs2`, or a
+  SUSHI result directory; or several paths, the first of which opens in
+  the tabs, the others going to Multi DE. An object is written to a
+  temporary file, which the app opens.
 
 - ...:
 
@@ -34,6 +36,16 @@ Called to run the app; returns the value passed to
 the app stops (usually `NULL`), as
 [`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html) does.
 
+## Details
+
+A `SummarizedExperiment` opens as
+[`new_explore_dataset()`](https://fgcz.github.io/exploreDE/reference/new_explore_dataset.md)
+classifies it: a SUSHI RNA-seq or prolfqua proteomics result with all
+its tabs, any other as a Count QC dataset. To see the DE tabs for
+another `SummarizedExperiment`, build an `.h5ad` from it with
+[`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+and open that.
+
 ## Examples
 
 ``` r
@@ -41,5 +53,7 @@ if (interactive()) {
   exploreDE()
   exploreDE("my_data.h5ad")
   exploreDE(c("design1.h5ad", "design2.h5ad"))
+  se <- readRDS(system.file("examples/proteomics/SummarizedExperiment.rds", package = "exploreDE"))
+  exploreDE(se)
 }
 ```

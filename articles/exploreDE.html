@@ -100,6 +100,49 @@ to open a dataset in R. The companion vignette
 explains how to build a file from your own results.</p>
 </div>
 <div class="section level2">
+<h2 id="explorede-and-bioconductor">exploreDE and Bioconductor<a class="anchor" aria-label="anchor" href="#explorede-and-bioconductor"></a>
+</h2>
+<p>exploreDE is built on Bioconductor data structures and methods:</p>
+<ul>
+<li>it opens <code>SummarizedExperiment</code> objects, directly with
+<code>exploreDE(se)</code> or <code>new_explore_dataset(se)</code>, and
+AnnData files through anndataR; <code><a href="../reference/build_explore_h5ad.html">build_explore_h5ad()</a></code> takes
+a <code>SummarizedExperiment</code> or a <code>DESeqDataSet</code>;</li>
+<li>it computes variance-stabilised counts with DESeq2
+(<code>vst()</code>), removes batch effects with limma
+(<code>removeBatchEffect()</code>), draws heatmaps with ComplexHeatmap
+and shows clusterProfiler enrichment results with enrichplot.</li>
+</ul>
+<p>Other Bioconductor packages explore expression data
+interactively:</p>
+<ul>
+<li>iSEE explores any <code>SummarizedExperiment</code>, including its
+row and column metadata, in linked and extensible panels;</li>
+<li>pcaExplorer visualises RNA-seq data through principal components
+analysis;</li>
+<li>ideal works on RNA-seq datasets downstream of the differential
+expression step, with a report template for reproducibility;</li>
+<li>GeneTonic combines RNA-seq differential expression and functional
+enrichment results, and captures the genes and gene sets highlighted in
+a session in an HTML report;</li>
+<li>debrowser provides interactive plots and tables for differential
+gene and region expression studies.</li>
+</ul>
+<p>exploreDE differs in what it opens and who it is for:</p>
+<ul>
+<li>one app for RNA-seq, proteomics (protein, peptide and phosphosite
+level) and CRISPR screen results;</li>
+<li>it shows DE and enrichment results that a pipeline has already
+computed (DESeq2, edgeR, limma, prolfqua, SAINTexpress, clusterProfiler)
+rather than running the test itself;</li>
+<li>it compares the contrasts of several datasets in its Multi DE
+tabs;</li>
+<li>its figures are point and click, for the experimenter rather than
+the analyst, and its settings are saved and restored as JSON session
+files.</li>
+</ul>
+</div>
+<div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -121,7 +164,8 @@ the app hides the feature or shows plain text:</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://fgcz.github.io/exploreDE/">exploreDE</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># landing page: upload a file, or load the demo dataset</span></span>
 <span><span class="fu"><a href="../reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="st">"my_data.h5ad"</span><span class="op">)</span> <span class="co"># open a file directly</span></span>
-<span><span class="fu"><a href="../reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a.h5ad"</span>, <span class="st">"b.h5ad"</span><span class="op">)</span><span class="op">)</span> <span class="co"># compare the contrasts of several files</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a.h5ad"</span>, <span class="st">"b.h5ad"</span><span class="op">)</span><span class="op">)</span> <span class="co"># compare the contrasts of several files</span></span>
+<span><span class="fu"><a href="../reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span> <span class="co"># open a SummarizedExperiment or AnnData object</span></span></code></pre></div>
 <p>On the landing page, <strong>Load a demo dataset instead</strong>
 opens the RNA-seq comparison that ships with the package: 9 samples in
 two groups (<code>diff</code>, <code>undiff</code>), about 21,000 genes,
@@ -393,6 +437,19 @@ counts, the sample table, the gene annotation and the DE table.</p>
 <span><span class="co">#&gt; [1] "diff_vs_undiff"</span></span></code></pre></div>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/exploreDE.html">exploreDE</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/build_explore_h5ad.html">build_explore_h5ad()</a></code> also takes a
+<code>SummarizedExperiment</code> as it is: every assay becomes a layer
+of the file under its name, here the prolfqua result’s raw and
+transformed intensities.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">prot_h5ad</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_explore_h5ad.html">build_explore_h5ad</a></span><span class="op">(</span></span>
+<span>  <span class="va">se_prot</span>,</span>
+<span>  out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"prot.h5ad"</span><span class="op">)</span>,</span>
+<span>  omics <span class="op">=</span> <span class="st">"proteomics"</span>,</span>
+<span>  factors <span class="op">=</span> <span class="st">"G_"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/new_explore_dataset.html">new_explore_dataset</a></span><span class="op">(</span><span class="va">prot_h5ad</span><span class="op">)</span><span class="op">$</span><span class="fu">assay_names</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "intensities"     "intensities_raw"</span></span></code></pre></div>
 <p>The column names of the DE table do not need to follow a convention:
 a dictionary recognises the usual names of DESeq2, edgeR, limma,
 prolfqua and SAINTexpress.
@@ -415,7 +472,7 @@ recognised.</p>
 <div class="section level2">
 <h2 id="session-info">Session info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h2>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; R version 4.6.2 (2026-10-29)</span></span>
 <span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu</span></span>
@@ -444,7 +501,7 @@ recognised.</p>
 <span><span class="co">#&gt;  [5] IRanges_2.47.5              S4Vectors_0.51.10          </span></span>
 <span><span class="co">#&gt;  [7] BiocGenerics_0.59.13        generics_0.1.4             </span></span>
 <span><span class="co">#&gt;  [9] MatrixGenerics_1.25.0       matrixStats_1.5.0          </span></span>
-<span><span class="co">#&gt; [11] exploreDE_0.99.0           </span></span>
+<span><span class="co">#&gt; [11] exploreDE_0.99.0            BiocStyle_2.41.0           </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;   [1] splines_4.6.2               later_1.4.8                </span></span>
@@ -481,58 +538,59 @@ recognised.</p>
 <span><span class="co">#&gt;  [63] SparseArray_1.13.4          BiocBaseUtils_1.15.1       </span></span>
 <span><span class="co">#&gt;  [65] xfun_0.62                   qvalue_2.45.0              </span></span>
 <span><span class="co">#&gt;  [67] dplyr_1.2.1                 shinydashboard_0.7.3       </span></span>
-<span><span class="co">#&gt;  [69] withr_3.0.3                 fastmap_1.2.0              </span></span>
-<span><span class="co">#&gt;  [71] GGally_2.5.0                rhdf5filters_1.25.5        </span></span>
-<span><span class="co">#&gt;  [73] shinyjs_2.1.1               openssl_2.5.0              </span></span>
-<span><span class="co">#&gt;  [75] callr_3.8.0                 digest_0.6.39              </span></span>
-<span><span class="co">#&gt;  [77] R6_2.6.1                    mime_0.13                  </span></span>
-<span><span class="co">#&gt;  [79] gridGraphics_0.5-1          textshaping_1.0.5          </span></span>
-<span><span class="co">#&gt;  [81] colorspace_2.1-4            GO.db_3.24.0               </span></span>
-<span><span class="co">#&gt;  [83] gtools_3.9.5                RSQLite_3.53.3             </span></span>
-<span><span class="co">#&gt;  [85] tidyr_1.3.2                 fontLiberation_0.1.0       </span></span>
-<span><span class="co">#&gt;  [87] data.table_1.18.6.1         S4Arrays_1.13.2            </span></span>
-<span><span class="co">#&gt;  [89] httr_1.4.9                  htmlwidgets_1.6.4          </span></span>
-<span><span class="co">#&gt;  [91] scatterpie_0.2.6            ggstats_0.14.0             </span></span>
-<span><span class="co">#&gt;  [93] pkgconfig_2.0.3             gtable_0.3.6               </span></span>
-<span><span class="co">#&gt;  [95] blob_1.3.0                  S7_0.2.2                   </span></span>
-<span><span class="co">#&gt;  [97] SingleCellExperiment_1.35.2 XVector_0.53.0             </span></span>
-<span><span class="co">#&gt;  [99] clusterProfiler_4.21.4      htmltools_0.5.9            </span></span>
-<span><span class="co">#&gt; [101] fontBitstreamVera_0.1.1     carData_3.0-6              </span></span>
-<span><span class="co">#&gt; [103] scales_1.4.0                kableExtra_1.4.1           </span></span>
-<span><span class="co">#&gt; [105] fresh_0.2.2                 png_0.1-9                  </span></span>
-<span><span class="co">#&gt; [107] ggfun_0.2.2                 knitr_1.52                 </span></span>
-<span><span class="co">#&gt; [109] rstudioapi_0.19.0           reshape2_1.4.5             </span></span>
-<span><span class="co">#&gt; [111] uuid_1.2-2                  nlme_3.1-171               </span></span>
-<span><span class="co">#&gt; [113] anndataR_1.3.5              cachem_1.1.0               </span></span>
-<span><span class="co">#&gt; [115] rhdf5_2.57.20               stringr_1.6.0              </span></span>
-<span><span class="co">#&gt; [117] shinycssloaders_1.1.0       parallel_4.6.2             </span></span>
-<span><span class="co">#&gt; [119] miniUI_0.1.2                vipor_0.4.7                </span></span>
-<span><span class="co">#&gt; [121] AnnotationDbi_1.75.2        desc_1.4.3                 </span></span>
-<span><span class="co">#&gt; [123] pillar_1.11.1               grid_4.6.2                 </span></span>
-<span><span class="co">#&gt; [125] vctrs_0.7.3                 promises_1.5.0             </span></span>
-<span><span class="co">#&gt; [127] ggpubr_1.0.0                car_3.1-5                  </span></span>
-<span><span class="co">#&gt; [129] tidydr_0.0.7                beachmat_2.29.3            </span></span>
-<span><span class="co">#&gt; [131] xtable_1.8-8                cluster_2.1.8.3            </span></span>
-<span><span class="co">#&gt; [133] beeswarm_0.4.0              evaluate_1.0.5             </span></span>
-<span><span class="co">#&gt; [135] cli_3.6.6                   compiler_4.6.2             </span></span>
-<span><span class="co">#&gt; [137] rlang_1.3.0                 crayon_1.5.3               </span></span>
-<span><span class="co">#&gt; [139] sortable_0.6.0              ggsignif_0.6.4             </span></span>
-<span><span class="co">#&gt; [141] ps_1.9.3                    plyr_1.8.9                 </span></span>
-<span><span class="co">#&gt; [143] fs_2.1.0                    ggbeeswarm_0.7.3           </span></span>
-<span><span class="co">#&gt; [145] ggiraph_0.9.6               stringi_1.8.9              </span></span>
-<span><span class="co">#&gt; [147] BiocParallel_1.47.0         viridisLite_0.4.3          </span></span>
-<span><span class="co">#&gt; [149] assertthat_0.2.1            Biostrings_2.81.9          </span></span>
-<span><span class="co">#&gt; [151] lazyeval_0.2.3              colourpicker_1.3.0         </span></span>
-<span><span class="co">#&gt; [153] GOSemSim_2.39.4             fontquiver_0.2.1           </span></span>
-<span><span class="co">#&gt; [155] Matrix_1.7-6                patchwork_1.3.2            </span></span>
-<span><span class="co">#&gt; [157] bit64_4.8.6                 learnr_0.11.6              </span></span>
-<span><span class="co">#&gt; [159] ggplot2_4.0.4               Rhdf5lib_2.1.0             </span></span>
-<span><span class="co">#&gt; [161] KEGGREST_1.53.6             shiny_1.14.0               </span></span>
-<span><span class="co">#&gt; [163] igraph_2.3.4                broom_1.0.13               </span></span>
-<span><span class="co">#&gt; [165] memoise_2.0.1               bslib_0.12.0               </span></span>
-<span><span class="co">#&gt; [167] ggtree_4.3.0                bit_4.6.0                  </span></span>
-<span><span class="co">#&gt; [169] officer_0.7.8               ape_5.8-1                  </span></span>
-<span><span class="co">#&gt; [171] gson_0.2.2</span></span></code></pre></div>
+<span><span class="co">#&gt;  [69] withr_3.0.3                 BiocManager_1.30.27        </span></span>
+<span><span class="co">#&gt;  [71] fastmap_1.2.0               GGally_2.5.0               </span></span>
+<span><span class="co">#&gt;  [73] rhdf5filters_1.25.5         shinyjs_2.1.1              </span></span>
+<span><span class="co">#&gt;  [75] openssl_2.5.0               callr_3.8.0                </span></span>
+<span><span class="co">#&gt;  [77] digest_0.6.39               R6_2.6.1                   </span></span>
+<span><span class="co">#&gt;  [79] mime_0.13                   gridGraphics_0.5-1         </span></span>
+<span><span class="co">#&gt;  [81] textshaping_1.0.5           colorspace_2.1-4           </span></span>
+<span><span class="co">#&gt;  [83] GO.db_3.24.0                gtools_3.9.5               </span></span>
+<span><span class="co">#&gt;  [85] RSQLite_3.53.3              tidyr_1.3.2                </span></span>
+<span><span class="co">#&gt;  [87] fontLiberation_0.1.0        data.table_1.18.6.1        </span></span>
+<span><span class="co">#&gt;  [89] S4Arrays_1.13.2             httr_1.4.9                 </span></span>
+<span><span class="co">#&gt;  [91] htmlwidgets_1.6.4           scatterpie_0.2.6           </span></span>
+<span><span class="co">#&gt;  [93] ggstats_0.14.0              pkgconfig_2.0.3            </span></span>
+<span><span class="co">#&gt;  [95] gtable_0.3.6                blob_1.3.0                 </span></span>
+<span><span class="co">#&gt;  [97] S7_0.2.2                    SingleCellExperiment_1.35.2</span></span>
+<span><span class="co">#&gt;  [99] XVector_0.53.0              clusterProfiler_4.21.4     </span></span>
+<span><span class="co">#&gt; [101] htmltools_0.5.9             fontBitstreamVera_0.1.1    </span></span>
+<span><span class="co">#&gt; [103] carData_3.0-6               bookdown_0.48              </span></span>
+<span><span class="co">#&gt; [105] scales_1.4.0                kableExtra_1.4.1           </span></span>
+<span><span class="co">#&gt; [107] fresh_0.2.2                 png_0.1-9                  </span></span>
+<span><span class="co">#&gt; [109] ggfun_0.2.2                 knitr_1.52                 </span></span>
+<span><span class="co">#&gt; [111] rstudioapi_0.19.0           reshape2_1.4.5             </span></span>
+<span><span class="co">#&gt; [113] uuid_1.2-2                  nlme_3.1-171               </span></span>
+<span><span class="co">#&gt; [115] anndataR_1.3.5              cachem_1.1.0               </span></span>
+<span><span class="co">#&gt; [117] rhdf5_2.57.20               stringr_1.6.0              </span></span>
+<span><span class="co">#&gt; [119] shinycssloaders_1.1.0       parallel_4.6.2             </span></span>
+<span><span class="co">#&gt; [121] miniUI_0.1.2                vipor_0.4.7                </span></span>
+<span><span class="co">#&gt; [123] AnnotationDbi_1.75.2        desc_1.4.3                 </span></span>
+<span><span class="co">#&gt; [125] pillar_1.11.1               grid_4.6.2                 </span></span>
+<span><span class="co">#&gt; [127] vctrs_0.7.3                 promises_1.5.0             </span></span>
+<span><span class="co">#&gt; [129] ggpubr_1.0.0                car_3.1-5                  </span></span>
+<span><span class="co">#&gt; [131] tidydr_0.0.7                beachmat_2.29.3            </span></span>
+<span><span class="co">#&gt; [133] xtable_1.8-8                cluster_2.1.8.3            </span></span>
+<span><span class="co">#&gt; [135] beeswarm_0.4.0              evaluate_1.0.5             </span></span>
+<span><span class="co">#&gt; [137] cli_3.6.6                   compiler_4.6.2             </span></span>
+<span><span class="co">#&gt; [139] rlang_1.3.0                 crayon_1.5.3               </span></span>
+<span><span class="co">#&gt; [141] sortable_0.6.0              ggsignif_0.6.4             </span></span>
+<span><span class="co">#&gt; [143] ps_1.9.3                    plyr_1.8.9                 </span></span>
+<span><span class="co">#&gt; [145] fs_2.1.0                    ggbeeswarm_0.7.3           </span></span>
+<span><span class="co">#&gt; [147] ggiraph_0.9.6               stringi_1.8.9              </span></span>
+<span><span class="co">#&gt; [149] BiocParallel_1.47.0         viridisLite_0.4.3          </span></span>
+<span><span class="co">#&gt; [151] assertthat_0.2.1            Biostrings_2.81.9          </span></span>
+<span><span class="co">#&gt; [153] lazyeval_0.2.3              colourpicker_1.3.0         </span></span>
+<span><span class="co">#&gt; [155] GOSemSim_2.39.4             fontquiver_0.2.1           </span></span>
+<span><span class="co">#&gt; [157] Matrix_1.7-6                patchwork_1.3.2            </span></span>
+<span><span class="co">#&gt; [159] bit64_4.8.6                 learnr_0.11.6              </span></span>
+<span><span class="co">#&gt; [161] Rhdf5lib_2.1.0              ggplot2_4.0.4              </span></span>
+<span><span class="co">#&gt; [163] KEGGREST_1.53.6             shiny_1.14.0               </span></span>
+<span><span class="co">#&gt; [165] igraph_2.3.4                broom_1.0.13               </span></span>
+<span><span class="co">#&gt; [167] memoise_2.0.1               bslib_0.12.0               </span></span>
+<span><span class="co">#&gt; [169] ggtree_4.3.0                bit_4.6.0                  </span></span>
+<span><span class="co">#&gt; [171] officer_0.7.8               ape_5.8-1                  </span></span>
+<span><span class="co">#&gt; [173] gson_0.2.2</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -541,7 +599,7 @@ recognised.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Peter Leary, Witold Wolski.</p>
+  <p>Developed by Peter Leary, Witold Wolski, Functional Genomics Center Zurich.</p>
 </div>
 
 <div class="pkgdown-footer-right">
