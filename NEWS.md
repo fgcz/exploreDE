@@ -2,6 +2,7 @@
 
 - Submitted to Bioconductor. The version restarts at 0.99.0, the number Bioconductor gives a new package; the changes below were developed as 3.10.0. Witold Wolski is the maintainer.
 - The vignette installs exploreDE from Bioconductor (`BiocManager::install("exploreDE")`).
+- The app opens about a second faster: checking whether the KEGG views can be offered no longer loads pathview, which now loads when a KEGG view is first opened.
 - `exploreDE()` opens a `SummarizedExperiment` or AnnData object as well as a path: `exploreDE(se)`. The object is written to a temporary file that the app opens; a SummarizedExperiment that is not a SUSHI or prolfqua result opens as a Count QC dataset.
 - `?"exploreDE-package"` gives an overview of the package's functions and vignettes. `vignette("exploreDE")` has a section on how exploreDE builds on Bioconductor and how it differs from iSEE, pcaExplorer, ideal, GeneTonic and debrowser; both vignettes use BiocStyle.
 - `inst/examples/README.md` lists the source of each example dataset: the RNA-seq demo is a trimmed SUSHI DESeq2 result, the proteomics example six runs of the public LFQ benchmark PXD028735.

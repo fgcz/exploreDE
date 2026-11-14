@@ -27,11 +27,13 @@ kegg_species_label <- function(ref_build) {
 #' kegg_installed
 #' The KEGG views need pathview and KEGGREST, both in Suggests. Every KEGG
 #' entry point (menu items, the KEGG inputs of the tile and heatmap tabs) is
-#' shown only when this is `TRUE`.
+#' shown only when this is `TRUE`. Installed, not loaded: the sidebar menu
+#' asks on every render, and loading pathview takes about a second, so it
+#' loads when a KEGG view first uses it.
 #' @return `TRUE` when both packages are installed.
 #' @noRd
 kegg_installed <- function() {
-  requireNamespace("pathview", quietly = TRUE) && requireNamespace("KEGGREST", quietly = TRUE)
+  nzchar(system.file(package = "pathview")) && nzchar(system.file(package = "KEGGREST"))
 }
 
 #' kegg_org_code

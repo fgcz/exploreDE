@@ -50,3 +50,21 @@ test_that("kegg_map_genes matches the entrez_id column when the table has one", 
   de <- data.frame(feature_id = c("ENSG1", "ENSG2", "ENSG3"), entrez_id = c("1017", "999", "1019"))
   expect_identical(kegg_map_genes(de, c("1017", "1019", "5"), "hsa"), c("ENSG1", "ENSG3"))
 })
+
+test_that("kegg_installed() finds pathview without loading it", {
+  skip_if_not_installed("pathview")
+  skip_if_not_installed("KEGGREST")
+  skip_if_not_installed("callr")
+  # In a fresh R process, as this one may have loaded pathview already.
+  # (exploreDE's imports load KEGGREST there; pathview is the slow one.)
+  res <- callr::r(
+    function(f) {
+      before <- loadedNamespaces()
+      list(installed = f(), before = before, after = loadedNamespaces())
+    },
+    args = list(f = kegg_installed)
+  )
+  expect_true(res$installed)
+  expect_false("pathview" %in% res$before)
+  expect_false("pathview" %in% res$after)
+})
