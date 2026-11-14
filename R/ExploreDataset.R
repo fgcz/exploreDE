@@ -362,7 +362,21 @@ ExploreDataset <- R6::R6Class(
   ),
 
   private = list(
-    .config = NULL
+    .config = NULL,
+    # Values computed once per dataset (the VST); a dataset is not changed
+    # after it is built, so nothing invalidates them. The environment is made
+    # on first use: one in the class definition would be shared by every
+    # dataset.
+    .cache = NULL,
+    .cached = function(key, compute) {
+      if (is.null(private$.cache)) {
+        private$.cache <- new.env(parent = emptyenv())
+      }
+      if (!exists(key, envir = private$.cache, inherits = FALSE)) {
+        assign(key, compute(), envir = private$.cache)
+      }
+      get(key, envir = private$.cache, inherits = FALSE)
+    }
   )
 )
 # nolint end

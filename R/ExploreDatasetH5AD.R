@@ -414,7 +414,7 @@ ExploreDatasetH5AD <- R6::R6Class(
             self$assay("normalised") +
               (private$.config$background_expression %||% 10)
           ),
-          vst = private$.compute_vst(),
+          vst = private$.cached("vst", private$.compute_vst),
           fpkm = private$.compute_fpkm(),
           tpm = private$.compute_tpm(),
           stop("Unknown computed assay: ", name)

@@ -53,3 +53,31 @@ test_that("build_explore_h5ad() stores a DESeqDataSet's normalised counts when i
   bare <- DESeq2::DESeqDataSetFromMatrix(DESeq2::counts(dds), cd, ~condition)
   expect_false("normalised" %in% layers(bare))
 })
+
+test_that("VST is computed once per dataset, in both backends", {
+  skip_if_not_installed("anndataR")
+  orig <- eds_vst_matrix
+  calls <- 0L
+  local_mocked_bindings(eds_vst_matrix = function(counts) {
+    calls <<- calls + 1L
+    orig(counts)
+  })
+  h5 <- withr::local_tempfile(fileext = ".h5ad")
+  build_explore_h5ad(make_toy_dds(n_genes = 80), out = h5, omics = "rnaseq", organism = "Homo sapiens")
+  datasets <- list(se = new_explore_dataset(fx_rnaseq_gene()$se[1:300, ]), h5ad = new_explore_dataset(h5))
+  for (backend in names(datasets)) {
+    eds <- datasets[[backend]]
+    calls <- 0L
+    first <- eds$assay("vst")
+    expect_identical(eds$assay("vst"), first, label = backend)
+    fid <- head(rownames(first), 5)
+    expect_identical(eds$assay("vst", features = fid), first[fid, , drop = FALSE], label = backend)
+    expect_identical(calls, 1L, label = backend)
+  }
+})
+
+test_that("each dataset keeps its own VST", {
+  a <- new_explore_dataset(fx_rnaseq_gene()$se[1:300, ])
+  b <- new_explore_dataset(fx_rnaseq_gene()$se[301:600, ])
+  expect_false(identical(rownames(a$assay("vst")), rownames(b$assay("vst"))))
+})
