@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("the DE heatmap download has DE statistics only when asked for", {
-  app <- app_start("heatmap-export")
+  app <- app_session("heatmap-export")
   app_load_demo(app)
   app_open_tab(app, "heatmapTab")
   # A download button gets its link only while shown: open Settings > Download

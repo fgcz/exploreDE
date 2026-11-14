@@ -19,7 +19,7 @@ pattern_info <- function(app) {
 }
 
 test_that("a pattern fills the feature bucket with its matches", {
-  app <- app_start("feature-pattern")
+  app <- app_session("feature-pattern")
   app_load_demo(app)
   app_open_tab(app, "boxplotTab")
 

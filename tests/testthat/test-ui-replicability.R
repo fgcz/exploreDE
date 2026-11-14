@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("Replicability offers Log2 for every count method and logs linear ones only", {
-  app <- app_start("replicability-log2")
+  app <- app_session("replicability-log2")
   app_load_demo(app)
   app_open_tab(app, "replicabilityTab")
   app$wait_for_js("!!$('#replicabilityDownloadCorr').attr('href')")

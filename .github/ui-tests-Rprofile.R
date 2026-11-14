@@ -1,6 +1,6 @@
 # Copied by ui-tests.yaml into the installed app directory as .Rprofile.
-# shinytest2 starts the app's R process in that directory, so this profiles
-# it: a sample every 0.5 s to EXPLOREDE_UI_ARTIFACTS/Rprof-<pid>.out, of
+# tests/testthat/helper-app.R sources it in each app process, so this
+# profiles them: a sample every 0.5 s to EXPLOREDE_UI_ARTIFACTS/Rprof-<pid>.out, of
 # elapsed time on Linux, so that a process blocked outside R is sampled too,
 # with samples taken during garbage collection marked <GC>.
 utils::Rprof(

@@ -47,7 +47,7 @@ test_that("the ORA tab shows the results of a contrast other than the primary on
     organism = "Homo sapiens"
   )
 
-  app <- app_start("ora")
+  app <- app_session("ora")
   app$upload_file(uploadH5ad = h5ad)
   app$wait_for_value(output = "settingsTable", timeout = 180e3)
   app$wait_for_idle()

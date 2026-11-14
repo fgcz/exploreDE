@@ -5,7 +5,7 @@
 
 test_that("the Methods download of the demo is a Word document with its sections", {
   skip_if_not_installed("officer")
-  app <- app_start("methods-download")
+  app <- app_session("methods-download")
   app_load_demo(app)
   app_open_tab(app, "summaryTab")
   # A download button gets its link only while shown: open the Methods tab

@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("a proteomics ?data= link to a file that cannot be read shows a message", {
-  app <- app_start("broken-proteomics-link")
+  app <- app_session("broken-proteomics-link")
   # The link points at pStore; the file does not exist (or pStore is not
   # reachable), so reading it fails either way.
   app$run_js("window.location.search = '?data=Proteomics/exploreDE-test/does-not-exist.rds';")

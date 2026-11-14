@@ -24,7 +24,7 @@ test_that("the GSEA table comes back after a contrast without results", {
     organism = "Homo sapiens"
   )
 
-  app <- app_start("gsea")
+  app <- app_session("gsea")
   app$upload_file(uploadH5ad = h5ad)
   app$wait_for_value(output = "settingsTable", timeout = 180e3)
   app$wait_for_idle()

@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("the Volcano tab names the contrast and classes every point in its table", {
-  app <- app_start("volcano")
+  app <- app_session("volcano")
   app_load_demo(app)
   app_open_tab(app, "volcanoTab")
   app$run_js("$('#volcanoOverviewTable').closest('.box').find('[data-widget=\"collapse\"]').click()")

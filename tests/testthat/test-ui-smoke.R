@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("every tab of the demo dataset renders without an error", {
-  app <- app_start("smoke")
+  app <- app_session("smoke")
   expect_identical(app_menu_tabs(app), "landingTab")
 
   app_load_demo(app)

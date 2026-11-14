@@ -11,7 +11,7 @@ notifications <- function(app, text) {
 }
 
 test_that("a font size change redraws the heatmap without preparing the counts again", {
-  app <- app_start("heatmap-prepared")
+  app <- app_session("heatmap-prepared")
   app_load_demo(app)
   app_open_tab(app, "heatmapTab")
   # Batch correction on raw counts is refused with a message each time the
@@ -34,7 +34,7 @@ test_that("the DE heatmap table has the plotted features under their full ids, a
   skip_if_not_installed("anndataR")
   fixture <- test_path("fixtures", "prolfquapp_2.10_AnnData.h5ad")
   ids <- new_explore_dataset(fixture)$feature_ids()
-  app <- app_start("heatmap-table")
+  app <- app_session("heatmap-table")
   app$upload_file(uploadH5ad = fixture, timeout_ = 180e3)
   app$wait_for_value(output = "settingsTable", timeout = 180e3)
   app$wait_for_idle()

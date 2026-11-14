@@ -90,6 +90,7 @@ Suggests:
   DOSE,
   testthat (>= 3.0.0),
   shinytest2,
+  callr,
   jsonvalidate,
   systemfonts,
   ragg,

@@ -25,7 +25,7 @@ ratio_heatmap_src <- function(app) {
 }
 
 test_that("a sample ratio is defined, plotted next to a contrast and removed", {
-  app <- app_start("sample-ratios")
+  app <- app_session("sample-ratios")
   app_load_demo(app)
   app_open_tab(app, "heatmapTab")
   app$click(selector = "a[data-value='Sample ratios']")
@@ -71,7 +71,7 @@ test_that("a sample ratio is defined, plotted next to a contrast and removed", {
 })
 
 test_that("a ratio on raw counts is the difference of mean log2(count + 1)", {
-  app <- app_start("sample-ratio-values")
+  app <- app_session("sample-ratio-values")
   app_load_demo(app)
   app_open_tab(app, "heatmapTab")
   app$set_inputs(heatmapCounts = "counts")

@@ -19,7 +19,7 @@ test_that("Ordination logs raw intensities before batch correction", {
     rowdata = pr$rowdata
   )
 
-  app <- app_start("ordination-log2")
+  app <- app_session("ordination-log2")
   app$upload_file(uploadH5ad = path, timeout_ = 180e3)
   app$wait_for_value(output = "settingsTable", timeout = 180e3)
   app$wait_for_idle()

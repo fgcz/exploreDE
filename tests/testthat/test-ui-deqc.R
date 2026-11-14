@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("the DE QC scatter draws in each colour-by mode", {
-  app <- app_start("deqc-modes")
+  app <- app_session("deqc-modes")
   app_load_demo(app)
   app_open_tab(app, "deQcTab")
   modes <- unlist(app$get_js(

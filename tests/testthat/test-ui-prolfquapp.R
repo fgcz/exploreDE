@@ -13,7 +13,7 @@ output_message <- function(app, id) {
 
 test_that("a prolfquapp result opens in every tab; Ordination and Heatmap name the peptide filter", {
   skip_if_not_installed("anndataR")
-  app <- app_start("prolfquapp")
+  app <- app_session("prolfquapp")
   app$upload_file(uploadH5ad = test_path("fixtures", "prolfquapp_2.10_AnnData.h5ad"), timeout_ = 180e3)
   app$wait_for_value(output = "settingsTable", timeout = 180e3)
   app$wait_for_idle()

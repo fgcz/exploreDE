@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 
 test_that("the colour template round-trips through download and import", {
-  app <- app_start("colour-template")
+  app <- app_session("colour-template")
   app_load_demo(app)
   app_open_tab(app, "colourTab")
   app$wait_for_js("!!$('#dlColourTemplate').attr('href')")
