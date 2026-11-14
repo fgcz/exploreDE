@@ -122,7 +122,8 @@ links still work.
 
 AI coding agents helped write this package:
 
-- Tools: Claude Code (Anthropic)
+- Tools: Claude Code (Anthropic), and in-house open-weight models such
+  as Qwen
 - Extent: the review fixes, refactoring, tests and documentation of the
   Bioconductor submission in late 2026; the app itself was written from
   2025 on by Peter Leary and contributors
@@ -141,7 +142,8 @@ Provenance and licence:
 - The example datasets and their sources are listed in
   [`inst/examples/README.md`](https://fgcz.github.io/exploreDE/inst/examples/README.md)
 - Anthropic’s terms assign the rights in generated output to the user,
-  so all code can be redistributed under this package’s MIT licence
+  and the open-weight models’ licences claim no rights in it, so all
+  code can be redistributed under this package’s MIT licence
 
 The maintainer is responsible for all code in this package, whatever
 helped write it, and for its reliability and maintenance.
