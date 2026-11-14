@@ -15,7 +15,8 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/exploreDE.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/bring-your-own-data.html">Bring your own data: building an exploreDE file</a></li>
@@ -39,6 +40,7 @@
 <h2 class="pkg-version" data-toc-text="0.99.0" id="explorede-0990">exploreDE 0.99.0<a class="anchor" aria-label="anchor" href="#explorede-0990"></a></h2>
 <ul><li>Submitted to Bioconductor. The version restarts at 0.99.0, the number Bioconductor gives a new package; the changes below were developed as 3.10.0. Witold Wolski is the maintainer.</li>
 <li>The vignette installs exploreDE from Bioconductor (<code>BiocManager::install("exploreDE")</code>).</li>
+<li>New vignette <code><a href="../articles/exploreDE.html">vignette("exploreDE")</a></code>: starting the app, a tour of its tabs with screenshots of the demo dataset, and opening a dataset in R with <code><a href="../reference/new_explore_dataset.html">new_explore_dataset()</a></code>. The README describes installing from GitHub until the Bioconductor release.</li>
 <li>The app run from the installed package (<code><a href="../reference/exploreDE.html">exploreDE()</a></code>, or <code><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">shiny::runApp()</a></code> on <code>system.file("app", package = "exploreDE")</code>) no longer spends most of its time in garbage collection. It put the package’s objects on the search path together with the namespace’s <code>.__NAMESPACE__.</code> record, and with the byte-code compiler on, R then ran a full garbage collection on nearly every allocation: loading the demo dataset took about 5 times as long as from the source tree, and several minutes on a slow machine. The namespace’s own records are now left out.</li>
 <li>Several <code>.h5ad</code> files can be compared in one session. The landing page takes more than one file: the first that loads opens in the tabs, and the contrasts of all of them are loaded into the Multi DE tabs, the loaded dataset’s under their own names and the other files’ as <code>&lt;file&gt;_&lt;contrast&gt;</code>. Multi DE’s Data Selection tab has an “Upload files” panel that adds more files later, also to a SUSHI dataset; a file of another omics class, or without contrasts, is refused with a message. <code><a href="../reference/exploreDE.html">exploreDE()</a></code> takes a vector of paths the same way. Saved sessions record these datasets by file label and contrast, and restore them when the same files have been added again (the files themselves are never saved).</li>
 <li>Heatmaps redraw without computing the counts again when only colours, labels, fonts or layout change. Every change recomputed the count method (VST runs DESeq2) and the batch correction on all features, and repeated their messages.</li>

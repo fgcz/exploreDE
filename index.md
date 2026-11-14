@@ -1,35 +1,107 @@
 # exploreDE
 
+[![R-CMD-check](https://github.com/fgcz/exploreDE/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/fgcz/exploreDE/actions/workflows/R-CMD-check.yaml)
+
 exploreDE is a Shiny app for exploring differential expression results
 from RNA-seq, proteomics and CRISPR screens, and for making
-publication-quality figures from them.
+publication-quality figures from them: ordination plots, heatmaps,
+volcano plots, box plots, GO and KEGG pathway views, ORA and GSEA
+results, and comparisons across contrasts.
 
-Documentation website: <https://fgcz.github.io/exploreDE/> (help pages,
-the bring-your-own-data vignette, changelog).
+It opens an AnnData `.h5ad` file in the exploreDE/1.0 layout, which
+[`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+writes from the results of any pipeline (DESeq2, edgeR, limma, prolfqua,
+SAINTexpress), and the results of the FGCZ SUSHI and prolfqua pipelines.
 
-## Install and run
+Documentation: <https://fgcz.github.io/exploreDE/>
+
+## Installation
+
+exploreDE is submitted to Bioconductor. Until it is released there,
+install it from GitHub:
 
 ``` r
 install.packages("BiocManager")
-BiocManager::install("fgcz/exploreDE") # pulls in the Bioconductor dependencies (anndataR >= 1.2.3: Bioconductor >= 3.23)
-# optional: KEGG views, GLM-PCA, formatted level labels (hidden or plain without them)
-BiocManager::install(c("pathview", "glmpca", "ggtext", "gridtext"))
-
-library(exploreDE)
-exploreDE()                   # landing page: upload a file or load the demo
-exploreDE("my_data.h5ad")     # or open straight into your own file
+BiocManager::install("fgcz/exploreDE") # needs Bioconductor >= 3.23 (anndataR >= 1.2.3)
 ```
 
-With no file, the app opens on its landing page, where you can upload an
-exploreDE `.h5ad` (see below) or load the demo dataset that ships with
-the package. Upload several files at once to compare them: the first
-opens in the tabs, and the contrasts of all of them are loaded into the
-Multi DE tabs (the Data Selection tab adds more files later). On a
-server, `?data=` opens a dataset from the link:
+Once it is on Bioconductor:
 
-- `?data=<result directory>`: A SUSHI result on FGCZ’s gStore
-  (LDAP-checked).
-- `?data=<percent-encoded https link to an .h5ad>`: A file from an
+``` r
+BiocManager::install("exploreDE")
+```
+
+Optional: KEGG pathway views, GLM-PCA, and formatted group labels.
+Without these packages the app hides the feature or shows plain text.
+
+``` r
+BiocManager::install(c("pathview", "glmpca", "ggtext", "gridtext"))
+```
+
+## Quick start
+
+``` r
+library(exploreDE)
+exploreDE()                            # landing page: upload a file or load the demo dataset
+exploreDE("my_data.h5ad")              # open a file directly
+exploreDE(c("a.h5ad", "b.h5ad"))       # compare the contrasts of several files
+```
+
+The menu shows only the tabs your data supports: DE tabs need a DE
+table, pathway tabs need enrichment results.
+
+## Documentation
+
+- [`vignette("exploreDE")`](https://fgcz.github.io/exploreDE/articles/exploreDE.md):
+  the app’s tabs, and opening a dataset in R
+- [`vignette("bring-your-own-data", package = "exploreDE")`](https://fgcz.github.io/exploreDE/articles/bring-your-own-data.md):
+  building a file from your own results: counts only, proteomics,
+  RNA-seq with pathways, organisms without an annotation package, and
+  unrecognised column names
+- [`?build_explore_h5ad`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md):
+  the argument reference
+- `system.file("spec/exploreDE-h5ad-1.0.md", package = "exploreDE")`:
+  the `.h5ad` format, for writing files from Python or another tool
+- `system.file("skills/exploreDE-byod/SKILL.md", package = "exploreDE")`:
+  give this to an AI assistant to have it write the import script for
+  your data
+
+## Bring your own data
+
+Only counts, a sample table and the omics type are required; DE tables
+and pathway results are optional.
+
+``` r
+build_explore_h5ad(
+  counts,                                   # features x samples matrix
+  out     = "my_data.h5ad",
+  omics   = "rnaseq",                       # or "proteomics", "crispr"
+  coldata = coldata,                        # one row per sample, rownames = colnames(counts)
+  rowdata = annotation,                     # optional: gene ids, symbols, GO terms, ...
+  de      = list(Treat_vs_Ctrl = de_table)  # optional: one table per contrast
+)
+```
+
+You don’t need to rename columns: a dictionary recognises the usual
+DESeq2, edgeR, limma, prolfqua and SAINTexpress names, and warns when it
+can’t place one. The prolfquapp DEA’s `AnnData.h5ad` (prolfquapp 2.10.x)
+opens as it is.
+
+## Saving your settings
+
+The **Save / Load Session** tab downloads your settings across every tab
+(widgets, the feature bucket, pathway selections and Multi DE datasets)
+as one `.json` file, and restores them on the same dataset later. It
+holds no data. Format:
+`system.file("spec/exploreDE-session-2.md", package = "exploreDE")`.
+
+## Running on a server
+
+On a server, `?data=` opens a dataset from the link:
+
+- `?data=<result directory>`: a SUSHI result on FGCZ’s gStore
+  (LDAP-checked)
+- `?data=<percent-encoded https link to an .h5ad>`: a file from an
   allowed source (by default APB Export jobs and public pStore; set
   `EXPLOREDE_URL_SOURCES` to change the list). Plain `https://` only, no
   redirects, up to 1 GB.
@@ -40,57 +112,10 @@ one container per user. Without that variable (plain Shiny Server, for
 example) every gStore link is refused; the demo, uploads and `https://`
 links still work.
 
-## Bring your own data
+## Getting help
 
-exploreDE reads one file format: an `.h5ad` (AnnData) file in the
-`exploreDE/1.0` layout, for `"rnaseq"`, `"proteomics"`, or `"crispr"`
-data from any pipeline. In R,
-[`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
-writes it. Only counts, sample metadata, and the omics type are
-required; a DE table and pathway results are optional, and the app shows
-the tabs your data supports.
-
-``` r
-build_explore_h5ad(
-  counts,                        # features x samples matrix
-  out     = "my_data.h5ad",
-  omics   = "rnaseq",
-  coldata = coldata,             # one row per sample, rownames = colnames(counts)
-  rowdata = annotation,          # optional: gene IDs, symbols, GO terms, ...
-  de      = list(Treat_vs_Ctrl = de_table)   # optional: one table per contrast
-)
-```
-
-You don’t need to rename columns: A built-in dictionary recognises the
-usual DESeq2, edgeR, limma, prolfqua, and SAINTexpress column names, and
-warns when it can’t place one.
-
-- **Full guide:**
-  [`vignette("bring-your-own-data", package = "exploreDE")`](https://fgcz.github.io/exploreDE/articles/bring-your-own-data.md)
-  covers counts-only, proteomics, and RNA-seq + pathway examples (all
-  runnable on the data shipped with the package), checking a file, and
-  what to do when a column isn’t recognised.
-- **Using an AI assistant:** give it
-  `system.file("skills/exploreDE-byod/SKILL.md", package = "exploreDE")`.
-  It’s written so an assistant can write the import script for your
-  data.
-- **Argument reference:**
-  [`?build_explore_h5ad`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md).
-- **Writing files from another tool (Python, an exporter app):**
-  `system.file("spec/exploreDE-h5ad-1.0.md", package = "exploreDE")` is
-  the written `.h5ad` format spec, including the proteomics profile and
-  a minimal Python writer. APB Export’s exploreDE output follows it.
-- **Also opens as it is:** The prolfquapp DEA’s `AnnData.h5ad`
-  (prolfquapp 2.10.x; spec §10).
-
-## Saving your settings
-
-The **Save / Load Session** tab downloads your settings across every tab
-(widgets, the feature bucket, pathway selections, and Multi DE datasets)
-as one `.json` file, and restores them on the same dataset later. It
-never holds data. The format is `exploreDE-session/2`:
-`system.file("spec/exploreDE-session-2.md", package = "exploreDE")`. The
-earlier `.rds` session files were retired in 3.9.0.
+- Questions: <https://support.bioconductor.org>, tag `exploreDE`
+- Bugs and feature requests: <https://github.com/fgcz/exploreDE/issues>
 
 ## Citing exploreDE
 

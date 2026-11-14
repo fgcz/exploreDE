@@ -7,6 +7,13 @@
   3.10.0. Witold Wolski is the maintainer.
 - The vignette installs exploreDE from Bioconductor
   (`BiocManager::install("exploreDE")`).
+- New vignette
+  [`vignette("exploreDE")`](https://fgcz.github.io/exploreDE/articles/exploreDE.md):
+  starting the app, a tour of its tabs with screenshots of the demo
+  dataset, and opening a dataset in R with
+  [`new_explore_dataset()`](https://fgcz.github.io/exploreDE/reference/new_explore_dataset.md).
+  The README describes installing from GitHub until the Bioconductor
+  release.
 - The app run from the installed package
   ([`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md),
   or [`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html) on
