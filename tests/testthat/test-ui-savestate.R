@@ -1,32 +1,8 @@
 # -----------------------------------------------------------------------------
-# Save / Load Session (helper-app.R): a setting saved to the .json comes back
-# when the file is loaded again, and the tab says what was restored.
+# Save / Load Session (helper-app.R) of a proteomics dataset, and of a dataset
+# with Multi DE contrasts. Saving and restoring on the demo is in
+# test-ui-demo-explore.R.
 # -----------------------------------------------------------------------------
-
-test_that("a saved session restores its settings on the same dataset", {
-  app <- app_session("save-restore")
-  app_load_demo(app)
-  app_open_tab(app, "heatmapTab")
-  app$set_inputs(lfcHeatmap = 1.5)
-  app$wait_for_idle()
-
-  app_open_tab(app, "saveStateTab")
-  app$wait_for_js("!!$('#download_state_json').attr('href')")
-  saved <- app$get_download("download_state_json")
-  expect_identical(jsonlite::fromJSON(saved)$inputs$lfcHeatmap, 1.5)
-
-  app_open_tab(app, "heatmapTab")
-  app$set_inputs(lfcHeatmap = 0)
-  app$wait_for_idle()
-  app_open_tab(app, "saveStateTab")
-  app$upload_file(load_state_file = saved)
-  app$wait_for_idle()
-  expect_match(app$get_value(output = "load_state_status"), "Restored")
-  app_open_tab(app, "heatmapTab")
-  app$wait_for_idle()
-  expect_identical(app$get_value(input = "lfcHeatmap"), 1.5)
-  expect_identical(app_output_errors(app), character(0))
-})
 
 test_that("a session of a proteomics dataset is saved", {
   f <- system.file("examples", "proteomics", "SummarizedExperiment.rds", package = "exploreDE")

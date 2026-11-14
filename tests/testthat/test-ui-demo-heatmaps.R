@@ -1,8 +1,16 @@
 # -----------------------------------------------------------------------------
-# Heatmaps > Settings > Sample ratios and the Ratios heatmap, on the demo
-# dataset (helper-app.R): a ratio is defined, plotted next to the contrast's
-# log2 fold change, downloaded, and removed again.
+# One session on the demo dataset in the Heatmaps tab (helper-app.R): the DE
+# heatmap's table download, what a redraw recomputes, and sample ratios. The
+# tests run in this order on the same session.
 # -----------------------------------------------------------------------------
+
+# Shown notifications whose text contains `text`.
+notifications <- function(app, text) {
+  app$get_js(sprintf(
+    "Array.from(document.querySelectorAll('.shiny-notification')).filter(n => n.innerText.includes('%s')).length",
+    text
+  ))
+}
 
 ratio_list_text <- function(app) {
   app$get_js("document.getElementById('heatmapRatioListUI').innerText")
@@ -24,9 +32,51 @@ ratio_heatmap_src <- function(app) {
   app$get_value(output = "heatmapRatios")$src %||% ""
 }
 
+app <- app_session("demo-heatmaps", .local_envir = environment())
+app_load_demo(app)
+
+test_that("the DE heatmap download has DE statistics only when asked for", {
+  app_open_tab(app, "heatmapTab")
+  # A download button gets its link only while shown: open Settings > Download
+  app$run_js("$('#shiny-tab-heatmapTab a[data-value=\"Download\"]').click()")
+  app$wait_for_js("!!$('#dlTable_heatmapDE').attr('href')")
+
+  statistics <- c("log2Ratio", "pValue", "fdr")
+  without <- openxlsx::read.xlsx(app$get_download("dlTable_heatmapDE"))
+  expect_true("feature_id" %in% colnames(without))
+  expect_gt(nrow(without), 0)
+  expect_length(intersect(statistics, colnames(without)), 0)
+
+  app$set_inputs(includeDEStatsHeatmap = TRUE)
+  app$wait_for_idle()
+  with <- openxlsx::read.xlsx(app$get_download("dlTable_heatmapDE"))
+  expect_true(all(statistics %in% colnames(with)))
+  expect_identical(with$feature_id, without$feature_id)
+})
+
+test_that("a font size change redraws the heatmap without preparing the counts again", {
+  app_open_tab(app, "heatmapTab")
+  # Batch correction on raw counts is refused with a message each time the
+  # counts are prepared
+  app$set_inputs(heatmapCounts = "counts", heatmapLog2 = FALSE, heatmapBatch = "Condition")
+  app$wait_for_idle(duration = 1500)
+  expect_gt(notifications(app, "requires log-scale"), 0)
+
+  app$run_js("document.querySelectorAll('.shiny-notification').forEach(n => n.remove())")
+  app$set_inputs(textSizeHeatmap = 13)
+  app$wait_for_idle(duration = 1500)
+  expect_equal(notifications(app, "requires log-scale"), 0)
+  expect_identical(app_output_errors(app), character(0))
+  # Back to the defaults, as a user turns batch correction off again
+  app$set_inputs(heatmapBatch = "None", heatmapCounts = "normalised_log2", heatmapLog2 = TRUE)
+  app$wait_for_idle(duration = 1500)
+})
+
+# The prolfquapp fixture's ids (Protein_1-NoChange1, Protein_1-NoChange2, ...)
+# share their first 15 characters; all 40 proteins have one peptide, so the
+# peptide filter's default of 2 keeps none.
+
 test_that("a sample ratio is defined, plotted next to a contrast and removed", {
-  app <- app_session("sample-ratios")
-  app_load_demo(app)
   app_open_tab(app, "heatmapTab")
   app$click(selector = "a[data-value='Sample ratios']")
   app$wait_for_idle()
@@ -71,8 +121,6 @@ test_that("a sample ratio is defined, plotted next to a contrast and removed", {
 })
 
 test_that("a ratio on raw counts is the difference of mean log2(count + 1)", {
-  app <- app_session("sample-ratio-values")
-  app_load_demo(app)
   app_open_tab(app, "heatmapTab")
   app$set_inputs(heatmapCounts = "counts")
   app$wait_for_idle()
