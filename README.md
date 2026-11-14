@@ -6,6 +6,8 @@ exploreDE is a Shiny app for exploring differential expression results from RNA-
 
 It opens an AnnData `.h5ad` file in the exploreDE/1.0 layout, which `build_explore_h5ad()` writes from the results of any pipeline (DESeq2, edgeR, limma, prolfqua, SAINTexpress), and the results of the FGCZ SUSHI and prolfqua pipelines.
 
+![The Volcano Plots tab of exploreDE on the demo RNA-seq dataset: the menu of all tabs on the left, the plot settings in the middle, and a volcano plot of the diff vs undiff contrast with up- and down-regulated genes in red and blue.](man/figures/volcano.png)
+
 Documentation: <https://fgcz.github.io/exploreDE/>
 
 ## Installation
