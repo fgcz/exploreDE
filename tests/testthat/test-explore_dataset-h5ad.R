@@ -1412,7 +1412,10 @@ test_that("a SummarizedExperiment needs named assays unless it has only one", {
   skip_if_no_anndataR()
   pr <- make_toy_prot("protein")
   out <- withr::local_tempfile(fileext = ".h5ad")
-  two <- SummarizedExperiment::SummarizedExperiment(assays = list(2^pr$intensities, pr$intensities), colData = pr$coldata)
+  two <- SummarizedExperiment::SummarizedExperiment(
+    assays = list(2^pr$intensities, pr$intensities),
+    colData = pr$coldata
+  )
   expect_error(build_explore_h5ad(two, out = out, omics = "proteomics"), "name the assays")
 
   one <- SummarizedExperiment::SummarizedExperiment(assays = list(pr$intensities), colData = pr$coldata)
