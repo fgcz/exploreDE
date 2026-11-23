@@ -48,7 +48,7 @@ ordinationResults <- reactive({
   step_map <- list(
     "Group subsetting" = function(cd) step_group_subset(cd$counts, cd$dataset, input$pcaFactor1, valid_groups),
     "Peptide filter" = function(cd) {
-      if (eds$omics_class() == "proteomics" && length(eds$contrasts())) {
+      if (eds$omics_class() == "proteomics" && eds$data_type() != "metabolomics" && length(eds$contrasts())) {
         res <- step_peptide_filter(cd$counts, cd$dataset, eds$de(eds$contrasts()[[1]]), input$nrPeptidePCA)
         peptide_filter <<- c(before = nrow(cd$counts), after = nrow(res$counts))
         res
@@ -267,7 +267,7 @@ observe({
     show_log2 <- log2_checked && is_linear
 
     steps <- c("Batch correction", "Group subsetting", "Top N features (SD)")
-    if (eds$omics_class() == "proteomics") {
+    if (eds$omics_class() == "proteomics" && eds$data_type() != "metabolomics") {
       steps <- c("Peptide filter", "Batch correction", "Group subsetting", "Top N features (SD)")
     }
     if (show_log2) {
@@ -311,7 +311,7 @@ observe({
       )
     }
   )
-  if (eds$omics_class() == "proteomics") {
+  if (eds$omics_class() == "proteomics" && eds$data_type() != "metabolomics") {
     # Handle nrPeptides slider — check the primary contrast's DE table for nrPeptides column
     if (
       length(eds$contrasts()) > 0 &&

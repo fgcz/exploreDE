@@ -112,7 +112,8 @@ volcanoColoursDefault <- c(
   "FoldChangeSignificantDown" = "deepskyblue4"
 )
 
-if (eds$omics_class() == "proteomics" && eds$has_de()) {
+# prolfqua's imputed features (modelName); peptide counts below likewise
+if (eds$omics_class() == "proteomics" && eds$data_type() != "metabolomics" && eds$has_de()) {
   if ("modelName" %in% colnames(eds$de(eds$primary_contrast()))) {
     volcanoColoursDefault <- c(volcanoColoursDefault, "Imputed" = "burlywood3")
   }
@@ -209,7 +210,7 @@ observeEvent(
   }
 )
 
-if (eds$omics_class() == "proteomics" && eds$has_de()) {
+if (eds$omics_class() == "proteomics" && eds$data_type() != "metabolomics" && eds$has_de()) {
   proto_de <- eds$de(eds$primary_contrast())
 
   if ("nrPeptides" %in% colnames(proto_de)) {

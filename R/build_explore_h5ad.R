@@ -390,6 +390,10 @@
   }
   .check_mapping_keys(rowdata_columns, .ROWDATA_MAPPING_KEYS, "rowdata_columns")
   sym_col <- .rowdata_col(rd, rowdata_columns$symbol_col, "gene_name")
+  # Metabolomics names its features in a plain column such as Compound Discoverer's `Name`.
+  if (is.null(sym_col) && omics_type == "metabolomics") {
+    sym_col <- .rd_col(rd, "metabolite_name")
+  }
   id_col <- .rowdata_col(rd, rowdata_columns$id_col, "gene_id")
   # An EXPLICIT id_col override (not merely auto-detected via the gene-id-like
   # patterns above) also drives protein/peptide/phospho feature-id construction

@@ -202,7 +202,7 @@ observe({
   }
 
   # Proteomics-specific: peptide filter UI
-  if (eds$omics_class() == "proteomics") {
+  if (eds$omics_class() == "proteomics" && eds$data_type() != "metabolomics") {
     if (
       length(eds$contrasts()) > 0 &&
         "nrPeptides" %in% colnames(eds$de(eds$contrasts()[[1]]))

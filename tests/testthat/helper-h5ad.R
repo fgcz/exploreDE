@@ -91,7 +91,8 @@ make_toy_prot <- function(flavour = c("protein", "phospho", "peptide")) {
 }
 
 # Toy metabolomics pieces: log2 intensities with missing values, metabolite
-# names for the annotated half of the features, and one contrast B_vs_A.
+# names (Compound Discoverer's `Name` column) for the annotated half of the
+# features, and one contrast B_vs_A.
 make_toy_metab <- function() {
   set.seed(7)
   n <- 30L
@@ -102,7 +103,7 @@ make_toy_metab <- function() {
   colnames(m) <- sprintf("S%02d", seq_len(ns))
   rd <- data.frame(
     row.names = rownames(m),
-    gene_name = c(sprintf("Metabolite %d", seq_len(n / 2L)), rep(NA_character_, n / 2L)),
+    Name = c(sprintf("Metabolite %d", seq_len(n / 2L)), rep(NA_character_, n / 2L)),
     stringsAsFactors = FALSE
   )
   coldata <- data.frame(row.names = colnames(m), group = rep(c("A", "B"), each = ns / 2L))

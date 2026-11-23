@@ -509,10 +509,7 @@ server <- function(input, output, session) {
   source("server-landing.R", local = TRUE)
 
   # Telemetry (skipped when DB directory is unavailable, e.g. local dev)
-  telemetry_app_name <- "exploreDE_genomics"
-  if (exists("dataType") && dataType == "proteomics") {
-    telemetry_app_name <- "exploreDE_proteomics"
-  }
+  telemetry_app_name <- telemetry_name(if (exists("dataType")) dataType)
   telemetry_db_dir <- "/srv/shiny-server/fgcz_apps/telemetry_reader/apps_data"
   telemetry_ready <- dir.exists(telemetry_db_dir) ||
     dir.create(telemetry_db_dir, recursive = TRUE, showWarnings = FALSE)

@@ -627,10 +627,13 @@ test_that("a metabolomics .h5ad loads as intensity data of data_type metabolomic
   expect_equal(ints[rownames(mt$intensities), colnames(mt$intensities)], mt$intensities)
   expect_true(all(is.na(ints[1:3, 1])))
 
-  # Unannotated features show their feature_id.
+  # The Name column labels the features; unannotated ones show their feature_id.
   f <- eds$features()
   expect_identical(f["CD0001", "display_name"], "Metabolite 1")
   expect_identical(f["CD0030", "display_name"], "CD0030")
+  # No proteomics gene / protein pickers.
+  expect_null(eds$proteomics_choices("gene"))
+  expect_null(eds$proteomics_choices("protein"))
 })
 
 test_that("a metabolomics .h5ad carries its contrast and the volcano's DE columns", {
@@ -643,8 +646,27 @@ test_that("a metabolomics .h5ad carries its contrast and the volcano's DE column
   expect_equal(d[rownames(mt$de$B_vs_A), "log2Ratio"], mt$de$B_vs_A$log2FC)
   expect_equal(d[rownames(mt$de$B_vs_A), "pValue"], mt$de$B_vs_A$pvalue)
   expect_false(eds$has_enrichment())
-  # Multi DE treats it as an intensity dataset.
-  expect_identical(legacy_multi_contrast_from_eds(eds, "B_vs_A")$dataType, "proteomics")
+  # Multi DE keeps it as metabolomics, with its intensities and contrast.
+  rec <- legacy_multi_contrast_from_eds(eds, "B_vs_A")
+  expect_identical(rec$dataType, "metabolomics")
+  expect_true("intensities" %in% names(rec$countList))
+  expect_identical(rec$designLevels, c("B", "A"))
+})
+
+test_that("Multi DE does not compare metabolomics with proteomics", {
+  skip_if_no_anndataR()
+  metab <- new_explore_dataset(metab_h5ad())
+  prot <- prot_eds("protein")
+  expect_identical(multi_de_kind(metab), "metabolomics")
+  expect_identical(multi_de_kind(prot), "proteomics")
+  expect_identical(multi_de_kind(prot_eds("phospho")), "proteomics")
+})
+
+test_that("telemetry names metabolomics on its own", {
+  expect_identical(telemetry_name("metabolomics"), "exploreDE_metabolomics")
+  expect_identical(telemetry_name("proteomics"), "exploreDE_proteomics")
+  expect_identical(telemetry_name("gStore"), "exploreDE_genomics")
+  expect_identical(telemetry_name(NULL), "exploreDE_genomics")
 })
 
 test_that("an unknown omics_type names metabolomics among the accepted ones", {

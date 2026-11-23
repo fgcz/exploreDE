@@ -9,6 +9,16 @@ is_url <- function(dataDir) {
   return(grepl("^https?://", dataDir))
 }
 
+# Telemetry app name for the `dataType` a ?data= link set (NULL without one).
+telemetry_name <- function(data_type) {
+  switch(
+    data_type %||% "",
+    proteomics = "exploreDE_proteomics",
+    metabolomics = "exploreDE_metabolomics",
+    "exploreDE_genomics"
+  )
+}
+
 #' dataSummary
 #' Summarise counts by mean / SD / SE across grouping variables.
 #' @param data data.frame containing at least `varname` and the `groupnames` columns

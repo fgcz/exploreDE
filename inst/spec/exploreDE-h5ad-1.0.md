@@ -206,11 +206,17 @@ proteomics (§4, §5, and "Without a DEA" / "With a DEA" in §6).
 |---|---|---|---|
 | `feature` | `{levels: ["feature"], unit: "feature"}` | a feature (compound) | the processing software's feature id |
 
-- The app's data type is `metabolomics`. It reads the intensities like
-  proteomics data (log2 scale, `NaN` missing, low-signal floor 1).
+- The app's data type is `metabolomics`, its own type everywhere the user
+  sees one (Results Summary, Multi DE). Only the reading of the intensities is
+  shared with proteomics (log2 scale, `NaN` missing, low-signal floor 1); the
+  proteomics-only parts (peptide filters, imputed-feature options, gene and
+  protein search, prolfqua citations) are not offered.
 - `label_gene_symbol` is the label on every plot and table: Put the metabolite
   name there, empty for unannotated features (they then show their
-  `feature_id`).
+  `feature_id`). `build_explore_h5ad()` takes it from a `rowdata` column named
+  `Name` (Compound Discoverer), `compound_name` or `metabolite_name` when no
+  gene-symbol column is given.
+- Multi DE compares a metabolomics file only with other metabolomics files.
 - GO and KEGG views need gene ids and are not offered; the pathway tabs are
   hidden (§9).
 

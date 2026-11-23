@@ -527,14 +527,14 @@ multi_add_uploads <- function(files) {
       next
     }
     eds <- res$eds
-    if (!identical(eds$omics_class(), main$omics_class())) {
+    if (!identical(multi_de_kind(eds), multi_de_kind(main))) {
       showNotification(
         paste0(
           name,
           " holds ",
-          eds$omics_class(),
+          multi_de_kind(eds),
           " data, so it cannot be compared with the loaded ",
-          main$omics_class(),
+          multi_de_kind(main),
           " dataset."
         ),
         type = "error",
@@ -585,6 +585,10 @@ if (!is.null(dataUrl)) {
   # `dataType` at module scope for the telemetry-app-name check in app.R.
   dataType <- if (grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) "proteomics" else "gStore"
   load_from_url(dataUrl)
+  url_eds <- isolate(edsState())$.eds
+  if (!is.null(url_eds) && identical(url_eds$data_type(), "metabolomics")) {
+    dataType <- "metabolomics"
+  }
 } else if (!is.null(getOption("exploreDE.file"))) {
   # Launched locally as exploreDE(file = ...): the first file that loads opens,
   # the ones after it go to Multi DE (as on the landing page).

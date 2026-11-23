@@ -624,7 +624,7 @@ ExploreDatasetH5AD <- R6::R6Class(
 
       # proteomics_choices: the gene / protein lookup maps that drive the
       # proteomics-only feature picker (server-featureBucket / server-correlation).
-      if (identical(cfg$omics_class, "proteomics")) {
+      if (identical(cfg$omics_class, "proteomics") && cfg$data_type != "metabolomics") {
         gcol <- .h5ad_role_col(colnames(var), "symbol")
         pcol <- .h5ad_role_col(colnames(var), "protein_id")
         private$.config$proteomics <- eds_proteomics_choices(
