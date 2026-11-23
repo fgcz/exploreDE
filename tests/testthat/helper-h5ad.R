@@ -90,6 +90,31 @@ make_toy_prot <- function(flavour = c("protein", "phospho", "peptide")) {
   list(intensities = m, coldata = coldata, rowdata = rd)
 }
 
+# Toy metabolomics pieces: log2 intensities with missing values, metabolite
+# names for the annotated half of the features, and one contrast B_vs_A.
+make_toy_metab <- function() {
+  set.seed(7)
+  n <- 30L
+  ns <- 6L
+  m <- matrix(stats::rnorm(n * ns, mean = 20, sd = 2), nrow = n, ncol = ns)
+  m[1:3, 1] <- NA
+  rownames(m) <- sprintf("CD%04d", seq_len(n))
+  colnames(m) <- sprintf("S%02d", seq_len(ns))
+  rd <- data.frame(
+    row.names = rownames(m),
+    gene_name = c(sprintf("Metabolite %d", seq_len(n / 2L)), rep(NA_character_, n / 2L)),
+    stringsAsFactors = FALSE
+  )
+  coldata <- data.frame(row.names = colnames(m), group = rep(c("A", "B"), each = ns / 2L))
+  de <- data.frame(
+    row.names = rownames(m),
+    log2FC = stats::rnorm(n),
+    pvalue = stats::runif(n),
+    FDR = stats::runif(n)
+  )
+  list(intensities = m, coldata = coldata, rowdata = rd, de = list(B_vs_A = de))
+}
+
 # Faithful SUSHI RNA-seq SE -> canonical exploreDE/1.0 .h5ad.
 se_to_canonical_h5ad <- function(se, out) {
   md <- S4Vectors::metadata(se)

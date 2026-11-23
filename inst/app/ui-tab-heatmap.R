@@ -15,7 +15,7 @@ tabItem(
           differentially expressed features across the sample groups selected."
         ),
         tags$p(
-          tags$b("For RNA-Seq and proteomics data:"),
+          tags$b("For RNA-Seq, proteomics and metabolomics data:"),
           " Features are selected based on
           differential expression p-values. The plots are split into 'Both' (features
           with significant changes in either direction), 'Up' (positive log fold changes),
@@ -91,7 +91,7 @@ tabItem(
             ),
             conditionalPanel(
               # DE-based feature selection applies to RNA-seq AND every proteomics
-              # flavour (proteomics / peptidomics / phosphoproteomics). Gate as the
+              # flavour (proteomics / peptidomics / phosphoproteomics) and metabolomics. Gate as the
               # complement of the SD-based CountQC/CrisprCountQC panel below so new
               # proteomics subtypes never silently lose this UI.
               condition = "output.test != 'CountQC' && output.test != 'CrisprCountQC'",

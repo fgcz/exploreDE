@@ -2,6 +2,7 @@
 
 - Submitted to Bioconductor. The version restarts at 0.99.0, the number Bioconductor gives a new package; the changes below were developed as 3.10.0. Witold Wolski is the maintainer.
 - The vignette installs exploreDE from Bioconductor (`BiocManager::install("exploreDE")`).
+- Metabolomics results open as their own data type: an `.h5ad` with `uns["omics_type"] = "metabolomics"` and `feature_id_kind = "feature"` (one row per feature from the processing software, e.g. Compound Discoverer, annotated or not) loads with its intensities read as proteomics intensities are (log2 scale, missing values kept), and `build_explore_h5ad(omics = "metabolomics")` writes one. The pathway tabs stay hidden, as GO and KEGG need gene ids. The spec (`inst/spec/exploreDE-h5ad-1.0.md`) has a metabolomics profile; the schema stays `exploreDE/1.0`.
 - The app opens about a second faster: checking whether the KEGG views can be offered no longer loads pathview, which now loads when a KEGG view is first opened.
 - VST is computed once per dataset: switching a tab to VST again, or a second plot on VST, no longer recomputes it (0.3 s on the demo, much longer on large datasets).
 - `exploreDE()` opens a `SummarizedExperiment` or AnnData object as well as a path: `exploreDE(se)`. The object is written to a temporary file that the app opens; a SummarizedExperiment that is not a SUSHI or prolfqua result opens as a Count QC dataset.

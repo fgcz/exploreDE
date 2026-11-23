@@ -119,7 +119,8 @@ try(ExploreDataset$new())
 \if{html}{\out{<a id="method-ExploreDataset-data_type"></a>}}
 \if{latex}{\out{\hypertarget{method-ExploreDataset-data_type}{}}}
 \subsection{\code{ExploreDataset$data_type()}}{
-  Dataset type from the config, e.g. \code{"RNASeq"}, \code{"CountQC"}, \code{"CrisprCountQC"} or \code{"proteomics"}.
+  Dataset type from the config, e.g. \code{"RNASeq"}, \code{"CountQC"}, \code{"CrisprCountQC"}, \code{"proteomics"} or
+\code{"metabolomics"}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExploreDataset$data_type()}

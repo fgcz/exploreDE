@@ -53,8 +53,8 @@
     fail(sprintf("uns[\"schema_version\"] is \"%s\"", sv))
   }
   ot <- one("omics_type")
-  if (!ot %in% c("proteomics", "rnaseq_bulk", "crispr_countqc")) {
-    fail(sprintf("uns[\"omics_type\"] is \"%s\", not proteomics, rnaseq_bulk or crispr_countqc", ot))
+  if (!ot %in% c("proteomics", "metabolomics", "rnaseq_bulk", "crispr_countqc")) {
+    fail(sprintf("uns[\"omics_type\"] is \"%s\", not proteomics, metabolomics, rnaseq_bulk or crispr_countqc", ot))
   }
   one("feature_id_kind")
   invisible(TRUE)
@@ -99,6 +99,7 @@
     omics_type,
     rnaseq_bulk = "RNASeq",
     crispr_countqc = "CrisprCountQC",
+    metabolomics = "metabolomics",
     proteomics = switch(feature_id_kind, peptide = "peptidomics", phospho = "phosphoproteomics", "proteomics")
   )
 }
@@ -556,7 +557,8 @@ ExploreDatasetH5AD <- R6::R6Class(
     .build_config = function() {
       uns <- private$.uns
       .h5ad_require_identity(uns)
-      omics_class <- if (uns[["omics_type"]] == "proteomics") "proteomics" else "genomics"
+      # Metabolomics intensities take the proteomics path (log2, NaN for missing, no VST/TPM)
+      omics_class <- if (uns[["omics_type"]] %in% c("proteomics", "metabolomics")) "proteomics" else "genomics"
       factors <- .h5ad_factors(private$.obs, uns)
       contrasts <- .h5ad_contrasts(uns, factors$grouping)
       private$.contrast_slot <- contrasts$slots

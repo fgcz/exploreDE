@@ -36,7 +36,8 @@ ExploreDataset <- R6::R6Class(
     # ---- identity (config-only) -------------------------------------------
     #' @description Omics class from the config: `"genomics"` or `"proteomics"`.
     omics_class = function() private$.config$omics_class,
-    #' @description Dataset type from the config, e.g. `"RNASeq"`, `"CountQC"`, `"CrisprCountQC"` or `"proteomics"`.
+    #' @description Dataset type from the config, e.g. `"RNASeq"`, `"CountQC"`, `"CrisprCountQC"`, `"proteomics"` or
+    #'   `"metabolomics"`.
     data_type = function() private$.config$data_type,
     #' @description `TRUE` when the dataset has at least one contrast.
     has_de = function() length(self$contrasts()) > 0L,

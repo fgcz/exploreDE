@@ -113,8 +113,8 @@ observe({
   if (eds$omics_class() == "proteomics") {
     output$clusterWarningProteomics <- renderUI({
       helpText(
-        "Clustering by row/column may break the heatmap for proteomics data, due
-        to the high number of NA values in the count table."
+        "Clustering by row/column may break the heatmap for proteomics and metabolomics
+        data, due to the high number of NA values in the intensity table."
       )
     })
     outputOptions(output, "clusterWarningProteomics", suspendWhenHidden = FALSE)

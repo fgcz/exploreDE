@@ -341,7 +341,12 @@ observeEvent(eds$data_type(), {
           "Peter Leary, & Hubert Rehrauer. (2023). exploreDE Interactive Shiny App. Zenodo. https://doi.org/10.5281/zenodo.13927692"
         ),
         tags$p(
-          "For the full list of citations required for the generation of these results, and/or for a written methods section, please email us at proteomics@fgcz.ethz.ch."
+          "For the full list of citations required for the generation of these results, and/or for a written methods section,",
+          if (eds$data_type() == "metabolomics") {
+            "please contact the FGCZ metabolomics unit."
+          } else {
+            "please email us at proteomics@fgcz.ethz.ch."
+          }
         )
       )
     })
@@ -350,7 +355,7 @@ observeEvent(eds$data_type(), {
         hr(style = "border-top: 1px solid #000000;"),
         h4("Download Feature Value Files"),
         helpText(
-          "Select the type of value data you wish to download for all samples in the dataset. For proteomics, this would be intensity values."
+          "Select the type of value data you wish to download for all samples in the dataset. For proteomics and metabolomics, this would be intensity values."
         ),
         selectizeInput(
           inputId = "downloadCount",
