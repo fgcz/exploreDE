@@ -108,22 +108,22 @@ tabItem(
             helpText("Second factor determines point shape for the boxplot"),
             selectInput(
               inputId = "boxplotCounts",
-              label = "Select count method to plot",
+              label = tagList("Select ", values_span("count method"), " to plot"),
               choices = NULL,
               selected = NULL,
               multiple = FALSE
             ),
             checkboxInput(inputId = "boxplotZScore", label = "Transform to Z-Scores?", value = FALSE),
-            helpText("Calculates per-gene Z-Scores. Works on any count method."),
+            helpText(tagList("Calculates per-gene Z-Scores. Works on any ", values_span("count method"), ".")),
             checkboxInput(
               inputId = "boxplotCountsLog",
-              label = tagList("Log2 ", span(class = "values-word", "Counts", .noWS = "outside"), "?"),
+              label = tagList("Log2 ", values_span("Counts"), "?"),
               value = FALSE
             ),
-            helpText("Only applies to counts that are not already on in log space."),
+            helpText(tagList("Only applies to ", values_span("counts"), " that are not already on in log space.")),
             selectInput(
               inputId = "boxplotBatch",
-              label = "Apply a batch-correction to the counts?",
+              label = tagList("Apply a batch-correction to the ", values_span("counts"), "?"),
               choices = NULL,
               multiple = FALSE
             ),
@@ -370,10 +370,16 @@ tabItem(
             title = "Download",
             downloadButton(
               outputId = "dlTable_boxplot",
-              label = tagList("Download Boxplot ", span(class = "values-word", "Counts", .noWS = "outside"))
+              label = tagList("Download Boxplot ", values_span("Counts"))
             ),
             helpText(
-              "You can download a small Excel file of the counts of the features you have selected. You can use these counts to quickly make figures in, e.g., Graphpad."
+              tagList(
+                "You can download a small Excel file of the ",
+                values_span("counts"),
+                " of the features you have selected. You can use these ",
+                values_span("counts"),
+                " to quickly make figures in, e.g., Graphpad."
+              )
             ),
             checkboxInput(inputId = "includeDEStatsBoxplot", label = "Include DE statistics?", value = FALSE),
             helpText("Adds log2FC, p-value, and FDR columns from the current contrast."),

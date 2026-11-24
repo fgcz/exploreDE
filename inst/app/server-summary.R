@@ -230,7 +230,9 @@ observeEvent(input$importColourFile, {
 })
 
 observeEvent(eds$data_type(), {
-  shinyjs::html(selector = ".values-word", html = values_word(eds$data_type()))
+  for (w in names(.values_words)) {
+    shinyjs::html(selector = paste0(".", values_class(w)), html = values_word(eds$data_type(), w))
+  }
   if (eds$data_type() == "RNASeq" && eds$has_de()) {
     output$referencesText <- renderUI({
       box(

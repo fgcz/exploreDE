@@ -9,7 +9,12 @@ tabItem(
         solidHeader = TRUE,
         status = "primary",
         uiOutput(outputId = "contrastSelectorUI_replicability"),
-        selectInput(inputId = "replicabilityCounts", label = "Select count method", choices = NULL, selected = NULL),
+        selectInput(
+          inputId = "replicabilityCounts",
+          label = tagList("Select ", values_span("count method")),
+          choices = NULL,
+          selected = NULL
+        ),
         conditionalPanel(
           condition = "output.test == 'CrisprCountQC'",
           radioButtons(
@@ -20,8 +25,12 @@ tabItem(
             inline = TRUE
           )
         ),
-        checkboxInput(inputId = "replicabilityCountsLog", label = "Log2 Counts?", value = FALSE),
-        helpText("Only applies to counts that are not already in log space."),
+        checkboxInput(
+          inputId = "replicabilityCountsLog",
+          label = tagList("Log2 ", values_span("Counts"), "?"),
+          value = FALSE
+        ),
+        helpText(tagList("Only applies to ", values_span("counts"), " that are not already in log space.")),
         uiOutput("replicabilityFactorSelectUI"),
         sliderInput(
           inputId = "replicabilityTopGenes",

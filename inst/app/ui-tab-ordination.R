@@ -252,7 +252,7 @@ tabItem(
             hr(style = "border-top: 0.1px solid #000000;"),
             selectInput(
               inputId = "pcaCounts",
-              label = tagList(span(class = "values-word", "Counts", .noWS = "outside"), " to plot"),
+              label = tagList(values_span("Counts"), " to plot"),
               choices = "",
               selected = "",
               width = "75%"
@@ -274,7 +274,7 @@ tabItem(
             helpText(
               "The design factor tells removeBatchEffect which biological signal to protect. For two-factor DE this is locked to the primary grouping; for CountQC/Crispr you can pick any factor."
             ),
-            checkboxInput(inputId = "pcaLog2", label = "Log2 counts?", value = TRUE),
+            checkboxInput(inputId = "pcaLog2", label = tagList("Log2 ", values_span("counts"), "?"), value = TRUE),
             helpText(
               "Only applies to counts or intensities not already in log space, e.g., TPM, FPKM, raw intensities"
             ),
@@ -442,7 +442,11 @@ tabItem(
                   "limma::removeBatchEffect assumes data is on a log scale (additive batch effects).",
                   "On linear-scale data (TPM, FPKM, Raw, Normalised), batch effects are multiplicative,",
                   "so batch correction should generally come after a log2 transform.",
-                  "Already-logged count types (Normalised + Log2, VST) do not need the log2 step."
+                  tagList(
+                    "Already-logged ",
+                    values_span("count"),
+                    " types (Normalised + Log2, VST) do not need the log2 step."
+                  )
                 ),
                 tags$li(
                   tags$b("Peptide filter (proteomics only):"),

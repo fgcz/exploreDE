@@ -1621,4 +1621,7 @@ test_that("metabolomics values are intensities, not counts", {
   expect_identical(values_word("metabolomics"), "Intensities")
   expect_identical(values_word("proteomics"), "Counts")
   expect_identical(values_word("RNASeq"), "Counts")
+  expect_identical(values_word("metabolomics", "count method"), "intensity type")
+  expect_identical(values_word("RNASeq", "count method"), "count method")
+  expect_match(as.character(values_span("count method")), 'class="values-word-count-method"', fixed = TRUE)
 })

@@ -157,11 +157,16 @@ tabItem(
             ),
 
             hr(style = "border-top: 1px solid #000000;"),
-            h4("Count settings"),
-            selectInput(inputId = "heatmapCounts", label = "Select count method to plot", choices = "", selected = ""),
+            h4(tagList(values_span("Count"), " settings")),
+            selectInput(
+              inputId = "heatmapCounts",
+              label = tagList("Select ", values_span("count method"), " to plot"),
+              choices = "",
+              selected = ""
+            ),
             selectInput(
               inputId = "heatmapBatch",
-              label = "Apply a batch-correction to the counts?",
+              label = tagList("Apply a batch-correction to the ", values_span("counts"), "?"),
               choices = "",
               multiple = FALSE
             ),
@@ -174,15 +179,19 @@ tabItem(
             helpText(
               "The design factor tells removeBatchEffect which biological signal to protect. For two-factor DE this is locked to the primary grouping; for CountQC/Crispr you can pick any factor."
             ),
-            checkboxInput(inputId = "heatmapLog2", label = "Log2 transform counts?", value = TRUE),
-            helpText("Only applies to counts not already in log space."),
+            checkboxInput(
+              inputId = "heatmapLog2",
+              label = tagList("Log2 transform ", values_span("counts"), "?"),
+              value = TRUE
+            ),
+            helpText(tagList("Only applies to ", values_span("counts"), " not already in log space.")),
             radioButtons(
               inputId = "heatmapZScore",
               label = "Centre or use Z-Scores?",
               choices = c("None", "Centred", "Z-Score"),
               selected = "Centred"
             ),
-            helpText("Calculates per-gene Z-Scores. Works on any count method."),
+            helpText(tagList("Calculates per-gene Z-Scores. Works on any ", values_span("count method"), ".")),
 
             hr(style = "border-top: 1px solid #000000;"),
             h4("Sample aggregation"),
@@ -212,7 +221,11 @@ tabItem(
           tabPanel(
             title = "Sample ratios",
             helpText(
-              "A sample ratio is, per feature, the mean log2 value of the numerator samples minus the mean log2 value of the denominator samples, taken from the count method and batch correction chosen under Feature settings and always on the log2 scale. It carries no statistics. A ratio keeps the settings it was added with. The ratios are plotted on the Ratios heatmap, next to each contrast's log2 fold change."
+              tagList(
+                "A sample ratio is, per feature, the mean log2 value of the numerator samples minus the mean log2 value of the denominator samples, taken from the ",
+                values_span("count method"),
+                " and batch correction chosen under Feature settings and always on the log2 scale. It carries no statistics. A ratio keeps the settings it was added with. The ratios are plotted on the Ratios heatmap, next to each contrast's log2 fold change."
+              )
             ),
             textInput(
               inputId = "heatmapRatioName",
@@ -407,38 +420,42 @@ tabItem(
 
           tabPanel(
             title = "Download",
-            h4("Download Count Tables"),
+            h4(tagList("Download ", values_span("Count"), " Tables")),
             downloadButton(
               outputId = "dlTable_heatmapDE",
-              label = tagList("Download DE Features ", span(class = "values-word", "Counts", .noWS = "outside"))
+              label = tagList("Download DE Features ", values_span("Counts"))
             ),
             helpText(
-              "Downloads counts from the DE Features heatmap (whichever view you have selected: Both, Up, or Down)."
+              tagList(
+                "Downloads ",
+                values_span("counts"),
+                " from the DE Features heatmap (whichever view you have selected: Both, Up, or Down)."
+              )
             ),
             checkboxInput(
               inputId = "includeDEStatsHeatmap",
-              label = "Include DE statistics in count downloads?",
+              label = tagList("Include DE statistics in ", values_span("count"), " downloads?"),
               value = FALSE
             ),
-            helpText("Adds log2FC, p-value, and FDR columns to downloaded count files."),
+            helpText(tagList("Adds log2FC, p-value, and FDR columns to downloaded ", values_span("count"), " files.")),
             br(),
             downloadButton(
               outputId = "dlTable_heatmapCustom",
-              label = tagList("Download Custom Heatmap ", span(class = "values-word", "Counts", .noWS = "outside"))
+              label = tagList("Download Custom Heatmap ", values_span("Counts"))
             ),
-            helpText("Downloads counts from the Custom heatmap."),
+            helpText(tagList("Downloads ", values_span("counts"), " from the Custom heatmap.")),
             br(),
             downloadButton(
               outputId = "dlTable_heatmapGO",
-              label = tagList("Download GO Heatmap ", span(class = "values-word", "Counts", .noWS = "outside"))
+              label = tagList("Download GO Heatmap ", values_span("Counts"))
             ),
-            helpText("Downloads counts from the GO term heatmap."),
+            helpText(tagList("Downloads ", values_span("counts"), " from the GO term heatmap.")),
             br(),
             downloadButton(
               outputId = "dlTable_heatmapKEGG",
-              label = tagList("Download KEGG Heatmap ", span(class = "values-word", "Counts", .noWS = "outside"))
+              label = tagList("Download KEGG Heatmap ", values_span("Counts"))
             ),
-            helpText("Downloads counts from the KEGG pathway heatmap."),
+            helpText(tagList("Downloads ", values_span("counts"), " from the KEGG pathway heatmap.")),
             br(),
             downloadButton(outputId = "dlTable_heatmapRatios", label = "Download Ratio Heatmap Values"),
             helpText("Downloads the log2 ratios shown on the Ratios heatmap."),

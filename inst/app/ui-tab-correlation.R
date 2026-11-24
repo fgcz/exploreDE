@@ -11,7 +11,7 @@ tabItem(
         collapsible = TRUE,
         collapsed = TRUE,
         tags$p(
-          "Pick two features, pick a count method, pick a correlation method... et voilà!"
+          tagList("Pick two features, pick a ", values_span("count method"), ", pick a correlation method... et voilà!")
         )
       ),
       box(
@@ -62,15 +62,19 @@ tabItem(
             ),
             selectInput(
               inputId = "correlationCounts",
-              label = "Select count method to plot",
+              label = tagList("Select ", values_span("count method"), " to plot"),
               choices = NULL,
               selected = NULL
             ),
-            helpText("Only applies to counts that are not already in log space."),
-            checkboxInput(inputId = "correlationCountsLog", label = "Log2 Counts?", value = FALSE),
+            helpText(tagList("Only applies to ", values_span("counts"), " that are not already in log space.")),
+            checkboxInput(
+              inputId = "correlationCountsLog",
+              label = tagList("Log2 ", values_span("Counts"), "?"),
+              value = FALSE
+            ),
             selectInput(
               inputId = "correlationBatch",
-              label = "Apply a batch-correction to the counts?",
+              label = tagList("Apply a batch-correction to the ", values_span("counts"), "?"),
               choices = NULL,
               selected = NULL,
               multiple = FALSE
@@ -222,10 +226,10 @@ tabItem(
           ),
           tabPanel(
             title = "Download",
-            helpText("Download the displayed counts in Excel:"),
+            helpText(tagList("Download the displayed ", values_span("counts"), " in Excel:")),
             downloadButton(
               outputId = "dlTable_correlation",
-              label = tagList("Download ", span(class = "values-word", "Counts", .noWS = "outside"))
+              label = tagList("Download ", values_span("Counts"))
             ),
             hr(),
             h4("Download Settings"),
