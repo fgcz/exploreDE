@@ -369,6 +369,11 @@
   list(counts = counts, base_ids = base_ids, sample_ids = sample_ids)
 }
 
+# Metabolomics names its features in a plain column such as Compound Discoverer's `Name`.
+.metabolite_name_col <- function(rd, omics_type) {
+  if (omics_type == "metabolomics") .rd_col(rd, "metabolite_name")
+}
+
 # -- feature_id (the join key): symbol/id from args or rowData --------------
 # Returns the rowData aligned to the counts, the id/symbol columns found in it,
 # the resolved ids/symbols, the feature level and the level-aware feature_id.
@@ -389,11 +394,8 @@
     if (!is.null(rn) && all(base_ids %in% rn)) rd <- rd[base_ids, , drop = FALSE]
   }
   .check_mapping_keys(rowdata_columns, .ROWDATA_MAPPING_KEYS, "rowdata_columns")
-  sym_col <- .rowdata_col(rd, rowdata_columns$symbol_col, "gene_name")
-  # Metabolomics names its features in a plain column such as Compound Discoverer's `Name`.
-  if (is.null(sym_col) && omics_type == "metabolomics") {
-    sym_col <- .rd_col(rd, "metabolite_name")
-  }
+  sym_col <- .rowdata_col(rd, rowdata_columns$symbol_col, "gene_name") %||%
+    .metabolite_name_col(rd, omics_type)
   id_col <- .rowdata_col(rd, rowdata_columns$id_col, "gene_id")
   # An EXPLICIT id_col override (not merely auto-detected via the gene-id-like
   # patterns above) also drives protein/peptide/phospho feature-id construction
