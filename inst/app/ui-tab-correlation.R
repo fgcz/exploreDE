@@ -223,7 +223,10 @@ tabItem(
           tabPanel(
             title = "Download",
             helpText("Download the displayed counts in Excel:"),
-            downloadButton(outputId = "dlTable_correlation", label = paste("Download Counts")),
+            downloadButton(
+              outputId = "dlTable_correlation",
+              label = tagList("Download ", span(class = "values-word", "Counts", .noWS = "outside"))
+            ),
             hr(),
             h4("Download Settings"),
             splitLayout(

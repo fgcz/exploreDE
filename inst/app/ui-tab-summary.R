@@ -36,7 +36,8 @@ tabItem(
           status = "primary",
           tabsetPanel(
             tabPanel(
-              title = "Counts",
+              title = span(class = "values-word", "Counts"),
+              value = "Counts",
               br(),
               uiOutput("countsDownloadUI")
             ),

@@ -115,7 +115,11 @@ tabItem(
             ),
             checkboxInput(inputId = "boxplotZScore", label = "Transform to Z-Scores?", value = FALSE),
             helpText("Calculates per-gene Z-Scores. Works on any count method."),
-            checkboxInput(inputId = "boxplotCountsLog", label = "Log2 Counts?", value = FALSE),
+            checkboxInput(
+              inputId = "boxplotCountsLog",
+              label = tagList("Log2 ", span(class = "values-word", "Counts", .noWS = "outside"), "?"),
+              value = FALSE
+            ),
             helpText("Only applies to counts that are not already on in log space."),
             selectInput(
               inputId = "boxplotBatch",
@@ -364,7 +368,10 @@ tabItem(
           ),
           tabPanel(
             title = "Download",
-            downloadButton(outputId = "dlTable_boxplot", label = paste("Download Boxplot Counts")),
+            downloadButton(
+              outputId = "dlTable_boxplot",
+              label = tagList("Download Boxplot ", span(class = "values-word", "Counts", .noWS = "outside"))
+            ),
             helpText(
               "You can download a small Excel file of the counts of the features you have selected. You can use these counts to quickly make figures in, e.g., Graphpad."
             ),

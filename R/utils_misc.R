@@ -19,6 +19,11 @@ telemetry_name <- function(data_type) {
   )
 }
 
+# What the UI calls feature values: metabolomics measures intensities, not counts.
+values_word <- function(data_type) {
+  if (identical(data_type, "metabolomics")) "Intensities" else "Counts"
+}
+
 #' dataSummary
 #' Summarise counts by mean / SD / SE across grouping variables.
 #' @param data data.frame containing at least `varname` and the `groupnames` columns

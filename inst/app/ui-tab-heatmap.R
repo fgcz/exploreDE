@@ -408,7 +408,10 @@ tabItem(
           tabPanel(
             title = "Download",
             h4("Download Count Tables"),
-            downloadButton(outputId = "dlTable_heatmapDE", label = "Download DE Features Counts"),
+            downloadButton(
+              outputId = "dlTable_heatmapDE",
+              label = tagList("Download DE Features ", span(class = "values-word", "Counts", .noWS = "outside"))
+            ),
             helpText(
               "Downloads counts from the DE Features heatmap (whichever view you have selected: Both, Up, or Down)."
             ),
@@ -419,13 +422,22 @@ tabItem(
             ),
             helpText("Adds log2FC, p-value, and FDR columns to downloaded count files."),
             br(),
-            downloadButton(outputId = "dlTable_heatmapCustom", label = "Download Custom Heatmap Counts"),
+            downloadButton(
+              outputId = "dlTable_heatmapCustom",
+              label = tagList("Download Custom Heatmap ", span(class = "values-word", "Counts", .noWS = "outside"))
+            ),
             helpText("Downloads counts from the Custom heatmap."),
             br(),
-            downloadButton(outputId = "dlTable_heatmapGO", label = "Download GO Heatmap Counts"),
+            downloadButton(
+              outputId = "dlTable_heatmapGO",
+              label = tagList("Download GO Heatmap ", span(class = "values-word", "Counts", .noWS = "outside"))
+            ),
             helpText("Downloads counts from the GO term heatmap."),
             br(),
-            downloadButton(outputId = "dlTable_heatmapKEGG", label = "Download KEGG Heatmap Counts"),
+            downloadButton(
+              outputId = "dlTable_heatmapKEGG",
+              label = tagList("Download KEGG Heatmap ", span(class = "values-word", "Counts", .noWS = "outside"))
+            ),
             helpText("Downloads counts from the KEGG pathway heatmap."),
             br(),
             downloadButton(outputId = "dlTable_heatmapRatios", label = "Download Ratio Heatmap Values"),

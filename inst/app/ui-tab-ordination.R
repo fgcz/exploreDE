@@ -250,7 +250,13 @@ tabItem(
             selectInput(inputId = "pcaFactor1", label = "Colour by", choices = "", selected = "", width = "75%"),
             selectInput(inputId = "pcaFactor2", label = "Shape by", choices = "", selected = "", width = "75%"),
             hr(style = "border-top: 0.1px solid #000000;"),
-            selectInput(inputId = "pcaCounts", label = "Counts to plot", choices = "", selected = "", width = "75%"),
+            selectInput(
+              inputId = "pcaCounts",
+              label = tagList(span(class = "values-word", "Counts", .noWS = "outside"), " to plot"),
+              choices = "",
+              selected = "",
+              width = "75%"
+            ),
             selectInput(
               inputId = "pcaBatch",
               label = "Batch-correct by",

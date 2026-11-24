@@ -610,7 +610,7 @@ server <- function(input, output, session) {
       menuItem(text = "Save / Load Session", tabName = "saveStateTab", icon = icon("floppy-disk")),
 
       # 1. Count tabs (Always shown)
-      tags$li(class = "header", "Counts"),
+      tags$li(class = "header", values_word(dataType)),
       menuItem(text = "Ordination", tabName = "ordinationTab", icon = icon("meteor")),
       menuItem(text = "Heatmaps", tabName = "heatmapTab", icon = icon("map")),
       menuItem(text = "Boxplots", tabName = "boxplotTab", icon = icon("box-open")),

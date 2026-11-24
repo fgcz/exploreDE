@@ -689,7 +689,11 @@ observeEvent(
       ifelse(gnames != fids, paste0(gnames, "\n", fids), fids)
     })
 
-    ylabToPlot <- paste(input$multiBoxplotCounts, "Counts")
+    ylabToPlot <- if (multiBoxplotDataReactive()$dataType == "metabolomics") {
+      input$multiBoxplotCounts
+    } else {
+      paste(input$multiBoxplotCounts, "Counts")
+    }
     if (input$multiBoxplotCountsLog) {
       ylabToPlot <- paste(ylabToPlot, "(Log2)")
     }
@@ -894,7 +898,7 @@ lapply(c("boxplot", "barplot"), function(b) {
 output$dlTable_multiBoxplotCounts <- downloadHandler(
   filename = function() {
     generate_filename(
-      base_name = paste0(input$filename_multiBoxplot, "_Counts"),
+      base_name = paste0(input$filename_multiBoxplot, "_", values_word(multiBoxplotDataReactive()$dataType)),
       design_name = "Multi",
       extension = "xlsx"
     )
@@ -904,12 +908,13 @@ output$dlTable_multiBoxplotCounts <- downloadHandler(
     d <- multiBoxplotCountsReactive()
 
     data_to_export <- d$countsBoxplot
+    values_sheet <- values_word(multiBoxplotDataReactive()$dataType)
 
     # If stats are requested
     if (input$includeDEStatsMultiBoxplot && !is.null(d$pvalueDF)) {
       wb <- openxlsx::createWorkbook()
-      addWorksheet(wb, "Counts")
-      writeDataTable(wb, "Counts", data_to_export, tableStyle = "TableStyleMedium9", withFilter = TRUE)
+      addWorksheet(wb, values_sheet)
+      writeDataTable(wb, values_sheet, data_to_export, tableStyle = "TableStyleMedium9", withFilter = TRUE)
 
       addWorksheet(wb, "Statistics")
       writeDataTable(wb, "Statistics", d$pvalueDF, tableStyle = "TableStyleMedium9", withFilter = TRUE)
@@ -919,8 +924,8 @@ output$dlTable_multiBoxplotCounts <- downloadHandler(
       export_excel_standard(
         df = data_to_export,
         filename = file,
-        sheet_name = "Counts",
-        table_name = "Counts"
+        sheet_name = values_sheet,
+        table_name = values_sheet
       )
     }
   }

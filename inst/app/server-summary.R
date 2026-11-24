@@ -230,6 +230,7 @@ observeEvent(input$importColourFile, {
 })
 
 observeEvent(eds$data_type(), {
+  shinyjs::html(selector = ".values-word", html = values_word(eds$data_type()))
   if (eds$data_type() == "RNASeq" && eds$has_de()) {
     output$referencesText <- renderUI({
       box(
@@ -375,7 +376,12 @@ observeEvent(eds$data_type(), {
           width = "33%"
         ),
 
-        textInput(inputId = "filename_summary", label = NULL, value = "Counts", placeholder = "Filename"),
+        textInput(
+          inputId = "filename_summary",
+          label = NULL,
+          value = values_word(eds$data_type()),
+          placeholder = "Filename"
+        ),
         downloadButton("dlTable_summary", "Download selected file"),
         checkboxInput(
           inputId = "includeDEStats",

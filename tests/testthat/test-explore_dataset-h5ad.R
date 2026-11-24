@@ -1616,3 +1616,9 @@ test_that("every enrichment method other than gsea counts as ORA, as the reader 
   )
   expect_identical(new_explore_dataset(f)$enrichment_kinds(), "ora")
 })
+
+test_that("metabolomics values are intensities, not counts", {
+  expect_identical(values_word("metabolomics"), "Intensities")
+  expect_identical(values_word("proteomics"), "Counts")
+  expect_identical(values_word("RNASeq"), "Counts")
+})

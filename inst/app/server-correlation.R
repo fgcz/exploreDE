@@ -455,7 +455,7 @@ output$dlPlot_correlation <- downloadHandler(
 output$dlTable_correlation <- downloadHandler(
   filename = function() {
     generate_filename(
-      base_name = paste0(input$filename_correlation, "_Counts"),
+      base_name = paste0(input$filename_correlation, "_", values_word(eds$data_type())),
       design_name = designReactive(),
       extension = "xlsx"
     )
