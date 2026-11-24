@@ -40,7 +40,8 @@ multiDETableReactive <- reactive({
   # metabolomics: the metabolite name. Skipped when identical to the feature_id.
   for (col in c("gene_name", "protein_Id")) {
     if (
-      results[[1]]$dataType %in% c("proteomics", "metabolomics") &&
+      results[[1]]$dataType %in%
+        c("proteomics", "metabolomics") &&
         col %in% colnames(firstSeqAnno) &&
         !identical(as.character(firstSeqAnno[[col]]), as.character(baseTable$feature_id))
     ) {
