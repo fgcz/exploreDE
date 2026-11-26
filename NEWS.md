@@ -4,6 +4,7 @@
 - The vignette installs exploreDE from Bioconductor (`BiocManager::install("exploreDE")`).
 - The app opens about a second faster: checking whether the KEGG views can be offered no longer loads pathview, which now loads when a KEGG view is first opened.
 - VST is computed once per dataset: switching a tab to VST again, or a second plot on VST, no longer recomputes it (0.3 s on the demo, much longer on large datasets).
+- A `?data=` link can point at an exploreDE `.h5ad` on gStore (for example one written by `build_explore_h5ad()`), whatever its folder is called. It passes the same project access check as a SUSHI result and is read and checked as an upload is; a file that can't be opened shows a message. An `.h5ad` that is not on gStore falls through to the other routes.
 - `exploreDE()` opens a `SummarizedExperiment` or AnnData object as well as a path: `exploreDE(se)`. The object is written to a temporary file that the app opens; a SummarizedExperiment that is not a SUSHI or prolfqua result opens as a Count QC dataset.
 - `?"exploreDE-package"` gives an overview of the package's functions and vignettes. `vignette("exploreDE")` has a section on how exploreDE builds on Bioconductor and how it differs from iSEE, pcaExplorer, ideal, GeneTonic and debrowser; both vignettes use BiocStyle.
 - `inst/examples/README.md` lists the source of each example dataset: the RNA-seq demo is a trimmed SUSHI DESeq2 result, the proteomics example six runs of the public LFQ benchmark PXD028735.
