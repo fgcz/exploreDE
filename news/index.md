@@ -13,6 +13,13 @@
 - VST is computed once per dataset: switching a tab to VST again, or a
   second plot on VST, no longer recomputes it (0.3 s on the demo, much
   longer on large datasets).
+- A `?data=` link can point at an exploreDE `.h5ad` on gStore (for
+  example one written by
+  [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)),
+  whatever its folder is called. It passes the same project access check
+  as a SUSHI result and is read and checked as an upload is; a file that
+  can’t be opened shows a message. An `.h5ad` that is not on gStore
+  falls through to the other routes.
 - [`exploreDE()`](https://fgcz.github.io/exploreDE/reference/exploreDE.md)
   opens a `SummarizedExperiment` or AnnData object as well as a path:
   `exploreDE(se)`. The object is written to a temporary file that the

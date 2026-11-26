@@ -42,6 +42,7 @@
 <li>The vignette installs exploreDE from Bioconductor (<code>BiocManager::install("exploreDE")</code>).</li>
 <li>The app opens about a second faster: checking whether the KEGG views can be offered no longer loads pathview, which now loads when a KEGG view is first opened.</li>
 <li>VST is computed once per dataset: switching a tab to VST again, or a second plot on VST, no longer recomputes it (0.3 s on the demo, much longer on large datasets).</li>
+<li>A <code>?data=</code> link can point at an exploreDE <code>.h5ad</code> on gStore (for example one written by <code><a href="../reference/build_explore_h5ad.html">build_explore_h5ad()</a></code>), whatever its folder is called. It passes the same project access check as a SUSHI result and is read and checked as an upload is; a file that can’t be opened shows a message. An <code>.h5ad</code> that is not on gStore falls through to the other routes.</li>
 <li>
 <code><a href="../reference/exploreDE.html">exploreDE()</a></code> opens a <code>SummarizedExperiment</code> or AnnData object as well as a path: <code>exploreDE(se)</code>. The object is written to a temporary file that the app opens; a SummarizedExperiment that is not a SUSHI or prolfqua result opens as a Count QC dataset.</li>
 <li>
