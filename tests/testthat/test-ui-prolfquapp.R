@@ -45,10 +45,10 @@ test_that("a prolfquapp result opens in every tab; Ordination and Heatmap name t
 test_that("the DE heatmap table has the plotted features under their full ids, and none when empty", {
   ids <- new_explore_dataset(fixture)$feature_ids()
   app_open_tab(app, "heatmapTab")
-  app$run_js("$('#shiny-tab-heatmapTab a[data-value=\"Download\"]').click()")
+  app_open_subtab(app, "heatmapTab", "Download")
   app$set_inputs(nrPeptideHeatmap = 1, includeDEStatsHeatmap = TRUE)
   app$wait_for_idle(duration = 1500)
-  app$wait_for_js("!!$('#dlTable_heatmapDE').attr('href')")
+  app_wait_download(app, "dlTable_heatmapDE")
   table <- function() openxlsx::read.xlsx(app$get_download("dlTable_heatmapDE"))
 
   shown <- table()

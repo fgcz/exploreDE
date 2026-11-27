@@ -55,23 +55,30 @@
   )
 }
 
-# SAINTexpress reference = the grouping level flagged as control (colData
-# CONTROL == "C", e.g. eGFP); the contrast names carry no `_vs_`.
+# SAINTexpress reference = the grouping levels flagged as control (colData
+# CONTROL == "C", e.g. eGFP); the contrast names carry no `_vs_`. SAINT scores
+# each bait against all control samples pooled, so there can be several
+# control levels (wu 355373: five). Returns all of them, or character() when
+# none can be found.
 .se_saint_reference <- function(cd, factor1, saint) {
   if (!saint || !"CONTROL" %in% colnames(cd) || !(factor1 %||% "") %in% colnames(cd)) {
-    return(NA_character_)
+    return(character())
   }
-  ctrl_lvls <- unique(as.character(cd[[factor1]])[toupper(trimws(as.character(cd$CONTROL))) == "C"])
-  if (length(ctrl_lvls) == 1L) ctrl_lvls else NA_character_
+  unique(as.character(cd[[factor1]])[toupper(trimws(as.character(cd$CONTROL))) == "C"])
 }
 
-.se_proteomics_contrast_meta <- function(contrasts, factor1, saint, reference_default) {
+# For SAINT, reference_group stays a single level (the boxplot bracket and the
+# Multi DE design take it as one), so it is NA when the controls are pooled
+# from several levels; reference_groups lists every control level.
+.se_proteomics_contrast_meta <- function(contrasts, factor1, saint, saint_controls) {
+  saint_ref <- if (length(saint_controls) == 1L) saint_controls else NA_character_
   stats::setNames(
     lapply(contrasts, function(cn) {
       grp <- strsplit(cn, "_vs_|--over--")[[1]]
       list(
         test_group = grp[1],
-        reference_group = if (saint) reference_default else grp[2],
+        reference_group = if (saint) saint_ref else grp[2],
+        reference_groups = if (saint) saint_controls else grp[2],
         factor_name = factor1,
         method = if (saint) "SAINTexpress" else "prolfqua",
         thresholds = list(fdr = 0.05, log2fc = 1),
@@ -82,6 +89,49 @@
     }),
     contrasts
   )
+}
+
+#' Contrast table for the Summary tab of a proteomics dataset
+#'
+#' One row per contrast the dataset has results for. `metadata(se)$contrasts`
+#' cannot be shown as it is: A SAINTexpress result stores prolfquapp's
+#' linear-model contrasts there (wu 355373: 45 rows, for 5 SAINT results), not
+#' the bait-vs-control contrasts SAINT scored. It only supplies the formula of
+#' a prolfqua contrast whose name it shares.
+#' @param eds An `ExploreDataset` of omics class proteomics.
+#' @param md_contrasts `metadata(se)$contrasts`, or `NULL`.
+#' @return A data.frame with columns `contrast_name` and `contrast`.
+#' @noRd
+proteomics_contrast_table <- function(eds, md_contrasts = NULL) {
+  cns <- eds$contrasts()
+  md <- if (!is.null(md_contrasts)) as.data.frame(md_contrasts) else data.frame()
+  md_names <- if (nrow(md)) as.character(md$contrast_name %||% rownames(md)) else character()
+  formula <- vapply(
+    cns,
+    function(cn) {
+      cm <- eds$contrast_meta(cn)
+      refs <- cm$reference_groups %||% cm$reference_group
+      refs <- refs[!is.na(refs)]
+      if (identical(cm$method, "SAINTexpress")) {
+        return(
+          if (length(refs) > 1L) {
+            sprintf("%s vs pooled controls (%s)", cm$test_group, paste(refs, collapse = ", "))
+          } else if (length(refs) == 1L) {
+            sprintf("%s vs %s", cm$test_group, refs)
+          } else {
+            sprintf("%s vs controls", cm$test_group)
+          }
+        )
+      }
+      i <- match(cn, md_names)
+      if (!is.na(i) && "contrast" %in% colnames(md)) {
+        return(as.character(md$contrast[i]))
+      }
+      if (length(refs)) paste(cm$test_group, "-", refs[1]) else cn
+    },
+    character(1)
+  )
+  data.frame(contrast_name = cns, contrast = unname(formula), stringsAsFactors = FALSE)
 }
 
 # Assays: the transformed one is primary (without one, the first stands in on

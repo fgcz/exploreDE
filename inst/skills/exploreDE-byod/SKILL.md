@@ -38,7 +38,7 @@ build_explore_h5ad(
   x, out, omics,
   feature_level = NULL, coldata = NULL, rowdata = NULL,
   de = list(), de_columns = NULL, rowdata_columns = NULL,
-  pathways = list(), enrichment_padj_max = 0.1, factors = NULL,
+  pathways = list(), enrichment_padj_max = NULL, enrichment_fdr = NULL, factors = NULL,
   organism = NA, ref_build = NA
 )
 ```
@@ -69,8 +69,11 @@ Optional:
   plain data.frames, or nested lists of either. Data.frames must use
   clusterProfiler column names (`ID`, `Description`, `p.adjust`,
   `GeneRatio`, `Count`, `geneID`; GSEA adds `enrichmentScore`, `NES`,
-  `setSize`, `core_enrichment`). clusterProfiler objects are filtered to
-  `p.adjust <= enrichment_padj_max`; data.frames are stored as given.
+  `setSize`, `core_enrichment`). Every term is stored by default; give
+  `enrichment_padj_max` to keep only clusterProfiler terms with `p.adjust <=`
+  it (data.frames are always stored as given).
+- `enrichment_fdr`: the FDR at which the app calls a term significant (one
+  number, or `list(ora = , gsea = )`); default 0.05. It drops nothing.
 - `factors`: which `coldata` columns are experimental factors (default: all
   character/factor columns).
 - `organism`, `ref_build`: labels, e.g. `"Homo sapiens"`.

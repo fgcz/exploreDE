@@ -63,6 +63,7 @@ uns["enrichment_support"]  what the app needs to show / rebuild them
 uns["enrichment_filter"]   the cut-off the stored tables were filtered at
 uns["exploreDE"]["mapping"] which source column fed which statistic (optional)
 uns["reference_genome"], uns["provenance"]
+uns["se"]                  the whole source SummarizedExperiment (optional, §11)
 ```
 
 ## 2. `obs` — samples
@@ -274,10 +275,15 @@ With these, the reader rebuilds clusterProfiler objects for the network, ridge,
 and running-score plots (when DOSE is installed); the tables alone drive
 everything else.
 
-**`enrichment_filter`** — SHOULD be present when tables were filtered:
-`{padj_max: <number> | {ora: <number>, gsea: <number>}, column: "p.adjust"}`.
-The app uses `padj_max` as its pathway threshold, and it tells a consumer that
-a missing term was cut, not untested.
+**`enrichment_filter`** — SHOULD be present when tables were filtered or the
+source has its own significance thresholds:
+`{padj_max: <number> | {ora: <number>, gsea: <number>}, fdr: <number> | {ora: <number>, gsea: <number>}, column: "p.adjust"}`.
+- `padj_max` (SHOULD when tables were filtered) tells a consumer that a
+  missing term was cut, not untested.
+- `fdr` (MAY) is the threshold at which a term counts as significant, e.g.
+  SUSHI's `fdrThreshORA` / `fdrThreshGSEA`; it drops nothing.
+- The app's pathway threshold is `fdr`, else `padj_max`, else 0.05. Store every
+  term where you can, so users can filter at their own threshold.
 
 ### 7.5 Provenance — SHOULD
 
@@ -435,6 +441,69 @@ joins `var` onto each on the feature id.
 exploreDE 3.9.0 stops on this layout with "varm matrix has N columns but
 varm_columns names 0".
 
+## 11. SummarizedExperiment mirror — `uns["se"]` (MAY)
+
+A file MAY also hold the whole SummarizedExperiment it was built from, so that
+nothing of the source is lost: `build_explore_h5ad(mirror = se)` writes it and
+`se_from_h5ad()` rebuilds it. SUSHI's twoGroups apps (DESeq2, edgeR, limma)
+store their `deResult` this way. The exploreDE reader does not need it; the
+app works from sections 2–7 as before.
+
+**Guarantee.** `se_from_h5ad(file)` is `identical()` to the SE that was
+written, with one exception: Environments other than namespaces and the
+global, base, and empty environments are rebuilt with the same contents
+(recursively, cycles kept), not the same address. No copy keeps an
+environment's address; a qs2 or RDS round trip of a DESeq2 result is not
+`identical()` either. Checked on SUSHI results of DESeq2, edgeR glm, edgeR
+exactTest, and limma.
+
+**Layout.**
+
+| Key | Content |
+|---|---|
+| `uns["se"]["schema"]` | `"exploreDE-se/1"` |
+| `uns["se"]["manifest"]` | Data frame, one row per node of the SE's value tree, in depth-first order (see below) |
+| `uns["se"]["values"]` | Values placed in `uns`, nested like their R paths (`metadata/param/cores`, `metadata/enrichInput/go2gene/BP/...`) |
+| `layers`, `varm`, `obsm` | Values placed there by shape, under readable keys (`assays.presentFlag`, `nativeResult.dds.assays.mu`, `nativeResult.dds.mcols`, ...) |
+
+**Manifest columns.** `id`; `parent` (0 for the root); `kind` (`root`,
+`elem`, `attr`, `binding`, `parent`, `formals`, `body`, `env`, `values`,
+`lengths`); `key` (element, attribute, or binding name); `how` (below);
+`type` (`typeof()`); `class`; `s4` (`isS4()`); `location`; `detail`; `path`
+(the R path, for people: `se@metadata$nativeResult$dds@assays...`).
+
+| `how` | Node | Rebuilt from |
+|---|---|---|
+| `atomic` | A vector, matrix, or factor | Its bare values at `location`, then its attributes (child rows, `kind = "attr"`) |
+| `list` | A list or data frame | Its elements (child rows, `kind = "elem"`, in order), then its attributes |
+| `long` | A list of at least 20 bare vectors of one type (gene sets) | One `values` vector and one `lengths` vector |
+| `s4` | An S4 object | Its class prototype with its attributes (= slots) set; the class's package must be installed |
+| `ref` | Identical to an earlier node | The node whose `id` is `location` |
+| `language`, `call` | A call or formula | Parsed text at `location` (never evaluated), or its parts when text cannot give it back exactly |
+| `symbol`, `missing`, `null`, `builtin` | A name, an empty argument, `NULL`, a primitive | `detail` |
+| `closure` | A function | Its `formals`, `body`, and `env` children, then its attributes |
+| `env`, `envref`, `envname` | An environment | Its bindings, parent, and attributes; a reference to one already built; or a namespace / global / base / empty environment by name |
+
+**Placement of bare values** (`location`):
+
+| Shape | `location` |
+|---|---|
+| genes × samples matrix | `layers\|<key>` (stored samples × genes) |
+| genes × k matrix, or one value per gene | `varm\|<key>` or `varm\|<data frame>\|<column>` |
+| samples × k matrix, or one value per sample | `obsm\|<key>` or `obsm\|<data frame>\|<column>` |
+| anything else | `uns\|<path under uns["se"]["values"]>` |
+| already in an exploreDE slot | `layers\|counts`, `obs\|<column>`, `var\|<column>`, `obs_names`, `var_names`, `varm\|de_<slot>\|<column>`, `unsrows\|enrichment/<slot>/<method>\|<column>\|<ontology>` |
+
+A value identical to one already stored is not stored again; its row points at
+the same location. `detail` says what the reader undoes: `lgl` (logical stored
+as 0/1), `chr` (a categorical read as text), `fct` (long text stored as
+categorical), `na=<key>` (positions of `NA` in a layer, which HDF5 keeps only
+as `NaN`, under `uns["se"]["values"]["^na"]`).
+
+**Untrusted files.** Reading never evaluates text from the file. A rebuilt
+SE can contain functions, as an RDS file can; calling them runs their code.
+The app never rebuilds the mirror.
+
 ---
 
 ## Version history
@@ -444,3 +513,5 @@ varm_columns names 0".
 | 2026-04-17 | draft 0.1 | Planning draft (archived). |
 | 2026-10-29 | 1.0 | First written spec of what the reader and writer actually do; proteomics profile; prolfquapp dialect. |
 | 2026-10-30 | 1.0 | Format unchanged. `nullable-string-array` text is read (the deployed app has `anndataR` 1.2.3); `uns["de"]` relaxed from MUST to SHOULD (exploreDE 3.9.0 reader fix); optional `used_in_test` DE column. |
+| 2026-11-27 | 1.0 | Format unchanged; older files read as before. Optional SummarizedExperiment mirror, `uns["se"]` (section 11). When a DE table is the rowData itself, its statistic columns are no longer copied into `var`. The reference writer compresses datasets with gzip. |
+| 2026-11-26 | 1.0 | Format unchanged; older files read as before. Optional `enrichment_filter.fdr` (significance thresholds without a cut). The reference writer stores every pathway term by default, keeps the case of factor names (`factor_Condition`), strips SUSHI column tags from `obs`, and shows a SUSHI `A--over--B` contrast as `A_vs_B`. |

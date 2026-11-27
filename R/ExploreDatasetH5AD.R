@@ -592,7 +592,11 @@ ExploreDatasetH5AD <- R6::R6Class(
         contrast_meta = contrasts$meta,
         de_display_extras = contrasts$display_extras,
         enrichment_kinds = .h5ad_enrichment_kinds(uns),
-        enrichment_filter = (uns$enrichment_filter %||% list())$padj_max %||% NA_real_,
+        # The significance threshold: the recorded FDR thresholds, else (older
+        # files) the cut the tables were filtered at.
+        enrichment_filter = (uns$enrichment_filter %||% list())$fdr %||%
+          (uns$enrichment_filter %||% list())$padj_max %||%
+          NA_real_,
         enrichment_locator = list(),
         sgrna_to_gene = NULL,
         proteomics = NULL,
@@ -677,6 +681,23 @@ ExploreDatasetH5AD <- R6::R6Class(
         gc_col <- intersect(c("label_gc", "gc"), colnames(fv))
         if (length(gc_col) && !"gc" %in% colnames(d)) {
           d$gc <- as.numeric(fv[d$feature_id, gc_col[[1]]])
+        }
+        # Feature type (biotype), the DE table's "Type" column; a SUSHI
+        # rowData `type` is stored as label_type.
+        type_col <- intersect(c("label_type", "type"), colnames(fv))
+        if (length(type_col) && !"type" %in% colnames(d)) {
+          d$type <- as.character(fv[d$feature_id, type_col[[1]]])
+        }
+        # Every other feature annotation (entrez ids, biotypes, ...), as a
+        # SUSHI rowData carries it, so de() lists what the SE route lists. A
+        # rowData copy of a DE statistic never replaces the contrast's own.
+        taken <- tolower(c(colnames(d), "log2Ratio", "pValue", "fdr", "usedInTest", "display_name"))
+        for (vc in colnames(fv)) {
+          nm <- sub("^label_", "", vc)
+          if (!tolower(nm) %in% taken && !tolower(vc) %in% taken) {
+            d[[nm]] <- fv[d$feature_id, vc]
+            taken <- c(taken, tolower(nm))
+          }
         }
         de_dfs[[key]] <- eds_finalise_de(d)
       }

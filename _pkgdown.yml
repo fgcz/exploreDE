@@ -21,6 +21,7 @@ reference:
     desc: Write an `.h5ad` in the exploreDE/1.0 layout, open it as a dataset, and check it.
     contents:
       - build_explore_h5ad
+      - se_from_h5ad
       - new_explore_dataset
       - validate_explore_dataset
   - title: Dataset classes

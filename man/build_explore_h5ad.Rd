@@ -15,10 +15,13 @@ build_explore_h5ad(
   de_columns = NULL,
   rowdata_columns = NULL,
   pathways = list(),
-  enrichment_padj_max = 0.1,
+  enrichment_padj_max = NULL,
+  enrichment_fdr = NULL,
   factors = NULL,
   organism = NA_character_,
-  ref_build = NA_character_
+  ref_build = NA_character_,
+  mirror = NULL,
+  compression = c("gzip", "none")
 )
 }
 \arguments{
@@ -68,18 +71,34 @@ Overrides are persisted at \code{uns$exploreDE$mapping$feature}.}
 (keys a subset of \code{de}); each entry a named list of clusterProfiler objects
 and/or \code{data.frame}s.}
 
-\item{enrichment_padj_max}{p.adjust cut-off applied to clusterProfiler
-results before they are stored (\code{p.adjust <= enrichment_padj_max}). Either
-one number for every method, or a named list keyed by the method names used
-in \code{pathways} (e.g. \code{list(ora = 0.05, gsea = 0.05)}) so that ORA and GSEA can
-follow their own FDR thresholds; a method not named in the list uses the
-largest value given. The value(s) are recorded in \code{uns$enrichment_filter}
-and the app uses a per-method value as its significance threshold.}
+\item{enrichment_padj_max}{Optional p.adjust cut-off applied to
+clusterProfiler results before they are stored (\code{p.adjust <= enrichment_padj_max}). \code{NULL} (the default) stores every term, so users
+can filter at their own threshold in the app. Either one number for every
+method, or a named list keyed by the method names used in \code{pathways} (e.g.
+\code{list(ora = 0.05, gsea = 0.05)}); a method not named in the list uses the
+largest value given. The value(s) are recorded in \code{uns$enrichment_filter};
+without \code{enrichment_fdr} the app also uses them as its significance
+threshold.}
+
+\item{enrichment_fdr}{Optional FDR threshold(s) at which the app calls a
+pathway significant: one number, or a named list keyed by method (e.g.
+\code{list(ora = 0.05, gsea = 0.1)}, as SUSHI's \code{fdrThreshORA} and
+\code{fdrThreshGSEA}). Recorded in \code{uns$enrichment_filter$fdr}; no term is
+dropped. Without it (or \code{enrichment_padj_max}) the app uses 0.05.}
 
 \item{factors}{Optional colData columns that are experimental factors
 (default: all character/factor-typed columns).}
 
 \item{organism, ref_build}{Optional labels.}
+
+\item{mirror}{Optional SummarizedExperiment to store in full, in
+\code{uns["se"]} (spec section 11), so that \code{\link[=se_from_h5ad]{se_from_h5ad()}} rebuilds it: Every
+assay, \code{colData} and \code{rowData} column, and \code{metadata()} element at its path,
+with its class and attributes. Values the exploreDE slots already hold
+are not stored twice. SUSHI passes its twoGroups \code{deResult}.}
+
+\item{compression}{HDF5 compression of the datasets: \code{"gzip"} (default;
+readable by every HDF5 reader, Python \code{anndata} included) or \code{"none"}.}
 }
 \value{
 The output path, invisibly.
