@@ -922,10 +922,11 @@
   id2fid <- stats::setNames(f$fid, base_ids) # user identifiers -> canonical fid
   obs <- .assemble_obs(coldata, cnt$sample_ids, factors, organism)
   factor_prefixed <- colnames(obs)[grepl("^factor_", colnames(obs))]
+  per_contrast_map <- .de_columns_per_contrast(de_columns, de)
+  f$rd <- .drop_rd_de_sources(f$rd, de, rowdata, de_columns, per_contrast_map)
   var <- .assemble_var(f$fid, f$gid, f$sym, f$rd, f$sym_col, f$id_col)
   layers <- .assemble_layers(cnt$counts, base_ids, cnt$sample_ids, f$fid)
 
-  per_contrast_map <- .de_columns_per_contrast(de_columns, de)
   de_parts <- .assemble_de(de, de_model, de_columns, per_contrast_map, f$fid, id2fid, obs, factor_prefixed)
   map_de <- .assemble_de_mapping(de, de_columns, per_contrast_map, de_parts$de_slot, de_parts$score_src)
   map_feature <- .assemble_feature_mapping(rowdata_columns, f$id_col, f$sym_col)
@@ -945,6 +946,26 @@
   )
   X <- layers[["counts"]] %||% layers[["intensities"]] %||% layers[[1]]
   list(X = X, layers = layers, obs = obs, var = var, varm = de_parts$varm, uns = uns)
+}
+
+# A DE table that is the rowData itself (SUSHI: rowData carries log2Ratio,
+# pValue, fdr, and usedInTest) would otherwise put those columns in var as well
+# as in varm["de_<slot>"]. The columns the DE dictionary took as the contrast's
+# statistics stay in the DE table only.
+.drop_rd_de_sources <- function(rd, de, rowdata, de_columns, per_contrast_map) {
+  if (is.null(rd) || is.null(rowdata) || !length(de)) {
+    return(rd)
+  }
+  rowdata_df <- .as_df_keep_names(rowdata)
+  drop <- character()
+  for (cn in names(de)) {
+    if (!identical(de[[cn]], rowdata_df)) {
+      next
+    }
+    mapping <- if (per_contrast_map) de_columns[[cn]] else de_columns
+    drop <- c(drop, unname(attr(.canon_de_columns(de[[cn]], mapping), "de_sources")))
+  }
+  rd[, setdiff(colnames(rd), drop), drop = FALSE]
 }
 
 # ---- rich-object extraction (PREFERRED starting point, never required) ------
@@ -1052,6 +1073,13 @@
 #' @param factors Optional colData columns that are experimental factors
 #'   (default: all character/factor-typed columns).
 #' @param organism,ref_build Optional labels.
+#' @param mirror Optional SummarizedExperiment to store in full, in
+#'   `uns["se"]` (spec section 11), so that [se_from_h5ad()] rebuilds it: Every
+#'   assay, `colData` and `rowData` column, and `metadata()` element at its path,
+#'   with its class and attributes. Values the exploreDE slots already hold
+#'   are not stored twice. SUSHI passes its twoGroups `deResult`.
+#' @param compression HDF5 compression of the datasets: `"gzip"` (default;
+#'   readable by every HDF5 reader, Python `anndata` included) or `"none"`.
 #' @return The output path, invisibly.
 #' @examples
 #' library(SummarizedExperiment)
@@ -1103,7 +1131,9 @@ build_explore_h5ad <- function(
   enrichment_fdr = NULL,
   factors = NULL,
   organism = NA_character_,
-  ref_build = NA_character_
+  ref_build = NA_character_,
+  mirror = NULL,
+  compression = c("gzip", "none")
 ) {
   if (missing(omics)) {
     stop("build_explore_h5ad: `omics` is required (rnaseq / proteomics / crispr)")
@@ -1155,14 +1185,18 @@ build_explore_h5ad <- function(
     organism = organism,
     ref_build = ref_build
   )
+  if (!is.null(mirror)) {
+    parts <- .mirror_add(parts, mirror)
+  }
   adata <- anndataR::AnnData(
     X = parts$X,
     obs = parts$obs,
     var = parts$var,
     layers = parts$layers,
+    obsm = parts$obsm,
     varm = parts$varm,
     uns = parts$uns
   )
-  anndataR::write_h5ad(adata, out, mode = "w") # "w" allows overwrite (default is "w-")
+  anndataR::write_h5ad(adata, out, compression = match.arg(compression), mode = "w") # "w" allows overwrite (default is "w-")
   invisible(out)
 }

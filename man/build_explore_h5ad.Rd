@@ -19,7 +19,9 @@ build_explore_h5ad(
   enrichment_fdr = NULL,
   factors = NULL,
   organism = NA_character_,
-  ref_build = NA_character_
+  ref_build = NA_character_,
+  mirror = NULL,
+  compression = c("gzip", "none")
 )
 }
 \arguments{
@@ -88,6 +90,15 @@ dropped. Without it (or \code{enrichment_padj_max}) the app uses 0.05.}
 (default: all character/factor-typed columns).}
 
 \item{organism, ref_build}{Optional labels.}
+
+\item{mirror}{Optional SummarizedExperiment to store in full, in
+\code{uns["se"]} (spec section 11), so that \code{\link[=se_from_h5ad]{se_from_h5ad()}} rebuilds it: Every
+assay, \code{colData} and \code{rowData} column, and \code{metadata()} element at its path,
+with its class and attributes. Values the exploreDE slots already hold
+are not stored twice. SUSHI passes its twoGroups \code{deResult}.}
+
+\item{compression}{HDF5 compression of the datasets: \code{"gzip"} (default;
+readable by every HDF5 reader, Python \code{anndata} included) or \code{"none"}.}
 }
 \value{
 The output path, invisibly.
