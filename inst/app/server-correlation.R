@@ -79,7 +79,7 @@ local({
   updateSelectInput(
     session = session,
     inputId = "correlationCounts",
-    label = "Select count method to plot",
+    label = paste("Select", values_word(eds$data_type(), "count method"), "to plot"),
     choices = count_choices,
     selected = default_count
   )
@@ -91,7 +91,7 @@ observeEvent(inputDataReactive(), {
   updateSelectInput(
     session = session,
     inputId = "correlationBatch",
-    label = "Apply a batch-correction to the counts?",
+    label = paste0("Apply a batch-correction to the ", values_word(eds$data_type(), "counts"), "?"),
     choices = bd$batch_choices,
     selected = bd$batch_default
   )
@@ -455,7 +455,7 @@ output$dlPlot_correlation <- downloadHandler(
 output$dlTable_correlation <- downloadHandler(
   filename = function() {
     generate_filename(
-      base_name = paste0(input$filename_correlation, "_Counts"),
+      base_name = paste0(input$filename_correlation, "_", values_word(eds$data_type())),
       design_name = designReactive(),
       extension = "xlsx"
     )

@@ -43,8 +43,8 @@ exploreDE's `ExploreDatasetH5AD`.
 - **One modality per file.** MuData (`.h5mu`) is not read.
 - **Axes are AnnData's:** `obs` = samples, `var` = features. Every matrix is
   samples × features (the transpose of a SummarizedExperiment).
-- Matrices SHOULD be dense. Missing values are `NaN` (proteomics intensities
-  are expected to have them).
+- Matrices SHOULD be dense. Missing values are `NaN` (proteomics and
+  metabolomics intensities are expected to have them).
 
 ```text
 X                          samples × features   (a copy of the primary matrix, see §4)
@@ -53,7 +53,7 @@ obs                        sample table; experimental factors are "factor_*" col
 var                        feature table; index = feature_id
 varm["de_<slot>"]          one data frame per contrast (optional)
 uns["schema_version"]      "exploreDE/1.0"
-uns["omics_type"]          "proteomics" | "rnaseq_bulk" | "crispr_countqc"
+uns["omics_type"]          "proteomics" | "metabolomics" | "rnaseq_bulk" | "crispr_countqc"
 uns["feature_id_kind"]     what one var row is
 uns["hierarchy"]           feature levels
 uns["design"]              factors and default grouping
@@ -107,7 +107,7 @@ has no `counts` entry, in which case `X` is read as `counts`. So:
 - `X` SHOULD be a copy of the primary matrix (other AnnData tools expect
   one); the reader ignores it whenever `layers` has `counts`.
 
-### Proteomics (`uns["omics_type"] = "proteomics"`)
+### Proteomics and metabolomics (`uns["omics_type"] = "proteomics"` or `"metabolomics"`)
 
 | Layer | Status | Shown as | Content |
 |---|---|---|---|
@@ -118,7 +118,7 @@ has no `counts` entry, in which case `X` is read as `counts`. So:
   or `normalised_log2`, then to whichever layer comes first. Raw falls back to
   `counts` or `raw`. New writers SHOULD use the two canonical names.
 - RNA-seq derived assays (VST, TPM, and FPKM) are never computed for
-  proteomics. The low-signal floor is 1 (log2 scale), not 10.
+  proteomics or metabolomics. The low-signal floor is 1 (log2 scale), not 10.
 - If you have no raw intensities, omit `intensities_raw` and set `X` to the
   same values as `intensities`. (The reader then shows the `X` copy as
   "Raw intensities" as well — harmless, but known.)
@@ -197,6 +197,30 @@ As above, plus one `varm["de_<slot>"]` and one `uns["de"][<slot>]` per
 contrast. A prolfqua contrast table maps as `diff` → `effect_log2fc`,
 `p.value` → `score_pvalue`, `FDR` → `score_fdr`.
 
+## 6b. Metabolomics profile
+
+One `var` row is one feature from the processing software (e.g. a Compound
+Discoverer compound), annotated or not. The matrices and DE tables are as for
+proteomics (§4, §5, and "Without a DEA" / "With a DEA" in §6).
+
+| `uns["feature_id_kind"]` | `uns["hierarchy"]` | One `var` row is | Recommended `feature_id` |
+|---|---|---|---|
+| `feature` | `{levels: ["feature"], unit: "feature"}` | a feature (compound) | the processing software's feature id |
+
+- The app's data type is `metabolomics`, its own type everywhere the user
+  sees one (Results Summary, Multi DE). Only the reading of the intensities is
+  shared with proteomics (log2 scale, `NaN` missing, low-signal floor 1); the
+  proteomics-only parts (peptide filters, imputed-feature options, gene and
+  protein search, prolfqua citations) are not offered.
+- `label_gene_symbol` is the label on every plot and table: Put the metabolite
+  name there, empty for unannotated features (they then show their
+  `feature_id`). `build_explore_h5ad()` takes it from a `rowdata` column named
+  `Name` (Compound Discoverer), `compound_name` or `metabolite_name` when no
+  gene-symbol column is given.
+- Multi DE compares a metabolomics file only with other metabolomics files.
+- GO and KEGG views need gene ids and are not offered; the pathway tabs are
+  hidden (§9).
+
 ## 7. `uns` — metadata
 
 ### 7.1 Identity — all MUST
@@ -204,9 +228,9 @@ contrast. A prolfqua contrast table maps as `diff` → `effect_log2fc`,
 | Key | Value |
 |---|---|
 | `schema_version` | `"exploreDE/1.0"` |
-| `omics_type` | `"proteomics"`, `"rnaseq_bulk"`, or `"crispr_countqc"` |
-| `feature_id_kind` | proteomics: `protein`, `peptide`, `phospho`, `precursor`; RNA-seq: `gene`, `isoform`; CRISPR: `sgrna` |
-| `hierarchy` | `{levels: [...], unit: "..."}` as in §6 (RNA-seq: `["gene"]`, or `["gene", "transcript"]` with unit `transcript`) |
+| `omics_type` | `"proteomics"`, `"metabolomics"`, `"rnaseq_bulk"`, or `"crispr_countqc"` |
+| `feature_id_kind` | proteomics: `protein`, `peptide`, `phospho`, `precursor`; metabolomics: `feature`; RNA-seq: `gene`, `isoform`; CRISPR: `sgrna` |
+| `hierarchy` | `{levels: [...], unit: "..."}` as in §6 and §6b (RNA-seq: `["gene"]`, or `["gene", "transcript"]` with unit `transcript`) |
 
 ### 7.2 `design` — SHOULD
 
@@ -515,3 +539,4 @@ The app never rebuilds the mirror.
 | 2026-10-30 | 1.0 | Format unchanged. `nullable-string-array` text is read (the deployed app has `anndataR` 1.2.3); `uns["de"]` relaxed from MUST to SHOULD (exploreDE 3.9.0 reader fix); optional `used_in_test` DE column. |
 | 2026-11-27 | 1.0 | Format unchanged; older files read as before. Optional SummarizedExperiment mirror, `uns["se"]` (section 11). When a DE table is the rowData itself, its statistic columns are no longer copied into `var`. The reference writer compresses datasets with gzip. |
 | 2026-11-26 | 1.0 | Format unchanged; older files read as before. Optional `enrichment_filter.fdr` (significance thresholds without a cut). The reference writer stores every pathway term by default, keeps the case of factor names (`factor_Condition`), strips SUSHI column tags from `obs`, and shows a SUSHI `A--over--B` contrast as `A_vs_B`. |
+| 2026-11-23 | 1.0 | Additive: `omics_type = "metabolomics"` with `feature_id_kind = "feature"` (metabolomics profile, §6b); files written before are unaffected. |

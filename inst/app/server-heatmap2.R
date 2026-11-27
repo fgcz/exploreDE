@@ -113,8 +113,8 @@ observe({
   if (eds$omics_class() == "proteomics") {
     output$clusterWarningProteomics <- renderUI({
       helpText(
-        "Clustering by row/column may break the heatmap for proteomics data, due
-        to the high number of NA values in the count table."
+        "Clustering by row/column may break the heatmap for proteomics and metabolomics
+        data, due to the high number of NA values in the intensity table."
       )
     })
     outputOptions(output, "clusterWarningProteomics", suspendWhenHidden = FALSE)
@@ -202,7 +202,7 @@ observe({
   }
 
   # Proteomics-specific: peptide filter UI
-  if (eds$omics_class() == "proteomics") {
+  if (eds$omics_class() == "proteomics" && eds$data_type() != "metabolomics") {
     if (
       length(eds$contrasts()) > 0 &&
         "nrPeptides" %in% colnames(eds$de(eds$contrasts()[[1]]))

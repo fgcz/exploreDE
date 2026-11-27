@@ -104,7 +104,12 @@ output$deQcProteomicsSelectorsUI <- renderUI({
   default_ref <- if (length(levels_avail) >= 2) levels_avail[[2]] else default_sample
 
   tagList(
-    selectInput("deQcProtCountType", "Counts to use", choices = ch_counts, selected = default_count),
+    selectInput(
+      "deQcProtCountType",
+      paste(values_word(eds$data_type()), "to use"),
+      choices = ch_counts,
+      selected = default_count
+    ),
     splitLayout(
       selectInput(
         "deQcProtSampleGroup",

@@ -230,6 +230,9 @@ observeEvent(input$importColourFile, {
 })
 
 observeEvent(eds$data_type(), {
+  for (w in names(.values_words)) {
+    shinyjs::html(selector = paste0(".", values_class(w)), html = values_word(eds$data_type(), w))
+  }
   if (eds$data_type() == "RNASeq" && eds$has_de()) {
     output$referencesText <- renderUI({
       box(
@@ -308,11 +311,13 @@ observeEvent(eds$data_type(), {
       )
     })
   } else if (eds$omics_class() == "proteomics") {
-    # No methods download for proteomics
+    # No methods download for proteomics or metabolomics
     output$methodsDownloadUI <- renderUI({
       NULL
     })
 
+    # Metabolomics results do not come from prolfqua: no prolfqua citations, own contact.
+    metab <- eds$data_type() == "metabolomics"
     output$referencesText <- renderUI({
       box(
         title = "Cite us!",
@@ -320,18 +325,26 @@ observeEvent(eds$data_type(), {
         solidHeader = TRUE,
         status = "primary",
         tags$p(
-          "If you plan to publish results generated in b-fabric and prolfqua/prolfquapp, and/or figures from this app, please consider citing us!"
+          if (metab) {
+            "If you plan to publish results generated in b-fabric, and/or figures from this app, please consider citing us!"
+          } else {
+            "If you plan to publish results generated in b-fabric and prolfqua/prolfquapp, and/or figures from this app, please consider citing us!"
+          }
         ),
-        tags$b(
-          "prolfqua: A Comprehensive R‑Package for Proteomics Differential Expression Analysis, Wolski et al., 2023"
-        ),
-        tags$p(
-          "Witold E. Wolski, Paolo Nanni, Jonas Grossmann, Maria d’Errico, Ralph Schlapbach, and Christian Panse. Journal of Proteome Research 2023 22 (4), 1092-1104. DOI: 10.1021/acs.jproteome.2c00441"
-        ),
-        tags$b("prolfquapp: Shiny Application for Proteomics Differential Expression Analysis, Wolski et al."),
-        tags$p(
-          "Witold E. Wolski, et al. prolfquapp: Differential Expression Analysis for Proteomics Data. https://github.com/fgcz/prolfquapp"
-        ),
+        if (!metab) {
+          tagList(
+            tags$b(
+              "prolfqua: A Comprehensive R‑Package for Proteomics Differential Expression Analysis, Wolski et al., 2023"
+            ),
+            tags$p(
+              "Witold E. Wolski, Paolo Nanni, Jonas Grossmann, Maria d’Errico, Ralph Schlapbach, and Christian Panse. Journal of Proteome Research 2023 22 (4), 1092-1104. DOI: 10.1021/acs.jproteome.2c00441"
+            ),
+            tags$b("prolfquapp: Shiny Application for Proteomics Differential Expression Analysis, Wolski et al."),
+            tags$p(
+              "Witold E. Wolski, et al. prolfquapp: Differential Expression Analysis for Proteomics Data. https://github.com/fgcz/prolfquapp"
+            )
+          )
+        },
         tags$b("b-fabric: Panse et al., 2022"),
         tags$p(
           "Panse, Christian, Trachsel, Christian and Türker, Can. 'Bridging data management platforms and visualization tools to enable ad-hoc and smart analytics in life sciences' Journal of Integrative Bioinformatics, vol. 19, no. 4, 2022, pp. 20220031. https://doi.org/10.1515/jib-2022-0031"
@@ -341,7 +354,12 @@ observeEvent(eds$data_type(), {
           "Peter Leary, & Hubert Rehrauer. (2023). exploreDE Interactive Shiny App. Zenodo. https://doi.org/10.5281/zenodo.13927692"
         ),
         tags$p(
-          "For the full list of citations required for the generation of these results, and/or for a written methods section, please email us at proteomics@fgcz.ethz.ch."
+          "For the full list of citations required for the generation of these results, and/or for a written methods section,",
+          if (metab) {
+            "please contact the FGCZ metabolomics unit."
+          } else {
+            "please email us at proteomics@fgcz.ethz.ch."
+          }
         )
       )
     })
@@ -350,7 +368,7 @@ observeEvent(eds$data_type(), {
         hr(style = "border-top: 1px solid #000000;"),
         h4("Download Feature Value Files"),
         helpText(
-          "Select the type of value data you wish to download for all samples in the dataset. For proteomics, this would be intensity values."
+          "Select the type of value data you wish to download for all samples in the dataset. For proteomics and metabolomics, this would be intensity values."
         ),
         selectizeInput(
           inputId = "downloadCount",
@@ -360,7 +378,12 @@ observeEvent(eds$data_type(), {
           width = "33%"
         ),
 
-        textInput(inputId = "filename_summary", label = NULL, value = "Counts", placeholder = "Filename"),
+        textInput(
+          inputId = "filename_summary",
+          label = NULL,
+          value = values_word(eds$data_type()),
+          placeholder = "Filename"
+        ),
         downloadButton("dlTable_summary", "Download selected file"),
         checkboxInput(
           inputId = "includeDEStats",

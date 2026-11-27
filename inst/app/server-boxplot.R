@@ -551,7 +551,11 @@ observeEvent(
     }
     # Level labels (custom and/or "format condition names" line breaks)
     boxplot <- boxplot + scale_x_discrete(labels = boxLabels)
-    ylabToPlot <- paste(input$boxplotCounts, "Counts")
+    ylabToPlot <- if (eds$data_type() == "metabolomics") {
+      eds$assay_label(input$boxplotCounts)
+    } else {
+      paste(input$boxplotCounts, "Counts")
+    }
     if (input$boxplotCountsLog) {
       ylabToPlot <- paste(ylabToPlot, "(Log2)")
     }
@@ -735,8 +739,12 @@ output$boxplotTable <- renderDataTable({
     colsToShowHere <- c("Name", input$boxplotFactor1, "Feature", "Counts")
     colsToFormat <- c("Counts")
   }
+  # "Counts" is the internal column; the table shows the data type's own word.
+  shown <- boxplot_brushed_df[, colsToShowHere, drop = FALSE]
+  colnames(shown)[colnames(shown) == "Counts"] <- values_word(eds$data_type())
+  colsToFormat[colsToFormat == "Counts"] <- values_word(eds$data_type())
   DT::datatable(
-    data = boxplot_brushed_df[, colsToShowHere, drop = FALSE],
+    data = shown,
     filter = "top",
     rownames = F
   ) %>%
@@ -786,7 +794,7 @@ lapply(c("boxplot", "barplot"), function(b) {
 output$dlTable_boxplot <- downloadHandler(
   filename = function() {
     generate_filename(
-      base_name = paste0(input$filename_boxplot, "_Counts"),
+      base_name = paste0(input$filename_boxplot, "_", values_word(eds$data_type())),
       design_name = designReactive(),
       extension = "xlsx"
     )
@@ -832,6 +840,7 @@ output$dlTable_boxplot <- downloadHandler(
 
     # Filter to selected columns
     counts_data <- counts_data[, intersect(cols_to_export, colnames(counts_data)), drop = FALSE]
+    colnames(counts_data)[colnames(counts_data) == "Counts"] <- values_word(eds$data_type())
 
     export_excel_standard(
       df = counts_data,

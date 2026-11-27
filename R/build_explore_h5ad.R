@@ -28,9 +28,10 @@
     rna = "rnaseq_bulk",
     rnaseq_bulk = "rnaseq_bulk",
     proteomics = "proteomics",
+    metabolomics = "metabolomics",
     crispr = "crispr_countqc",
     crispr_countqc = "crispr_countqc",
-    stop("build_explore_h5ad: unknown omics '", omics, "' (expected rnaseq / proteomics / crispr)")
+    stop("build_explore_h5ad: unknown omics '", omics, "' (expected rnaseq / proteomics / metabolomics / crispr)")
   )
 }
 
@@ -39,11 +40,11 @@
 # so the reader can expose them as intensities rather than RNA-seq "counts".
 # Unknown names pass through unchanged (map is a NAMED VECTOR, so `[[` on an
 # absent key errors — look up by membership, never `map[[key]]` blind).
-# For proteomics, raw-count names mean the raw intensities (spec section 4:
-# `intensities` MUST, `intensities_raw` SHOULD; there is no `counts` layer).
+# For proteomics and metabolomics, raw-count names mean the raw intensities (spec
+# section 4: `intensities` MUST, `intensities_raw` SHOULD; there is no `counts` layer).
 .canon_count_name <- function(nm, omics_type) {
   key <- gsub("[^a-z0-9]+", "", tolower(nm))
-  if (omics_type == "proteomics" && key %in% c("counts", "count", "raw", "rawcounts")) {
+  if (omics_type %in% c("proteomics", "metabolomics") && key %in% c("counts", "count", "raw", "rawcounts")) {
     return("intensities_raw")
   }
   map <- c(
@@ -192,13 +193,14 @@
 
 # ---- feature_level: detection-with-override --------------------------------
 # One knob spanning omics: rnaseq {gene,isoform}, proteomics
-# {protein,peptide,phospho}, crispr {sgrna}. Detection mirrors
+# {protein,peptide,phospho}, metabolomics {feature}, crispr {sgrna}. Detection mirrors
 # ExploreDatasetSE_Proteomics (site -> phospho, peptide_Id -> peptide) and the
 # RNA-seq isoform rule (one transcript_id per row). Explicit `override` always wins.
 
 .FEATURE_LEVELS <- list(
   rnaseq_bulk = c("gene", "isoform"),
   proteomics = c("protein", "peptide", "phospho"),
+  metabolomics = "feature",
   crispr_countqc = "sgrna"
 )
 
@@ -303,6 +305,7 @@
     peptide = list(levels = c("protein", "peptide"), unit = "peptide"),
     protein = list(levels = "protein", unit = "protein"),
     sgrna = list(levels = "sgrna", unit = "sgrna"),
+    feature = list(levels = "feature", unit = "feature"),
     list(levels = "gene", unit = "gene")
   )
 }
@@ -312,7 +315,7 @@
 # counts   : named list of feature x sample matrices (>=1). A single matrix is
 #            wrapped as list(counts = .).
 # coldata  : data.frame of sample metadata (rows aligned to count columns).
-# omics    : "rnaseq" | "proteomics" | "crispr".
+# omics    : "rnaseq" | "proteomics" | "metabolomics" | "crispr".
 # rowdata  : optional per-feature annotation (rows aligned to count features);
 #            pathway-annotation columns (GO/KEGG) land in var.
 # de       : optional named list keyed by contrast of DE tables.
@@ -335,8 +338,11 @@
 # sample ids every other part is aligned to.
 .assemble_counts <- function(counts, coldata, omics_type) {
   if (is.matrix(counts) || inherits(counts, "Matrix")) {
-    # A single proteomics matrix is the analysis-ready one (spec section 4).
-    counts <- stats::setNames(list(counts), if (omics_type == "proteomics") "intensities" else "counts")
+    # A single proteomics or metabolomics matrix is the analysis-ready one (spec section 4).
+    counts <- stats::setNames(
+      list(counts),
+      if (omics_type %in% c("proteomics", "metabolomics")) "intensities" else "counts"
+    )
   }
   if (!length(counts)) {
     stop("build_explore_h5ad: at least one count matrix is required")
@@ -363,6 +369,11 @@
   list(counts = counts, base_ids = base_ids, sample_ids = sample_ids)
 }
 
+# Metabolomics names its features in a plain column such as Compound Discoverer's `Name`.
+.metabolite_name_col <- function(rd, omics_type) {
+  if (omics_type == "metabolomics") .rd_col(rd, "metabolite_name")
+}
+
 # -- feature_id (the join key): symbol/id from args or rowData --------------
 # Returns the rowData aligned to the counts, the id/symbol columns found in it,
 # the resolved ids/symbols, the feature level and the level-aware feature_id.
@@ -383,7 +394,8 @@
     if (!is.null(rn) && all(base_ids %in% rn)) rd <- rd[base_ids, , drop = FALSE]
   }
   .check_mapping_keys(rowdata_columns, .ROWDATA_MAPPING_KEYS, "rowdata_columns")
-  sym_col <- .rowdata_col(rd, rowdata_columns$symbol_col, "gene_name")
+  sym_col <- .rowdata_col(rd, rowdata_columns$symbol_col, "gene_name") %||%
+    .metabolite_name_col(rd, omics_type)
   id_col <- .rowdata_col(rd, rowdata_columns$id_col, "gene_id")
   # An EXPLICIT id_col override (not merely auto-detected via the gene-id-like
   # patterns above) also drives protein/peptide/phospho feature-id construction
@@ -1023,7 +1035,8 @@
 #' @param x A `DESeqDataSet`, a `SummarizedExperiment` with named assays, a
 #'   counts matrix, or a named list of count matrices.
 #' @param out Output `.h5ad` path.
-#' @param omics Required: `"rnaseq"`, `"proteomics"`, or `"crispr"`.
+#' @param omics Required: `"rnaseq"`, `"proteomics"`, `"metabolomics"`, or `"crispr"`. Metabolomics
+#'   data is stored as proteomics data is (`intensities` layers), one feature per row.
 #' @param feature_level Optional override of the feature granularity within the
 #'   omics — rnaseq `"gene"`/`"isoform"`, proteomics
 #'   `"protein"`/`"peptide"`/`"phospho"`. Omit to auto-detect from `rowdata`
@@ -1136,7 +1149,7 @@ build_explore_h5ad <- function(
   compression = c("gzip", "none")
 ) {
   if (missing(omics)) {
-    stop("build_explore_h5ad: `omics` is required (rnaseq / proteomics / crispr)")
+    stop("build_explore_h5ad: `omics` is required (rnaseq / proteomics / metabolomics / crispr)")
   }
 
   # Rich object -> extract the parts it carries; explicit args fill/override.

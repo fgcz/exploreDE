@@ -30,7 +30,8 @@ counts matrix, or a named list of count matrices.}
 
 \item{out}{Output \code{.h5ad} path.}
 
-\item{omics}{Required: \code{"rnaseq"}, \code{"proteomics"}, or \code{"crispr"}.}
+\item{omics}{Required: \code{"rnaseq"}, \code{"proteomics"}, \code{"metabolomics"}, or \code{"crispr"}. Metabolomics
+data is stored as proteomics data is (\code{intensities} layers), one feature per row.}
 
 \item{feature_level}{Optional override of the feature granularity within the
 omics — rnaseq \code{"gene"}/\code{"isoform"}, proteomics

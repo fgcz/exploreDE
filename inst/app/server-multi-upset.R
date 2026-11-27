@@ -7,7 +7,7 @@ observe({
 
   # Check if any result is proteomics
   dataTypes <- sapply(multiDeReactive$results, function(x) x$dataType)
-  isProteomics <- any(dataTypes == "proteomics")
+  isProteomics <- any(dataTypes %in% c("proteomics", "metabolomics"))
 
   if (isProteomics) {
     # Only show "Genes" for proteomics

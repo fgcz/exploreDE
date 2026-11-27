@@ -586,6 +586,98 @@ test_that("every proteomics flavour is a proteomics data_type, never an SD-based
   }
 })
 
+# ---- metabolomics: own omics_type, read through the proteomics path --------
+
+metab_h5ad <- function() {
+  mt <- make_toy_metab()
+  out <- withr::local_tempfile(fileext = ".h5ad", .local_envir = parent.frame())
+  build_explore_h5ad(
+    mt$intensities,
+    out = out,
+    omics = "metabolomics",
+    coldata = mt$coldata,
+    rowdata = mt$rowdata,
+    de = mt$de
+  )
+  out
+}
+
+test_that("build_explore_h5ad(omics = \"metabolomics\") writes the metabolomics identity", {
+  skip_if_no_anndataR()
+  uns <- anndataR::read_h5ad(metab_h5ad(), as = "InMemoryAnnData")$uns
+  expect_identical(as.character(uns$omics_type), "metabolomics")
+  expect_identical(as.character(uns$feature_id_kind), "feature")
+  expect_identical(as.character(unlist(uns$hierarchy$levels)), "feature")
+  expect_identical(as.character(uns$hierarchy$unit), "feature")
+})
+
+test_that("a metabolomics .h5ad loads as intensity data of data_type metabolomics", {
+  skip_if_no_anndataR()
+  mt <- make_toy_metab()
+  eds <- new_explore_dataset(metab_h5ad())
+  expect_silent(validate_explore_dataset(eds))
+  expect_identical(eds$omics_class(), "proteomics")
+  expect_identical(eds$data_type(), "metabolomics")
+  expect_identical(eds$feature_id_kind(), "feature")
+  expect_identical(eds$background_expression(), 1)
+
+  expect_identical(eds$primary_assay_name(), "intensities")
+  expect_false(any(c("counts", "vst", "tpm", "fpkm") %in% eds$assay_names()))
+  ints <- eds$assay("intensities")
+  expect_equal(ints[rownames(mt$intensities), colnames(mt$intensities)], mt$intensities)
+  expect_true(all(is.na(ints[1:3, 1])))
+
+  # The Name column labels the features; unannotated ones show their feature_id.
+  f <- eds$features()
+  expect_identical(f["CD0001", "display_name"], "Metabolite 1")
+  expect_identical(f["CD0030", "display_name"], "CD0030")
+  # No proteomics gene / protein pickers.
+  expect_null(eds$proteomics_choices("gene"))
+  expect_null(eds$proteomics_choices("protein"))
+})
+
+test_that("a metabolomics .h5ad carries its contrast and the volcano's DE columns", {
+  skip_if_no_anndataR()
+  mt <- make_toy_metab()
+  eds <- new_explore_dataset(metab_h5ad())
+  expect_identical(eds$contrasts(), "B_vs_A")
+  d <- eds$de("B_vs_A")
+  expect_true(all(c("log2Ratio", "pValue", "fdr") %in% colnames(d)))
+  expect_equal(d[rownames(mt$de$B_vs_A), "log2Ratio"], mt$de$B_vs_A$log2FC)
+  expect_equal(d[rownames(mt$de$B_vs_A), "pValue"], mt$de$B_vs_A$pvalue)
+  expect_false(eds$has_enrichment())
+  # Multi DE keeps it as metabolomics, with its intensities and contrast.
+  rec <- legacy_multi_contrast_from_eds(eds, "B_vs_A")
+  expect_identical(rec$dataType, "metabolomics")
+  expect_true("intensities" %in% names(rec$countList))
+  expect_identical(rec$designLevels, c("B", "A"))
+})
+
+test_that("Multi DE does not compare metabolomics with proteomics", {
+  skip_if_no_anndataR()
+  metab <- new_explore_dataset(metab_h5ad())
+  prot <- prot_eds("protein")
+  expect_identical(multi_de_kind(metab), "metabolomics")
+  expect_identical(multi_de_kind(prot), "proteomics")
+  expect_identical(multi_de_kind(prot_eds("phospho")), "proteomics")
+})
+
+test_that("telemetry names metabolomics on its own", {
+  expect_identical(telemetry_name("metabolomics"), "exploreDE_metabolomics")
+  expect_identical(telemetry_name("proteomics"), "exploreDE_proteomics")
+  expect_identical(telemetry_name("gStore"), "exploreDE_genomics")
+  expect_identical(telemetry_name(NULL), "exploreDE_genomics")
+})
+
+test_that("an unknown omics_type names metabolomics among the accepted ones", {
+  skip_if_no_anndataR()
+  adata <- anndataR::read_h5ad(metab_h5ad(), as = "InMemoryAnnData")
+  u <- adata$uns
+  u$omics_type <- "lipidomics"
+  adata$uns <- u
+  expect_error(new_explore_dataset(adata), "not proteomics, metabolomics")
+})
+
 test_that("constant / identifier colData columns are not treated as factors (batch)", {
   skip_if_no_anndataR()
   # isotope.label = "light" (constant) must not surface as an experimental
@@ -1546,4 +1638,13 @@ test_that("every enrichment method other than gsea counts as ORA, as the reader 
     pathways = list(treated_vs_control = list(enricher = list(BP = .mini_cp("enrichResult", 3))))
   )
   expect_identical(new_explore_dataset(f)$enrichment_kinds(), "ora")
+})
+
+test_that("metabolomics values are intensities, not counts", {
+  expect_identical(values_word("metabolomics"), "Intensities")
+  expect_identical(values_word("proteomics"), "Counts")
+  expect_identical(values_word("RNASeq"), "Counts")
+  expect_identical(values_word("metabolomics", "count method"), "intensity type")
+  expect_identical(values_word("RNASeq", "count method"), "count method")
+  expect_match(as.character(values_span("count method")), 'class="values-word-count-method"', fixed = TRUE)
 })

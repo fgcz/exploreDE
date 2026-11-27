@@ -27,6 +27,7 @@ observe({
       "CountQC" = "Normalised + Log2",
       "CrisprCountQC" = "Normalised + Log2",
       "proteomics" = "intensities",
+      "metabolomics" = "intensities",
       "Normalised + Log2" # Fallback
     )
   )
@@ -60,7 +61,13 @@ observe({
     d$param$grouping2Name %in% d$factors
   # Proteomics grouping: SUSHI "G_" if present, else the dataset's grouping.
   .protGroup <- if ("G_" %in% d$factors) "G_" else d$groupingName
-  .deDesignCol <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = .protGroup, NA_character_)
+  .deDesignCol <- switch(
+    d$dataType,
+    "RNASeq" = d$groupingName,
+    "proteomics" = .protGroup,
+    "metabolomics" = d$groupingName,
+    NA_character_
+  )
 
   batchChoices <- c("None", d$factors)
   batchDefault <- if (.twoFactor) d$param$grouping2Name else "None"
@@ -71,12 +78,18 @@ observe({
     selected = batchDefault
   )
 
-  designChoices <- if (d$dataType %in% c("RNASeq", "proteomics") && .twoFactor) {
+  designChoices <- if (d$dataType %in% c("RNASeq", "proteomics", "metabolomics") && .twoFactor) {
     c("None", .deDesignCol)
   } else {
     c("None", d$factors)
   }
-  designDefault <- switch(d$dataType, "RNASeq" = d$groupingName, "proteomics" = .protGroup, "None")
+  designDefault <- switch(
+    d$dataType,
+    "RNASeq" = d$groupingName,
+    "proteomics" = .protGroup,
+    "metabolomics" = d$groupingName,
+    "None"
+  )
   updateSelectInput(
     session = session,
     inputId = "multiBoxplotDesign",
@@ -676,7 +689,11 @@ observeEvent(
       ifelse(gnames != fids, paste0(gnames, "\n", fids), fids)
     })
 
-    ylabToPlot <- paste(input$multiBoxplotCounts, "Counts")
+    ylabToPlot <- if (multiBoxplotDataReactive()$dataType == "metabolomics") {
+      input$multiBoxplotCounts
+    } else {
+      paste(input$multiBoxplotCounts, "Counts")
+    }
     if (input$multiBoxplotCountsLog) {
       ylabToPlot <- paste(ylabToPlot, "(Log2)")
     }
@@ -881,7 +898,7 @@ lapply(c("boxplot", "barplot"), function(b) {
 output$dlTable_multiBoxplotCounts <- downloadHandler(
   filename = function() {
     generate_filename(
-      base_name = paste0(input$filename_multiBoxplot, "_Counts"),
+      base_name = paste0(input$filename_multiBoxplot, "_", values_word(multiBoxplotDataReactive()$dataType)),
       design_name = "Multi",
       extension = "xlsx"
     )
@@ -891,12 +908,13 @@ output$dlTable_multiBoxplotCounts <- downloadHandler(
     d <- multiBoxplotCountsReactive()
 
     data_to_export <- d$countsBoxplot
+    values_sheet <- values_word(multiBoxplotDataReactive()$dataType)
 
     # If stats are requested
     if (input$includeDEStatsMultiBoxplot && !is.null(d$pvalueDF)) {
       wb <- openxlsx::createWorkbook()
-      addWorksheet(wb, "Counts")
-      writeDataTable(wb, "Counts", data_to_export, tableStyle = "TableStyleMedium9", withFilter = TRUE)
+      addWorksheet(wb, values_sheet)
+      writeDataTable(wb, values_sheet, data_to_export, tableStyle = "TableStyleMedium9", withFilter = TRUE)
 
       addWorksheet(wb, "Statistics")
       writeDataTable(wb, "Statistics", d$pvalueDF, tableStyle = "TableStyleMedium9", withFilter = TRUE)
@@ -906,8 +924,8 @@ output$dlTable_multiBoxplotCounts <- downloadHandler(
       export_excel_standard(
         df = data_to_export,
         filename = file,
-        sheet_name = "Counts",
-        table_name = "Counts"
+        sheet_name = values_sheet,
+        table_name = values_sheet
       )
     }
   }

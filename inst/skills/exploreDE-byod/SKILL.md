@@ -51,7 +51,7 @@ Required:
   `coldata`'s rownames.
 - `coldata`: one row per sample, rownames equal to `colnames(counts)`.
   Not needed if `x` is a `DESeqDataSet`.
-- `omics`: exactly `"rnaseq"`, `"proteomics"`, or `"crispr"`.
+- `omics`: exactly `"rnaseq"`, `"proteomics"`, `"metabolomics"`, or `"crispr"`.
 - `out`: output path ending in `.h5ad`.
 
 Optional:

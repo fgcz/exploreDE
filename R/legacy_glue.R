@@ -95,6 +95,11 @@ multi_count_list <- function(eds) {
   list(countList = countList, countLog2 = countLog2)
 }
 
+# What Multi DE compares datasets by: the omics class, with metabolomics on its own.
+multi_de_kind <- function(eds) {
+  if (identical(eds$data_type(), "metabolomics")) "metabolomics" else eds$omics_class()
+}
+
 #' Build a legacy per-contrast Multi-DE object from an `ExploreDataset`
 #'
 #' Reconstructs the single-contrast gStoreList shape the Multi-DE modules
@@ -162,8 +167,12 @@ legacy_multi_contrast_from_eds <- function(eds, contrast, counts = multi_count_l
 
   out <- list(
     # The Multi-DE modules test for "proteomics", whatever the level
-    # (data_type() can be "phosphoproteomics" or "peptidomics").
-    dataType = if (eds$omics_class() == "proteomics") "proteomics" else eds$data_type(),
+    # (data_type() can be "phosphoproteomics" or "peptidomics"); metabolomics keeps its own.
+    dataType = if (eds$omics_class() == "proteomics" && eds$data_type() != "metabolomics") {
+      "proteomics"
+    } else {
+      eds$data_type()
+    },
     se = NULL,
     param = param,
     seqAnno = seqAnno,

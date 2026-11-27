@@ -36,6 +36,11 @@
       "^gene[._ ]?symbol$",
       "^symbol$"
     ],
+    "metabolite_name": [
+      "^name$",
+      "^compound[._ ]?name$",
+      "^metabolite[._ ]?name$"
+    ],
     "description": [
       "^description$",
       "^desc$"
