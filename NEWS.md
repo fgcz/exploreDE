@@ -2,6 +2,13 @@
 
 - Submitted to Bioconductor. The version restarts at 0.99.0, the number Bioconductor gives a new package; the changes below were developed as 3.10.0. Witold Wolski is the maintainer.
 - The vignette installs exploreDE from Bioconductor (`BiocManager::install("exploreDE")`).
+- A SUSHI twoGroups result written as an `.h5ad` (ezRun's `writeAnnData`) opens as the SUSHI result itself does. Checked on two real SUSHI DESeq2 results and in a new test on the demo:
+  - `build_explore_h5ad()` stores every pathway term by default, so users filter at their own threshold, as for genes. `enrichment_padj_max` now defaults to `NULL`; give it to cut as before.
+  - New `enrichment_fdr` argument: the FDR thresholds at which the app calls a pathway significant (SUSHI's `fdrThreshORA` and `fdrThreshGSEA`), recorded without dropping any term. Without it the app uses `enrichment_padj_max`, else 0.05, as before.
+  - Factor names keep their case: "Condition [Factor]" is shown as "Condition", not "condition". Other sample columns lose their SUSHI tags too ("Tube [Characteristic]" is "Tube", "Read Count" is "Read_Count").
+  - A SUSHI contrast `diff--over--undiff` is shown as `diff_vs_undiff`, so saved sessions and Multi DE names are the same from either file.
+  - The GO BP, MF and CC annotation columns are stored once. They were carried twice, so the feature table had two columns of each name.
+  - The DE table has the feature type again ("Type" in the DE Table tab).
 - The app opens about a second faster: checking whether the KEGG views can be offered no longer loads pathview, which now loads when a KEGG view is first opened.
 - VST is computed once per dataset: switching a tab to VST again, or a second plot on VST, no longer recomputes it (0.3 s on the demo, much longer on large datasets).
 - A `?data=` link can point at an exploreDE `.h5ad` on gStore (for example one written by `build_explore_h5ad()`), whatever its folder is called. It passes the same project access check as a SUSHI result and is read and checked as an upload is; a file that can't be opened shows a message. An `.h5ad` that is not on gStore falls through to the other routes.

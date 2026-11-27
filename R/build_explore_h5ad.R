@@ -455,15 +455,19 @@
   }
   new_names <- colnames(obs)
   for (i in seq_along(new_names)) {
+    # Strip a trailing SUSHI tag (" [Factor]", " [Characteristic]",
+    # " [File,Link]", ...) and sanitise, keeping the case, as the SUSHI
+    # SummarizedExperiment route shows them: "Condition [Factor]" ->
+    # factor_Condition, "Read Count" -> Read_Count.
+    clean <- gsub("[^A-Za-z0-9]+", "_", sub("[ _]*\\[[^]]*\\]$", "", colnames(obs)[i]))
     if (colnames(obs)[i] %in% factors) {
-      # Strip a trailing SUSHI " [Factor]" tag before sanitising, so
-      # "Condition [Factor]" -> factor_condition (not factor_condition_factor_).
-      clean <- sub("[ _]*\\[factor\\]$", "", colnames(obs)[i], ignore.case = TRUE)
-      new_names[i] <- paste0("factor_", gsub("[^A-Za-z0-9]+", "_", tolower(clean)))
+      new_names[i] <- paste0("factor_", clean)
       obs[[i]] <- .factor_in_design_order(obs[[i]])
+    } else {
+      new_names[i] <- clean
     }
   }
-  colnames(obs) <- new_names
+  colnames(obs) <- make.unique(new_names, sep = "_")
   rownames(obs) <- sample_ids
   obs$sample_label <- sample_ids
   if (!is.na(organism)) {
@@ -483,12 +487,18 @@
     var$description <- sub(" \\[.*", "", as.character(rd[[desc_col]]))
   }
   # Pathway annotation -> canonical label_go_* (reader renames to "GO BP" etc.)
+  go_cols <- character()
   for (which in c("bp", "mf", "cc")) {
     col <- .rd_col(rd, paste0("go_", which))
-    if (!is.null(col)) var[[paste0("label_go_", which)]] <- rd[[col]]
+    if (!is.null(col)) {
+      var[[paste0("label_go_", which)]] <- rd[[col]]
+      go_cols <- c(go_cols, col)
+    }
   }
-  # Carry any remaining rowData columns through as label_* (annotation).
-  used <- unique(c(sym_col, id_col, desc_col))
+  # Carry any remaining rowData columns through as label_* (annotation). The
+  # GO columns are stored once, above: Carried again, the reader's renaming
+  # gave two "GO BP" columns.
+  used <- unique(c(sym_col, id_col, desc_col, go_cols))
   for (col in setdiff(colnames(rd), used)) {
     dest <- if (grepl("^GO ", col) || grepl("^label_", col)) {
       col
@@ -679,7 +689,14 @@
       factor_used = .contrast_factor(cn, grp, obs, factor_prefixed),
       test_group = grp[1],
       reference_group = grp[2],
-      contrast_formula = cn
+      # A SUSHI "<test>--over--<reference>" is shown as the SUSHI
+      # SummarizedExperiment route names it, "<test>_vs_<reference>", so a
+      # saved session or a Multi DE name is the same from either file.
+      contrast_formula = if (grepl("--over--", cn, fixed = TRUE) && length(grp) == 2L) {
+        paste0(eds_safe(grp[1]), "_vs_", eds_safe(grp[2]))
+      } else {
+        cn
+      }
     )
     # model and assay_used are informational (spec 7.3, SHOULD / MAY): write
     # them only when known, rather than "DESeq2" / "counts" for every table.
@@ -824,6 +841,7 @@
   uns_de,
   enr,
   enrichment_padj_max,
+  enrichment_fdr,
   ref_build,
   map_de,
   map_feature
@@ -845,6 +863,10 @@
       # one number, or a list keyed by method (ora / gsea); only for methods
       # whose tables were filtered (data.frames are stored as given)
       padj_max = .recorded_padj_max(enr, enrichment_padj_max),
+      # The significance thresholds the app applies (ORA / GSEA FDR), apart
+      # from any cut: All terms can be stored and still be judged at the
+      # source's thresholds.
+      fdr = enrichment_fdr,
       column = "p.adjust"
     ),
     reference_genome = as.character(ref_build),
@@ -885,7 +907,8 @@
   de_model = character(),
   de_columns = NULL,
   pathways = list(),
-  enrichment_padj_max = 0.1,
+  enrichment_padj_max = NULL,
+  enrichment_fdr = NULL,
   factors = NULL,
   feature_id = NULL,
   rowdata_columns = NULL,
@@ -915,6 +938,7 @@
     de_parts$uns_de,
     enr,
     enrichment_padj_max,
+    enrichment_fdr,
     ref_build,
     map_de,
     map_feature
@@ -1011,13 +1035,20 @@
 #' @param pathways Optional pathway statistics: a named list keyed by contrast
 #'   (keys a subset of `de`); each entry a named list of clusterProfiler objects
 #'   and/or `data.frame`s.
-#' @param enrichment_padj_max p.adjust cut-off applied to clusterProfiler
-#'   results before they are stored (`p.adjust <= enrichment_padj_max`). Either
-#'   one number for every method, or a named list keyed by the method names used
-#'   in `pathways` (e.g. `list(ora = 0.05, gsea = 0.05)`) so that ORA and GSEA can
-#'   follow their own FDR thresholds; a method not named in the list uses the
-#'   largest value given. The value(s) are recorded in `uns$enrichment_filter`
-#'   and the app uses a per-method value as its significance threshold.
+#' @param enrichment_padj_max Optional p.adjust cut-off applied to
+#'   clusterProfiler results before they are stored (`p.adjust <=
+#'   enrichment_padj_max`). `NULL` (the default) stores every term, so users
+#'   can filter at their own threshold in the app. Either one number for every
+#'   method, or a named list keyed by the method names used in `pathways` (e.g.
+#'   `list(ora = 0.05, gsea = 0.05)`); a method not named in the list uses the
+#'   largest value given. The value(s) are recorded in `uns$enrichment_filter`;
+#'   without `enrichment_fdr` the app also uses them as its significance
+#'   threshold.
+#' @param enrichment_fdr Optional FDR threshold(s) at which the app calls a
+#'   pathway significant: one number, or a named list keyed by method (e.g.
+#'   `list(ora = 0.05, gsea = 0.1)`, as SUSHI's `fdrThreshORA` and
+#'   `fdrThreshGSEA`). Recorded in `uns$enrichment_filter$fdr`; no term is
+#'   dropped. Without it (or `enrichment_padj_max`) the app uses 0.05.
 #' @param factors Optional colData columns that are experimental factors
 #'   (default: all character/factor-typed columns).
 #' @param organism,ref_build Optional labels.
@@ -1068,7 +1099,8 @@ build_explore_h5ad <- function(
   de_columns = NULL,
   rowdata_columns = NULL,
   pathways = list(),
-  enrichment_padj_max = 0.1,
+  enrichment_padj_max = NULL,
+  enrichment_fdr = NULL,
   factors = NULL,
   organism = NA_character_,
   ref_build = NA_character_
@@ -1118,6 +1150,7 @@ build_explore_h5ad <- function(
     rowdata_columns = rowdata_columns,
     pathways = pathways,
     enrichment_padj_max = enrichment_padj_max,
+    enrichment_fdr = enrichment_fdr,
     factors = factors,
     organism = organism,
     ref_build = ref_build

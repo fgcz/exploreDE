@@ -274,10 +274,15 @@ With these, the reader rebuilds clusterProfiler objects for the network, ridge,
 and running-score plots (when DOSE is installed); the tables alone drive
 everything else.
 
-**`enrichment_filter`** — SHOULD be present when tables were filtered:
-`{padj_max: <number> | {ora: <number>, gsea: <number>}, column: "p.adjust"}`.
-The app uses `padj_max` as its pathway threshold, and it tells a consumer that
-a missing term was cut, not untested.
+**`enrichment_filter`** — SHOULD be present when tables were filtered or the
+source has its own significance thresholds:
+`{padj_max: <number> | {ora: <number>, gsea: <number>}, fdr: <number> | {ora: <number>, gsea: <number>}, column: "p.adjust"}`.
+- `padj_max` (SHOULD when tables were filtered) tells a consumer that a
+  missing term was cut, not untested.
+- `fdr` (MAY) is the threshold at which a term counts as significant, e.g.
+  SUSHI's `fdrThreshORA` / `fdrThreshGSEA`; it drops nothing.
+- The app's pathway threshold is `fdr`, else `padj_max`, else 0.05. Store every
+  term where you can, so users can filter at their own threshold.
 
 ### 7.5 Provenance — SHOULD
 
@@ -444,3 +449,4 @@ varm_columns names 0".
 | 2026-04-17 | draft 0.1 | Planning draft (archived). |
 | 2026-10-29 | 1.0 | First written spec of what the reader and writer actually do; proteomics profile; prolfquapp dialect. |
 | 2026-10-30 | 1.0 | Format unchanged. `nullable-string-array` text is read (the deployed app has `anndataR` 1.2.3); `uns["de"]` relaxed from MUST to SHOULD (exploreDE 3.9.0 reader fix); optional `used_in_test` DE column. |
+| 2026-11-26 | 1.0 | Format unchanged; older files read as before. Optional `enrichment_filter.fdr` (significance thresholds without a cut). The reference writer stores every pathway term by default, keeps the case of factor names (`factor_Condition`), strips SUSHI column tags from `obs`, and shows a SUSHI `A--over--B` contrast as `A_vs_B`. |
