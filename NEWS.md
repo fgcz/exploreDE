@@ -2,6 +2,8 @@
 
 - Submitted to Bioconductor. The version restarts at 0.99.0, the number Bioconductor gives a new package; the changes below were developed as 3.10.0. Witold Wolski is the maintainer.
 - The vignette installs exploreDE from Bioconductor (`BiocManager::install("exploreDE")`).
+- Proteomics: The Summary tab's contrast table lists the contrasts the dataset has results for. It printed `metadata(se)$contrasts` as stored, and a SAINTexpress result stores prolfquapp's linear-model contrasts there, not the ones SAINT scored: A run with five baits and five control groups (workunit 355373) listed 45 contrasts for 5 results. A SAINT contrast now reads "<bait> vs pooled controls (<control groups>)", or "<bait> vs <control>" with one control group.
+- SAINTexpress with several control groups: The DE QC tab offers the bait and each control group to compare. It offered the bait and a missing (NA) reference group.
 - A SUSHI twoGroups result written as an `.h5ad` (ezRun's `writeAnnData`) opens as the SUSHI result itself does. Checked on two real SUSHI DESeq2 results and in a new test on the demo:
   - `build_explore_h5ad()` stores every pathway term by default, so users filter at their own threshold, as for genes. `enrichment_padj_max` now defaults to `NULL`; give it to cut as before.
   - New `enrichment_fdr` argument: the FDR thresholds at which the app calls a pathway significant (SUSHI's `fdrThreshORA` and `fdrThreshGSEA`), recorded without dropping any term. Without it the app uses `enrichment_padj_max`, else 0.05, as before.

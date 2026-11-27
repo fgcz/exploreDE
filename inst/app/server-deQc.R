@@ -86,11 +86,14 @@ output$deQcProteomicsSelectorsUI <- renderUI({
   contr <- selectedContrast()
   levels_avail <- if (!is.null(contr) && nzchar(contr) && contr %in% eds$contrasts()) {
     cm <- eds$contrast_meta(contr)
-    c(cm$test_group, cm$reference_group)
+    # A SAINT contrast pooled over several control levels has no single
+    # reference_group (NA); offer each control level instead.
+    lv <- c(cm$test_group, cm$reference_groups %||% cm$reference_group)
+    unique(lv[!is.na(lv)])
   } else {
     character(0)
   }
-  if (!length(levels_avail)) {
+  if (length(levels_avail) < 2L) {
     dataset <- eds$samples()
     f1 <- eds$primary_grouping()
     if (!is.null(f1) && f1 %in% colnames(dataset)) {

@@ -573,7 +573,11 @@ observe({
         )
       }
       md <- S4Vectors::metadata(eds$backend())
-      if ("contrasts" %in% names(md)) {
+      if (eds$has_de()) {
+        # Built from the contrasts the dataset has results for: md$contrasts can
+        # list others (SAINTexpress results store prolfquapp's linear-model set).
+        contrastSummary <- proteomics_contrast_table(eds, md$contrasts)
+      } else if ("contrasts" %in% names(md)) {
         contrastSummary <- as.data.frame(md$contrasts)
       } else {
         contrastSummary <- as.data.frame(md)
