@@ -16,10 +16,6 @@
 
 .ui_apps <- new.env(parent = emptyenv())
 
-# chromote's own timeout (10 s by default) bounds the browser's page load; on
-# slow macOS runners the app page took longer to open than that.
-options(chromote.timeout = 60)
-
 # A new session (browser tab) on the app process started with `options`
 # (exploreDE.file, as exploreDE(file) sets it); closed when `.local_envir`
 # (the calling function) ends.
@@ -30,6 +26,11 @@ app_session <- function(name, options = list(), .local_envir = parent.frame()) {
   skip_on_cran()
   skip_if_not_installed("shinytest2")
   skip_if_not_installed("callr")
+  # Each session's browser commands, the first page load included, time out
+  # after the default Chromote object's default_timeout (a field, 10 s); on
+  # slow macOS runners the app page took longer than that to open.
+  browser <- chromote::default_chromote_object()
+  browser$default_timeout <- 60
   app <- shinytest2::AppDriver$new(app_process_url(options), name = name, load_timeout = 180e3, timeout = 60e3)
   withr::defer(
     {
