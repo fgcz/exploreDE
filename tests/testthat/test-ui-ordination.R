@@ -26,8 +26,8 @@ test_that("Ordination logs raw intensities before batch correction", {
   app_open_tab(app, "ordinationTab")
   app$set_inputs(pcaBatch = "batch", pcaBatchDesign = "group")
   app$wait_for_idle()
-  app$run_js("$('#shiny-tab-ordinationTab a[data-value=\"Download\"]').click()")
-  app$wait_for_js("!!$('#dlTable_ordinationCoords').attr('href')")
+  app_open_subtab(app, "ordinationTab", "Download")
+  app_wait_download(app, "dlTable_ordinationCoords")
   coords <- function() openxlsx::read.xlsx(app$get_download("dlTable_ordinationCoords"))
 
   expect_true(app$get_value(input = "pcaLog2"))

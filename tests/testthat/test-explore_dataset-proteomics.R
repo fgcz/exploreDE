@@ -134,7 +134,42 @@ test_that("SAINT SE: reference group resolves to the CONTROL level", {
   cm <- eds$contrast_meta(eds$primary_contrast())
   expect_identical(cm$method, "SAINTexpress")
   expect_identical(cm$reference_group, "eGFP")
+  expect_identical(cm$reference_groups, "eGFP")
   expect_identical(cm$score_label, "SaintScore")
+})
+
+test_that("SAINT SE: controls pooled from several levels give no single reference_group", {
+  eds <- new_explore_dataset(fx_proteomics_saint_pooled()$se)
+  controls <- c("CONTROL_deltaMSMEG", "CONTROL_G13v1", "CONTROL_G13v2", "CONTROL_PE5_PPE4", "CONTROL_wt")
+  cm <- eds$contrast_meta("PPE4_wt")
+  expect_identical(cm$method, "SAINTexpress")
+  expect_identical(cm$test_group, "PPE4_wt")
+  expect_identical(cm$reference_group, NA_character_)
+  expect_setequal(cm$reference_groups, controls)
+})
+
+test_that("SAINT SE: the Summary contrast table lists the SAINT contrasts, not metadata$contrasts", {
+  fx <- fx_proteomics_saint_pooled()
+  expect_identical(nrow(S4Vectors::metadata(fx$se)$contrasts), 45L)
+  eds <- new_explore_dataset(fx$se)
+  tab <- proteomics_contrast_table(eds, S4Vectors::metadata(fx$se)$contrasts)
+  expect_identical(tab$contrast_name, eds$contrasts())
+  expect_identical(nrow(tab), 5L)
+  expect_true(all(startsWith(tab$contrast, paste(tab$contrast_name, "vs pooled controls ("))))
+
+  # One control level: "<bait> vs <control>"
+  eds1 <- new_explore_dataset(fx_proteomics_saint()$se)
+  tab1 <- proteomics_contrast_table(eds1, S4Vectors::metadata(fx_proteomics_saint()$se)$contrasts)
+  expect_identical(tab1$contrast, paste(eds1$contrasts(), "vs eGFP"))
+})
+
+test_that("prolfqua SE: the Summary contrast table keeps the formula from metadata$contrasts", {
+  se <- readRDS(system.file("examples", "proteomics", "SummarizedExperiment.rds", package = "exploreDE"))
+  eds <- new_explore_dataset(se)
+  tab <- proteomics_contrast_table(eds, S4Vectors::metadata(se)$contrasts)
+  expect_identical(tab, data.frame(contrast_name = "B_vs_A", contrast = "G_B - G_A"))
+  # Without metadata$contrasts the formula is built from test and reference
+  expect_identical(proteomics_contrast_table(eds)$contrast, "B - A")
 })
 
 test_that("SAINT SE: standard prolfqua proteomics is unaffected (no SAINT tagging)", {

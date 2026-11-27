@@ -61,11 +61,11 @@ jobs:
           mkdir -p "$EXPLOREDE_UI_ARTIFACTS"
           cp .github/ui-tests-Rprofile.R "$(Rscript -e 'cat(system.file("app", package = "exploreDE"))')/.Rprofile"
 
+      # Failures are also reported as annotations on the check run
       - name: Run UI tests
         env:
           UI_TEST_FILTER: ${{ inputs.filter || '^ui-' }}
-        run: |
-          Rscript -e 'testthat::test_dir("tests/testthat", package = "exploreDE", load_package = "installed", filter = Sys.getenv("UI_TEST_FILTER"), stop_on_failure = TRUE)'
+        run: Rscript .github/ui-tests-run.R
 
       - name: Upload app logs, tab states and screenshots
         if: always()

@@ -23,16 +23,17 @@ test_that("the contrasts of several uploaded files are compared in Multi DE", {
   expect_true("multiDataSelectionTab" %in% app_menu_tabs(app))
 
   app_open_tab(app, "multiDataSelectionTab")
-  expect_setequal(multi_datasets(app), c(own, paste0("design2_", own)))
+  expect_setequal(multi_datasets_when(app, c(own, paste0("design2_", own))), c(own, paste0("design2_", own)))
 
   app$upload_file(multiUploadH5ad = design3, timeout_ = 180e3)
   app$wait_for_idle()
-  expect_setequal(multi_datasets(app), c(own, paste0("design2_", own), paste0("design3_", own)))
+  three <- c(own, paste0("design2_", own), paste0("design3_", own))
+  expect_setequal(multi_datasets_when(app, three), three)
 
   # A file without contrasts adds nothing
   app$upload_file(multiUploadH5ad = counts_only, timeout_ = 180e3)
   app$wait_for_idle()
-  expect_setequal(multi_datasets(app), c(own, paste0("design2_", own), paste0("design3_", own)))
+  expect_setequal(multi_datasets(app), three)
   expect_identical(app_output_errors(app), character(0))
 
   multi_tabs <- setdiff(grep("^multi", app_menu_tabs(app), value = TRUE), "multiDataSelectionTab")
@@ -66,7 +67,8 @@ test_that("DE Tile Plots draw the same contrast loaded twice", {
   app$wait_for_value(output = "settingsTable", timeout = 180e3)
   app$wait_for_idle()
   app_open_tab(app, "multiDataSelectionTab")
-  expect_setequal(multi_datasets(app), c("treated_vs_control", "copy_treated_vs_control"))
+  both <- c("treated_vs_control", "copy_treated_vs_control")
+  expect_setequal(multi_datasets_when(app, both), both)
 
   app_open_tab(app, "multiTilePlotTab")
   expect_identical(app_output_errors(app), character(0))

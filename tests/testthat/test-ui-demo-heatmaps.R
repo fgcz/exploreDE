@@ -38,8 +38,8 @@ app_load_demo(app)
 test_that("the DE heatmap download has DE statistics only when asked for", {
   app_open_tab(app, "heatmapTab")
   # A download button gets its link only while shown: open Settings > Download
-  app$run_js("$('#shiny-tab-heatmapTab a[data-value=\"Download\"]').click()")
-  app$wait_for_js("!!$('#dlTable_heatmapDE').attr('href')")
+  app_open_subtab(app, "heatmapTab", "Download")
+  app_wait_download(app, "dlTable_heatmapDE")
 
   statistics <- c("log2Ratio", "pValue", "fdr")
   without <- openxlsx::read.xlsx(app$get_download("dlTable_heatmapDE"))
@@ -78,8 +78,7 @@ test_that("a font size change redraws the heatmap without preparing the counts a
 
 test_that("a sample ratio is defined, plotted next to a contrast and removed", {
   app_open_tab(app, "heatmapTab")
-  app$click(selector = "a[data-value='Sample ratios']")
-  app$wait_for_idle()
+  app_open_subtab(app, "heatmapTab", "Sample ratios")
   expect_match(ratio_list_text(app), "No sample ratios defined yet.", fixed = TRUE)
 
   add_ratio(app, "diff_45", c("S4_diff", "S5_diff"), c("S1_undiff", "S2_undiff"))
@@ -101,8 +100,8 @@ test_that("a sample ratio is defined, plotted next to a contrast and removed", {
   app$set_inputs(heatmapRatioPlot = c("diff_45", "diff_vs_undiff"))
   expect_match(ratio_heatmap_src(app), "^data:image/png")
   # A download link gets its address once its panel is shown
-  app$click(selector = "#shiny-tab-heatmapTab a[data-value='Download']")
-  app$wait_for_idle()
+  app_open_subtab(app, "heatmapTab", "Download")
+  app_wait_download(app, "dlTable_heatmapRatios")
   values <- openxlsx::read.xlsx(app$get_download("dlTable_heatmapRatios"))
   expect_identical(colnames(values), c("feature_id", "diff_45", "diff_vs_undiff"))
   expect_identical(nrow(values), 50L)
@@ -112,7 +111,7 @@ test_that("a sample ratio is defined, plotted next to a contrast and removed", {
   ratio_heatmap_src(app)
   expect_identical(nrow(openxlsx::read.xlsx(app$get_download("dlTable_heatmapRatios"))), 2L)
 
-  app$click(selector = "a[data-value='Sample ratios']")
+  app_open_subtab(app, "heatmapTab", "Sample ratios")
   app$set_inputs(heatmapRatioRemove = "diff_45")
   app$click("heatmapRatioRemoveBtn")
   app$wait_for_idle()
@@ -124,15 +123,14 @@ test_that("a ratio on raw counts is the difference of mean log2(count + 1)", {
   app_open_tab(app, "heatmapTab")
   app$set_inputs(heatmapCounts = "counts")
   app$wait_for_idle()
-  app$click(selector = "a[data-value='Sample ratios']")
-  app$wait_for_idle()
+  app_open_subtab(app, "heatmapTab", "Sample ratios")
   num <- c("S4_diff", "S5_diff")
   den <- c("S1_undiff", "S2_undiff")
   add_ratio(app, "r_counts", num, den)
   app$set_inputs(heatmapRatioPlot = "r_counts", sig = "Ratios")
   ratio_heatmap_src(app)
-  app$click(selector = "#shiny-tab-heatmapTab a[data-value='Download']")
-  app$wait_for_idle()
+  app_open_subtab(app, "heatmapTab", "Download")
+  app_wait_download(app, "dlTable_heatmapRatios")
   values <- openxlsx::read.xlsx(app$get_download("dlTable_heatmapRatios"))
 
   eds <- new_explore_dataset(readRDS(system.file("examples", "genomics", "deResult.rds", package = "exploreDE")))

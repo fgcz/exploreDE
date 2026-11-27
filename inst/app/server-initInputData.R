@@ -162,6 +162,15 @@ resolve_from_url <- function(dataUrl) {
     return(NULL)
   }
   proj <- regmatches(dataUrl, regexec("p[0-9]{4,}", dataUrl))[[1]][1] # JLR 2025
+  # An exploreDE .h5ad on gStore (e.g. from build_explore_h5ad()), whatever its folder is
+  # called; one that is not on gStore falls through to the routes below (e.g. pStore)
+  if (grepl("\\.h5ad$", dataUrl, ignore.case = TRUE)) {
+    dataDir <- file.path(c("/srv/gstore/projects", "/srv/GT/analysis/course_sushi/public/gstore/projects"), dataUrl)
+    dataDir <- dataDir[file.exists(dataDir)][1]
+    if (!is.na(dataDir)) {
+      return(list(dataDir = dataDir, dataType = "gStore", projectFromUrl = proj))
+    }
+  }
   if (grepl("Proteomics|prolfqua", dataUrl, ignore.case = TRUE)) {
     return(list(
       dataDir = paste0("https://fgcz-ms.uzh.ch/public/pStore/", dataUrl),
@@ -317,6 +326,16 @@ load_sushi_se <- function(dataDir, dataType, projectFromUrl) {
     return(NULL)
   }
 
+  # An exploreDE .h5ad: read and checked as an upload is; returns the dataset itself
+  if (grepl("\\.h5ad$", dataDir, ignore.case = TRUE)) {
+    res <- read_h5ad_upload(dataDir)
+    if (!isTRUE(res$ok)) {
+      showModal(modalDialog(title = "This file can't be opened", res$msg, easyClose = TRUE, footer = NULL))
+      return(NULL)
+    }
+    return(list(eds = res$eds, dataDir = dataDir))
+  }
+
   se <- NULL
   seUnfiltered <- NULL
   # If RNA Seq, load that
@@ -372,6 +391,9 @@ load_from_url <- function(dataUrl) {
     return(invisible())
   }
   record_project(resolved$projectFromUrl, loaded$dataDir)
+  if (!is.null(loaded$eds)) {
+    return(set_eds(loaded$eds, dataDir = loaded$dataDir))
+  }
   set_eds_from_se(loaded$se, loaded$seUnfiltered, loaded$dataDir)
 }
 

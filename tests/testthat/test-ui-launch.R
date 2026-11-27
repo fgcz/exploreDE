@@ -51,10 +51,8 @@ test_that("the other RNA-seq launch files join Multi DE, the proteomics one does
   app <- launch_session("launch-multi-de")
   app_open_tab(app, "multiDataSelectionTab")
   own <- c("control_vs_treated", "treated_vs_control")
-  expect_setequal(
-    multi_datasets(app),
-    c("diff_vs_undiff", "copy_diff_vs_undiff", paste0("design1_", own), paste0("design2_", own))
-  )
+  expected <- c("diff_vs_undiff", "copy_diff_vs_undiff", paste0("design1_", own), paste0("design2_", own))
+  expect_setequal(multi_datasets_when(app, expected), expected)
   expect_identical(app_output_errors(app), character(0))
 })
 

@@ -55,6 +55,13 @@ fixture_specs <- list(
   proteomics_saint = list(
     kind = "proteomics",
     url = "https://fgcz-ms.uzh.ch/public/pStore/p42111/bfabric/Proteomics/exploreDE/2026/2026-07/2026-07-28/workunit_349205/3206509.rds"
+  ),
+  # SAINTexpress with five control levels pooled into one reference; its
+  # metadata$contrasts holds 45 prolfquapp linear-model contrasts, not the
+  # five SAINT results.
+  proteomics_saint_pooled = list(
+    kind = "proteomics",
+    url = "https://fgcz-ms.uzh.ch/public/pStore/p43856/bfabric/Proteomics/exploreDE/2026/2026-11/2026-11-24/workunit_355373/3296737.rds"
   )
 )
 
@@ -99,6 +106,7 @@ fx_proteomics_protein <- function() load_fixture("proteomics_protein")
 fx_proteomics_peptide <- function() load_fixture("proteomics_peptide")
 fx_proteomics_phospho <- function() load_fixture("proteomics_phospho")
 fx_proteomics_saint <- function() load_fixture("proteomics_saint")
+fx_proteomics_saint_pooled <- function() load_fixture("proteomics_saint_pooled")
 
 # ---- SUSHI outputs built from the demo --------------------------------------
 

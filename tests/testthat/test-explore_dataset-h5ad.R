@@ -728,9 +728,11 @@ test_that("S4 DataFrame colData preserves '[Factor]' column names and factors cl
 
   eds <- new_explore_dataset(out)
   expect_silent(validate_explore_dataset(eds))
-  expect_identical(eds$factor_names(), "condition") # [Factor] stripped, not mangled
+  # [Factor] stripped, not mangled; the case kept, as the SUSHI route shows it
+  expect_identical(eds$factor_names(), "Condition")
   expect_false(is.na(eds$primary_grouping()))
-  expect_setequal(as.character(eds$samples()$condition), c("ctrl", "trt"))
+  expect_setequal(as.character(eds$samples()$Condition), c("ctrl", "trt"))
+  expect_true("Count" %in% colnames(eds$samples())) # [File] stripped too
 })
 
 # ---- 7. cross-API equivalence vs the SE backend (real data) -----------------
@@ -1140,9 +1142,18 @@ test_that("column names stay clusterProfiler's, not the spec's snake_case", {
   expect_false("p_adjust" %in% colnames(d))
 })
 
-test_that("the tidy mirror is filtered at p.adjust <= 0.1 and says so", {
+test_that("every term is stored by default, and none is called significant above 0.05", {
   skip_if_no_anndataR()
   out <- .toy_with_pathways(list(ora = .fake_enrich(padj = c(.001, .09, .6))))
+  e <- new_explore_dataset(out)
+  expect_equal(nrow(e$enrichment_table("treated_vs_control", "ora")), 3L)
+  expect_true(is.na(e$enrichment_filter()))
+  expect_equal(.enr_fdr_thresh(e, "ora"), 0.05)
+})
+
+test_that("the tidy mirror is filtered at enrichment_padj_max and says so", {
+  skip_if_no_anndataR()
+  out <- .toy_with_pathways(list(ora = .fake_enrich(padj = c(.001, .09, .6))), enrichment_padj_max = 0.1)
   e <- new_explore_dataset(out)
   d <- e$enrichment_table("treated_vs_control", "ora")
   expect_equal(nrow(d), 2L) # 0.6 dropped
@@ -1150,6 +1161,18 @@ test_that("the tidy mirror is filtered at p.adjust <= 0.1 and says so", {
   # Recording the threshold is not decoration: without it an absent row is
   # ambiguous between "cut by the writer", "not significant" and "never run".
   expect_equal(e$enrichment_filter(), 0.1)
+})
+
+test_that("enrichment_fdr sets the significance thresholds without dropping terms", {
+  skip_if_no_anndataR()
+  out <- .toy_with_pathways(
+    list(ora = .fake_enrich(padj = c(.001, .09, .6)), gsea = .fake_gsea_enrich()),
+    enrichment_fdr = list(ora = 0.01, gsea = 0.1)
+  )
+  e <- new_explore_dataset(out)
+  expect_equal(nrow(e$enrichment_table("treated_vs_control", "ora")), 3L)
+  expect_equal(.enr_fdr_thresh(e, "ora"), 0.01)
+  expect_equal(.enr_fdr_thresh(e, "gsea"), 0.1)
 })
 
 test_that("the filter threshold is caller-controllable", {
