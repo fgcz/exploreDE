@@ -26,6 +26,7 @@ app_session <- function(name, options = list(), .local_envir = parent.frame()) {
   skip_on_cran()
   skip_if_not_installed("shinytest2")
   skip_if_not_installed("callr")
+  skip_if_not_installed("chromote")
   # Each session's browser commands, the first page load included, time out
   # after the default Chromote object's default_timeout (a field, 10 s); on
   # slow macOS runners the app page took longer than that to open.
