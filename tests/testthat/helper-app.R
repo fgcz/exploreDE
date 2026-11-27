@@ -16,6 +16,10 @@
 
 .ui_apps <- new.env(parent = emptyenv())
 
+# chromote's own timeout (10 s by default) bounds the browser's page load; on
+# slow macOS runners the app page took longer to open than that.
+options(chromote.timeout = 60)
+
 # A new session (browser tab) on the app process started with `options`
 # (exploreDE.file, as exploreDE(file) sets it); closed when `.local_envir`
 # (the calling function) ends.
@@ -223,6 +227,16 @@ app_open_subtab <- function(app, tab, subtab, timeout = 60e3) {
   invisible(app)
 }
 
+# Wait until `condition()` is TRUE, or `timeout` (ms) has passed; for states
+# read from R that can trail the session going idle on a slow runner.
+app_wait_for <- function(app, condition, timeout = 120e3, interval = 500) {
+  deadline <- Sys.time() + timeout / 1000
+  while (!isTRUE(condition()) && Sys.time() < deadline) {
+    Sys.sleep(interval / 1000)
+  }
+  invisible(app)
+}
+
 # Wait until the download button `id` has its link; it gets one only while it
 # is shown.
 app_wait_download <- function(app, id, timeout = 60e3) {
@@ -265,4 +279,12 @@ toy_h5ad <- function(dir, name, seed) {
 # The Multi DE datasets, as listed on the Data Selection tab.
 multi_datasets <- function(app) {
   unlist(app$get_value(input = "multiContrastOrder")) %||% character(0)
+}
+
+# The Multi DE datasets once they are `expected`, or as they are after
+# `timeout`: They are listed when their files have loaded, which can trail the
+# session going idle (it did on a slow macOS runner).
+multi_datasets_when <- function(app, expected, timeout = 120e3) {
+  app_wait_for(app, function() setequal(multi_datasets(app), expected), timeout)
+  multi_datasets(app)
 }
