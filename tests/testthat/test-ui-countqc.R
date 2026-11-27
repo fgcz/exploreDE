@@ -19,8 +19,8 @@ test_that("Count QC downloads take the figure size set at download time", {
   app_open_tab(app, "countQcTab")
   expect_identical(app_output_errors(app), character(0))
   # A download button gets its link only while shown: open its Download tab
-  app$run_js("$('#shiny-tab-countQcTab a[data-value=\"Download\"]').click()")
-  app$wait_for_js("!!$('#dlPlot_countQcTotalReads').attr('href')")
+  app_open_subtab(app, "countQcTab", "Download")
+  app_wait_download(app, "dlPlot_countQcTotalReads")
   app$set_inputs(countQcDlFormat = "PNG", countQcDlDpi = "72")
   app$wait_for_idle()
   png_width <- function() dim(png::readPNG(app$get_download("dlPlot_countQcTotalReads")))[2]

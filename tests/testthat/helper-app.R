@@ -195,6 +195,44 @@ app_open_tab <- function(app, tab) {
   invisible(app)
 }
 
+# Open a sub-tab (a tabsetPanel or tabBox tab) of the sidebar tab `tab`, and
+# wait until its pane is the one shown. The sub-tab's link is drawn after the
+# sidebar tab opens, so a single click straight after app_open_tab() can land
+# before the link exists and do nothing (it did on slow macOS runners). This
+# keeps clicking until the pane is active.
+app_open_subtab <- function(app, tab, subtab, timeout = 60e3) {
+  link <- sprintf("#shiny-tab-%s a[data-value=\"%s\"]", tab, subtab)
+  app$wait_for_js(
+    sprintf(
+      paste(
+        "(function() {",
+        "  var a = document.querySelector('%s');",
+        "  if (!a) return false;",
+        "  var pane = document.querySelector(a.getAttribute('href'));",
+        "  if (pane && pane.classList.contains('active')) return true;",
+        "  a.click();",
+        "  return false;",
+        "})()",
+        sep = "\n"
+      ),
+      link
+    ),
+    timeout = timeout
+  )
+  app$wait_for_idle()
+  invisible(app)
+}
+
+# Wait until the download button `id` has its link; it gets one only while it
+# is shown.
+app_wait_download <- function(app, id, timeout = 60e3) {
+  app$wait_for_js(
+    sprintf("(function() { var b = document.getElementById('%s'); return !!b && !!b.getAttribute('href'); })()", id),
+    timeout = timeout
+  )
+  invisible(app)
+}
+
 # The outputs showing an R error, as "<id>: <message>". A validate() or req()
 # message is not an error. An htmlwidget (DT table, plotly) shows its error in
 # an element without id right after the widget, so that one is named by the
