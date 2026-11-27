@@ -58,6 +58,21 @@
     [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
     writes gzip-compressed datasets by default (a SUSHI DESeq2 result:
     25.6 MB instead of 34.4 MB without the mirror, 51.4 MB with it).
+- Metabolomics results open as their own data type: an `.h5ad` with
+  `uns["omics_type"] = "metabolomics"` and `feature_id_kind = "feature"`
+  (one row per feature from the processing software, e.g. Compound
+  Discoverer, annotated or not) loads as data type “metabolomics”, with
+  its intensities read as proteomics intensities are (log2 scale,
+  missing values kept), and `build_explore_h5ad(omics = "metabolomics")`
+  writes one, taking the feature names from a `Name` column (Compound
+  Discoverer). Proteomics-only options (peptide filters, imputed
+  features, gene and protein search, prolfqua citations) are not
+  offered; Multi DE lists the contrasts as metabolomics and does not mix
+  them with proteomics files; ?data= links to metabolomics files report
+  to their own telemetry app, `exploreDE_metabolomics`. The pathway tabs
+  stay hidden, as GO and KEGG need gene ids. The spec
+  (`inst/spec/exploreDE-h5ad-1.0.md`) has a metabolomics profile; the
+  schema stays `exploreDE/1.0`.
 - The app opens about a second faster: checking whether the KEGG views
   can be offered no longer loads pathview, which now loads when a KEGG
   view is first opened.

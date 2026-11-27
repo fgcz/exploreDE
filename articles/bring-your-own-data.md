@@ -50,7 +50,7 @@ Only three things are required:
 |----|----|
 | `x` | the counts: a matrix (features × samples), a named list of matrices (e.g. `list(counts = , normalised = )`), or a `DESeqDataSet` |
 | `coldata` | sample metadata, one row per sample, rownames = the counts’ column names |
-| `omics` | `"rnaseq"`, `"proteomics"`, or `"crispr"` |
+| `omics` | `"rnaseq"`, `"proteomics"`, `"metabolomics"`, or `"crispr"` |
 
 Everything else is optional: `rowdata` (feature annotation), `de` (one
 DE table per contrast), `pathways` (ORA/GSEA results per contrast), plus
@@ -241,6 +241,10 @@ it saw. Two fixes:
 phospho, a `peptide_Id` column means peptide, and a `transcript_id`
 column with one transcript per row means isoform. Otherwise it’s gene
 (RNA-seq) or protein (proteomics). Pass `feature_level =` to override.
+Metabolomics data has one level, `feature`: one row per feature from the
+processing software, with the metabolite name, if any, as its symbol (a
+`rowdata` column `Name`, as Compound Discoverer writes it, is
+recognised); it is read like proteomics intensities.
 
 ## Organisms without an annotation package
 

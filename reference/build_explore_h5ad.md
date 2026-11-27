@@ -48,7 +48,9 @@ build_explore_h5ad(
 
 - omics:
 
-  Required: `"rnaseq"`, `"proteomics"`, or `"crispr"`.
+  Required: `"rnaseq"`, `"proteomics"`, `"metabolomics"`, or `"crispr"`.
+  Metabolomics data is stored as proteomics data is (`intensities`
+  layers), one feature per row.
 
 - feature_level:
 

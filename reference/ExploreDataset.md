@@ -155,7 +155,7 @@ Omics class from the config: `"genomics"` or `"proteomics"`.
 ### `ExploreDataset$data_type()`
 
 Dataset type from the config, e.g. `"RNASeq"`, `"CountQC"`,
-`"CrisprCountQC"` or `"proteomics"`.
+`"CrisprCountQC"`, `"proteomics"` or `"metabolomics"`.
 
 #### Usage
 

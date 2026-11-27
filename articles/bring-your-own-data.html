@@ -134,8 +134,8 @@ names</td>
 <tr class="odd">
 <td><code>omics</code></td>
 <td>
-<code>"rnaseq"</code>, <code>"proteomics"</code>, or
-<code>"crispr"</code>
+<code>"rnaseq"</code>, <code>"proteomics"</code>,
+<code>"metabolomics"</code>, or <code>"crispr"</code>
 </td>
 </tr>
 </tbody>
@@ -326,7 +326,12 @@ before loose ones.</p></li>
 <code>site</code> column means phospho, a <code>peptide_Id</code> column
 means peptide, and a <code>transcript_id</code> column with one
 transcript per row means isoform. Otherwise it’s gene (RNA-seq) or
-protein (proteomics). Pass <code>feature_level =</code> to override.</p>
+protein (proteomics). Pass <code>feature_level =</code> to override.
+Metabolomics data has one level, <code>feature</code>: one row per
+feature from the processing software, with the metabolite name, if any,
+as its symbol (a <code>rowdata</code> column <code>Name</code>, as
+Compound Discoverer writes it, is recognised); it is read like
+proteomics intensities.</p>
 </div>
 </div>
 <div class="section level2">
