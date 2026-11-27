@@ -25,10 +25,13 @@ build_explore_h5ad(
   de_columns = NULL,
   rowdata_columns = NULL,
   pathways = list(),
-  enrichment_padj_max = 0.1,
+  enrichment_padj_max = NULL,
+  enrichment_fdr = NULL,
   factors = NULL,
   organism = NA_character_,
-  ref_build = NA_character_
+  ref_build = NA_character_,
+  mirror = NULL,
+  compression = c("gzip", "none")
 )
 ```
 
@@ -102,14 +105,23 @@ build_explore_h5ad(
 
 - enrichment_padj_max:
 
-  p.adjust cut-off applied to clusterProfiler results before they are
-  stored (`p.adjust <= enrichment_padj_max`). Either one number for
-  every method, or a named list keyed by the method names used in
-  `pathways` (e.g. `list(ora = 0.05, gsea = 0.05)`) so that ORA and GSEA
-  can follow their own FDR thresholds; a method not named in the list
-  uses the largest value given. The value(s) are recorded in
-  `uns$enrichment_filter` and the app uses a per-method value as its
-  significance threshold.
+  Optional p.adjust cut-off applied to clusterProfiler results before
+  they are stored (`p.adjust <= enrichment_padj_max`). `NULL` (the
+  default) stores every term, so users can filter at their own threshold
+  in the app. Either one number for every method, or a named list keyed
+  by the method names used in `pathways` (e.g.
+  `list(ora = 0.05, gsea = 0.05)`); a method not named in the list uses
+  the largest value given. The value(s) are recorded in
+  `uns$enrichment_filter`; without `enrichment_fdr` the app also uses
+  them as its significance threshold.
+
+- enrichment_fdr:
+
+  Optional FDR threshold(s) at which the app calls a pathway
+  significant: one number, or a named list keyed by method (e.g.
+  `list(ora = 0.05, gsea = 0.1)`, as SUSHI's `fdrThreshORA` and
+  `fdrThreshGSEA`). Recorded in `uns$enrichment_filter$fdr`; no term is
+  dropped. Without it (or `enrichment_padj_max`) the app uses 0.05.
 
 - factors:
 
@@ -119,6 +131,21 @@ build_explore_h5ad(
 - organism, ref_build:
 
   Optional labels.
+
+- mirror:
+
+  Optional SummarizedExperiment to store in full, in `uns["se"]` (spec
+  section 11), so that
+  [`se_from_h5ad()`](https://fgcz.github.io/exploreDE/reference/se_from_h5ad.md)
+  rebuilds it: Every assay, `colData` and `rowData` column, and
+  `metadata()` element at its path, with its class and attributes.
+  Values the exploreDE slots already hold are not stored twice. SUSHI
+  passes its twoGroups `deResult`.
+
+- compression:
+
+  HDF5 compression of the datasets: `"gzip"` (default; readable by every
+  HDF5 reader, Python `anndata` included) or `"none"`.
 
 ## Value
 

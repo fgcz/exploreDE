@@ -179,6 +179,11 @@ check it.
 
   Build a canonical exploreDE `.h5ad` from user-supplied data
 
+- [`se_from_h5ad()`](https://fgcz.github.io/exploreDE/reference/se_from_h5ad.md)
+  :
+
+  Rebuild the SummarizedExperiment stored in an exploreDE `.h5ad`
+
 - [`new_explore_dataset()`](https://fgcz.github.io/exploreDE/reference/new_explore_dataset.md)
   :
 

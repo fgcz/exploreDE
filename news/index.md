@@ -7,6 +7,57 @@
   3.10.0. Witold Wolski is the maintainer.
 - The vignette installs exploreDE from Bioconductor
   (`BiocManager::install("exploreDE")`).
+- Proteomics: The Summary tab’s contrast table lists the contrasts the
+  dataset has results for. It printed `metadata(se)$contrasts` as
+  stored, and a SAINTexpress result stores prolfquapp’s linear-model
+  contrasts there, not the ones SAINT scored: A run with five baits and
+  five control groups (workunit 355373) listed 45 contrasts for 5
+  results. A SAINT contrast now reads “ vs pooled controls ()”, or “ vs
+  ” with one control group.
+- SAINTexpress with several control groups: The DE QC tab offers the
+  bait and each control group to compare. It offered the bait and a
+  missing (NA) reference group.
+- A SUSHI twoGroups result written as an `.h5ad` (ezRun’s
+  `writeAnnData`) opens as the SUSHI result itself does. Checked on two
+  real SUSHI DESeq2 results and in a new test on the demo:
+  - [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+    stores every pathway term by default, so users filter at their own
+    threshold, as for genes. `enrichment_padj_max` now defaults to
+    `NULL`; give it to cut as before.
+  - New `enrichment_fdr` argument: the FDR thresholds at which the app
+    calls a pathway significant (SUSHI’s `fdrThreshORA` and
+    `fdrThreshGSEA`), recorded without dropping any term. Without it the
+    app uses `enrichment_padj_max`, else 0.05, as before.
+  - Factor names keep their case: “Condition \[Factor\]” is shown as
+    “Condition”, not “condition”. Other sample columns lose their SUSHI
+    tags too (“Tube \[Characteristic\]” is “Tube”, “Read Count” is
+    “Read_Count”).
+  - A SUSHI contrast `diff--over--undiff` is shown as `diff_vs_undiff`,
+    so saved sessions and Multi DE names are the same from either file.
+  - The GO BP, MF and CC annotation columns are stored once. They were
+    carried twice, so the feature table had two columns of each name.
+  - The DE table has the feature type again (“Type” in the DE Table
+    tab).
+- `build_explore_h5ad(mirror = se)` stores the whole
+  SummarizedExperiment in the `.h5ad` (`uns["se"]`, spec section 11),
+  and the new
+  [`se_from_h5ad()`](https://fgcz.github.io/exploreDE/reference/se_from_h5ad.md)
+  rebuilds it: Every assay, `colData` and `rowData` column, and
+  `metadata()` element at its path, with its class and attributes,
+  including DESeq2, edgeR, and clusterProfiler objects, functions, and
+  the environments they captured. The rebuilt SE is
+  [`identical()`](https://rdrr.io/r/base/identical.html) to the
+  original, except that environments come back with the same contents
+  rather than the same address (as through qs2 or RDS). Checked on SUSHI
+  twoGroups results of DESeq2, edgeR glm, edgeR exactTest, and limma.
+  Values exploreDE’s own slots already hold are not stored twice.
+  - When a DE table is the rowData itself (SUSHI), its statistic columns
+    (`log2Ratio`, `pValue`, `fdr`, `usedInTest`) are kept in the DE
+    table only, not copied into `var`.
+  - New `compression` argument;
+    [`build_explore_h5ad()`](https://fgcz.github.io/exploreDE/reference/build_explore_h5ad.md)
+    writes gzip-compressed datasets by default (a SUSHI DESeq2 result:
+    25.6 MB instead of 34.4 MB without the mirror, 51.4 MB with it).
 - The app opens about a second faster: checking whether the KEGG views
   can be offered no longer loads pathview, which now loads when a KEGG
   view is first opened.

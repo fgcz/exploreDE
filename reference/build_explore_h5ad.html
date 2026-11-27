@@ -78,10 +78,13 @@ are supplied as arguments. Only counts + <code>coldata</code> + <code>omics</cod
 <span>  de_columns <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  rowdata_columns <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pathways <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  enrichment_padj_max <span class="op">=</span> <span class="fl">0.1</span>,</span>
+<span>  enrichment_padj_max <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  enrichment_fdr <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  factors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  organism <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  ref_build <span class="op">=</span> <span class="cn">NA_character_</span></span>
+<span>  ref_build <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  mirror <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  compression <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gzip"</span>, <span class="st">"none"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -156,13 +159,22 @@ and/or <code>data.frame</code>s.</p></dd>
 
 
 <dt id="arg-enrichment-padj-max">enrichment_padj_max<a class="anchor" aria-label="anchor" href="#arg-enrichment-padj-max"></a></dt>
-<dd><p>p.adjust cut-off applied to clusterProfiler
-results before they are stored (<code>p.adjust &lt;= enrichment_padj_max</code>). Either
-one number for every method, or a named list keyed by the method names used
-in <code>pathways</code> (e.g. <code>list(ora = 0.05, gsea = 0.05)</code>) so that ORA and GSEA can
-follow their own FDR thresholds; a method not named in the list uses the
-largest value given. The value(s) are recorded in <code>uns$enrichment_filter</code>
-and the app uses a per-method value as its significance threshold.</p></dd>
+<dd><p>Optional p.adjust cut-off applied to
+clusterProfiler results before they are stored (<code>p.adjust &lt;= enrichment_padj_max</code>). <code>NULL</code> (the default) stores every term, so users
+can filter at their own threshold in the app. Either one number for every
+method, or a named list keyed by the method names used in <code>pathways</code> (e.g.
+<code>list(ora = 0.05, gsea = 0.05)</code>); a method not named in the list uses the
+largest value given. The value(s) are recorded in <code>uns$enrichment_filter</code>;
+without <code>enrichment_fdr</code> the app also uses them as its significance
+threshold.</p></dd>
+
+
+<dt id="arg-enrichment-fdr">enrichment_fdr<a class="anchor" aria-label="anchor" href="#arg-enrichment-fdr"></a></dt>
+<dd><p>Optional FDR threshold(s) at which the app calls a
+pathway significant: one number, or a named list keyed by method (e.g.
+<code>list(ora = 0.05, gsea = 0.1)</code>, as SUSHI's <code>fdrThreshORA</code> and
+<code>fdrThreshGSEA</code>). Recorded in <code>uns$enrichment_filter$fdr</code>; no term is
+dropped. Without it (or <code>enrichment_padj_max</code>) the app uses 0.05.</p></dd>
 
 
 <dt id="arg-factors">factors<a class="anchor" aria-label="anchor" href="#arg-factors"></a></dt>
@@ -172,6 +184,19 @@ and the app uses a per-method value as its significance threshold.</p></dd>
 
 <dt id="arg-organism-ref-build">organism, ref_build<a class="anchor" aria-label="anchor" href="#arg-organism-ref-build"></a></dt>
 <dd><p>Optional labels.</p></dd>
+
+
+<dt id="arg-mirror">mirror<a class="anchor" aria-label="anchor" href="#arg-mirror"></a></dt>
+<dd><p>Optional SummarizedExperiment to store in full, in
+<code>uns["se"]</code> (spec section 11), so that <code><a href="se_from_h5ad.html">se_from_h5ad()</a></code> rebuilds it: Every
+assay, <code>colData</code> and <code>rowData</code> column, and <code>metadata()</code> element at its path,
+with its class and attributes. Values the exploreDE slots already hold
+are not stored twice. SUSHI passes its twoGroups <code>deResult</code>.</p></dd>
+
+
+<dt id="arg-compression">compression<a class="anchor" aria-label="anchor" href="#arg-compression"></a></dt>
+<dd><p>HDF5 compression of the datasets: <code>"gzip"</code> (default;
+readable by every HDF5 reader, Python <code>anndata</code> included) or <code>"none"</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -379,7 +379,7 @@ eds
 #>   ref_build:        NA
 #>   samples x features: 6 x 1384
 #>   factors (1):
-#>     g_  (primary): A, B
+#>     G_  (primary): A, B
 #>   contrasts (1): B_vs_A
 #>   primary_contrast: B_vs_A
 #>   assays:           intensities, intensities_raw
@@ -392,11 +392,39 @@ head(eds$de("B_vs_A"))
 #> P0A7V0      2.290956 4.111082e-07 0.0001329935     P0A7V0    P0A7V0  P0A7V0
 #> A1L429     -7.134870 5.272144e-07 0.0001459329     A1L429    A1L429  A1L429
 #> P0AFG6      2.690083 7.449241e-07 0.0001562791     P0AFG6    P0AFG6  P0AFG6
-#>                  description log2Ratio       pValue          fdr usedInTest
-#> P0AFG3  sp_P0AFG3_ODO1_ECOLI  2.076169 2.407749e-07 0.0001329935       TRUE
-#> P0AC41  sp_P0AC41_SDHA_ECOLI  2.207672 3.166968e-07 0.0001329935       TRUE
-#> P0A7W1   sp_P0A7W1_RS5_ECOLI  2.232960 3.207217e-07 0.0001329935       TRUE
-#> P0A7V0   sp_P0A7V0_RS2_ECOLI  2.290956 4.111082e-07 0.0001329935       TRUE
-#> A1L429 sp_A1L429_GG12C_HUMAN -7.134870 5.272144e-07 0.0001459329       TRUE
-#> P0AFG6  sp_P0AFG6_ODO2_ECOLI  2.690083 7.449241e-07 0.0001562791       TRUE
+#>                  description gene_symbol protein_id nrpeptides idcolumn
+#> P0AFG3  sp_P0AFG3_ODO1_ECOLI      P0AFG3     P0AFG3         25   P0AFG3
+#> P0AC41  sp_P0AC41_SDHA_ECOLI      P0AC41     P0AC41         15   P0AC41
+#> P0A7W1   sp_P0A7W1_RS5_ECOLI      P0A7W1     P0A7W1          5   P0A7W1
+#> P0A7V0   sp_P0A7V0_RS2_ECOLI      P0A7V0     P0A7V0          8   P0A7V0
+#> A1L429 sp_A1L429_GG12C_HUMAN      A1L429     A1L429          1   A1L429
+#> P0AFG6  sp_P0AFG6_ODO2_ECOLI      P0AFG6     P0AFG6         10   P0AFG6
+#>                     fasta_id protein_length nr_tryptic_peptides   con   rev
+#> P0AFG3  sp|P0AFG3|ODO1_ECOLI            933                  44 FALSE FALSE
+#> P0AC41  sp|P0AC41|SDHA_ECOLI            588                  31 FALSE FALSE
+#> P0A7W1   sp|P0A7W1|RS5_ECOLI            167                  11 FALSE FALSE
+#> P0A7V0   sp|P0A7V0|RS2_ECOLI            241                  14 FALSE FALSE
+#> A1L429 sp|A1L429|GG12C_HUMAN            117                   2 FALSE FALSE
+#> P0AFG6  sp|P0AFG6|ODO2_ECOLI            405                  20 FALSE FALSE
+#>                     modelname contrast  std_error   avgabd statistic       df
+#> P0AFG3 Linear_Model_moderated   B_vs_A 0.02592986 19.27265  26.95160 5.832013
+#> P0AC41 Linear_Model_moderated   B_vs_A 0.05267450 19.16701  25.70541 5.832013
+#> P0A7W1 Linear_Model_moderated   B_vs_A 0.05541211 21.40682  25.64938 5.832013
+#> P0A7V0 Linear_Model_moderated   B_vs_A 0.06851577 20.84410  24.57190 5.832013
+#> A1L429 Imputed_Mean_moderated   B_vs_A 0.06665272 21.11332 -68.04320 3.798723
+#> P0AFG6 Linear_Model_moderated   B_vs_A 0.11613502 20.00267  22.16970 5.832013
+#>         conf_low conf_high      sigma log2Ratio       pValue          fdr
+#> P0AFG3  1.843691  2.308647 0.09434608  2.076169 2.407749e-07 0.0001329935
+#> P0AC41  1.948485  2.466860 0.10518546  2.207672 3.166968e-07 0.0001329935
+#> P0A7W1  1.970231  2.495689 0.10662272  2.232960 3.207217e-07 0.0001329935
+#> P0A7V0  2.009583  2.572328 0.11418883  2.290956 4.111082e-07 0.0001329935
+#> A1L429 -7.499009 -6.770731 0.12842423 -7.134870 5.272144e-07 0.0001459329
+#> P0AFG6  2.323891  3.056276 0.14861122  2.690083 7.449241e-07 0.0001562791
+#>        usedInTest
+#> P0AFG3       TRUE
+#> P0AC41       TRUE
+#> P0A7W1       TRUE
+#> P0A7V0       TRUE
+#> A1L429       TRUE
+#> P0AFG6       TRUE
 ```
