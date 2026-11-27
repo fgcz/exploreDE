@@ -1197,6 +1197,7 @@ build_explore_h5ad <- function(
     varm = parts$varm,
     uns = parts$uns
   )
-  anndataR::write_h5ad(adata, out, compression = match.arg(compression), mode = "w") # "w" allows overwrite (default is "w-")
+  # mode "w" allows overwrite (the default, "w-", refuses)
+  anndataR::write_h5ad(adata, out, compression = match.arg(compression), mode = "w")
   invisible(out)
 }

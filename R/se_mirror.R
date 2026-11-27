@@ -176,7 +176,7 @@
   st$varm_df <- list()
   st$obsm_df <- list()
   st$taken <- list(layers = character(), varm = character(), obsm = character())
-  st$groups <- list(varm = list(), obsm = list()) # label -> key
+  st$groups <- list(varm = list(), obsm = list()) # one key per data frame label
   st$pool <- list() # "typeof:length" -> list of list(loc, detail, value)
   st$nodes <- list() # "typeof:class:length" -> list of list(id, value)
   st$envs <- list() # list of list(env, id)
@@ -253,8 +253,6 @@
   paste0(key, "_", i)
 }
 
-# Store one bare vector (no attributes), placed by its shape; returns
-# list(location, detail). `dim` is the dim attribute of the node it came from.
 # HDF5 layers keep NaN but not NA_real_: Record where a double vector headed
 # for a layer has NA_real_, so the reader can put them back.
 .mirror_na_detail <- function(st, v, layer_key) {
@@ -269,68 +267,96 @@
   paste0("na=", .mirror_enc(layer_key))
 }
 
+# Where a bare vector goes, by its shape (spec section 11).
+.mirror_slot_for <- function(v, dim, G, S) {
+  is_mat <- length(dim) == 2L
+  d1 <- if (is_mat) dim[1] else length(v)
+  d2 <- if (is_mat) dim[2] else NA_integer_
+  # in order of precedence; anything else goes to uns
+  rules <- c(
+    layer = is_mat & !is.character(v) & d1 == G & d2 == S,
+    varm_matrix = is_mat & d1 == G & d2 != S,
+    obsm_matrix = is_mat & d1 == S & d2 != G,
+    varm_column = !is_mat & G != S & d1 == G,
+    obsm_column = !is_mat & G != S & S > 1L & d1 == S
+  )
+  c(names(rules)[rules %in% TRUE], "uns")[1]
+}
+
+.mirror_as_matrix <- function(v, nr) {
+  m <- matrix(v, nrow = nr)
+  if (is.logical(m)) {
+    storage.mode(m) <- "integer" # HDF5 matrices cannot hold logicals; "lgl" restores them
+  }
+  m
+}
+
+.mirror_store_layer <- function(st, v, segs) {
+  key <- .mirror_take(st, "layers", .mirror_label(segs))
+  st$layers[[key]] <- t(.mirror_as_matrix(v, st$G))
+  list(loc = paste0("layers|", key), detail = .mirror_na_detail(st, v, key))
+}
+
+.mirror_store_matrix <- function(st, v, segs, slot, nr) {
+  key <- .mirror_take(st, slot, .mirror_label(segs))
+  st[[slot]][[key]] <- .mirror_as_matrix(v, nr)
+  list(loc = paste0(slot, "|", key), detail = character())
+}
+
+.mirror_store_column <- function(st, v, segs, slot) {
+  df_slot <- paste0(slot, "_df")
+  grp <- .mirror_group(st, slot, .mirror_label(utils::head(segs, -1L)))
+  col <- .mirror_unique_key(names(st[[df_slot]][[grp]]), .mirror_label(utils::tail(segs, 1L)))
+  st[[df_slot]][[grp]][[col]] <- v
+  list(loc = paste(slot, grp, col, sep = "|"), detail = character())
+}
+
+.mirror_store_uns <- function(st, v, segs) {
+  val <- v
+  detail <- character()
+  # Long text with repeats (gene sets, go2gene) is stored as categorical.
+  if (is.character(v) && length(v) >= 1000L && length(unique(v)) < 0.5 * length(v)) {
+    val <- factor(v)
+    detail <- "fct"
+  }
+  st$uns[[length(st$uns) + 1L]] <- list(segs = segs, value = val)
+  list(loc = paste0("uns|", paste(segs, collapse = "/")), detail = detail)
+}
+
+.mirror_store <- function(st, v, slot, segs) {
+  switch(
+    slot,
+    layer = .mirror_store_layer(st, v, segs),
+    varm_matrix = .mirror_store_matrix(st, v, segs, "varm", st$G),
+    obsm_matrix = .mirror_store_matrix(st, v, segs, "obsm", st$S),
+    varm_column = .mirror_store_column(st, v, segs, "varm"),
+    obsm_column = .mirror_store_column(st, v, segs, "obsm"),
+    .mirror_store_uns(st, v, segs)
+  )
+}
+
+# A value already stored: Point at it (a layer view still records its NAs).
+.mirror_put_hit <- function(st, v, hit) {
+  detail <- hit$detail
+  if (startsWith(hit$loc, "layers|") && !grepl("na=", detail, fixed = TRUE)) {
+    extra <- .mirror_na_detail(st, v, sub("^layers\\|", "", hit$loc))
+    detail <- paste(c(if (nzchar(detail)) detail, extra), collapse = ";")
+  }
+  list(location = hit$loc, detail = detail)
+}
+
+# Store one bare vector (no attributes), placed by its shape; returns
+# list(location, detail). `dim` is the dim attribute of the node it came from.
 .mirror_put <- function(st, v, dim, segs, force_uns = FALSE) {
   hit <- .mirror_pool_find(st, v)
   if (!is.null(hit)) {
-    detail <- hit$detail
-    if (startsWith(hit$loc, "layers|") && !grepl("na=", detail, fixed = TRUE)) {
-      detail <- paste(
-        c(if (nzchar(detail)) detail, .mirror_na_detail(st, v, sub("^layers\\|", "", hit$loc))),
-        collapse = ";"
-      )
-    }
-    return(list(location = hit$loc, detail = detail))
+    return(.mirror_put_hit(st, v, hit))
   }
-  G <- st$G
-  S <- st$S
-  detail <- character()
-  as_matrix <- function(v, nr) {
-    m <- matrix(v, nrow = nr)
-    if (is.logical(m)) {
-      storage.mode(m) <- "integer"
-    }
-    m
-  }
-  if (is.logical(v)) {
-    detail <- c(detail, "lgl")
-  }
-  loc <- NULL
-  if (!force_uns && length(dim) == 2L && dim[1] == G && dim[2] == S && !is.character(v)) {
-    key <- .mirror_take(st, "layers", .mirror_label(segs))
-    st$layers[[key]] <- t(as_matrix(v, G))
-    loc <- paste0("layers|", key)
-    detail <- c(detail, .mirror_na_detail(st, v, key))
-  } else if (!force_uns && length(dim) == 2L && dim[1] == G && dim[2] != S) {
-    key <- .mirror_take(st, "varm", .mirror_label(segs))
-    st$varm[[key]] <- as_matrix(v, G)
-    loc <- paste0("varm|", key)
-  } else if (!force_uns && length(dim) == 2L && dim[1] == S && dim[2] != G) {
-    key <- .mirror_take(st, "obsm", .mirror_label(segs))
-    st$obsm[[key]] <- as_matrix(v, S)
-    loc <- paste0("obsm|", key)
-  } else if (!force_uns && is.null(dim) && length(v) == G && G != S) {
-    grp <- .mirror_group(st, "varm", .mirror_label(utils::head(segs, -1L)))
-    col <- .mirror_unique_key(names(st$varm_df[[grp]]), .mirror_label(utils::tail(segs, 1L)))
-    st$varm_df[[grp]][[col]] <- v
-    loc <- paste0("varm|", grp, "|", col)
-  } else if (!force_uns && is.null(dim) && length(v) == S && G != S && S > 1L) {
-    grp <- .mirror_group(st, "obsm", .mirror_label(utils::head(segs, -1L)))
-    col <- .mirror_unique_key(names(st$obsm_df[[grp]]), .mirror_label(utils::tail(segs, 1L)))
-    st$obsm_df[[grp]][[col]] <- v
-    loc <- paste0("obsm|", grp, "|", col)
-  } else {
-    val <- v
-    # Long text with repeats (gene sets, go2gene) is stored as categorical.
-    if (is.character(v) && length(v) >= 1000L && length(unique(v)) < 0.5 * length(v)) {
-      val <- factor(v)
-      detail <- c(detail, "fct")
-    }
-    st$uns[[length(st$uns) + 1L]] <- list(segs = segs, value = val)
-    loc <- paste0("uns|", paste(segs, collapse = "/"))
-  }
-  detail <- paste(detail, collapse = ";")
-  .mirror_pool_add(st, v, loc, detail)
-  list(location = loc, detail = detail)
+  slot <- if (force_uns) "uns" else .mirror_slot_for(v, dim, st$G, st$S)
+  stored <- .mirror_store(st, v, slot, segs)
+  detail <- paste(c(if (is.logical(v)) "lgl", stored$detail), collapse = ";")
+  .mirror_pool_add(st, v, stored$loc, detail)
+  list(location = stored$loc, detail = detail)
 }
 
 # Segments of a child: Attributes of an atomic node sit beside it (an HDF5
@@ -382,94 +408,133 @@
     return(invisible(id))
   }
   id <- .mirror_row(st, parent, kind, key, path, x)
-  ty <- typeof(x)
-
   # A node identical() to one already walked is a reference to it.
-  dedupe <- ty %in% c("list", "S4", "closure", "language") || (is.atomic(x) && !is.null(attributes(x)))
-  if (dedupe) {
-    bucket <- paste(ty, paste(class(x), collapse = "/"), length(x), sep = ":")
-    for (cand in st$nodes[[bucket]]) {
-      if (identical(cand$value, x)) {
-        .mirror_set(st, id, how = "ref", location = as.character(cand$id))
-        return(invisible(id))
-      }
+  bucket <- .mirror_bucket(x)
+  if (!is.null(bucket)) {
+    hit <- .mirror_find_node(st, bucket, x)
+    if (!is.null(hit)) {
+      .mirror_set(st, id, how = "ref", location = as.character(hit))
+      return(invisible(id))
     }
   }
-
-  if (is.null(x)) {
-    .mirror_set(st, id, how = "null")
-  } else if (ty == "environment") {
-    .mirror_env(st, x, id, path, segs)
-  } else if (ty == "symbol") {
-    .mirror_set(st, id, how = "symbol", detail = as.character(x))
-  } else if (ty %in% c("language", "expression")) {
-    bare <- x
-    attributes(bare) <- NULL
-    txt <- .mirror_deparse(bare)
-    if (identical(.mirror_parse(txt, ty), bare)) {
-      put <- .mirror_put(st, txt, NULL, c(segs, "^text"), force_uns = TRUE)
-      .mirror_set(st, id, how = "language", location = put$location)
-    } else {
-      # Text does not give it back exactly (an embedded value, say): Store the
-      # call's parts instead.
-      .mirror_set(st, id, how = "call")
-      parts <- as.list(bare)
-      for (i in seq_along(parts)) {
-        .mirror_node(st, .mirror_elem(parts, i), id, "elem", paste0("[", i, "]"), path, c(segs, paste0("[", i, "]")))
-      }
-    }
-    .mirror_attrs(st, x, id, path, segs)
-  } else if (ty == "closure") {
-    .mirror_set(st, id, how = "closure")
-    .mirror_node(st, as.list(formals(x)), id, "formals", "", path, c(segs, "^formals"))
-    .mirror_node(st, body(x), id, "body", "", path, c(segs, "^body"))
-    .mirror_node(st, environment(x), id, "env", "", path, c(segs, "^env"))
-    .mirror_attrs(st, x, id, path, segs)
-  } else if (ty %in% c("builtin", "special")) {
-    .mirror_set(st, id, how = "builtin", detail = paste(deparse(x), collapse = ""))
-  } else if (ty == "list" || ty == "pairlist") {
-    if (ty == "pairlist") {
-      x <- as.list(x)
-      .mirror_set(st, id, detail = "pairlist")
-    }
-    xx <- unclass(x) # walk the list itself, not an S3 `[[` method (package_version)
-    if (.mirror_is_long(xx)) {
-      .mirror_set(st, id, how = "long")
-      vals <- unlist(xx, use.names = FALSE)
-      .mirror_node(st, vals, id, "values", "", path, c(segs, "^values"))
-      .mirror_node(st, lengths(xx), id, "lengths", "", path, c(segs, "^lengths"))
-    } else {
-      .mirror_set(st, id, how = "list")
-      nms <- names(xx)
-      for (i in seq_along(xx)) {
-        nm <- nms[i]
-        k <- if (is.null(nm) || is.na(nm) || !nzchar(nm) || sum(nms == nm, na.rm = TRUE) > 1L) {
-          paste0("[", i, "]")
-        } else {
-          nm
-        }
-        .mirror_node(st, .mirror_elem(xx, i), id, "elem", k, path, c(segs, .mirror_seg("elem", k)))
-      }
-    }
-    .mirror_attrs(st, x, id, path, segs)
-  } else if (ty == "S4") {
-    .mirror_set(st, id, how = "s4")
-    .mirror_attrs(st, x, id, path, segs)
-  } else if (is.atomic(x)) {
-    bare <- x
-    attributes(bare) <- NULL
-    put <- .mirror_put(st, bare, attr(x, "dim"), segs, force_uns = kind %in% c("values", "lengths"))
-    .mirror_set(st, id, how = "atomic", location = put$location, detail = put$detail)
-    .mirror_attrs(st, x, id, path, segs)
-  } else {
-    warning(sprintf("build_explore_h5ad: %s (%s) cannot be stored; se_from_h5ad() gives NULL there", path, ty))
-    .mirror_set(st, id, how = "unsupported")
-  }
-
-  if (dedupe) {
+  .mirror_encoder(x)(list(st = st, id = id, path = path, segs = segs, kind = kind), x)
+  if (!is.null(bucket)) {
     st$nodes[[bucket]] <- c(st$nodes[[bucket]], list(list(id = id, value = x)))
   }
   invisible(id)
+}
+
+.mirror_bucket <- function(x) {
+  ty <- typeof(x)
+  if (ty %in% c("list", "S4", "closure", "language") || (is.atomic(x) && !is.null(attributes(x)))) {
+    paste(ty, paste(class(x), collapse = "/"), length(x), sep = ":")
+  }
+}
+
+.mirror_find_node <- function(st, bucket, x) {
+  for (cand in st$nodes[[bucket]]) {
+    if (identical(cand$value, x)) {
+      return(cand$id)
+    }
+  }
+  NULL
+}
+
+.mirror_child <- function(ctx, value, kind, key, segs) {
+  .mirror_node(ctx$st, value, ctx$id, kind, key, ctx$path, segs)
+}
+
+.mirror_encoder <- function(x) {
+  switch(
+    typeof(x),
+    "NULL" = function(ctx, x) .mirror_set(ctx$st, ctx$id, how = "null"),
+    environment = function(ctx, x) .mirror_env(ctx$st, x, ctx$id, ctx$path, ctx$segs),
+    symbol = function(ctx, x) .mirror_set(ctx$st, ctx$id, how = "symbol", detail = as.character(x)),
+    language = ,
+    expression = .mirror_enc_language,
+    closure = .mirror_enc_closure,
+    builtin = ,
+    special = function(ctx, x) .mirror_set(ctx$st, ctx$id, how = "builtin", detail = paste(deparse(x), collapse = "")),
+    list = ,
+    pairlist = .mirror_enc_list,
+    S4 = function(ctx, x) {
+      .mirror_set(ctx$st, ctx$id, how = "s4")
+      .mirror_attrs(ctx$st, x, ctx$id, ctx$path, ctx$segs)
+    },
+    if (is.atomic(x)) .mirror_enc_atomic else .mirror_enc_unsupported
+  )
+}
+
+.mirror_enc_language <- function(ctx, x) {
+  bare <- x
+  attributes(bare) <- NULL
+  txt <- .mirror_deparse(bare)
+  if (identical(.mirror_parse(txt, typeof(x)), bare)) {
+    put <- .mirror_put(ctx$st, txt, NULL, c(ctx$segs, "^text"), force_uns = TRUE)
+    .mirror_set(ctx$st, ctx$id, how = "language", location = put$location)
+  } else {
+    # Text does not give it back exactly (an embedded value, say): Store the
+    # call's parts instead.
+    .mirror_set(ctx$st, ctx$id, how = "call")
+    parts <- as.list(bare)
+    for (i in seq_along(parts)) {
+      k <- paste0("[", i, "]")
+      .mirror_child(ctx, .mirror_elem(parts, i), "elem", k, c(ctx$segs, k))
+    }
+  }
+  .mirror_attrs(ctx$st, x, ctx$id, ctx$path, ctx$segs)
+}
+
+.mirror_enc_closure <- function(ctx, x) {
+  .mirror_set(ctx$st, ctx$id, how = "closure")
+  .mirror_child(ctx, as.list(formals(x)), "formals", "", c(ctx$segs, "^formals"))
+  .mirror_child(ctx, body(x), "body", "", c(ctx$segs, "^body"))
+  .mirror_child(ctx, environment(x), "env", "", c(ctx$segs, "^env"))
+  .mirror_attrs(ctx$st, x, ctx$id, ctx$path, ctx$segs)
+}
+
+# An element's key: Its name, or [i] when it has none or shares it.
+.mirror_elem_key <- function(nms, i) {
+  nm <- nms[i]
+  if (is.null(nm) || is.na(nm) || !nzchar(nm) || sum(nms == nm, na.rm = TRUE) > 1L) paste0("[", i, "]") else nm
+}
+
+.mirror_enc_list <- function(ctx, x) {
+  if (typeof(x) == "pairlist") {
+    x <- as.list(x)
+    .mirror_set(ctx$st, ctx$id, detail = "pairlist")
+  }
+  xx <- unclass(x) # walk the list itself, not an S3 `[[` method (package_version)
+  if (.mirror_is_long(xx)) {
+    .mirror_set(ctx$st, ctx$id, how = "long")
+    .mirror_child(ctx, unlist(xx, use.names = FALSE), "values", "", c(ctx$segs, "^values"))
+    .mirror_child(ctx, lengths(xx), "lengths", "", c(ctx$segs, "^lengths"))
+  } else {
+    .mirror_set(ctx$st, ctx$id, how = "list")
+    nms <- names(xx)
+    for (i in seq_along(xx)) {
+      k <- .mirror_elem_key(nms, i)
+      .mirror_child(ctx, .mirror_elem(xx, i), "elem", k, c(ctx$segs, .mirror_seg("elem", k)))
+    }
+  }
+  .mirror_attrs(ctx$st, x, ctx$id, ctx$path, ctx$segs)
+}
+
+.mirror_enc_atomic <- function(ctx, x) {
+  bare <- x
+  attributes(bare) <- NULL
+  put <- .mirror_put(ctx$st, bare, attr(x, "dim"), ctx$segs, force_uns = ctx$kind %in% c("values", "lengths"))
+  .mirror_set(ctx$st, ctx$id, how = "atomic", location = put$location, detail = put$detail)
+  .mirror_attrs(ctx$st, x, ctx$id, ctx$path, ctx$segs)
+}
+
+.mirror_enc_unsupported <- function(ctx, x) {
+  warning(sprintf(
+    "build_explore_h5ad: %s (%s) cannot be stored; se_from_h5ad() gives NULL there",
+    ctx$path,
+    typeof(x)
+  ))
+  .mirror_set(ctx$st, ctx$id, how = "unsupported")
 }
 
 .mirror_env <- function(st, e, id, path, segs) {
@@ -518,48 +583,40 @@
   }
   .mirror_pool_add(st, rownames(parts$obs), "obs_names")
   .mirror_pool_add(st, rownames(parts$var), "var_names")
-  for (cl in colnames(parts$obs)) {
-    v <- parts$obs[[cl]]
-    if (is.factor(v)) {
-      .mirror_pool_add(st, as.character(v), paste0("obs|", cl), "chr")
-    } else {
-      .mirror_pool_add(st, as.vector(v), paste0("obs|", cl))
-    }
-  }
-  for (cl in colnames(parts$var)) {
-    v <- parts$var[[cl]]
-    if (is.factor(v)) {
-      .mirror_pool_add(st, as.character(v), paste0("var|", cl), "chr")
-    } else {
-      .mirror_pool_add(st, as.vector(v), paste0("var|", cl))
-    }
-  }
+  .mirror_seed_frame(st, parts$obs, "obs")
+  .mirror_seed_frame(st, parts$var, "var")
   for (k in names(parts$varm)) {
-    for (cl in colnames(parts$varm[[k]])) {
-      .mirror_pool_add(st, as.vector(parts$varm[[k]][[cl]]), paste0("varm|", k, "|", cl))
-    }
+    .mirror_seed_frame(st, parts$varm[[k]], paste0("varm|", k), factors = FALSE)
   }
-  # enrichment tables: each column of each ontology's rows
   enr <- parts$uns$enrichment %||% list()
   for (slot in names(enr)) {
     for (m in names(enr[[slot]])) {
-      tab <- enr[[slot]][[m]]
-      if (!is.data.frame(tab) || !"ontology" %in% colnames(tab)) {
-        next
-      }
-      for (o in unique(tab$ontology)) {
-        rows <- tab$ontology == o
-        for (cl in colnames(tab)) {
-          loc <- paste(
-            "unsrows",
-            paste("enrichment", .mirror_enc(slot), .mirror_enc(m), sep = "/"),
-            .mirror_enc(cl),
-            .mirror_enc(o),
-            sep = "|"
-          )
-          .mirror_pool_add(st, as.vector(tab[[cl]][rows]), loc)
-        }
-      }
+      .mirror_seed_table(st, enr[[slot]][[m]], paste("enrichment", .mirror_enc(slot), .mirror_enc(m), sep = "/"))
+    }
+  }
+}
+
+.mirror_seed_frame <- function(st, df, where, factors = TRUE) {
+  for (cl in colnames(df)) {
+    v <- df[[cl]]
+    if (factors && is.factor(v)) {
+      .mirror_pool_add(st, as.character(v), paste0(where, "|", cl), "chr")
+    } else {
+      .mirror_pool_add(st, as.vector(v), paste0(where, "|", cl))
+    }
+  }
+}
+
+# An enrichment table: Each column of each ontology's rows.
+.mirror_seed_table <- function(st, tab, where) {
+  if (!is.data.frame(tab) || !"ontology" %in% colnames(tab)) {
+    return(invisible())
+  }
+  for (o in unique(tab$ontology)) {
+    rows <- tab$ontology == o
+    for (cl in colnames(tab)) {
+      loc <- paste("unsrows", where, .mirror_enc(cl), .mirror_enc(o), sep = "|")
+      .mirror_pool_add(st, as.vector(tab[[cl]][rows]), loc)
     }
   }
 }
@@ -708,167 +765,191 @@ se_from_h5ad <- function(x) {
   m <- adata$uns$se$manifest
   if (is.null(m)) {
     stop(
-      "se_from_h5ad: this .h5ad holds no SummarizedExperiment (no uns$se); write it with build_explore_h5ad(mirror = se)"
+      "se_from_h5ad: this .h5ad holds no SummarizedExperiment (no uns$se); ",
+      "write it with build_explore_h5ad(mirror = se)"
     )
   }
   m <- as.data.frame(lapply(m, .mirror_drop_1d), stringsAsFactors = FALSE)
   m <- m[order(m$id), , drop = FALSE]
-  kids <- split(m$id, factor(m$parent, levels = c(0L, m$id)))
-  cache <- vector("list", nrow(m))
-  envs <- list()
-
-  children <- function(id, kind = NULL) {
-    k <- kids[[as.character(id)]]
-    if (!is.null(kind)) {
-      k <- k[m$kind[k] %in% kind]
-    }
-    k
-  }
-  attrs_of <- function(id) {
-    a <- children(id, "attr")
-    stats::setNames(lapply(a, decode), m$key[a])
-  }
-  set_attrs <- function(x, at) {
-    if (length(at)) {
-      attributes(x) <- at
-    }
-    x
-  }
-
-  decode <- function(id) {
-    if (!is.null(cache[[id]])) {
-      return(cache[[id]][[1]])
-    }
-    r <- m[id, ]
-    val <- switch(
-      r$how,
-      ref = decode(as.integer(r$location)),
-      null = NULL,
-      missing = .MIRROR_MISSING,
-      symbol = as.name(r$detail),
-      builtin = .mirror_builtin(r$detail),
-      envname = .mirror_env_from_name(r$detail),
-      envref = envs[[r$location]],
-      env = {
-        # Filled after the rest of the tree, as it was written.
-        e <- new.env(parent = emptyenv())
-        envs[[as.character(id)]] <<- e
-        fill <<- c(fill, id)
-        e
-      },
-      language = {
-        x <- .mirror_parse(.mirror_fetch(adata, r$location, ""), r$type)
-        set_attrs(x, attrs_of(id))
-      },
-      call = {
-        el <- children(id, "elem")
-        parts <- vector("list", length(el))
-        for (i in seq_along(el)) {
-          v <- decode(el[i])
-          if (inherits(v, "se_mirror_missing")) {
-            parts[i] <- list(quote(expr = ))
-          } else if (!is.null(v)) {
-            parts[[i]] <- v
-          }
-        }
-        x <- if (r$type == "expression") as.expression(parts) else as.call(parts)
-        set_attrs(x, attrs_of(id))
-      },
-      closure = {
-        fm <- decode(children(id, "formals"))
-        bd <- decode(children(id, "body"))
-        f <- eval(call("function", as.pairlist(fm), bd))
-        environment(f) <- decode(children(id, "env"))
-        set_attrs(f, attrs_of(id))
-      },
-      long = {
-        vals <- decode(children(id, "values"))
-        lens <- decode(children(id, "lengths"))
-        x <- unname(split(vals, factor(rep.int(seq_along(lens), lens), levels = seq_along(lens))))
-        set_attrs(x, attrs_of(id))
-      },
-      list = {
-        el <- children(id, "elem")
-        x <- vector("list", length(el))
-        for (i in seq_along(el)) {
-          v <- decode(el[i])
-          if (inherits(v, "se_mirror_missing")) {
-            x[i] <- list(quote(expr = ))
-          } else if (!is.null(v)) {
-            x[[i]] <- v
-          }
-        }
-        if (r$detail == "pairlist") {
-          x <- as.pairlist(x)
-        }
-        x <- set_attrs(x, attrs_of(id))
-        if (r$s4) {
-          x <- asS4(x)
-        }
-        x
-      },
-      s4 = {
-        at <- attrs_of(id)
-        cls <- at$class
-        proto <- tryCatch(
-          {
-            pkg <- attr(cls, "package")
-            if (!is.null(pkg)) {
-              suppressMessages(requireNamespace(pkg, quietly = TRUE))
-            }
-            methods::getClassDef(cls[1], package = pkg %||% "")@prototype
-          },
-          error = function(e) NULL
-        )
-        if (is.null(proto) || typeof(proto) != "S4") {
-          warning(sprintf(
-            "se_from_h5ad: class %s is not available; %s comes back as a list of its slots",
-            cls[1],
-            r$path
-          ))
-          at
-        } else {
-          attributes(proto) <- at
-          proto
-        }
-      },
-      atomic = {
-        v <- .mirror_fetch(adata, r$location, r$detail)
-        storage.mode(v) <- r$type
-        x <- set_attrs(v, attrs_of(id))
-        if (r$s4) {
-          x <- asS4(x)
-        }
-        x
-      },
-      unsupported = NULL,
-      stop("se_from_h5ad: unknown manifest entry '", r$how, "' at ", r$path)
-    )
-    cache[[id]] <<- list(val)
-    val
-  }
-  fill <- integer()
-  root <- decode(children(0L))
-  while (length(fill)) {
-    id <- fill[1]
-    fill <- fill[-1]
-    e <- envs[[as.character(id)]]
-    for (b in rev(children(id, "binding"))) {
-      v <- decode(b)
-      if (inherits(v, "se_mirror_missing")) {
-        eval(call("<-", as.name(m$key[b]), quote(expr = )), e)
-      } else {
-        assign(m$key[b], v, envir = e)
-      }
-    }
-    p <- children(id, "parent")
-    if (length(p)) {
-      parent.env(e) <- decode(p)
-    }
-    at <- attrs_of(id)
-    if (length(at)) attributes(e) <- at
+  # Decoder state: The manifest, each node's children, decoded values, and the
+  # environments built so far (filled after the rest of the tree, as written).
+  dc <- new.env(parent = emptyenv())
+  dc$adata <- adata
+  dc$m <- m
+  dc$kids <- split(m$id, factor(m$parent, levels = c(0L, m$id)))
+  dc$cache <- vector("list", nrow(m))
+  dc$envs <- list()
+  dc$fill <- integer()
+  root <- .mirror_decode(dc, .mirror_children(dc, 0L))
+  while (length(dc$fill)) {
+    id <- dc$fill[1]
+    dc$fill <- dc$fill[-1]
+    .mirror_fill_env(dc, id)
   }
   root
+}
+
+.mirror_children <- function(dc, id, kind = NULL) {
+  k <- dc$kids[[as.character(id)]]
+  if (!is.null(kind)) {
+    k <- k[dc$m$kind[k] %in% kind]
+  }
+  k
+}
+
+.mirror_attrs_of <- function(dc, id) {
+  a <- .mirror_children(dc, id, "attr")
+  stats::setNames(lapply(a, function(i) .mirror_decode(dc, i)), dc$m$key[a])
+}
+
+.mirror_set_attrs <- function(x, at) {
+  if (length(at)) {
+    attributes(x) <- at
+  }
+  x
+}
+
+.mirror_decode <- function(dc, id) {
+  hit <- dc$cache[[id]]
+  if (!is.null(hit)) {
+    return(hit[[1]])
+  }
+  r <- dc$m[id, ]
+  val <- .mirror_decoder(r$how, r$path)(dc, id, r)
+  dc$cache[[id]] <- list(val)
+  val
+}
+
+.mirror_decoder <- function(how, path) {
+  switch(
+    how,
+    ref = function(dc, id, r) .mirror_decode(dc, as.integer(r$location)),
+    null = ,
+    unsupported = function(dc, id, r) NULL,
+    missing = function(dc, id, r) .MIRROR_MISSING,
+    symbol = function(dc, id, r) as.name(r$detail),
+    builtin = function(dc, id, r) .mirror_builtin(r$detail),
+    envname = function(dc, id, r) .mirror_env_from_name(r$detail),
+    envref = function(dc, id, r) dc$envs[[r$location]],
+    env = .mirror_dec_env,
+    language = function(dc, id, r) {
+      .mirror_set_attrs(.mirror_parse(.mirror_fetch(dc$adata, r$location, ""), r$type), .mirror_attrs_of(dc, id))
+    },
+    call = .mirror_dec_call,
+    closure = .mirror_dec_closure,
+    long = .mirror_dec_long,
+    list = .mirror_dec_list,
+    s4 = .mirror_dec_s4,
+    atomic = .mirror_dec_atomic,
+    stop("se_from_h5ad: unknown manifest entry '", how, "' at ", path)
+  )
+}
+
+.mirror_dec_env <- function(dc, id, r) {
+  e <- new.env(parent = emptyenv())
+  dc$envs[[as.character(id)]] <- e
+  dc$fill <- c(dc$fill, id)
+  e
+}
+
+.mirror_fill_env <- function(dc, id) {
+  e <- dc$envs[[as.character(id)]]
+  for (b in rev(.mirror_children(dc, id, "binding"))) {
+    v <- .mirror_decode(dc, b)
+    if (inherits(v, "se_mirror_missing")) {
+      eval(call("<-", as.name(dc$m$key[b]), quote(expr = )), e)
+    } else {
+      assign(dc$m$key[b], v, envir = e)
+    }
+  }
+  p <- .mirror_children(dc, id, "parent")
+  if (length(p)) {
+    parent.env(e) <- .mirror_decode(dc, p)
+  }
+  at <- .mirror_attrs_of(dc, id)
+  if (length(at)) {
+    attributes(e) <- at
+  }
+}
+
+# Decoded elements, with empty arguments put back in place.
+.mirror_decode_elems <- function(dc, ids) {
+  x <- vector("list", length(ids))
+  for (i in seq_along(ids)) {
+    v <- .mirror_decode(dc, ids[i])
+    if (inherits(v, "se_mirror_missing")) {
+      x[i] <- list(quote(expr = ))
+    } else if (!is.null(v)) {
+      x[[i]] <- v
+    }
+  }
+  x
+}
+
+.mirror_dec_call <- function(dc, id, r) {
+  parts <- .mirror_decode_elems(dc, .mirror_children(dc, id, "elem"))
+  x <- if (r$type == "expression") as.expression(parts) else as.call(parts)
+  .mirror_set_attrs(x, .mirror_attrs_of(dc, id))
+}
+
+.mirror_dec_closure <- function(dc, id, r) {
+  fm <- .mirror_decode(dc, .mirror_children(dc, id, "formals"))
+  bd <- .mirror_decode(dc, .mirror_children(dc, id, "body"))
+  f <- eval(call("function", as.pairlist(fm), bd)) # builds the function; nothing in it runs
+  environment(f) <- .mirror_decode(dc, .mirror_children(dc, id, "env"))
+  .mirror_set_attrs(f, .mirror_attrs_of(dc, id))
+}
+
+.mirror_dec_long <- function(dc, id, r) {
+  vals <- .mirror_decode(dc, .mirror_children(dc, id, "values"))
+  lens <- .mirror_decode(dc, .mirror_children(dc, id, "lengths"))
+  x <- unname(split(vals, factor(rep.int(seq_along(lens), lens), levels = seq_along(lens))))
+  .mirror_set_attrs(x, .mirror_attrs_of(dc, id))
+}
+
+.mirror_dec_list <- function(dc, id, r) {
+  x <- .mirror_decode_elems(dc, .mirror_children(dc, id, "elem"))
+  if (r$detail == "pairlist") {
+    x <- as.pairlist(x)
+  }
+  x <- .mirror_set_attrs(x, .mirror_attrs_of(dc, id))
+  if (r$s4) asS4(x) else x
+}
+
+# The prototype of an S4 class, from its package; NULL when not available.
+.mirror_s4_prototype <- function(cls) {
+  tryCatch(
+    {
+      pkg <- attr(cls, "package")
+      if (!is.null(pkg)) {
+        requireNamespace(pkg, quietly = TRUE)
+      }
+      methods::getClassDef(cls[1], package = pkg %||% "")@prototype
+    },
+    error = function(e) NULL
+  )
+}
+
+.mirror_dec_s4 <- function(dc, id, r) {
+  at <- .mirror_attrs_of(dc, id)
+  proto <- .mirror_s4_prototype(at$class)
+  if (is.null(proto) || typeof(proto) != "S4") {
+    warning(sprintf(
+      "se_from_h5ad: class %s is not available; %s comes back as a list of its slots",
+      at$class[1],
+      r$path
+    ))
+    return(at)
+  }
+  attributes(proto) <- at
+  proto
+}
+
+.mirror_dec_atomic <- function(dc, id, r) {
+  v <- .mirror_fetch(dc$adata, r$location, r$detail)
+  storage.mode(v) <- r$type
+  x <- .mirror_set_attrs(v, .mirror_attrs_of(dc, id))
+  if (r$s4) asS4(x) else x
 }
 
 # ---- comparison ---------------------------------------------------------------
@@ -884,100 +965,111 @@ se_from_h5ad <- function(x) {
   if (typeof(a) != typeof(b)) {
     return(sprintf("%s: typeof %s vs %s", path, typeof(a), typeof(b)))
   }
-  cmp_attrs <- function() {
-    aa <- attributes(a)
-    ab <- attributes(b)
-    if (!setequal(names(aa), names(ab))) {
-      return(sprintf(
-        "%s: attributes %s vs %s",
-        path,
-        paste(names(aa), collapse = ","),
-        paste(names(ab), collapse = ",")
-      ))
-    }
-    for (n in names(aa)) {
-      r <- .se_mirror_compare(aa[[n]], ab[[n]], paste0(path, "@", n), seen)
-      if (!isTRUE(r)) return(r)
-    }
-    TRUE
+  cmp <- switch(
+    typeof(a),
+    environment = .se_mirror_cmp_env,
+    closure = .se_mirror_cmp_closure,
+    list = ,
+    pairlist = ,
+    expression = .se_mirror_cmp_list,
+    S4 = .se_mirror_cmp_attrs,
+    language = .se_mirror_cmp_bare,
+    if (is.atomic(a)) .se_mirror_cmp_bare
+  )
+  if (is.null(cmp)) {
+    return(sprintf("%s: %s differs", path, typeof(a)))
   }
-  ty <- typeof(a)
-  if (ty == "environment") {
-    sa <- .mirror_special_env(a)
-    sb <- .mirror_special_env(b)
-    if (!is.null(sa) || !is.null(sb)) {
-      return(
-        if (identical(sa, sb)) TRUE else sprintf("%s: environment %s vs %s", path, sa %||% "local", sb %||% "local")
-      )
-    }
-    key <- paste(format(a), format(b))
-    if (!is.null(seen[[key]])) {
-      return(TRUE)
-    }
-    seen[[key]] <- TRUE
-    na <- sort(ls(a, all.names = TRUE))
-    nb <- sort(ls(b, all.names = TRUE))
-    if (!identical(na, nb)) {
-      return(sprintf("%s: environment bindings differ", path))
-    }
-    for (n in na) {
-      r <- .se_mirror_compare(.mirror_binding(a, n), .mirror_binding(b, n), paste0(path, "$", n), seen)
-      if (!isTRUE(r)) return(r)
-    }
-    r <- .se_mirror_compare(parent.env(a), parent.env(b), paste0(path, " parent"), seen)
+  cmp(a, b, path, seen)
+}
+
+.se_mirror_cmp_attrs <- function(a, b, path, seen) {
+  aa <- attributes(a)
+  ab <- attributes(b)
+  if (!setequal(names(aa), names(ab))) {
+    return(sprintf("%s: attributes %s vs %s", path, paste(names(aa), collapse = ","), paste(names(ab), collapse = ",")))
+  }
+  for (n in names(aa)) {
+    r <- .se_mirror_compare(aa[[n]], ab[[n]], paste0(path, "@", n), seen)
     if (!isTRUE(r)) {
       return(r)
     }
-    return(cmp_attrs())
   }
-  if (ty == "closure") {
-    if (!identical(formals(a), formals(b))) {
-      r <- .se_mirror_compare(as.list(formals(a)), as.list(formals(b)), paste0(path, " formals"), seen)
-      if (!isTRUE(r)) return(r)
-    }
-    if (!identical(body(a), body(b))) {
-      return(sprintf("%s: function bodies differ", path))
-    }
-    r <- .se_mirror_compare(environment(a), environment(b), paste0(path, " env"), seen)
+  TRUE
+}
+
+.se_mirror_cmp_env <- function(a, b, path, seen) {
+  sa <- .mirror_special_env(a)
+  sb <- .mirror_special_env(b)
+  if (!is.null(sa) || !is.null(sb)) {
+    return(if (identical(sa, sb)) TRUE else sprintf("%s: environment %s vs %s", path, sa %||% "local", sb %||% "local"))
+  }
+  key <- paste(format(a), format(b))
+  if (!is.null(seen[[key]])) {
+    return(TRUE)
+  }
+  seen[[key]] <- TRUE
+  r <- .se_mirror_cmp_bindings(a, b, path, seen)
+  if (!isTRUE(r)) {
+    return(r)
+  }
+  r <- .se_mirror_compare(parent.env(a), parent.env(b), paste0(path, " parent"), seen)
+  if (!isTRUE(r)) {
+    return(r)
+  }
+  .se_mirror_cmp_attrs(a, b, path, seen)
+}
+
+.se_mirror_cmp_bindings <- function(a, b, path, seen) {
+  na <- sort(ls(a, all.names = TRUE))
+  if (!identical(na, sort(ls(b, all.names = TRUE)))) {
+    return(sprintf("%s: environment bindings differ", path))
+  }
+  for (n in na) {
+    r <- .se_mirror_compare(.mirror_binding(a, n), .mirror_binding(b, n), paste0(path, "$", n), seen)
     if (!isTRUE(r)) {
       return(r)
     }
-    return(cmp_attrs())
   }
-  if (ty %in% c("list", "pairlist", "expression")) {
-    if (length(a) != length(b)) {
-      return(sprintf("%s: length %d vs %d", path, length(a), length(b)))
+  TRUE
+}
+
+.se_mirror_cmp_closure <- function(a, b, path, seen) {
+  r <- .se_mirror_compare(as.list(formals(a)), as.list(formals(b)), paste0(path, " formals"), seen)
+  if (!isTRUE(r)) {
+    return(r)
+  }
+  if (!identical(body(a), body(b))) {
+    return(sprintf("%s: function bodies differ", path))
+  }
+  r <- .se_mirror_compare(environment(a), environment(b), paste0(path, " env"), seen)
+  if (!isTRUE(r)) {
+    return(r)
+  }
+  .se_mirror_cmp_attrs(a, b, path, seen)
+}
+
+.se_mirror_cmp_list <- function(a, b, path, seen) {
+  if (length(a) != length(b)) {
+    return(sprintf("%s: length %d vs %d", path, length(a), length(b)))
+  }
+  ua <- if (typeof(a) == "list") unclass(a) else as.list(a)
+  ub <- if (typeof(b) == "list") unclass(b) else as.list(b)
+  for (i in seq_along(ua)) {
+    r <- .se_mirror_compare(.mirror_elem(ua, i), .mirror_elem(ub, i), paste0(path, "[[", i, "]]"), seen)
+    if (!isTRUE(r)) {
+      return(r)
     }
-    ua <- if (ty == "list") unclass(a) else as.list(a)
-    ub <- if (ty == "list") unclass(b) else as.list(b)
-    for (i in seq_along(ua)) {
-      r <- .se_mirror_compare(.mirror_elem(ua, i), .mirror_elem(ub, i), paste0(path, "[[", i, "]]"), seen)
-      if (!isTRUE(r)) return(r)
-    }
-    return(cmp_attrs())
   }
-  if (ty == "S4") {
-    return(cmp_attrs())
+  .se_mirror_cmp_attrs(a, b, path, seen)
+}
+
+.se_mirror_cmp_bare <- function(a, b, path, seen) {
+  ba <- a
+  bb <- b
+  attributes(ba) <- NULL
+  attributes(bb) <- NULL
+  if (!identical(ba, bb)) {
+    return(sprintf("%s: values differ", path))
   }
-  if (ty == "language") {
-    ba <- a
-    bb <- b
-    attributes(ba) <- NULL
-    attributes(bb) <- NULL
-    if (!identical(ba, bb)) {
-      return(sprintf("%s: language differs", path))
-    }
-    return(cmp_attrs())
-  }
-  if (is.atomic(a)) {
-    ba <- a
-    bb <- b
-    attributes(ba) <- NULL
-    attributes(bb) <- NULL
-    if (!identical(ba, bb)) {
-      return(sprintf("%s: values differ", path))
-    }
-    return(cmp_attrs())
-  }
-  sprintf("%s: %s differs", path, ty)
+  .se_mirror_cmp_attrs(a, b, path, seen)
 }
